@@ -1,0 +1,112 @@
+PHP-Revision-Get
+================
+A tool for interfacing with PHP's RMTOOLS from the Windows
+command line. Helpful for automating the download of packages and
+per-revision binaries in QA and testing.
+
+Pre-reqs
+--------
+For extracting the .zip downloads an unzip utility must be in your PATH.
+Supported unzip utilities include [7-zip](http://www.7-zip.org/), 
+[unzip](http://gnuwin32.sourceforge.net/packages/unzip.htm), and 
+[jzip](http://www.jzip.com/)
+
+For downloading, the presence of [curl](http://curl.haxx.se/download.html) 
+in your PATH will allow simultaneous downloads, and will do so with less 
+memory overhead than the built-in `MSXML2.XMLHTTP`.
+
+Usage
+-----
+    php-revision-get help
+        Get this help
+
+    php-revision-get info [<RESTRAINTS>] [<COMMON>]
+        Poll the remote JSON and return a list of available matching builds.
+
+    php-revision-get bin[ary|ies|s] [<RESTRAINTS>] [<DOWNLOAD>] [<COMMON>]
+        Poll the remote JSON and download all available matching builds.
+
+Common Options
+--------------
+    --format=<json|xml>
+        Specify the format of output.
+        Note that some errors cannot be caught and output nicely,
+        and some errors might occur before the format gets set. Write
+        your consumers to catch non-expected output nicely.
+        Default format is json.
+        --xml               alias of --format=xml
+        --json              alias of --format=json
+
+    --base-url=<URL>
+        Set the base URL. Defaults to: 
+        [http://windows.php.net/downloads/snaps]
+
+Restraints
+----------
+    This tool automatically assumes no restraints other than what you
+    explicitly specify. This means that it will select all available 
+    builds from the latest revision of each branch unless you tell it 
+    otherwise. Below are the available restraints to apply.
+
+    --revision=[<COMPARRISON>]<NUMBER>
+        Limit to a specific revision or to revisions that match a 
+        comparrison operator, such as "greater than", where optional 
+        COMPARRISON is "<" or ">". Notice that there is no space 
+        between the COMPARRISON operator and the NUMBER.
+        --newer-than=<NUMBER>  alias of --revision="><NUMBER>
+
+    --branch=<STRING>
+        Limit to a specific branch, where STRING is a valid branch 
+        built with RMTOOLS.
+        --5.3                 alias of --branch="5.3"
+        --trunk               alias of --branch="trunk"
+
+    --threadsafety=<BOOLISH>
+        Limit threadsafetiness to either ON or OFF
+        --ts                  alias of --threadsafety=ON
+        --nts                 alias of --threadsafety=OFF
+
+    --compiler=<STRING>
+        Limit to a specific compiler.
+        --vc6                 alias of --compiler="vc6"
+        --vc9                 alias of --compiler="vc9"
+
+    --architecture=<STRING>
+        Limit to a specific architecture
+        --x86                 alias of --architecture="x86"
+
+    --platform=<STRING>
+        Limit to a specific platform
+        --windows             alias of --platform="windows"
+
+    --build-type=<STRING>
+        Get a devel or debug package insteead of a standard build.
+        NOTE: Unlike other restrinats, this one comes with a default
+        value; to remove the restraint, use `--build-type="ALL"`.
+        --standard            alias of --build-type="standard"
+        --debug               alias of --build-type="debug"
+        --devel               alias of --build-type="devel"
+
+Download Options
+----------------
+    When running a function that downloads builds or source snapshots,
+    these options help specify how to handle the output.
+
+    --output-directory=<PATH>
+        Specify a directory in which to save downloaded items.
+        If an output directory is not specified, CWD is used.
+        --output-dir=<PATH>   alias of --output-directory=<PATH>
+
+    --unzip[=<BOOLISH>]
+        Specify whether or not to unzip any downloaded .zip archives.
+        Default behavior is to automatically unzip.
+        --no-unzip            alias of --unzip="OFF"
+        --disable-unzip       alias of --unzip="OFF"
+
+    --cleanup[=<BOOLISH>]
+        Specify whether or not to remove an archive that has been 
+        extracted. If no value is present, TRUE is assumed.
+        Default behavior is to automatically cleanup.
+        --no-cleanup          alias of --cleanup="OFF"
+        --disable-cleanup     alias of --cleanup="OFF"
+

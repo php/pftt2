@@ -1,0 +1,210 @@
+
+# emerge dev-db/mysql dev-db/postgresql-server net-ftp/vsftpd
+
+$dep_server_share = '//terastation/share'
+$dep_server_user = 'test'
+$dep_server_password = 'password01!'
+
+# --enable-debug-pack and make all will produce the .pdb symbol files
+# --disable-zts will create a non-thread-safe build
+$cross_platform_config_ops = ' --with-mysqli=mysqlnd --with-mysql=mysqlnd --with-pdo-mysql=mysqlnd --enable-mysqlnd --enable-pdo --enable-openssl'
+#
+$windows_config_ops = ' --enable-debug-pack --disable-zts --enable-snapshot-build --enable-one-shot --with-extra-includes=%SYSTEMDRIVE%/php-sdk/deps/include --with-extra-libs=%SYSTEMDRIVE%/php-sdk/deps/lib'
+$linux_config_ops = ' --enable-debug '
+
+
+
+
+require 'rbconfig'
+$is_windows = RbConfig::CONFIG['host_os'] =~ /mswin/ or RbConfig::CONFIG['host_os'] =~ /mingw/
+  
+def get_host(args)
+  Host::Local.new()
+  
+  return Host.new # TODO
+end
+
+desc "Installs PFTT Server"
+task :server_install =>[:install_deps] do
+  # generate pftt_server.bat or pftt_server
+  Rake::Task[:generate_shell_script].invoke('_pftt_server.rb')
+    
+  puts 'PFTT-Server: installed'
+  puts 'PFTT-Server: run pftt_server to start PFTT Server'
+  puts
+end
+
+desc "Generates a Shell script or Batch script to run PFTT"
+task :generate_shell_script, [:ruby_script] do |t, args|
+  if $is_windows
+    File.open("pftt.bat", "wb") do |f|
+      
+      f.puts("@echo off")
+
+      # %* in batch scripts refers to all arguments
+      f.puts("bundle exec ruby #{args.ruby_script} %*")
+      f.close()
+    end
+  else
+    File.open("pftt", "wb") do |f|
+      f.puts("#!/bin/bash")
+      # $* in bash scripts refers to all arguments
+      f.puts("bundle exec ruby #{args.ruby_script} $*")
+      f.close()
+    
+      # make script executable
+      system("chmod +x pftt")
+    end
+  end # if
+end # task
+
+desc "Installs things PFTT depends on"
+task :install_deps do
+  unless RUBY_VERSION.to_f >= 1.9
+    puts 'PFTT: error: PFTT requires at least ruby 1.9'
+    exit
+  end
+  
+  if not system("bundle install")
+    puts "PFTT: 'bundle install' failed!"
+  else
+    puts ""
+    puts "PFTT: ruby dependencies installed"
+    puts ""
+  end
+end
+
+require 'install.rb'
+
+desc "Installs the PFTT Client"
+task :install => [:host_install] do
+  Rake::Task[:generate_shell_script].invoke('_pftt.rb')  
+  
+  host = Host::Local.new()
+    
+  # install git
+  install(host, 'git', 'git', "msysgit-v111", "/Q")
+  
+  # add pftt to %PATH% or $PATH
+  add_to_path_permanently(host, __DIR__)
+  
+  # install subversion client (needed to get php builds)
+  install(host, 'svn', 'svn', 'win32svn', "/Q")
+  
+  puts 'PFTT: installation complete'
+  puts 'PFTT: run pftt to get started'
+  puts
+end
+
+# Later, PHPUnit support (for MediaWiki, etc...)
+
+desc "Installs a remote or local PFTT Host"
+task :host_install => [:install_deps] do
+  
+end
+
+desc "Downloads PHPT Tests from PHP.net (SVN)"
+task :get_tests do
+  # TODO args for branch and version
+  # store in pftt-phps directory
+end
+
+# TODO get php and/or tests from SVN, snapshot or release
+#      separate into folders so its clear
+desc "Downloads PHP Binary from PHP.net"
+task :get_php do
+  # TODO args for branch and version
+  # store in php-builds directory
+  #
+  # use php-revision-git RMTools
+end
+
+desc "Downloads newest PHP Binary from PHP.net"
+task :get_newest_php, [:build] do |t, args|
+  host = get_host(args)
+  
+  cd_php_sdk(host)
+  
+  out, status = host.exec!('svn update')
+  
+  if out.includes?('U ') or out.includes?('A ')
+    puts 'PFTT: Updated'
+    puts
+  else
+    puts 'PFTT: not updated'
+    puts
+    puts out
+    puts
+  end 
+end
+
+require 'util.rb'
+
+desc "Builds PHP binary from source code"
+task :build_php, [:build] do |t, args|
+  host = get_host(args)
+  
+  if host.windows?
+    # find Windows SDK
+    if host.exists?('%SYSTEMDRIVE%\Program Files\Microsoft SDKs\Windows\v7.0\Bin')
+      add_to_path_temp('%SYSTEMDRIVE%\Program Files\Microsoft SDKs\Windows\v7.0\Bin')
+    elsif host.exists?('%SYSTEMDRIVE%\Program Files\Microsoft SDKs\Windows\v6.0\Bin')
+      add_to_path_temp('%SYSTEMDRIVE%\Program Files\Microsoft SDKs\Windows\v6.0\Bin')
+    else
+      puts "PFTT: error: Can't find Windows SDK 6+ on Windows host. Therefore can't build PHP binary"
+      puts "PFTT: please install Windows SDK 6 from microsoft.com"
+      puts
+      exit(-20)
+    end
+    
+    host.exec!("setenv /x86 /xp /release")
+  end
+  
+  cd_php_sdk(host)
+  
+  unless host.exist?(args.build)
+    puts "PFTT: build not found! #{args.build} in "+host.cwd
+    exit(-21)
+  end
+    
+  host.delete('Release')
+  host.delete('Release_TS')
+  
+  host.exec!("buildconf")
+  if host.windows?
+    out_err, status = host.exec!("configure #{$cross_platform_config_ops} #{$windows_config_ops}")
+  else
+    out_err, status = host.exec!("configure #{$cross_platform_config_ops} #{$linux_config_ops}")
+  end
+  unless status
+    puts 'PFTT: PHP Build configure failed!'
+    exit(-22)
+  end
+  
+  if host.posix?
+    host.exec!("make snap")
+  else
+    host.exec!("nmake snap")
+  end
+  
+  build_success = false
+  if $cross_platform_config_ops.include?('--disable-zts')
+    build_success = host.exist?('Release')
+  else
+    build_success = host.exist?('Release_TS')
+  end
+  
+  if build_success
+    puts 'PFTT: PHP Binary Built Successfully: see '+host.cwd
+    puts
+  else
+    puts 'PFTT: error: failed to build PHP Binary: see '+host.cwd
+    puts
+  end
+  
+end
+
+desc "Exports Test Results from SQLITE to a CSV File (can then import that into MS-Excel)"
+task :export_csv, [:sqlite_file, :table_name, :csv_file] do |t, args|
+  # TODO
+end
