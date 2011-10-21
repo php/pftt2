@@ -4,9 +4,10 @@ module Middleware
       class ApacheBase < HttpBase
         
         def root r=nil
-          if r
-            return r
-          elsif @apache_root
+#     TODO trim /htdocs/     if r
+#            return r
+#          els
+          if @apache_root
             return @apache_root
           elsif @host.posix?
             return '/'

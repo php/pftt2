@@ -24,6 +24,15 @@ module Util
       # :bgcolor    #000000  - hex color to use as the background color of the cell
       #
       end
+      
+      protected
+      
+      attr_accessor :row_num
+      
+      def clone(cm)
+        cm.row_num = row_num
+      end
+      
     end
   end
 end

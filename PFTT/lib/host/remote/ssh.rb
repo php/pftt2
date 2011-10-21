@@ -13,11 +13,17 @@ module Host
     instantiable 'ssh'
     
     def name
-      @credentials[:host_name]
+      n = @credentials[:host_name]
+      if n.include?('.')
+        # name is an address, try getting the host's name for itself
+        return super
+      else
+        return n
+      end 
     end
     
     def address
-      name
+      @credentials[:host_name]
     end
 
     def close
@@ -42,13 +48,12 @@ module Host
     end
     
     def clone
-      clone = Host::Remote::Ssh.new({
-        :address => @credentials[:host_name],
-        :user => @credentials[:user],
-        :password => @credentials[:password]
-      })
+      clone = Host::Remote::Ssh.new(
+          :address => @credentials[:host_name],
+          :username => @credentials[:user],
+          :password => @credentials[:password]
+        )
       super(clone)
-      clone
     end
     
     def alive?
@@ -71,7 +76,7 @@ module Host
     def exec command, opts={}
       @cwd = nil # clear cwd cache
       
-      if opts.has_key(:chdir)
+      if opts.has_key?(:chdir)
         restore_cd = cwd
         cd(opts[:chdir])
       else
@@ -142,11 +147,11 @@ module Host
     def cwd
       @cwd ||= case
       when posix? then line!('pwd')
-      else line!("ECHO %CD%").gsub(/\"/, '')
+      else unquote_line!("ECHO %CD%")
       end
     end
       
-    def cd path, hsh
+    def cd path, hsh={}
       make_absolute! path
       if not path
         # popd may have been called when @dir_stack empty
@@ -269,12 +274,20 @@ module Host
     end
      
     def ssh
-      @ssh ||= Net::SSH.start( nil, nil, @credentials )
+      @ssh ||= Net::SSH.start( nil, nil, {
+        :host_name => @credentials[:host_name],
+        :user => @credentials[:user],
+        :password => @credentials[:password]
+      })
       @ssh
     end
 
     def sftp
-      @sftp ||= Net::SFTP.start( nil, nil, @credentials )
+      @sftp ||= Net::SFTP.start( nil, nil, {
+        :host_name => @credentials[:host_name],
+        :user => @credentials[:user],
+        :password => @credentials[:password]
+      })
       @sftp
     end
   end

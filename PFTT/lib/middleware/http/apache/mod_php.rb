@@ -1,9 +1,9 @@
 
-# TODO implement APC and WinCache support using Middleware
 module Middleware
   module Http
     module Apache
-      class ModPhp < ApacheBase
+      module ModPhp
+      class Base < ApacheBase
         requirement :threadsafe => true
         instantiable
         
@@ -13,8 +13,12 @@ module Middleware
           self
         end
         
+        def mw_name
+          'Apache-ModPHP'
+        end
+        
         def clone
-          clone = Middleware::Http::Apache::ModPhp.new(@host.clone, @php_build, @scenarios)
+          clone = Middleware::Http::Apache::ModPhp::Base.new(@host.clone, @php_build, @scenarios)
           clone.deployed_php = @deployed_php
           clone
         end
@@ -37,7 +41,7 @@ module Middleware
         def start!
           if @host.windows?
             # make sure apache is installed as a windows service (for 'net start')
-            @host.exec! ((apache_root+'bin/httpd -k install').convert_path)
+            @host.exec! ((root+'bin/httpd -k install').convert_path)
             
             # makre sure IIS is turned off
             @host.exec! 'net stop w3svc'
@@ -78,6 +82,7 @@ module Middleware
           restart! if applied and running?
           applied
         end
+      end
       end
     end
   end

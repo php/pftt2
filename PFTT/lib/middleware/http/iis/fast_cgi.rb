@@ -2,10 +2,15 @@
 module Middleware
   module Http
     module IIS
-      class FastCgi < IisBase
+      module FastCgi
+      class Base < IisBase
+        
+        def mw_name
+          'IIS-FastCGI'
+        end
         
         def clone
-          clone = Middleware::Http::IIS::FastCgi.new(@host.clone, @php_build, @scenarios)
+          clone = Middleware::Http::IIS::FastCgi::Base.new(@host.clone, @php_build, @scenarios)
           clone.deployed_php = @deployed_php
           clone
         end
@@ -35,6 +40,7 @@ module Middleware
         cgi.rfc2616_headers=0
         INI
         
+      end
       end
     end
   end

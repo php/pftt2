@@ -1,8 +1,8 @@
 module Middleware
   module Http
     module IIS
-      # TODO requirement :platform => :windows
       class IisBase < HttpBase
+        requirement :platform => :windows
         
         def initialize(*args)
           super(*args)
@@ -19,7 +19,7 @@ module Middleware
         #       root(r) goes through T:/ or other mounted network drive (SMB)
         #       while @host goes through SSH and executes the operation locally on the remote computer
         def appcmd args
-          @host.exec! "%SYSTEMROOT%/System32/inetsrv/appcmd #{args}"
+          @host.exec!(@host.systemroot+"/System32/inetsrv/appcmd #{args}")
         end
               
         def start!

@@ -16,9 +16,7 @@ module Report
         def write_end
           "<p>* - tests missing required sections (test is not runnable)</p><p>** - tests with unsupported sections (test is not runnable)</p></body></html>"
         end
-  
-        # TODO if consecutive rows have same results, merge them into one row and put both SKUs (including arch) in the SKU column
-        #    implement in by_platform.rb
+        
         def write_table(cm)
           # colors to use
           bgcolor_os = '#f2f2f2'

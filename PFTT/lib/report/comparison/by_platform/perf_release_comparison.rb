@@ -18,41 +18,45 @@ module Report
         end
         
         def write_app_detail_table(app, cm)
-          # TODO share row numbering with write_comparison_table
           cm.add_row({:text=>app, :colspan=>8})
           cm.add_row('', 'OS', 'vrtu', 'tps', 'kcpt', 'bpt', 'cpu', 'err')
           
           return cm
         end
   
-        # TODO if consecutive rows have same results, merge them into one row and put both SKUs (including arch) in the SKU column
-        #    implement in by_platform.rb
-        def write_comparison_table(app, cm)
-          
-          row_num = 0 # TODO use same numbering for all rows
-    
-          [['context_1', 'context_2'], ['context_1', 'context_3']].each{|ctx_set|
+        def write_comparison_table(app, cm, r)
+          r[TypedToken::ArrayToken::ScenarioSet].each{|scn_set|
       
             cm.add_row(
               {:text=>(cm.html?)?'<strong>Scenarios:</strong>':'Scenarios:', :colspan=>2},
-              {:text=>ctx_set.inspect.to_s, :colspan=>20}
+              {:text=>scn_set.inspect.to_s, :colspan=>20}
             )
             
             cm.add_row({:text=>'', :colspan=>4}, {:text=>'IIS', :colspan=>6}, {:text=>'Apache', :colspan=>9})
             cm.add_row({:text=>'', :colspan=>4}, {:text=>'Load Agents', :colspan=>2}, {:text=>'No WinCache', :colspan=>3}, {:text=>'WinCache', :colspan=>3}, {:text=>'No APC', :colspan=>3}, {:text=>'APC', :colspan=>3}, {:text=>'APC w/ IGBinary', :colspan=>3})
             cm.add_row('', 'OS', 'Physical', 'Virtual', 'Base', 'Test', 'Gain', 'Base', 'Test', 'Gain', 'Base', 'Test', 'Gain', 'Base', 'Test', 'Gain')
               
-            cm.add_row('1', 'Win 2003 x86 SP2', '2', '8', '50', '100', '50%', '100', '50', '50%', '50', '100', '50%', '100', '50', '50%')
+            windows_ini, posix_ini = nil
+            r[scn_set, TypedToken::StringToken::OSName].each{|results|
+              # TODO
+              cm.add_row(
+                {:row_number=>true},
+                os_short_name(results.os),
+                results.physical_client,
+                results.virtual_client,
+                '50', '100', '50%', '100', '50', '50%', '50', '100', '50%', '100', '50', '50%')
+              
+              windows_ini = results.windows_ini
+              posix_ini = results.posix_ini
+            }
       
             cm.add_row(
               {:text=>(cm.html?)?'<strong>Windows INI:</strong>':'INI:', :colspan=>2},
-              # TODO show INI
-              {:text=>ctx_set.inspect.to_s, :colspan=>20}
+              {:text=>windows_ini.to_s, :colspan=>20}
             )
             cm.add_row(
-              {:text=>(cm.html?)?'<strong>Linux INI:</strong>':'INI:', :colspan=>2},
-              # TODO show INI
-              {:text=>ctx_set.inspect.to_s, :colspan=>20}
+              {:text=>(cm.html?)?'<strong>POSIX INI:</strong>':'INI:', :colspan=>2},
+              {:text=>posix_ini.to_s, :colspan=>20}
             )
             
             
@@ -64,13 +68,13 @@ module Report
         
         def write_tables(cm)
           html_txt = ''
-          apps = ['Hello World', 'Typo3', 'Drupal', 'MediaWiki', 'Wordpress', 'Joomla']
-          apps.each{|app|
-            html_txt += write_comparison_table(app, cm.clone).render()
+          apps = @results_ctx[TypedToken::StringToken::AppName]#['Hello World', 'Typo3', 'Drupal', 'MediaWiki', 'Wordpress', 'Joomla']
+          apps.keys.each{|app|
+            html_txt += write_comparison_table(app, cm.clone, apps).render()
           }
           
-          apps.each{|app|
-            html_txt += write_app_detail_table(app, cm.clone).render()
+          apps.keys.each{|app|
+            html_txt += write_app_detail_table(app, cm.clone, apps).render()
           }
           return html_txt
         end

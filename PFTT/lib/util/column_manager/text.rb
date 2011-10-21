@@ -15,7 +15,7 @@ module Util
       end
       
       def clone
-        Util::ColumnManager::Text.new(@column_count)
+        clone(Util::ColumnManager::Text.new(@column_count))
       end
       
       def add_row(*in_values)

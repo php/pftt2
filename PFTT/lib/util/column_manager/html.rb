@@ -9,7 +9,7 @@ module Util
       end
       
       def clone
-        Util::ColumnManager::Html.new
+        clone(Util::ColumnManager::Html.new())
       end
       
       def render 

@@ -18,10 +18,7 @@ module TestBench
       deployed_location = File.join(@host.cwd, %Q{#{test_case.name}.#{test_case.extension[section]}})
       
       if $force_deploy or not @host.exist?(deployed_location)
-        @host.open_file(deployed_location,'wb') do |f|
-          f.write test_case[section]
-          f.close
-        end
+        @host.write(test_case[section], deployed_location)
       end
 
       deployed_location
@@ -35,9 +32,7 @@ module TestBench
       middleware.uninstall(fs_scn.docroot(middleware))
     end
 
-    # TODO move up to test_bench.rb
-    def run(test_case_sets, test_ctx)#global_db, local_db, global_iter_id, local_iter_id)#, fs_scn, scenarios)
-      #results = PhptTestResult::Array.new() # TODO
+    def run(test_case_sets, test_ctx)
       
       #
       #test_case_sets.map do |test_cases|
@@ -53,7 +48,6 @@ module TestBench
             
           # TODO
           scenarios = test_case_sets[0][0][:scenarios][0]
-            @scen = scenarios # TODO
             
           fs_scn = scenarios[:working_file_system]
           @host = test_case_sets[0][0][:host]
@@ -162,11 +156,11 @@ module TestBench
                   test_case.scn_list = scenarios
                   
                   # run the test case!
-#                TODO  begin
-                    do_single_test_case(tmpdir, deployed, skip_if_code_cache, skip_if_result_cache, test_ctx, test_cases, test_case, tmpdir, fs_scn, scenarios)
-#                  rescue
-#                    puts 'PFTT: internal error: do_single_test_case: '+$!.to_s 
-#                  end
+                  begin
+                    do_single_test_case(@php, @host, @middleware, tmpdir, deployed, skip_if_code_cache, skip_if_result_cache, test_ctx, test_cases, test_case, tmpdir, fs_scn, scenarios)
+                  rescue
+                    test_ctx.add_exception(@host, @php, @middleware, $!)
+                  end
                   
                   if do_single_thread == 3
                     test_ctx.semaphore1.synchronize {
@@ -216,13 +210,8 @@ module TestBench
       #
     end # end def run
     
-    def create_per_report()
-      # TODO @host
-      Report::Run::PerHost::PerBuild::PerMiddleware::Func.new(@host, @php, @middleware)
-    end
-    
-    def write_ext_file(ext_list, file_name)
-      ext_file = File.join(telemetry_folder, file_name) # TODO test_ctx.telemetry_folder
+    def write_ext_file(telemetry_folder, ext_list, file_name)
+      ext_file = File.join(telemetry_folder, file_name)
       arw = Util::ArgRewriter.new(ARGV)
       arw.cmd('func_part')
       arw.replace('--test-list', file_name)
@@ -236,68 +225,32 @@ module TestBench
       f.close()
     end
     
-    def finished_host_build_middleware_scenarios(test_ctx)
-      scenarios = @scen # TODO
+    def finished_host_build_middleware_scenarios(test_ctx, telemetry_folder, host, php, middleware, scenarios, r)
+      r.telemetry_folder = telemetry_folder # ensure 
+
+      report = Report::Run::PerHost::PerBuild::PerMiddleware::Func.new(host, php, middleware, r)
       
       # generate a combined INI for all scenarios for both platforms
-      windows_ini = @middleware.create_ini(scenarios, :windows)
-      posix_ini = @middleware.create_ini(scenarios, :posix)
+      r.windows_ini = middleware.create_ini(scenarios, :windows)
+      r.posix_ini = middleware.create_ini(scenarios, :posix)
       
       ini_f = File.open(File.join(telemetry_folder, 'Posix.ini'), 'wb')
-      ini_f.puts(posix_ini.to_s)
+      ini_f.puts(r.posix_ini.to_s)
       ini_f.close()
       
       ini_f = File.open(File.join(telemetry_folder, 'Windows.ini'), 'wb')
-      ini_f.puts(posix_ini.to_s)
+      ini_f.puts(r.windows_ini.to_s)
       ini_f.close()
       
-      r = PhptTestResult::Array.new() # TODO
-      
       # write list of extensions tested
-      write_ext_file(r.ext(:run), 'EXT_RUN.list')
-      write_ext_file(r.ext(:all), 'EXT_ALL.list')
-      write_ext_file(r.ext(:skip), 'EXT_SKIP.list')
+      write_ext_file(telemetry_folder, r.ext(:run), 'EXT_RUN.list')
+      write_ext_file(telemetry_folder, r.ext(:all), 'EXT_ALL.list')
+      write_ext_file(telemetry_folder, r.ext(:skip), 'EXT_SKIP.list')
       
-      # write list of scenarios tested
-      f = File.open(File.join(telemetry_folder, 'scenarios.list'), 'wb')
-      scenarios.values.each do |scn|
-        f.puts(scn.scn_name)
-      end
-      f.close()
-      
-      # write system info too
-      f = File.open(File.join(telemetry_folder, 'systeminfo.txt'), 'wb')
-      f.puts(@host.systeminfo)
-      f.close()        
-      
-      report = create_per_report()
-              
-      # TODO feed results and INIs to report
-      
-      test_ctx.semaphore4.synchronize do
-        report.text_print()
-              
-        #
-        #
-        if $interactive_mode
-          if test_ctx.first_run(@host, @php, @middleware)
-            if test_ctx.prompt_yesno('PFTT: Re-run and compare the results to first run?')
-              test_ctx.rerun
-            end
-          else
-            if test_ctx.prompt_yesno('PFTT: Re-run and compare the results to this run?')
-              test_ctx.set_current_as_first_run(@host, @php, @middleware, self)
-              test_ctx.rerun
-            end
-          end
-        end
-        #
-        #
-        
-      end
+      return report
     end
     
-    def do_single_test_case(deploydir, deployed, skip_if_code_cache, skip_if_result_cache, test_ctx, test_cases, test_case, tmpdir, fs_scn, scenarios)
+    def do_single_test_case(php, host, middleware, deploydir, deployed, skip_if_code_cache, skip_if_result_cache, test_ctx, test_cases, test_case, tmpdir, fs_scn, scenarios)
       tmiddleware = @middleware.clone
                       
       # important: some PHPT tests use paths relative to their deployment location (must change CWD)
@@ -390,13 +343,12 @@ module TestBench
           deployed[:file] = deploy_phpt_section test_case, :file
                        
           out_err = ''
-          #begin
+          begin
             out_err = tmiddleware.execute_php_script( deployed[:file], test_case, :test, scenarios )[1]
               
-          #rescue
-            #puts $!.to_s
-            #out_err = 'PFTT-Internal-Error(execute_phpt_script:test): '+$!.to_s
-          # TODO end
+          rescue
+            test_ctx.add_exception(host, php, middleware, $!)
+          end
                         
           throw :result, [PhptTestResult::Meaningful, out_err]
         ensure
@@ -421,14 +373,14 @@ module TestBench
       # run of this test case done
       #
       # display, report and store result of this test case
-      # TODO begin
+      begin
         result = nil
         test_ctx.semaphore2.synchronize{
           # don't modify result_spec, its cached/shared with other threads
           a = result_spec[0]
       
           # take the caught result and build the proper object out of it
-          result = a.new( test_case, self, deploydir, *result_spec[1...result_spec.length] )
+          result = a.new( test_case, self, deploydir, @php, *result_spec[1...result_spec.length] )
           }
         if result
           # generate the diff here in the thread unlocked
@@ -437,29 +389,23 @@ module TestBench
           end
         
           
+          # lookup Legend Label for this host/php/middleware combination
+          label = test_ctx.legend_label(@host, @php, @middleware)
           
-          # TODO include host, middleware, php, scenarios
-          #     assign legend number to each and just include numbers here
-          
-          test_ctx.console_out("  [#{result.status.to_s.upcase}] #{@self} #{test_case.relative_path}")
+          test_ctx.console_out("  [#{label}] [#{result.status.to_s.upcase}] #{@self} #{test_case.relative_path}")
           
           test_ctx.semaphore5.synchronize{
             # save result to database
             # TODO result.insert(global_db, local_db, global_iter_id, local_iter_id)
-                  
-            # write to flat file too
-            result.save
           }
           
           # TODO can't have @host or @php or @middleware
           test_ctx.add_result(@host, @php, @middleware, scenarios, result)
         end
-      #rescue
-      #end
+      rescue
+      end
       #
-#    rescue
-#      puts 'PFTT: phpt-error: '+$!.to_s
-    end # end def do_single_test_case 
+    end # def do_single_test_case 
     
   end # end class Phpt 
   

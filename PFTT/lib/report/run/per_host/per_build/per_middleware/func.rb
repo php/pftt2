@@ -1,4 +1,6 @@
 
+require 'util.rb' # for os_short_name
+
 module Report
   module Run
     module PerHost
@@ -6,24 +8,26 @@ module Report
         module PerMiddleware
           class Func < Base
             def write_text
-              r = PhptTestResult::Array.new() # TODO
+              r = @results # use 'r' because its a shorter name
               
               str = "\r\n"
               str += " == Host Run Completed == \r\n"
               str += "\r\n"
-              str += "Host: "+(@host.name||@host.address)+"\r\n"
-              str += "OS(actual): "+@host.osname+"\r\n"
-              str += ("PHP Build: branch #{@php_build[:php_branch]} major #{@php_build[:php_version_major]} minor #{@php_build[:php_version_minor]} revision #{@php_build[:revision]}  SDK "+@php_build.sdk_info.values.to_s+" "+((@host.windows?)?((@php_build.sdk_info[:major]==6)?'':' (Only SDK 6 supported! may cause different output)'):''))+"\r\n"
-              str += "Middleware: \r\n"# TODO middleware
-              # TODO puts "Telemetry Folder: "+test_ctx.telemetry_folder
+              str += "Host: "+@host.name+" ("+@host.address+")\r\n"
+              str += "OS(actual): "+os_short_name(@host.osname)+"\r\n"
+              str += ("PHP: branch #{@php_build[:php_branch]} major #{@php_build[:php_version_major]} minor #{@php_build[:php_version_minor]} rev #{@php_build[:revision]} "+(@php_build[:threadsafe]?'TS':'NTS')+" SDK "+@php_build.sdk_info.values.to_s+" "+((@host.windows?)?((@php_build.sdk_info[:major]==6)?'':' (Only SDK 6 supported! may cause different output)'):''))+"\r\n"
+              str += "Middleware: #{@middleware.mw_name}\r\n"
+              if r.telemetry_folder
+                str += "Telemetry Folder: #{r.telemetry_folder}\r\n"
+              elsif r.telemetry_url
+                str += "Telemetry URL: #{r.telemetry_url}\r\n"
+              end
     
-              # TODO list number of tests that failed without modification too!
-              
               
               str += "\r\n"
               str += "     === Host Summary === \r\n"
               str += "\r\n"
-              # TODO puts '    RUN TIME: '+run_time.to_s+' seconds'
+              str += "    RUN TIME: #{r.run_time.to_s} seconds\r\n"
               str += '  EXTENSIONS:   all '+r.ext.length.to_s+' run '+r.ext(:run).length.to_s+' skipped '+r.ext(:skip).length.to_s+"\r\n"
               str += "\r\n"
               str += '       TOTAL: '+r.total.to_s+"\r\n"
@@ -34,6 +38,7 @@ module Report
               str += '       XSKIP: '+r.xskip.to_s+"\r\n"
               str += '       BORK:  '+r.bork.to_s+( r.bork > 0 ? ' PHPT test(s) missing required section(s)': '')+"\r\n"
               str += ' UNSUPPORTED: '+r.unsupported.to_s+( r.unsupported > 0 ? ' PHPT test(s) using unsupported section(s)': '')+"\r\n"
+              str += ' PFTT Errors: '+r.exceptions.length.to_s+"\r\n"
               str += '       PASS:  '+r.pass.to_s+"\r\n"
               str += '  PASS RATE:  '+r.rate.to_s+'% ('+r.pass.to_s+'/'+r.pass_plus_fail.to_s+')'+"\r\n"
               str += "\r\n"

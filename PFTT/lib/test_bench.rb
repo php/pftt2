@@ -11,56 +11,10 @@ module TestBench
       @scenarios = scenarios # an array of arrays, each of which contains one type
     end
 
-    attr_reader :php, :host, :middleware, :scenarios
-
-    # 
-    # Test each of the supplied factors to see if they are compatible with the others.
-    # This is a little tricky, as incompatibility is not necessarily two-way.
-    # 
-    # See TestBenchFactor::compatible? for conventions on how these are defined.
-    # 
-    def compatible?
-      catch(:compatibility) do
-        [php,host,middleware].permutation(2) do |factor1,factor2|
-          throw :compatibility, false unless factor1.meets_requirements_of? factor2
-        end
-        throw :compatibility, true
-      end
-    end
-
-    attr_reader :php, :host, :middleware
-
-    # pass calls to the TestBench to the associated Middleware with PhpBuild and Host
-    # as prepended arguments.
-    #
-    # this ->    test_bench.call_script( )
-    # 
-    # becomes -> (test_bench.middleware).call_script( (test_bench.php), (test_bench.host), 'foo.php' )
-    #
-    [
-      :install,
-      :uninstall,
-      :apply_ini,
-      :call_script,
-    ].compact.each do |method_name|
-      define_method method_name do |*args,&block|
-        return @middleware.method(method_name).call( *args, &block )
-      end # TODO temp
-    end
-    
-    def describe
-      @description ||= [
-        %Q{#{@php.properties[:version]}-#{DateTime.now.strftime('%Y%m%d-%H%M%S')}},
-        @middleware.describe,
-        @host.describe,
-        @php.describe( :branch, :threadsafety, :compiler )
-      ].compact
-    end
-
     #class << self
-      def telemetry_folder
-        'c:/' # TODO @telemetry_folder = File.join("#{APPROOT}/results", describe())
-      end
+#      def telemetry_folder
+#        'c:/' @telemetry_folder = File.join("#{APPROOT}/results", describe())
+#      end
       # TestBench.iterate( php_builds, hosts, middlewares, *args ){|*args| &block }
       # 
       # First three arguments must be TypedArray instances carrying collections of 
@@ -75,30 +29,30 @@ module TestBench
       # 
       def iterate( php, hosts, middleware, scenarios, test_cases )
         
-        result_folder = telemetry_folder
-      
-        # LATER, make this thread safe (so its safe for multiple concurrent #iterate calls). currently, database is not thread-safe!
-        
-        # create two different database files
-        # global for all PFTT tests runs
-        global_db = SQLite3::Database.new($db_file)
-        # local for this PFTT result folder (its stored in the results folder along with .diff, .skipif, etc... files)
-        local_db = SQLite3::Database.new(File.join(result_folder, 'results.sqlite'))
-        
-        # ensure database tables exist
-        global_db.execute("CREATE TABLE IF NOT EXISTS runs(run_id INTEGER PRIMARY KEY AUTOINCREMENT, result_folder VARCHAR(255), start_time TIMESTAMP, end_time TIMESTAMP)")
-        global_db.execute("CREATE TABLE IF NOT EXISTS iteration(iter_id INTEGER PRIMARY KEY AUTOINCREMENT, run_id INTEGER, start_time TIMESTAMP, end_time TIMESTAMP)")
-        global_db.execute("CREATE TABLE IF NOT EXISTS results(iter_id INTEGER, test_module VARCHAR(15), test_case VARCHAR(30), test_bench VARCHAR(30), result VARCHAR(10))")
-        global_db.execute("CREATE TABLE IF NOT EXISTS iteration_info(info_id INTEGER PRIMARY KEY AUTOINCREMENT, iter_id INTEGER, info_type VARCHAR(10), info VARCHAR(30))")
-        global_db.execute("INSERT INTO runs (result_folder, start_time) VALUES (?, datetime('now','localtime'))", result_folder)
-        global_run_id = global_db.last_insert_row_id
-        
-        local_db.execute("CREATE TABLE IF NOT EXISTS runs(run_id INTEGER PRIMARY KEY AUTOINCREMENT, result_folder VARCHAR(255), start_time TIMESTAMP, end_time TIMESTAMP)")
-        local_db.execute("CREATE TABLE IF NOT EXISTS iteration(iter_id INTEGER PRIMARY KEY AUTOINCREMENT, run_id INTEGER, start_time TIMESTAMP, end_time TIMESTAMP)")
-        local_db.execute("CREATE TABLE IF NOT EXISTS results(iter_id INTEGER, test_module VARCHAR(15), test_case VARCHAR(30), test_bench VARCHAR(30), result VARCHAR(10))")
-        local_db.execute("CREATE TABLE IF NOT EXISTS iteration_info(info_id INTEGER PRIMARY KEY AUTOINCREMENT, iter_id INTEGER, info_type VARCHAR(10), info VARCHAR(30))")
-        local_db.execute("INSERT INTO runs (result_folder, start_time) VALUES (?, datetime('now','localtime'))", result_folder)
-        local_run_id = local_db.last_insert_row_id
+#        result_folder = telemetry_folder
+#      
+#        # LATER, make this thread safe (so its safe for multiple concurrent #iterate calls). currently, database is not thread-safe!
+#        
+#        # create two different database files
+#        # global for all PFTT tests runs
+#        global_db = SQLite3::Database.new($db_file)
+#        # local for this PFTT result folder (its stored in the results folder along with .diff, .skipif, etc... files)
+#        local_db = SQLite3::Database.new(File.join(result_folder, 'results.sqlite'))
+#        
+#        # ensure database tables exist
+#        global_db.execute("CREATE TABLE IF NOT EXISTS runs(run_id INTEGER PRIMARY KEY AUTOINCREMENT, result_folder VARCHAR(255), start_time TIMESTAMP, end_time TIMESTAMP)")
+#        global_db.execute("CREATE TABLE IF NOT EXISTS iteration(iter_id INTEGER PRIMARY KEY AUTOINCREMENT, run_id INTEGER, start_time TIMESTAMP, end_time TIMESTAMP)")
+#        global_db.execute("CREATE TABLE IF NOT EXISTS results(iter_id INTEGER, test_module VARCHAR(15), test_case VARCHAR(30), test_bench VARCHAR(30), result VARCHAR(10))")
+#        global_db.execute("CREATE TABLE IF NOT EXISTS iteration_info(info_id INTEGER PRIMARY KEY AUTOINCREMENT, iter_id INTEGER, info_type VARCHAR(10), info VARCHAR(30))")
+#        global_db.execute("INSERT INTO runs (result_folder, start_time) VALUES (?, datetime('now','localtime'))", result_folder)
+#        global_run_id = global_db.last_insert_row_id
+#        
+#        local_db.execute("CREATE TABLE IF NOT EXISTS runs(run_id INTEGER PRIMARY KEY AUTOINCREMENT, result_folder VARCHAR(255), start_time TIMESTAMP, end_time TIMESTAMP)")
+#        local_db.execute("CREATE TABLE IF NOT EXISTS iteration(iter_id INTEGER PRIMARY KEY AUTOINCREMENT, run_id INTEGER, start_time TIMESTAMP, end_time TIMESTAMP)")
+#        local_db.execute("CREATE TABLE IF NOT EXISTS results(iter_id INTEGER, test_module VARCHAR(15), test_case VARCHAR(30), test_bench VARCHAR(30), result VARCHAR(10))")
+#        local_db.execute("CREATE TABLE IF NOT EXISTS iteration_info(info_id INTEGER PRIMARY KEY AUTOINCREMENT, iter_id INTEGER, info_type VARCHAR(10), info VARCHAR(30))")
+#        local_db.execute("INSERT INTO runs (result_folder, start_time) VALUES (?, datetime('now','localtime'))", result_folder)
+#        local_run_id = local_db.last_insert_row_id
         
         # for each iteration pick one scenario from each key(scenario type) in scenarios
         #      provide a hash to the iteration (ex scenarios[:file_system] should have 1 scenario (not array) within the iteration)
@@ -141,12 +95,25 @@ module TestBench
         
         test_ctx = TestBenchRunContext.new(self, test_cases.flatten.length) # TODO
         
+        
+        hosts.each do |host|
+          scenarios.each do |scn_set|
+            factors = [php, middleware]
+            factors.shift.product *factors do |php,middleware_spec|
+              test_ctx.add_legend_label(host, php, middleware_spec)
+            end
+          end
+        end
+        
+        #
+        test_ctx.show_label_legend
+                  
+        
         # iterate over all scenario sets (where there is one instance of each scenario type (file system, database))
         # each time, iterate over factors(php build, host, middleware)
         final_test_cases = []
         middlewares_uninstall = []
-        # TODO once number of results for scenario-host-build-middleware == test_cases.length
-        #           then all test cases for that combination have been run. report the results.
+          
         hosts.each do |host|
           scenarios.each do |scn_set|
             factors = [php, middleware]
@@ -179,7 +146,7 @@ module TestBench
         }
         # TODO deploy and teardown of scenarios
         
-        test_ctx.results # TODO
+        test_ctx
       end
       
       def is_started
@@ -317,9 +284,12 @@ module TestBench
   
   end # end class CombinationGenerator
   
-  class TestBenchRunContext
+  class ResultsContext
+  end
+  
+  class TestBenchRunContext < ResultsContext
     attr_reader :test_case_len, :semaphore1, :semaphore2, :semaphore3, :semaphore4, :semaphore5, :chunk_replacement
-    attr_reader :results # TODO temp 
+    
     def initialize(test_bench, test_case_len)
       @test_bench = test_bench
       @test_case_len = test_case_len
@@ -330,8 +300,11 @@ module TestBench
       @semaphore4 = Mutex.new # s_console
       @semaphore5 = Mutex.new # s_storage
       
-      @results = []
+      @results = {}
       @chunk_replacement = {}
+        
+      @labels = {}
+      @labels2 = {}
     end
     def console_out(*str)
       @semaphore4.synchronize {
@@ -359,22 +332,140 @@ module TestBench
         return false
       end
     end
-    def add_result(host, php, middleware, scenarios, result)
-      # TODO
-      do_finished_host_build_middleware_scenarios = false
+    def add_legend_label(host, php, middleware)
+      host_name = host.name
+      mw_name = middleware.mw_name
+      version = php[:php_version_minor].to_s
+        
+      #
+      mw_name_i = 0
+      while mw_name_i < mw_name.length
+        host_name_i = 0
+        while host_name_i < host_name.length
+          
+          name = ( host_name[host_name_i] + mw_name[mw_name_i] + version ).upcase
+          
+          unless @labels.has_key?(name)
+            set_label(host, middleware,  host_name, php, mw_name, name)
+            return name 
+          end
+        
+          host_name_i += 1
+        end
+        mw_name_i += 1
+      end
+      #
       
+      #
+      # fallback
+      i = @labels.length
+      while true
+        name = i.to_s
+        
+        unless @labels.has_key?(name)
+          set_label(host, middleware, host_name, php, mw_name, name)
+          return name
+        end
+      end
+      
+      return name
+    end
+    def show_label_legend
       @semaphore3.synchronize do
-        if @results.length > @test_case_len
-          raise 'ShouldntHappenError'
+        puts
+        puts " Legend Host/PHP/Middleware"
+        puts
+        @labels.keys.each do |label|
+          host_name, php, mw_name = @labels[label]
+          
+          puts "  #{label} - #{host_name} #{mw_name} #{php.inspect}"
+          
+        end
+        puts
+      end
+    end
+    def legend_label(host, php, middleware)
+      @labels2[host][middleware.class][php]
+    end
+    def add_exception(host, php, middleware, scenarios, ex)
+      @semaphore3.synchronize do
+        @results[host]||={}
+        @results[host][middleware]||={}
+        results = @results[host][middleware][php]
+              
+        unless results
+          results = @results[host][middleware][php] = PhptTestResult::Array.new()
         end
         
-        @results.push(result)
+        results.exceptions.push(ex)
+      end
+    end
+    def add_result(host, php, middleware, scenarios, result)
+      do_finished_host_build_middleware_scenarios = false
+      
+      results = nil
+      @semaphore3.synchronize do
+        @results[host]||={}
+        @results[host][middleware]||={}
+        results = @results[host][middleware][php]
         
-        do_finished_host_build_middleware_scenarios = @results.length == @test_case_len          
+        unless results
+          results = @results[host][middleware][php] = PhptTestResult::Array.new()
+        end
+        
+        if results.length > @test_case_len
+          raise 'TooManyResultsError' # shouldn't happen
+        end
+        
+        results.push(result)
+        
+        do_finished_host_build_middleware_scenarios = results.length == @test_case_len          
                   
       end
+      
+      telemetry_folder = 'C:/' # TODO
+      
+      @semaphore5.synchronize do
+        # LATER sync saving files in a semaphore unique to each telemetry folder
+        result.save(telemetry_folder)        
+      end
+      
       if do_finished_host_build_middleware_scenarios
-        @test_bench.finished_host_build_middleware_scenarios(self)
+        report = @test_bench.finished_host_build_middleware_scenarios(self, telemetry_folder, host, php, middleware, scenarios, results)
+        
+        @semaphore4.synchronize do
+          # write list of scenarios tested
+          f = File.open(File.join(telemetry_folder, 'scenarios.list'), 'wb')
+          scenarios.values.each do |scn|
+            f.puts(scn.scn_name)
+          end
+          f.close()
+                
+          # write system info too
+          f = File.open(File.join(telemetry_folder, 'systeminfo.txt'), 'wb')
+          f.puts(host.systeminfo)
+          f.close()
+          
+          report.text_print()
+                      
+          #
+          #
+          if $interactive_mode
+            if first_run(host, php, middleware)
+              if prompt_yesno('PFTT: Re-run and compare the results to first run?')
+                rerun
+              end
+            else
+              if prompt_yesno('PFTT: Re-run and compare the results to this run?')
+                set_current_as_first_run(host, php, middleware, self)
+                rerun
+              end
+            end
+          end
+          #
+          #
+                
+        end
       end
     end
     def first_run(host, php, middleware)
@@ -390,6 +481,16 @@ module TestBench
     def rerun
       # TODO repeat run
     end
+    
+    protected
+    
+    def set_label(host, middleware, host_name, php, mw_name, name)
+      @labels[name] = [host_name, php, mw_name]
+      @labels2[host]||={}
+      @labels2[host][middleware]||={}
+      @labels2[host][middleware][php] = name
+    end
+    
   end
   
 end # end module TestBench

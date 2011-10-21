@@ -6,9 +6,9 @@ set PHP_SDK=%SYSTEMDRIVE%\php-sdk
 set PHPT_BRANCH=%PHP_SDK%\svn\branches
 set PHP_BIN=%PHP_SDK%\bin
 set PHP_BUILDS=%PHP_SDK%\builds
-set PFTT_HOME=%PHP_SDK%\PFTT
+set PFTT_HOME=%PHP_SDK%\PFTT2\PFTT
 REM TODO TEMP use regular PFTT_HOME
-set PFTT_HOME=C:\Users\v-mafick\Desktop\sf\workspace\PFTT
+set PFTT_HOME=%PHP_SDK%\0\PFTT2\PFTT
 set PFTT_RESULTS=%PHP_SDK%\PFTT-Results
 set PFTT_SCRIPTS=%PHP_SDK%\PFTT-Scripts
 set PFTT_PHPS=%PHP_SDK%\PFTT-PHPs
@@ -32,7 +32,7 @@ REM "%ProgramFiles%\Microsoft SDKs\Windows\v7.0\Bin\SetEnv.cmd" /xp /x86 /releas
 
 REM %PHP_BIN%\phpsdk_setvars.bat
 
-cd %PHP_SDK%
+cd %PFTT_HOME%
 
 
 welcome

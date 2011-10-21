@@ -77,6 +77,7 @@ $brief_output = false
 $skip_none = false
 $force_deploy = false
 $debug_test = false
+$auto_triage = false
 $html_report = false
 $interactive_mode = false
 $is_windows = RbConfig::CONFIG['host_os'].include?('mingw') or RbConfig::CONFIG['host_os'].include?('mswin')
@@ -94,7 +95,6 @@ class PfttOptions < OptionsHash
       exit(4)
     end
     
-    # TODO
     options.replace(YAML::load( File.open(default_config_file) )) unless !File.exists?( default_config_file )
     
     options[:action] = args[0]
@@ -210,9 +210,6 @@ class PfttOptions < OptionsHash
       exit(4)
     end
     
-    # TODO does it make sense to load config file here??
-    #options.replace(YAML::load( File.open(default_config_file) )) unless !File.exists?( default_config_file ) 
-    
     options
   end
     
@@ -314,10 +311,21 @@ class PfttOptions < OptionsHash
         ) do
           $force_deploy = true
         end
+        
+        opts.on(
+          '--at'
+        ) do
+          $auto_triage = true
+        end
+        
+        opts.on(
+          '--p'
+        ) do
+          # LATER xhprof profiling support
+        end
               
         opts.on(
-          '--debug',
-          'Uses WinDbg or GDB to debug PHP while its running tests (usually only used with func_part).'
+          '--d'
         ) do
           $debug_test = true
         end
@@ -347,7 +355,7 @@ class PfttOptions < OptionsHash
           '--clear',
           'Clear the loaded configuration entirely. Helpful for scenarios in which you do not want to use the default configuration, or want to clear out a particular setting.'
         ) do
-          clear # TODO
+          clear
         end
               
         opts.on(
@@ -411,8 +419,7 @@ class PfttOptions < OptionsHash
         end
         
         opts.on(
-          '--i[int[eractive]]',
-          'Interactive Mode, breaks intto a debug prompt when different test output is encountered.'
+          '--i[int[eractive]]'
         ) do
           $interactive_mode = true
         end
@@ -597,10 +604,11 @@ CONFIG = PfttOptions.parse(ARGV)
 
 # set up our basic test bench factors
 $hosts = (Host::Array.new.load(CONFIG[:host,:path].convert_path)).filter(CONFIG[:host,:filters])
-$hosts.push(Host::Local.new()) # TODO
+$hosts.push(Host::Remote::Ssh.new(:address=>'127.0.0.1', :username=>'administrator', :password=>'password01!'))#Host::Local.new()) # TODO
 require 'typed-array'
 $phps = PhpBuild.get_set(CONFIG[:php,:dir].convert_path||'').filter(CONFIG[:php,:filters])
-$middlewares = [Middleware::Cli] # TODO Middleware::All#.filter([])# TODO CONFIG[:middleware,:filters])
+$middlewares = [Middleware::Cli]#, 
+  #Middleware::Http::IIS::FastCgi::Base]#, Middleware::Http::Apache::ModPhp::Base] # TODO Middleware::All#.filter([])# TODO CONFIG[:middleware,:filters])
   
 # LATER? what about NFSv3 support (which ships with Windows 7<) (not NFSv4)
 $scenarios = {}
@@ -711,12 +719,20 @@ if __FILE__ == $0
       puts 'PFTT: host_config: ensuring 7zip installed...'  
       win_install(host, "7z920.msi", '/Q')
       
-      # TODO install elevate
-      # TODO install wcat
+      # install elevate
+      if win_install_installed?('elevate')
+        win_install_copy(host, 'Elevate')
+        
+        # doesn't have an MSI, just a batch script
+        host.exec!('Elevate\\InstallAllPowerToys.cmd')
+      end
+      
+      # install wcat (hopefully this is a x64 host)
+      win_install(host, 'wcat.amd64.msi', '/Q')
       
       
       puts 'PFTT: host_config: ensuring IIS installed...'
-      unless host.exits?('%SYSTEMDIR%/system32/inetsrv/appcmd.exe')
+      unless host.exists?('%SYSTEMDIR%/system32/inetsrv/appcmd.exe')
         # IIS is not installed. try to install it
         host.deploy('scripts/IIS/iis_unattend.xml', host.systemdrive+'/iis_unattend.xml')
         
@@ -733,12 +749,12 @@ if __FILE__ == $0
       puts 'PFTT: host_config: ensuring Apache installed...'
       linux_install(host, "apache-httpd")
     end
-    #
-    # TODO install svn
+    # install SVN
+    install(host, 'svn', 'svn', 'Setup-Subversion-1.6.17.msi', '/Q')
   end
   def update_config
     puts 'PFTT: updating configuration from server...'
-    # TODO update_config
+    # LATER update_config
   end
   def scenario_config
     # LATER scenario config
@@ -766,7 +782,7 @@ if __FILE__ == $0
     f.close
       
     exit
-  elsif CONFIG[:action] == 'func_full' or CONFIG[:action] == 'func_part' 
+  elsif CONFIG[:action] == 'func_full' or CONFIG[:action] == 'func_part' or CONFIG[:action] == 'perf'
     # func_full - run all PHPTs (always deploy php build and test cases too)
     # func_part - run selected PHPTs (deploy php build and/or test cases if modified)
     
@@ -795,10 +811,12 @@ if __FILE__ == $0
     end
     #
     
-    $testcases = CONFIG.selected_tests()
+    unless CONFIG[:action] == 'perf'
+      $testcases = CONFIG.selected_tests()
+    end
     
     #
-    #
+    # add more threads to keep track of more hosts, but limit the size
     $thread_pool_size = $thread_pool_size * $hosts.length
     if $thread_pool_size > 60
       $thread_pool_size = 60
@@ -832,13 +850,17 @@ if __FILE__ == $0
           host_config
         end
         
-        test_bench = TestBench::Phpt.new($phps, $hosts, $middlewares[0], $scenarios) # TODO
+        if CONFIG[:action] == 'perf'
+          test_bench = TestBench::Wcat.new($phps, $hosts, $middlewares[0], $scenarios)
+        else
+          test_bench = TestBench::Phpt.new($phps, $hosts, $middlewares[0], $scenarios) # TODO
+        end
       
         # TODO print telemetry folder before starting (so user can read telemetry in real time)
         
         # finally do the testing...
         # iterate over all hosts, middlewares, etc..., running all tests for each
-        test_ctx = test_bench.iterate( $phps, $hosts, $middlewares, $scenarios, $testcases ) # TODO
+        test_ctx = test_bench.iterate( $phps, $hosts, $middlewares, $scenarios, $testcases )
 
       ensure
         # ensure hosts are unlocked
@@ -870,7 +892,12 @@ if __FILE__ == $0
         
       # for func_part user shouldn't have to take time navigating through a redudant report
       # to get to the telemetry they need
-      report = Report::Run::ByHost::Func.new()
+      if CONFIG[:action] == 'perf'
+        report == Report::Run::ByHost::Perf.new()
+      else
+        report = Report::Run::ByHost::Func.new()
+      end
+      
       report.text_print()
     
     
@@ -898,11 +925,6 @@ if __FILE__ == $0
     exit
   elsif CONFIG[:action] == 'cs'
     scenario_config
-  elsif CONFIG[:action] == 'perf'
-    # TODO implement performance testing
-    # 
-    puts "PFTT: error: performance testing not implemented"
-    exit(1)
   elsif CONFIG[:action] == 'stress'
     # LATER implement stress testing
     # LATER run ui test periodically during stress test

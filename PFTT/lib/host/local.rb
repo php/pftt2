@@ -4,10 +4,6 @@ module Host
   class Local < Base
     instantiable 'local'
     
-    def name
-      'localhost'
-    end
-        
     def address
       '127.0.0.1'
     end
@@ -15,8 +11,7 @@ module Host
     def clone
       clone = Host::Local.new()
       # clone may have a different @dir_stack, so it really must be cloned
-      super(clone) 
-      clone
+      super(clone)
     end
     
     def close
@@ -151,7 +146,7 @@ module Host
       make_absolute! spec
       Dir.glob spec, &block
     end
-
+    
     protected
 
     def _delete path
@@ -163,5 +158,6 @@ module Host
       make_absolute! path
       Dir.mkdir path
     end
-  end
+    
+  end # class Local
 end

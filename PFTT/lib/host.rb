@@ -15,13 +15,24 @@ module Host
     include TestBenchFactor
     include PhpIni::Inheritable
 
+    def systemroot
+      if posix?
+        return '/'
+      elsif @_systemroot
+        return @_systemroot
+      else
+        @_systemroot = unquote_line!('echo %SYSTEMROOT%')
+        return @_systemroot
+      end
+    end
+    
     def systemdrive
       if posix?
         return '/'
       elsif @_systemdrive
         return @_systemdrive
       else
-        @_systemdrive = line!('echo %SYSTEMDRIVE%').gsub(/\"/, '')
+        @_systemdrive = unquote_line!('echo %SYSTEMDRIVE%')
         return @_systemdrive
       end
     end
@@ -42,6 +53,7 @@ module Host
         if posix?
           @_osname = line!('uname -a')
         else
+          # LATER use systeminfo and parse it locally (otherwise windows has to run systeminfo 2 or 3 times, and its slow)
           osname = line_prefix!('OS Name:', 'systeminfo | findstr /B /C:"OS Name"')
           osname += ' '
           osname += line_prefix!('System Type:', 'systeminfo | findstr /B /C:"System Type"') # x86 or x64
@@ -148,11 +160,15 @@ module Host
       end
       return exec!(cmdline)
     end
-        
+    
     # executes command using cmd! returning the first line of output (STDOUT) from the command,
     # with the new line character(s) chomped off
     def line! cmdline
       cmd!(cmdline)[0].chomp
+    end
+    
+    def unquote_line! cmdline
+      line!(cmdline).gsub(/\"/, '')
     end
     
     def windows?
@@ -195,7 +211,11 @@ module Host
     end
     
     def popd
-      cd(@dir_stack.pop, {:no_clear=>true})
+      popped = @dir_stack.pop
+      if popped
+        # if nil, fail silently
+        cd(popped, {:no_clear=>true})
+      end
     end
     
     def peekd
@@ -280,14 +300,31 @@ module Host
       end
     end
     
+    def name
+      unless @_name
+        # find a name that other hosts on the network will use to reference localhost
+        if windows?
+          @_name = line!('echo %COMPUTERNAME%')
+        else
+          @_name = line!('echo $HOSTNAME')
+        end
+      end
+      @_name
+    end
+    
     protected
     
+    attr_accessor :_name, :_osname, :_systeminfo, :_systemdrive, :_systemroot, :posix, :is_windows
+    
     def clone(clone)
-# TODO      clone._osname = @_osname
-#      clone._systeminfo = @_systeminfo
-#      clone._systemdrive = @_systemdrive
-#      clone.posix = @posix
-#      clone.is_windows = @is_windows
+      clone._osname = @_osname
+      clone._systemroot = @_systemroot
+      clone._systeminfo = @_systeminfo
+      clone._systemdrive = @_systemdrive
+      clone.posix = @posix
+      clone.is_windows = @is_windows
+      clone._name = @_name
+      clone
     end
     
   end # class Base

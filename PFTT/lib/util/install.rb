@@ -65,23 +65,30 @@ def linux_install(host, cmd, linux_name)
   end
 end
 
-def win_install(host, cmd, win_installer_server_path, win_installer_options)
+def win_install_installed?(cmd)
   out_err, status = host.exec!("WHERE #{cmd}")
-    
-  if status == 0
-    # already installed
-    return
-  end
-  
+      
+  return status == 0
+end
+        
+def win_install_copy(host, win_installer_server_path)
   # download installer into  __DIR__/deps folder
   host.exec!("NET USE R: \\#{$dep_server_share}\ /user:#{$dep_server_user} /persistent:no #{$dep_server_password}")
-  
-  local_win_install_path = "#{__DIR__}/deps/#{win_installer_server_path}"
-  
-  host.exec!("COPY R:/PFTT/DEPS/#{win_installer_server_path} #{local_win_install_path}")
-  
-  host.exec!("NET USE R: /D")
     
+  local_win_install_path = "#{__DIR__}/deps/#{win_installer_server_path}"
+    
+  host.exec!("COPY R:/PFTT/DEPS/#{win_installer_server_path} #{local_win_install_path}")
+    
+  host.exec!("NET USE R: /D")
+end
+   
+def win_install(host, cmd, win_installer_server_path, win_installer_options)
+  if win_install_installed?(cmd)
+    return
+  end  
+  
+  win_install_copy(win_installer_server_path)
+  
   # run installer
   host.exec!("#{local_win_install_path} #{win_installer_options}")
 end

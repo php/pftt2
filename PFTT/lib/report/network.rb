@@ -1,4 +1,6 @@
 
+require 'util.rb' # for os_short_name
+
 module Report
   class Network < Base
     def write_text
@@ -49,7 +51,7 @@ module Report
             status = 'LOCKED' # make this stand out
           end
       
-          cm.add_row({:row_number=>true}, host_info[:host_name], status, host_info[:os_short], host_info[:arch], host_info[:ip_address])
+          cm.add_row({:row_number=>true}, host_info[:host_name], status, os_short_name(host_info[:os]), host_info[:arch], host_info[:ip_address])
         end
       end
     

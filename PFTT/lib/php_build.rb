@@ -85,11 +85,14 @@ class PhpBuild
       end
         
       if base_name == 'PHP_5_4'
-        property :php_branch => '5_4'
+        property :php_branch => 'PHP_5_4'
         property :php_version_major => '5'
+        property :php_version_minor => '4'
       elsif base_name == 'PHP_5_3'
-        property :php_branch => '5_3'
+        property :php_branch => 'PHP_5_3'
         property :php_version_major => '5'
+        property :php_version_minor => '3'
+        # LATER fix branch parsing support so it'll work for any version(not just 5_4 and 5_3)
       else
         raise 'Unsupported PHP Build Type(Info Format:)'
       end
@@ -117,8 +120,10 @@ class PhpBuild
 
         branchinfo = parts.select{|i| i =~ /(?:[0-9]\.[0-9]+|trunk)/ }.first
 
-        property :php_branch => branchinfo.split('.').first(2).join('.')
-        property :php_version_major => branchinfo.split('.').first.to_i
+        bs = branchinfo.split('.')
+        property :php_branch => bs.first(2).join('_')
+        property :php_version_major => bs.first.to_i
+        property :php_version_minor => bs[1].to_i
         property :threadsafe => parts.select{|i| i == 'nts' }.empty?
         property :revision => (parts.select{|i| i =~ /r[0-9]+/ }).first
       

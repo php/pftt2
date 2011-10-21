@@ -48,20 +48,19 @@ class PfttClient
   def release(host_name, lock_id)
   end
   def view
-    # platform = host_info[:os].to_s.sub('Windows', 'Win')
     return [
-      {:host_name=>'OI1-PHP-WDW-10', :status=>:ready, :os_short=>'Win 2003r2 SP0', :os=>'Windows 2003r2 SP0', :arch=>'x64', :ip_address=>'10.200.30.11'},
-      {:host_name=>'OI1-PHP-WDW-25', :status=>:locked, :os_short=>'Win Vista SP2', :os=>'Windows Vista SP2', :arch=>'x86', :ip_address=>'10.200.30.12'},
-      {:host_name=>'OI1-PHP-WDW-29', :status=>:ready, :os_short=>'Win 8 Client M3', :os=>'Windows 8 Client M3', :arch=>'x86', :ip_address=>'10.200.30.13'},
-      {:host_name=>'PBS-0', :status=>:ready, :os_short=>'Gentoo Linux', :os=>'Gentoo Linux', :arch=>'x64', :ip_address=>'10.200.30.14'},
-      {:host_name=>'PBS-1', :status=>:locked, :os_short=>'Gentoo Linux', :os=>'Gentoo Linux', :arch=>'x64', :ip_address=>'10.200.30.15'},
-      {:host_name=>'PBS-2', :status=>:ready, :os_short=>'Gentoo Linux', :os=>'Gentoo Linux', :arch=>'x64', :ip_address=>'10.200.30.16'},
-      {:host_name=>'AZ-WEB-PHP-0', :status=>:ready, :os_short=>'Azure Web 2008', :os=>'Azure Web 2008', :arch=>'x64', :ip_address=>'157.60.40.11'},
-      {:host_name=>'AZ-VM-PHP-0', :status=>:ready, :os_short=>'Azure VM 2008', :os=>'Azure VM 2008', :arch=>'x64', :ip_address=>'157.60.40.12'},
-      {:host_name=>'AZ-WKR-PHP-0', :status=>:ready, :os_short=>'Azure Worker 2008', :os=>'Azure Worker 2008', :arch=>'x64', :ip_address=>'157.60.40.13'},
-      {:host_name=>'AZ-WEB-PHP-1', :status=>:locked, :os_short=>'Azure Web 2008r2', :os=>'Azure Web 2008r2', :arch=>'x64', :ip_address=>'157.60.40.14'},
-      {:host_name=>'AZ-VM-PHP-1', :status=>:ready, :os_short=>'Azure VM 2008r2', :os=>'Azure VM 2008r2', :arch=>'x64', :ip_address=>'157.60.40.15'},
-      {:host_name=>'AZ-WKR-PHP-1', :status=>:ready, :os_short=>'Azure Worker 2008r2', :os=>'Azure Worker 2008r2', :arch=>'x64', :ip_address=>'157.60.40.16'}
+      {:host_name=>'OI1-PHP-WDW-10', :status=>:ready, :os=>'Windows 2003r2 SP0', :arch=>'x64', :ip_address=>'10.200.30.11'},
+      {:host_name=>'OI1-PHP-WDW-25', :status=>:locked, :os=>'Windows Vista SP2', :arch=>'x86', :ip_address=>'10.200.30.12'},
+      {:host_name=>'OI1-PHP-WDW-29', :status=>:ready, :os=>'Windows 8 Client M3', :arch=>'x86', :ip_address=>'10.200.30.13'},
+      {:host_name=>'PBS-0', :status=>:ready, :os=>'Gentoo Linux', :arch=>'x64', :ip_address=>'10.200.30.14'},
+      {:host_name=>'PBS-1', :status=>:locked, :os=>'Gentoo Linux', :arch=>'x64', :ip_address=>'10.200.30.15'},
+      {:host_name=>'PBS-2', :status=>:ready, :os=>'Gentoo Linux', :arch=>'x64', :ip_address=>'10.200.30.16'},
+      {:host_name=>'AZ-WEB-PHP-0', :status=>:ready, :os=>'Azure Web 2008', :arch=>'x64', :ip_address=>'157.60.40.11'},
+      {:host_name=>'AZ-VM-PHP-0', :status=>:ready, :os=>'Azure VM 2008', :arch=>'x64', :ip_address=>'157.60.40.12'},
+      {:host_name=>'AZ-WKR-PHP-0', :status=>:ready, :os=>'Azure Worker 2008', :arch=>'x64', :ip_address=>'157.60.40.13'},
+      {:host_name=>'AZ-WEB-PHP-1', :status=>:locked, :os=>'Azure Web 2008r2', :arch=>'x64', :ip_address=>'157.60.40.14'},
+      {:host_name=>'AZ-VM-PHP-1', :status=>:ready, :os=>'Azure VM 2008r2', :arch=>'x64', :ip_address=>'157.60.40.15'},
+      {:host_name=>'AZ-WKR-PHP-1', :status=>:ready, :os=>'Azure Worker 2008r2', :arch=>'x64', :ip_address=>'157.60.40.16'}
         ]
   end
 end

@@ -4,6 +4,10 @@ module Middleware
     instantiable
     property :interface => 'cli'
     
+    def self.mw_name
+      'Command-Line'
+    end
+    
     def clone
       clone = Middleware::Cli.new(@host.clone, @php_build, @scenarios)
       clone.deployed_php = @deployed_php

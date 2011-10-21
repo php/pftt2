@@ -150,6 +150,7 @@ module Diff
       puts '<Enter> - skip change'
       puts ' s      - skip line'
       puts ' S      - skip file'
+      puts ' f      - runs tests non-interactively, then prompt to re-run' # TODO
       puts ' r      - replace expect with regex to match actual'
       puts ' R      - replace all in file'
       puts ' A      - replace all in test case set'
@@ -176,7 +177,7 @@ module Diff
     # This method gets replaced by sub-classes and is the part that does the actual
     # comparrisons.
     def _compare_line( expectation, result )
-      expectation == result or expectation.chomp == result.chomp
+      expectation == result or expectation.rstrip.chomp == result.rstrip.chomp
     end
 
     def _get_diff( expectation, result )
@@ -504,7 +505,7 @@ module Diff
 
   class Exact < Base
     def _compare_line( expectation, result )
-      expectation == result or expectation.chomp == result.chomp
+      expectation == result or expectation.rstrip.chomp == result.rstrip.chomp
     end
   end
 
@@ -512,7 +513,7 @@ module Diff
     def _compare_line( expectation, result )
       #puts %Q{compare: #{expectation.inspect} to #{result.inspect}}
       r = Regexp.new(%Q{\\A#{expectation}\\Z}) # TODO
-      r.match(result) or r.match(result.chomp)
+      r.match(result) or r.match(result.rstrip.chomp)
     end
   end
 
@@ -546,13 +547,13 @@ module Diff
     def _compare_line( expectation, result )
       if expectation == nil || result == nil
         return false
-      elsif expectation == result or expectation.chomp == result.chomp
+      elsif expectation == result or expectation.rstrip.chomp == result.rstrip.chomp
         return true
       #elsif result.include?('string(70)')
       #  return true
       end
       #puts expectation
-      rex = Regexp.escape(expectation.chomp)
+      rex = Regexp.escape(expectation.rstrip.chomp)
       
       # arrange the patterns in longest-to shortest and apply them.
       # the order matters because %string% must be replaced before %s.
@@ -573,7 +574,7 @@ module Diff
       #puts result
         
       r = Regexp.new(rex)
-      r.match(result) != nil or r.match(result.chomp) != nil
+      r.match(result) != nil or r.match(result.rstrip.chomp) != nil
       #if !b and result.include?('string(70)')
       #  exit
       #end

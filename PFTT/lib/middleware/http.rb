@@ -5,9 +5,10 @@ require "uri"
 module Middleware
   module Http
     class HttpBase < Base
-      # TODO property :interface => 'http'
+      property :interface => 'http'
+      
       def translate_path(deployed_script) # TODO
-        'http://127.0.0.1:8080/'+deployed_script.gsub('C:/inetpub/wwwroot', '').gsub('C:/Program Files (x86)/Apache Software Foundation/Apache2.2/htdocs/', '')
+        'http://127.0.0.1:8080/'+deployed_script.gsub('C:\\Users\v-mafick\Desktop\sf\workspace\SSHD','').gsub('C:/inetpub/wwwroot', '').gsub('C:/Program Files (x86)/Apache Software Foundation/Apache2.2/htdocs/', '')
       end
             
       def execute_php_script deployed_script, test, script_type, scenarios

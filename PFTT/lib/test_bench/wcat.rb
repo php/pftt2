@@ -1,6 +1,8 @@
 
 module TestBench
   class Wcat < Base
+    requirement :platform => :windows
+    
     def run(local_host, hosts, perf_case, target_host)
       # test with 8, 16, and 32 virtual clients for each physical host
       do_run(local_host, hosts, perf_case.clone, target_host, 8)
@@ -21,7 +23,9 @@ module TestBench
       
       check_run_content = true
       if not perf_case.first_two_comparisons(original_content, original_content2)
-        # TODO results.first_two_loads_mismatched = true # means we can't tell if page load failed other than by return code 
+        # means we can't tell if page load failed other than by return code
+        results.first_two_loads_mismatched = true 
+         
         check_run_content = false
       end
       
@@ -36,11 +40,13 @@ module TestBench
       # execute wcctl (WCAT) which will wait for wcclient from hosts to connect
       localhost.exec("#{wcat_path.convert_path}\wcctl.exe -t #{client_path} -f #{settings_path} -s #{target_host.host}:#{target_host.port} -v #{clients_per_host} -c 1 -o #{log_path} -x")
       
+      wcat_controller_machine_name = localhost.hostname
+      
       # execute wcclient on each host which will connect to wcctl on this host and then begin
       # running the performance test
       hosts.each{|host|
         # exec wcclient in another thread
-        host.exec("wcclient.exe #{wcat_controller_machine_name}") # TODO
+        host.exec("wcclient.exe #{wcat_controller_machine_name}")
       }
       
       #
@@ -68,8 +74,9 @@ module TestBench
     end
     
     def get_web_page(perf_case)
-      # TODO
-      [200, '']
+      http_response = Net::HTTP.get_response(URI.parse(perf_case.url_path))
+      
+      [http_response.code, http_response.body ]  
     end
     
     def settings(perf_case)

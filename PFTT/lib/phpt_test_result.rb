@@ -14,8 +14,7 @@ module PhptTestResult
       %Q{[#{status.to_s.upcase}] #{@test_bench} #{@test_case.relative_path}}
     end
 
-    def save
-      base_path = test_bench.telemetry_folder
+    def save(base_path)
       
       FileUtils.mkdir_p base_path
       File.open( File.join( base_path, %Q{#{status.to_s.upcase}.list} ), 'a' ) do |file|
@@ -102,7 +101,7 @@ module PhptTestResult
   end
 
   class Meaningful < Base
-    def initialize *args, result_str
+    def initialize *args, php, result_str
       super *args
 
       @result_str = result_str
@@ -116,7 +115,7 @@ module PhptTestResult
         # TODO :expectregex must be evaluated as a regular expression, will this do that??
         when :expectregex then Diff::Exact
         when :expectf
-          case @test_bench.php.properties[:php_version_major]
+          case php.properties[:php_version_major]
           when 5 then Diff::Formatted::Php5
           when 6 then Diff::Formatted::Php6
           else Diff::Formatted
@@ -196,14 +195,20 @@ module PhptTestResult
   end
 
   class Array < TypedArray(PhptTestResult::Base)
+    attr_accessor :telemetry_folder, :windows_ini, :posix_ini, :run_time, :exceptions
     
     def initialize
-      @telemetry_url = ''
-      @run_id = ''
+      #ctx_id # ties each PhptTestResult::Array together with a TestBenchRunContext 
+      # 
+      #@telemetry_url = ''
+      @telemetry_folder = ''
+      #@run_id = ''
       @windows_ini = ''
       @posix_ini = ''
-      @start_time
-      @end_time
+      @run_time = 0
+      @exceptions = []
+      #@start_time
+      #@end_time
           
     end
 
@@ -305,7 +310,7 @@ module PhptTestResult
       exts = {}
             
       self.each do |result|
-        if show==:all or result.status==:show
+        if show==:all or (show==:run and (result.status==:pass or result.status==:fail or result.status==:works or result.status==:pass)) or result.status==show
           exts[result.test_case.ext_name] = true
         end
       end
