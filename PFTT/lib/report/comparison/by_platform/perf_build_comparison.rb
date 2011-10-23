@@ -2,10 +2,10 @@
 module Report
   module Comparison
     module ByPlatform
-      class PerfReleaseComparison < Base
+      class PerfBuildComparison < Base
   
         def title
-          'Performance Release Comparison(PRC) Report'
+          'Performance Build Comparison(PBC) Report'
         end
   
         def write_intro

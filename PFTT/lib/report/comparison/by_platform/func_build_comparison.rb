@@ -2,10 +2,10 @@
 module Report
   module Comparison
     module ByPlatform
-      class FuncReleaseComparison < Base
+      class FuncBuildComparison < Base
   
         def title
-          'Functional Release Comparison(FRC) Report'
+          'Functional Build Comparison(FBC) Report'
         end
   
         def write_intro
