@@ -9,14 +9,16 @@ module Report
       end
   
       def resultsets_comparison_url
-        # TODO a.run_id b.run_id
-        'http://pftt_server/compare.php?a=a&b=b'
+        # see Server::PSB
+        "http://pftt_server/?report=fbc&base=#{@resultset_a.run_id}&test=#{@resultset_b.run_id}"
       end
       
       protected
       
       def diff_file(file_contents_a, file_contents_b)
-        # TODO file diff
+        diff = Diff::Exact.new(file_contents_a, file_contents_b)
+        
+        return diff.to_s
       end
     end
   end

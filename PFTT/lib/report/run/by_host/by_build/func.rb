@@ -1,41 +1,41 @@
+
 module Report
   module Run
     module ByHost
       module ByBuild
         class Base < Base
           def write_text
+
+            write_list()
                     
-                    write_list()
-                    
-                    
-                    @builds.each do |build|
-                      build.middlewares.each do |middleware|
+            @builds.each do |build|
+              build.middlewares.each do |middleware|
                         
-                        Report::Run::ByHost::ByBuild::ByMiddleware::Func.new(build, middleware)
+                Report::Run::ByHost::ByBuild::ByMiddleware::Func.new(build, middleware)
                         
-                      end
-                    end
+              end
+            end
                     
-                  end
+          end
                   
-                  def write_list
-                    # TODO list middlewares
-                  end
+          def write_list
+            # TODO list middlewares
+          end
                   
-                  def write_html
+          def write_html
                             
-                    write_list()
+            write_list()
                             
-                            
-                    @builds.each do |build|
-                      build.middlewares.each do |middleware|
+            @builds.each do |build|
+              build.middlewares.each do |middleware|
                                 
-                        Report::Run::ByHost::ByBuild::ByMiddleware::Func.new(build, middleware)
+                Report::Run::ByHost::ByBuild::ByMiddleware::Func.new(build, middleware)
                                 
-                      end
-                    end
+              end
+            end
                             
-                  end
+          end
+          
         end
       end
     end

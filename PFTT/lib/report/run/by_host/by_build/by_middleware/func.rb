@@ -5,6 +5,9 @@ module Report
       module ByBuild
         module ByMiddleware
           class Func < Base
+            def title
+              'Functional Run(FR)'
+            end
             def write_text
               # colors to use
               bgcolor_os = '#f2f2f2'

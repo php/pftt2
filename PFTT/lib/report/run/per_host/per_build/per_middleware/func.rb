@@ -7,6 +7,9 @@ module Report
       module PerBuild
         module PerMiddleware
           class Func < Base
+            def title
+              'Function Host/Build/Middleware Combination Run(FCR)'
+            end
             def write_text
               r = @results # use 'r' because its a shorter name
               

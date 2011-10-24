@@ -9,8 +9,7 @@ module Report
         end
   
         def write_intro
-          # TODO time, title
-          "<html><body><h1>#{title}</h1><p>Comparing @resultset_a.title (Base) with @resultset_b.title (Test) (using tests current as of @resultset_a.test_time</p><p>Click <a href=\"#{resultsets_comparison_url}\" target=\"_blank\">here</a> for a customizable comparison</p>"
+          "<html><body><h1>#{title}</h1><p>Comparing #{@resultset_a.title} (Base) with #{@resultset_b.title} (Test) (using tests current as of #{@resultset_a.test_time}</p><p>Click <a href=\"#{resultsets_comparison_url}\" target=\"_blank\">here</a> for a customizable comparison</p>"
         end
   
         def write_end
@@ -29,8 +28,12 @@ module Report
           bgcolor_bad = '#ff0000'
           #
           
+          # table intrinsically does two builds and multiple hosts without making extra loops (just loop scenario, middleware and results)
+          
+          # TODO scenario
           [['context_1', 'context_2'], ['context_1', 'context_3']].each{|ctx_set|
       
+            # TODO middleware
             ['IIS with WinCache', 'IIS', 'Command Line', 'Apache with APC', 'Apache with APC and IGBinary', 'Apache'].each{|mw_txt|
               cm.add_row({:text=>(cm.html?)?'<strong>'+mw_txt+'</strong>':mw_txt, :colspan=>22, :center=>true})
               cm.add_row(
@@ -55,13 +58,16 @@ module Report
                 {:text=>'', :bgcolor=>bgcolor_telemetry, :colspan=>2}
               )
         
+              windows_ini = posix_ini = ''
+              
               results = ['A Result']
               if results.empty?
                 cm.add_row({:text=>'No Results', :colspan=>22, :center=>true})
               else
-                results.each{|result|
+                # TODO results
+                results.each{|resultset|
                   platform = 'Win 2003r2 x86 SP0, SP1'
-                  pass_rate = 50
+                  pass_rate = resultset.rate
                   change_pass_rate = -5
                   pass = 5000
                   change_pass = -100
@@ -109,26 +115,25 @@ module Report
                   )
       
                 }
-              end
-            }
-      
-            cm.add_row(
-              {:text=>(cm.html?)?'<strong>Windows INI:</strong>':'INI:', :colspan=>2},
-              # TODO show INI
-              {:text=>ctx_set.inspect.to_s, :colspan=>20}
-            )
-            cm.add_row(
-              {:text=>(cm.html?)?'<strong>Linux INI:</strong>':'INI:', :colspan=>2},
-              # TODO show INI
-              {:text=>ctx_set.inspect.to_s, :colspan=>20}
-            )
+              end # end result
             
-            cm.add_row(
-              {:text=>(cm.html?)?'<strong>Scenarios:</strong>':'Scenarios:', :colspan=>2},
-              {:text=>ctx_set.inspect.to_s, :colspan=>20}
-            )
+              cm.add_row(
+                {:text=>(cm.html?)?'<strong>Windows INI:</strong>':'INI:', :colspan=>2},
+                {:text=>windows_ini.to_s, :colspan=>20}
+              )
+              cm.add_row(
+                {:text=>(cm.html?)?'<strong>Linux INI:</strong>':'INI:', :colspan=>2},
+                {:text=>posix_ini.to_s, :colspan=>20}
+              )
+            
+              cm.add_row(
+                {:text=>(cm.html?)?'<strong>Scenarios:</strong>':'Scenarios:', :colspan=>2},
+                {:text=>ctx_set.inspect.to_s, :colspan=>20}
+              )
+            
+            } # end middleware
       
-          }
+          } # end scenario
    
           return cm
         end

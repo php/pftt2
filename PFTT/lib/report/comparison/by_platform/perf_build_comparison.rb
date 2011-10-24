@@ -9,8 +9,7 @@ module Report
         end
   
         def write_intro
-          # TODO time, title
-          "<html><body><h1>#{title}</h1><p>Comparing performance of @resultset_a.title (Base) with @resultset_b.title (Test)</p><p>Click <a href=\"#{resultsets_comparison_url}\" target=\"_blank\">here</a> for a customizable comparison</p>"
+          "<html><body><h1>#{title}</h1><p>Comparing performance of #{@resultset_a.title} (Base) with #{@resultset_b.title} (Test)</p><p>Click <a href=\"#{resultsets_comparison_url}\" target=\"_blank\">here</a> for a customizable comparison</p>"
         end
   
         def write_end
