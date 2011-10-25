@@ -6,32 +6,24 @@ module TestBench
 #        PhptTestResult::Array
 #      end
 #    end
-
-    def save_dir
-      File.join(
-        %{#{@php.properties[:version]}-#{String.random(4)}}
-      )
-    end
+#
+#    def save_dir
+#      File.join(
+#        %{#{@php.properties[:version]}-#{String.random(4)}}
+#      )
+#    end
 
     #helper method. perhaps find a better place to put this.
-    def deploy_phpt_section( test_case, section )
-      deployed_location = File.join(@host.cwd, %Q{#{test_case.name}.#{test_case.extension[section]}})
+    def deploy_phpt_section(host, test_case, section )
+      deployed_location = File.join(host.cwd, %Q{#{test_case.name}.#{test_case.extension[section]}})
       
-      if $force_deploy or not @host.exist?(deployed_location)
-        @host.write(test_case[section], deployed_location)
+      if $force_deploy or not host.exist?(deployed_location)
+        host.write(test_case[section], deployed_location)
       end
 
       deployed_location
     end
     
-    def install(fs_scn, middleware)
-      middleware.install(fs_scn.docroot(middleware))
-    end
-    
-    def uninstall(fs_scn, middleware)
-      middleware.uninstall(fs_scn.docroot(middleware))
-    end
-
     def run(test_case_sets, test_ctx)
       
       #
@@ -47,40 +39,38 @@ module TestBench
           #
             
           # TODO
-          scenarios = test_case_sets[0][0][:scenarios][0]
+          scenarios = test_case_sets[0][:scenarios][0]
             
           fs_scn = scenarios[:working_file_system]
-          @host = test_case_sets[0][0][:host]
-          @middleware = test_case_sets[0][0][:middleware]
-          @middleware.host = @host
-          @php = test_case_sets[0][0][:php]
-          test_cases = test_case_sets[0]
+          host = test_case_sets[0][:host]
+          middleware = test_case_sets[0][:middleware]
+          middleware.host = host
+          php = test_case_sets[0][:php]
+          test_cases = test_case_sets#[0]
           #   
             
-          #test_ctx = TestBenchRunContext.new
           
           # create a temporary directory to deploy to. the working filesystem scenario will
           # decide where (either a local directory, remote SMB share, etc...)
-          deploy_root = fs_scn.docroot(@middleware)
+          deploy_root = fs_scn.docroot(middleware)
           if $force_deploy
-            tmpdir = @host.mktmpdir(deploy_root)
+            tmpdir = host.mktmpdir(deploy_root)
           else
-            tmpdir = File.join(deploy_root, @php[:version])
+            tmpdir = File.join(deploy_root, php[:version])
           end
           #
 
           # run PHPTs in place unless $force_deploy (only true for the 'func_full' command or --force-deploy argument to 'func_part' command)
           # parse all the phpt's and upload the files at the same time.
           uploader = Thread.start{
-            if $force_deploy or not @host.exist?(tmpdir)
+            if $force_deploy or not host.exist?(tmpdir)
               puts 'uploading '+fs_scn.to_s;
-              @host.upload test_cases.path, tmpdir;
+              host.upload test_cases.path, tmpdir;
               puts 'uploaded.'
             end
           }
 
           test_cases.each do |entry|
-            # TODO
             entry[:test_case].parse!(tmpdir)
           end
           # note: each test_case is an instance of PhptTestCase
@@ -156,10 +146,14 @@ module TestBench
                   test_case.scn_list = scenarios
                   
                   # run the test case!
-                  begin
-                    do_single_test_case(@php, @host, @middleware, tmpdir, deployed, skip_if_code_cache, skip_if_result_cache, test_ctx, test_cases, test_case, tmpdir, fs_scn, scenarios)
-                  rescue
-                    test_ctx.add_exception(@host, @php, @middleware, $!)
+                  if $pftt_debug
+                    run_do_single_test_case(php, host, middleware, tmpdir, deployed, skip_if_code_cache, skip_if_result_cache, test_ctx, test_cases, test_case, fs_scn, scenarios)
+                  else
+                    begin
+                      run_do_single_test_case(php, host, middleware, tmpdir, deployed, skip_if_code_cache, skip_if_result_cache, test_ctx, test_cases, test_case, fs_scn, scenarios)
+                    rescue
+                      test_ctx.add_exception(host, php, middleware, scenarios, $!)
+                    end
                   end
                   
                   if do_single_thread == 3
@@ -210,6 +204,10 @@ module TestBench
       #
     end # end def run
     
+    def run_do_single_test_case(php, host, middleware, tmpdir, deployed, skip_if_code_cache, skip_if_result_cache, test_ctx, test_cases, test_case, fs_scn, scenarios)
+      do_single_test_case(php, host, middleware, tmpdir, deployed, skip_if_code_cache, skip_if_result_cache, test_ctx, test_cases, test_case, tmpdir, fs_scn, scenarios)
+    end
+    
     def write_ext_file(telemetry_folder, ext_list, file_name)
       ext_file = File.join(telemetry_folder, file_name)
       arw = Util::ArgRewriter.new(ARGV)
@@ -251,8 +249,21 @@ module TestBench
     end
     
     def do_single_test_case(php, host, middleware, deploydir, deployed, skip_if_code_cache, skip_if_result_cache, test_ctx, test_cases, test_case, tmpdir, fs_scn, scenarios)
-      tmiddleware = @middleware.clone
-                      
+      tmiddleware = middleware.clone
+      
+      #
+      # if this test case has a --REDIRECTTEST-- section, eval add run its test cases
+      # see http://qa.php.net/phpt_details.php#redirecttest_section
+      if test_case.parts.has_key?(:redirecttest)
+        # #mw_redirecttest requires a Middleware::Cli
+        redirect_tests = test_case.mw_redirecttest(tmiddleware.instance_of(Middleware::Cli)?tmiddleware:Middleware::Cli.new(host, php, scenarios))
+        unless redirect_tests.empty?
+          test_ctx.add_tests(redirect_tests)
+          return # don't run the rest of this test case
+        end
+      end
+      #
+                     
       # important: some PHPT tests use paths relative to their deployment location (must change CWD)
       # after test case is run, will be undone by calling #popd
       tmiddleware.host.pushd(File.join(
@@ -287,7 +298,7 @@ module TestBench
             unless skip_if_result # TODO ensure skip_if_cache isn't shared between host/build/middleware
               skip_if_result = [] # ensure there is a non-null result to cache
                 
-              deployed[:skipif] = deploy_phpt_section test_case, :skipif
+              deployed[:skipif] = deploy_phpt_section(host, test_case, :skipif)
             
               begin
                 # run SKIPIF script
@@ -340,21 +351,25 @@ module TestBench
                       
         begin
           # we did not skip the test case, run it.
-          deployed[:file] = deploy_phpt_section test_case, :file
+          deployed[:file] = deploy_phpt_section(host, test_case, :file)
                        
           out_err = ''
-          begin
-            out_err = tmiddleware.execute_php_script( deployed[:file], test_case, :test, scenarios )[1]
+          if $pftt_debug
+            out_err = do_single_test_case_execute(deployed, test_case, scenarios)
+          else
+            begin
+              out_err = do_single_test_case_execute(deployed, test_case, scenarios)
               
-          rescue
-            test_ctx.add_exception(host, php, middleware, $!)
+            rescue
+              test_ctx.add_exception(host, php, middleware, scenarios, $!)
+            end
           end
                         
           throw :result, [PhptTestResult::Meaningful, out_err]
         ensure
           # and clean up if we are supposed to
           unless test_case[:clean].nil? or CONFIG[:skip_cleanup]
-            deployed[:clean] = deploy_phpt_section test_case, :clean
+            deployed[:clean] = deploy_phpt_section(host, test_case, :clean)
             begin
               tmiddleware.execute_php_script(deployed[:clean], test_case, :clean, contexts)
             rescue
@@ -373,39 +388,44 @@ module TestBench
       # run of this test case done
       #
       # display, report and store result of this test case
-      begin
-        result = nil
-        test_ctx.semaphore2.synchronize{
-          # don't modify result_spec, its cached/shared with other threads
-          a = result_spec[0]
-      
-          # take the caught result and build the proper object out of it
-          result = a.new( test_case, self, deploydir, @php, *result_spec[1...result_spec.length] )
-          }
-        if result
-          # generate the diff here in the thread unlocked
-          if result.is_a?(PhptTestResult::Meaningful)
-            result.generate_diff(test_ctx)
-          end
-        
-          
-          # lookup Legend Label for this host/php/middleware combination
-          label = test_ctx.legend_label(@host, @php, @middleware)
-          
-          test_ctx.console_out("  [#{label}] [#{result.status.to_s.upcase}] #{@self} #{test_case.relative_path}")
-          
-          test_ctx.semaphore5.synchronize{
-            # save result to database
-            # TODO result.insert(global_db, local_db, global_iter_id, local_iter_id)
-          }
-          
-          # TODO can't have @host or @php or @middleware
-          test_ctx.add_result(@host, @php, @middleware, scenarios, result)
+      if $pftt_debug
+        do_single_test_case_result(test_ctx, host, php, middleware, test_case, deploydir, result_spec)
+      else
+        begin
+          do_single_test_case_result(test_ctx, host, php, middleware, test_case, deploydir, result_spec)
+        rescue
         end
-      rescue
       end
       #
-    end # def do_single_test_case 
+    end # def do_single_test_case
+    
+    def do_single_test_case_execute(deployed, test_case, scenarios)
+      return tmiddleware.execute_php_script( deployed[:file], test_case, :test, scenarios )[1]
+    end
+    
+    def do_single_test_case_result(test_ctx, host, php, middleware, test_case, deploydir, result_spec)
+      result = nil
+      test_ctx.semaphore2.synchronize do
+        # don't modify result_spec, its cached/shared with other threads
+        a = result_spec[0]
+            
+        # take the caught result and build the proper object out of it
+        result = a.new( test_case, self, deploydir, *result_spec[1...result_spec.length] )
+      end
+      if result
+        # generate the diff here in the thread unlocked
+        if result.is_a?(PhptTestResult::Meaningful)
+          result.generate_diff(test_ctx, host, middleware, php, scenarios, test_ctx.tr)
+        end
+              
+        # lookup Legend Label for this host/php/middleware combination
+        label = test_ctx.legend_label(host, php, middleware, scenarios)
+                
+        test_ctx.console_out("  [#{label}] [#{result.status.to_s.upcase}] #{@self} #{test_case.relative_path}")
+                
+        test_ctx.add_result(host, php, middleware, scenarios, result)
+      end
+    end 
     
   end # end class Phpt 
   

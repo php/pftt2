@@ -44,6 +44,8 @@ module Host
     #     will set the binmode of STDOUT and STDERR. binmode=false on Windows may affect STDOUT or STDERR output
     #  :debug   true|false
     #     runs the command with the host's debugger. if host has no debugger installed, command will be run normally
+    #  :stdin   ''
+    #     feeds given string to the commands Standard Input
     # other options are silently ignored
     #
     # returns array of 3 elements. 0=> STDOUT output as string 1=>STDERR 2=>command's exit code (0==success)
@@ -69,6 +71,9 @@ module Host
           end
           if opts.has_key?(:binmode)
             new_opts[:binmode] = opts[:binmode]
+          end
+          if opts.has_key?(:stdin)
+            new_opts[:stdin_data] = opts[:stdin]
           end
           
           o,e,w = Open3.capture3(env, command, new_opts)

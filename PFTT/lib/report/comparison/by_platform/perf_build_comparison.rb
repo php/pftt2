@@ -33,17 +33,31 @@ module Report
             
             cm.add_row({:text=>'', :colspan=>4}, {:text=>'IIS', :colspan=>6}, {:text=>'Apache', :colspan=>9})
             cm.add_row({:text=>'', :colspan=>4}, {:text=>'Load Agents', :colspan=>2}, {:text=>'No WinCache', :colspan=>3}, {:text=>'WinCache', :colspan=>3}, {:text=>'No APC', :colspan=>3}, {:text=>'APC', :colspan=>3}, {:text=>'APC w/ IGBinary', :colspan=>3})
-            cm.add_row('', 'OS', 'Physical', 'Virtual', 'Base', 'Test', 'Gain', 'Base', 'Test', 'Gain', 'Base', 'Test', 'Gain', 'Base', 'Test', 'Gain')
+            cm.add_row('', 'OS', 'Physical', 'Virtual', 'Base', 'Test', 'Gain', 'Base', 'Test', 'Gain', 'Base', 'Test', 'Gain', 'Base', 'Test', 'Gain', 'Base', 'Test', 'Gain')
               
             windows_ini, posix_ini = nil
             r[scn_set, TypedToken::StringToken::OSName].each{|results|
-              # TODO
               cm.add_row(
                 {:row_number=>true},
                 os_short_name(results.os),
                 results.physical_client,
                 results.virtual_client,
-                '50', '100', '50%', '100', '50', '50%', '50', '100', '50%', '100', '50', '50%')
+                results_base[:iis], # IIS base
+                results_test[:iis], # IIS test
+                results_test[:iis] - results_base[:iis], # IIS gain
+                results_base[:iis_wincache], # IIS-wincache base 
+                results_test[:iis_wincache], # IIS-wincache test
+                results_test[:iis_wincache] - results_base[:iis_wincache], # IIS-wincache gain
+                results_base[:apache], # Apache-NoAPC base
+                results_test[:apache], # Apache-NoAPC test
+                results_test[:apache] - results_base[:apache], # Apache-NoAPC gain
+                results_base[:apache_apc], # Apache-APC base
+                results_test[:apache_apc], # Apache-APC test 
+                results_test[:apache_apc] - results_base[:apache_apc], # Apache-APC gain
+                results_base[:apache_apc_ig], # Apache-APC-IGBinary base
+                results_test[:apache_apc_ig], # Apache-APC-IGBinary test
+                results_test[:apache_apc_ig] - results_base[:apache_apc_ig] # Apache-APC-IGBinary gain
+              )
               
               windows_ini = results.windows_ini
               posix_ini = results.posix_ini
@@ -51,11 +65,11 @@ module Report
       
             cm.add_row(
               {:text=>(cm.html?)?'<strong>Windows INI:</strong>':'INI:', :colspan=>2},
-              {:text=>windows_ini.to_s, :colspan=>20}
+              {:text=>windows_ini.to_s, :colspan=>17}
             )
             cm.add_row(
               {:text=>(cm.html?)?'<strong>POSIX INI:</strong>':'INI:', :colspan=>2},
-              {:text=>posix_ini.to_s, :colspan=>20}
+              {:text=>posix_ini.to_s, :colspan=>17}
             )
             
             

@@ -4,17 +4,18 @@ require 'sqlite3'
 module TestBench
   
   class Base
-    def initialize( php_build, host, middleware, scenarios )
-      @php = php_build
-      @host = host
-      @middleware = @middleware#middleware.new( host, php, scenarios ) # TODO temp
-      @scenarios = scenarios # an array of arrays, each of which contains one type
-    end
-
+    
     #class << self
 #      def telemetry_folder
-#        'c:/' @telemetry_folder = File.join("#{APPROOT}/results", describe())
+#        'c:/' @telemetry_folder = File.join("c:/php-sdk/PFTT-Results", describe())
 #      end
+    def install(fs_scn, middleware)
+          middleware.install(fs_scn.docroot(middleware))
+        end
+        
+        def uninstall(fs_scn, middleware)
+          middleware.uninstall(fs_scn.docroot(middleware))
+        end
       # TestBench.iterate( php_builds, hosts, middlewares, *args ){|*args| &block }
       # 
       # First three arguments must be TypedArray instances carrying collections of 
@@ -27,7 +28,7 @@ module TestBench
       # 
       # 
       # 
-      def iterate( php, hosts, middleware, scenarios, test_cases )
+      def iterate( phps, hosts, middlewares, scenarios, test_cases )
         
 #        result_folder = telemetry_folder
 #      
@@ -92,15 +93,16 @@ module TestBench
         #
         #
         
-        
-        test_ctx = TestBenchRunContext.new(self, test_cases.flatten.length) # TODO
+        final_test_cases = []
+        test_ctx = TestBenchRunContext.new(self, test_cases.flatten.length, final_test_cases)
         
         
         hosts.each do |host|
-          scenarios.each do |scn_set|
-            factors = [php, middleware]
-            factors.shift.product *factors do |php,middleware_spec|
-              test_ctx.add_legend_label(host, php, middleware_spec)
+          middlewares.each do |middleware_spec|
+            phps.each do |php|
+              scenarios.each do |scn_set|
+                test_ctx.add_legend_label(host, php, middleware_spec, scn_set)
+              end
             end
           end
         end
@@ -111,86 +113,96 @@ module TestBench
         
         # iterate over all scenario sets (where there is one instance of each scenario type (file system, database))
         # each time, iterate over factors(php build, host, middleware)
-        final_test_cases = []
         middlewares_uninstall = []
-          
         hosts.each do |host|
-          scenarios.each do |scn_set|
-            factors = [php, middleware]
-            factors.shift.product *factors do |php,middleware_spec|
-              
-              middleware = middleware_spec.new(host, php, scn_set)
-              
-              install(scn_set[:working_file_system], middleware)
-              puts middleware
-              
-              middlewares_uninstall.push([scn_set[:working_file_system], middleware])
-              
-              # TODO check compatible?
-              
-              test_cases.each do |test_case_set|
-                test_case_set.each do |test_case|
-                  final_test_cases.push({:test_case=>test_case, :host=>host, :php=>php, :middleware=>middleware, :scenarios=>scenarios})
+          middlewares.each do |middleware_spec|
+            phps.each do |php|
+              scenarios.each do |scn_set|
+                middleware = middleware_spec.new(host, php, scn_set)
+                
+                # make sure the four of these are compatible, if not skip this combination
+                unless compatible?(host, php, middleware, scn_set)
+                  next
                 end
+                
+                @test_bench.install(scn_set[:working_file_system], middleware)
+                
+                test_ctx.create_entries(host, middleware, php, scn_set)
+                
+                middlewares_uninstall.push([scn_set[:working_file_system], middleware])
               end
             end
           end
         end
         
         # execute each, use a pool of worker threads to consume all test case-scenario-host-build-middleware combinations
-        run([final_test_cases], test_ctx) # TODO
+        run(final_test_cases, test_ctx)
         
         # do uninstall
-        middlewares_uninstall.each{|params|
+        middlewares_uninstall.each do |params|
           uninstall(params[0], params[1])
-        }
-        # TODO deploy and teardown of scenarios
+        end
+        
+        # teardown scenarios on each host
+        hosts.each do |host|
+          scenarios.each do |scn_set|
+            scn_set.teardown(host)
+          end
+        end
         
         test_ctx
       end
       
-      def is_started
+      def compatible?(host, middleware, php, scn_set)
+        [host, middleware, php, scn_set].permutation(2) do |a, b|
+          unless a.meets_requirements_of?(b)
+            return false
+          end
+        end
+        return true
       end
       
-      # TODO protected
-      def do_start(entry)
-        started[entry[:scenario]][:host][:php][:middleware]
-        
-        fs_scn = entry[:scenario][:working_file_system]
-        if not fs_scn
-          raise 'Missing Working File System Scenario!'
-        end
-              
-        # notify all scenarios to do whatever deployment they need now (ex: start mysql server)
-        scn_set.values.map{|scn| scn.deploy(host)}
-              
-        # store information about this (host, scn_set, middlewhere, etc...record scenarios too!)
-        local_db.execute("INSERT INTO iteration(run_id, start_time) VALUES(?, datetime('now','localtime'))", local_run_id)
-        local_iter_id = local_db.last_insert_row_id
-              
-        global_db.execute("INSERT INTO iteration(run_id, start_time) VALUES(?, datetime('now','localtime'))", global_run_id)
-        global_iter_id = global_db.last_insert_row_id
-              
-        scn_set.values.each do |scn|
-          local_db.execute("INSERT INTO iteration_info(iter_id, info_type, info) VALUES(?, ?, ?)", local_iter_id, 'scenario', scn.scn_name)
-        end
-        local_db.execute("INSERT INTO iteration_info(iter_id, info_type, info) VALUES(?, ?, ?)", local_iter_id, 'host', host.to_s);
-        local_db.execute("INSERT INTO iteration_info(iter_id, info_type, info) VALUES(?, ?, ?)", local_iter_id, 'build', php.to_s);
-        local_db.execute("INSERT INTO iteration_info(iter_id, info_type, info) VALUES(?, ?, ?)", local_iter_id, 'middleware', middleware.to_s);
-        local_db.execute("INSERT INTO iteration_info(iter_id, info_type, info) VALUES(?, ?, ?)", local_iter_id, 'pftt_version', $version);
-        local_db.execute("INSERT INTO iteration_info(iter_id, info_type, info) VALUES(?, ?, ?)", local_iter_id, 'pftt_release', $release);
-              
-        scn_set.values.each do |scn|
-          global_db.execute("INSERT INTO iteration_info(iter_id, info_type, info) VALUES(?, ?, ?)", global_iter_id, 'scenario', scn.scn_name)
-        end
-        global_db.execute("INSERT INTO iteration_info(iter_id, info_type, info) VALUES(?, ?, ?)", global_iter_id, 'host', host.to_s);
-        global_db.execute("INSERT INTO iteration_info(iter_id, info_type, info) VALUES(?, ?, ?)", global_iter_id, 'build', php.to_s);
-        global_db.execute("INSERT INTO iteration_info(iter_id, info_type, info) VALUES(?, ?, ?)", global_iter_id, 'middleware', middleware.to_s);
-        global_db.execute("INSERT INTO iteration_info(iter_id, info_type, info) VALUES(?, ?, ?)", global_iter_id, 'pftt_version', $version);
-        global_db.execute("INSERT INTO iteration_info(iter_id, info_type, info) VALUES(?, ?, ?)", global_iter_id, 'pftt_release', $release);
-        #
-        #
-      end
+#      def is_started
+#      end
+#      
+#      def do_start(entry)
+#        started[entry[:scenario]][:host][:php][:middleware]
+#        
+#        fs_scn = entry[:scenario][:working_file_system]
+#        if not fs_scn
+#          raise 'Missing Working File System Scenario!'
+#        end
+#              
+#        # notify all scenarios to do whatever deployment they need now (ex: start mysql server)
+#        scn_set.values.map{|scn| scn.deploy(host)}
+#              
+#        # store information about this (host, scn_set, middlewhere, etc...record scenarios too!)
+#        local_db.execute("INSERT INTO iteration(run_id, start_time) VALUES(?, datetime('now','localtime'))", local_run_id)
+#        local_iter_id = local_db.last_insert_row_id
+#              
+#        global_db.execute("INSERT INTO iteration(run_id, start_time) VALUES(?, datetime('now','localtime'))", global_run_id)
+#        global_iter_id = global_db.last_insert_row_id
+#              
+#        scn_set.values.each do |scn|
+#          local_db.execute("INSERT INTO iteration_info(iter_id, info_type, info) VALUES(?, ?, ?)", local_iter_id, 'scenario', scn.scn_name)
+#        end
+#        local_db.execute("INSERT INTO iteration_info(iter_id, info_type, info) VALUES(?, ?, ?)", local_iter_id, 'host', host.to_s);
+#        local_db.execute("INSERT INTO iteration_info(iter_id, info_type, info) VALUES(?, ?, ?)", local_iter_id, 'build', php.to_s);
+#        local_db.execute("INSERT INTO iteration_info(iter_id, info_type, info) VALUES(?, ?, ?)", local_iter_id, 'middleware', middleware.to_s);
+#        local_db.execute("INSERT INTO iteration_info(iter_id, info_type, info) VALUES(?, ?, ?)", local_iter_id, 'pftt_version', $version);
+#        local_db.execute("INSERT INTO iteration_info(iter_id, info_type, info) VALUES(?, ?, ?)", local_iter_id, 'pftt_release', $release);
+#              
+#        scn_set.values.each do |scn|
+#          global_db.execute("INSERT INTO iteration_info(iter_id, info_type, info) VALUES(?, ?, ?)", global_iter_id, 'scenario', scn.scn_name)
+#        end
+#        global_db.execute("INSERT INTO iteration_info(iter_id, info_type, info) VALUES(?, ?, ?)", global_iter_id, 'host', host.to_s);
+#        global_db.execute("INSERT INTO iteration_info(iter_id, info_type, info) VALUES(?, ?, ?)", global_iter_id, 'build', php.to_s);
+#        global_db.execute("INSERT INTO iteration_info(iter_id, info_type, info) VALUES(?, ?, ?)", global_iter_id, 'middleware', middleware.to_s);
+#        global_db.execute("INSERT INTO iteration_info(iter_id, info_type, info) VALUES(?, ?, ?)", global_iter_id, 'pftt_version', $version);
+#        global_db.execute("INSERT INTO iteration_info(iter_id, info_type, info) VALUES(?, ?, ?)", global_iter_id, 'pftt_release', $release);
+#        #
+#        #
+#      end
 #                # now run the actual test!! (actually, decide if test should be skipped, and if not, run it)
 #              
 #                test_bench = self.new( php, host, middleware, scn_set)
@@ -233,9 +245,9 @@ module TestBench
       @n = n
       @r = r
       @a = Array.new(r, 0)
-      nFact = getFactorial (@n)
-      rFact = getFactorial (@r)
-      nminusrFact = getFactorial (@n - @r)
+      nFact = getFactorial(@n)
+      rFact = getFactorial(@r)
+      nminusrFact = getFactorial(@n - @r)
       @total = nFact / (rFact * nminusrFact )
     
       i = 0
@@ -288,9 +300,12 @@ module TestBench
   end
   
   class TestBenchRunContext < ResultsContext
-    attr_reader :test_case_len, :semaphore1, :semaphore2, :semaphore3, :semaphore4, :semaphore5, :chunk_replacement
+    attr_reader :tr, :test_case_len, :semaphore1, :semaphore2, :semaphore3, :semaphore4, :semaphore5, :chunk_replacement
     
-    def initialize(test_bench, test_case_len)
+    def initialize(test_bench, test_case_len, final_test_cases)
+      @final_test_cases = final_test_cases
+      @tr = $auto_triage ? Diff::Base::TriageResults.new() : nil
+      
       @test_bench = test_bench
       @test_case_len = test_case_len
       
@@ -332,25 +347,30 @@ module TestBench
         return false
       end
     end
-    def add_legend_label(host, php, middleware)
+    def add_legend_label(host, php, middleware, scn_set)
       host_name = host.name
       mw_name = middleware.mw_name
       version = php[:php_version_minor].to_s
+      scn_id = scn_set.id.to_s
         
       #
       mw_name_i = 0
       while mw_name_i < mw_name.length
-        host_name_i = 0
-        while host_name_i < host_name.length
+        scn_id_i = 0
+        while scn_id_i < scn_id.length
+          host_name_i = host_name.length - 1
+          while host_name_i >= 0
           
-          name = ( host_name[host_name_i] + mw_name[mw_name_i] + version ).upcase
+            name = ( scn_id[scn_id_i] + host_name[host_name_i] + mw_name[mw_name_i] + version ).upcase
           
-          unless @labels.has_key?(name)
-            set_label(host, middleware,  host_name, php, mw_name, name)
-            return name 
-          end
+            unless @labels.has_key?(name)
+              set_label(host, middleware,  host_name, php, mw_name, scn_set, name)
+              return name
+            end
         
-          host_name_i += 1
+            host_name_i -= 1
+          end
+          scn_id_i += 1
         end
         mw_name_i += 1
       end
@@ -363,7 +383,7 @@ module TestBench
         name = i.to_s
         
         unless @labels.has_key?(name)
-          set_label(host, middleware, host_name, php, mw_name, name)
+          set_label(host, middleware, host_name, php, mw_name, scn_set, name)
           return name
         end
       end
@@ -376,41 +396,47 @@ module TestBench
         puts " Legend Host/PHP/Middleware"
         puts
         @labels.keys.each do |label|
-          host_name, php, mw_name = @labels[label]
+          host_name, php, mw_name, scn_set = @labels[label]
           
-          puts "  #{label} - #{host_name} #{mw_name} #{php.inspect}"
+          puts "  #{label} - #{host_name} #{mw_name} #{php.to_s} Scenario #[scn_set.id}"
           
         end
         puts
       end
     end
-    def legend_label(host, php, middleware)
-      @labels2[host][middleware.class][php]
+    def legend_label(host, php, middleware, scn_set)
+      @labels2[host][middleware.class][php][scn_set]
     end
-    def add_exception(host, php, middleware, scenarios, ex)
+    def add_exception(host, php, middleware, scn_set, ex)
       @semaphore3.synchronize do
         @results[host]||={}
         @results[host][middleware]||={}
-        results = @results[host][middleware][php]
+        @results[host][middleware][php]||={}
+        results = @results[host][middleware][php][scn_set]
               
         unless results
-          results = @results[host][middleware][php] = PhptTestResult::Array.new()
+          results = @results[host][middleware][php][scn_set] = PhptTestResult::Array.new()
         end
         
         results.exceptions.push(ex)
       end
     end
-    def add_result(host, php, middleware, scenarios, result)
-      do_finished_host_build_middleware_scenarios = false
+    def telemetry_folder(host, php, middleware, scn_set)
+      # TODO
+      'C:/'
+    end
+    def add_result(host, php, middleware, scn_set, result)
+      do_finished_host_build_middleware_scenarios = do_first_result = false
       
       results = nil
       @semaphore3.synchronize do
         @results[host]||={}
         @results[host][middleware]||={}
-        results = @results[host][middleware][php]
+        @results[host][middleware][php]||={}
+        results = @results[host][middleware][php][scn_set]
         
         unless results
-          results = @results[host][middleware][php] = PhptTestResult::Array.new()
+          results = @results[host][middleware][php][scn_set] = PhptTestResult::Array.new()
         end
         
         if results.length > @test_case_len
@@ -419,46 +445,62 @@ module TestBench
         
         results.push(result)
         
+        do_first_result = results.length == 1
         do_finished_host_build_middleware_scenarios = results.length == @test_case_len          
                   
       end
       
-      telemetry_folder = 'C:/' # TODO
+      tf = telemetry_folder(host, php, middleware, scn_set)
+      
+      if do_first_result
+        # if this is the first time a result is run, show the telemetry folder so
+        # user can follow telemetry in real-time
+        label = legend_label(host, php, middleware, scn_set)
+                    
+        console_out("  [#{label}] #{tf}")
+      end
       
       @semaphore5.synchronize do
         # LATER sync saving files in a semaphore unique to each telemetry folder
-        result.save(telemetry_folder)        
+        result.save(tf)
       end
-      
+
       if do_finished_host_build_middleware_scenarios
-        report = @test_bench.finished_host_build_middleware_scenarios(self, telemetry_folder, host, php, middleware, scenarios, results)
+        report = @test_bench.finished_host_build_middleware_scenarios(self, tf, host, php, middleware, scenarios, results)
         
         @semaphore4.synchronize do
           # write list of scenarios tested
-          f = File.open(File.join(telemetry_folder, 'scenarios.list'), 'wb')
-          scenarios.values.each do |scn|
+          f = File.open(File.join(tf, 'scenarios.list'), 'wb')
+          scn_set.values.each do |scn|
             f.puts(scn.scn_name)
           end
           f.close()
                 
           # write system info too
-          f = File.open(File.join(telemetry_folder, 'systeminfo.txt'), 'wb')
+          f = File.open(File.join(tf, 'systeminfo.txt'), 'wb')
           f.puts(host.systeminfo)
           f.close()
           
+          
           report.text_print()
-                      
+           
+          # LATER only for phpt  
+          # show an incremental auto triage report
+          if $auto_triage
+            Report::Triage.new(@tr).text_print()
+          end
+          
           #
           #
           if $interactive_mode
-            if first_run(host, php, middleware)
+            if first_run(host, php, middleware, scn_set)
               if prompt_yesno('PFTT: Re-run and compare the results to first run?')
-                rerun
+                rerun_combo
               end
             else
               if prompt_yesno('PFTT: Re-run and compare the results to this run?')
-                set_current_as_first_run(host, php, middleware, self)
-                rerun
+                set_current_as_first_run(host, php, middleware, scn_set, self)
+                rerun_combo
               end
             end
           end
@@ -468,27 +510,71 @@ module TestBench
         end
       end
     end
-    def first_run(host, php, middleware)
-      # TODO
-      nil
+    
+    def add_tests(test_cases)
+      @labels2.keys.each do |host|
+        @labels2[host].keys.each do |mw_spec|
+          @labels2[host][mw_spec].keys.each do |php|
+            @labels2[host][mw_spec][php].keys.each do |scn_set|
+              create_entries(host, mw_spec.new(host, php, scn_set), scn_set)
+            end
+          end
+        end
+      end
     end
-    def set_current_as_first_run(host, php, middleware)
-      # TODO
+    
+    def first_run(host, php, middleware, scn_set)
+      @semaphore5.synchronize do
+        return @first_run[host][php][middleware][scn_set]
+      end
     end
-    def next_host
-      # TODO skip to next host, build, middleware
+    
+    def set_current_as_first_run(host, php, middleware, scn_set)
+      @semaphore5.synchronize do
+        @first_run[host][php][middleware][scn_set] = @results[host][php][middleware][scn_set]
+      end
     end
-    def rerun
-      # TODO repeat run
+    
+    # skip to next host, build, middleware
+    def next_host(host, middleware, scn_set, php)
+      delete_entries(host, middleware, scn_set, php)
+    end
+    
+    def rerun_combo(host, middleware, scn_set, php)
+      # 1. delete any remaining entries for this combo
+      delete_entries(host, middleware, scn_set, php)
+      # 2. recreate all of them
+      create_entries(host, middleware, scn_set)
+    end
+    
+    def create_entries(host, middleware, php, scn_set, test_cases)
+      test_cases.each do |test_case|
+          
+        # make sure the test case is compatible too
+        unless test_case.compatible(host, middleware, php, scn_set)
+          next
+        end
+          
+        @final_test_cases.push({:test_case=>test_case, :host=>host, :php=>php, :middleware=>middleware, :scenarios=>scenarios})
+      end
     end
     
     protected
     
-    def set_label(host, middleware, host_name, php, mw_name, name)
-      @labels[name] = [host_name, php, mw_name]
+    def delete_entries(host, middleware, scn_set, php)
+      @semaphore1.synchronize do
+        @final_test_cases.delete_if do |entry|
+          return entry[:scenarios] == scn_set
+        end
+      end
+    end
+    
+    def set_label(host, middleware, host_name, php, mw_name, scn_set, name)
+      @labels[name] = [host_name, php, mw_name, scn_set]
       @labels2[host]||={}
       @labels2[host][middleware]||={}
-      @labels2[host][middleware][php] = name
+      @labels2[host][middleware][php]||={}
+      @labels2[host][middleware][php][scn_set] = name
     end
     
   end

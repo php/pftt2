@@ -18,8 +18,11 @@ module Report
                     
           end
                   
-          def write_list
-            # TODO list middlewares
+          def write_list(cm)
+            cm.add_row('Middleware')
+            @middlewares.each do |mw|
+              cm.add_row(mw.mw_name)
+            end
           end
                   
           def write_html

@@ -16,3 +16,7 @@ gem 'pony'
 gem 'abstract_class'
 
 gem 'activerecord'
+
+gem 'nokogiri'
+
+gem 'rufus-scheduler'

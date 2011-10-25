@@ -1,6 +1,11 @@
 
 module Server
   class NetworkMonitor
+    def schedule(scheduler)
+      scheduler.every '1h' do |job|
+        execute
+      end
+    end
     def execute
       # send Report::Network every 6 hours
         do_report =  hours / 6.0 == hours / 6

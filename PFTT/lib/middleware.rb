@@ -1,4 +1,6 @@
+
 require 'monkeypatch/string/unindent.rb'
+
 module Middleware
   class Base
     
@@ -14,6 +16,10 @@ module Middleware
     
     def close
       @host.close
+    end
+    
+    def ==(o)
+      return self.class == o.class
     end
 
     #def ini(arg=nil)
@@ -33,6 +39,10 @@ module Middleware
     def describe
       @description ||= self.class.to_s.downcase.gsub('::','-')
     end
+    
+    def filtered_expectation(test_case, filtered_expectation)
+      return filtered_expectation # see Middleware::Http#filtered_expectation
+    end
 
     def _deploy_php_bin
       
@@ -41,11 +51,11 @@ module Middleware
       @scenarios.map{|scn_type, scn| deploy_to||= scn.deployed_php(self) }
       
       unless deploy_to
-        # fallback on storing php in a sub-folder in %SYSTEMDRIVE%/PFTT-PHPs or ~/PFTT-PHPs
+        # fallback on storing php in a sub-folder in %SYSTEMDRIVE%/php-sdk/PFTT-PHPs or ~/php-sdk/PFTT-PHPs
         if @host.windows?
-          deploy_to = @host.systemdrive+"/PFTT-PHPs"
+          deploy_to = @host.systemdrive+"/php-sdk/PFTT-PHPs"
         else
-          deploy_to = '~/PFTT-PHPs'
+          deploy_to = '~/php-sdk/PFTT-PHPs'
         end
       end
       
@@ -79,17 +89,12 @@ module Middleware
       apply_ini(@current_ini)
     end
     
-    def create_ini(scenarios, platform)
+    def create_ini(scn_set, platform)
       apply_ini(@current_ini)
       
-      env = {}
-        test = nil # TODO
-      deployed_script = nil # TODO
-      
-      scenarios.values.each{|scn|  
-        scn.execute_script_start(env, test, :test, deployed_script, self.php_binary, @php_build, @current_ini, @host, platform)
-      }
-            
+      # ask scenarios to add anything they need to this INI
+      scn_set.ini(platform, @current_ini)
+                  
       @current_ini
     end
 

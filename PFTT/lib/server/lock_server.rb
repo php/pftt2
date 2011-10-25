@@ -44,7 +44,7 @@ module Server
       
       @db.query("UPDATE hosts SET lock_id=RAND() AND lock_renew_time=DATE_ADD(NOW(), #{$lock_timeout}) WHERE host_name LIKE ? AND ( lock_id=NULL OR lock_renew_time=NULL OR DATE_ADD(lock_renew_time, #{$lock_timeout}) < NOW() )")
   
-      lock_id = @db['lock_id'] # TODO
+      lock_id = @db['lock_id']
         
       if lock_id
         if $lock_cmd
@@ -68,7 +68,7 @@ module Server
       if $release_cmd
         exec($release_cmd)
       end
-    end
+    end 
     def view
       # return list of hosts
       
@@ -77,4 +77,10 @@ module Server
     
     # TODO @db.execute("CREATE TABLE IF NOT EXISTS hosts(host_id INTEGER PRIMARY KEY AUTO_INCREMENT, host_name VARCHAR(20), status ENUM('LOCKED', 'READY'), os_sku VARCHAR(20), arch ENUM('x86', 'x64'), ip_address VARCHAR(20), lock_id INTEGER, lock_renew_time DATETIME)")
   end
+end
+
+if __FILE__ == $0
+  # bundle exec ruby lib\server\lock_server.rb
+  require Dir.pwd+'/bootstrap.rb'
+    
 end

@@ -13,6 +13,10 @@ module Middleware
           self
         end
         
+        def self.mw_name
+          'Apache-ModPHP'
+        end
+        
         def mw_name
           'Apache-ModPHP'
         end

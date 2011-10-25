@@ -2,47 +2,54 @@
 module Report
   module Inspect
     class Func
-def puts_or_empty array
-      if array.empty?
-        puts '<None>'
-      else
-        puts array
+      def initialize(test_cases)
+        @test_cases = test_cases
       end
-      puts
-    end
-    
-    def write_text
-    unless $brief_output
+      def write_text
+        str = "\r\n"
+        unless $brief_output
       
-      $testcases = CONFIG.selected_tests().flatten
+          str += 'PHPTs('+test_cases.length+'):'
       
-      puts 'PHPTs('+$testcases.length+'):'
-      
-      $testcases.each{|test_case| puts(test_case.full_name)}     
+          test_cases.each do test_case
+            str += test_case.full_name + "\r\n"
+          end
         
-      puts
-    end
+          str += "\r\n"
+        end
     
-    puts 'HOSTS('+$hosts.length+'):'
-    puts_or_empty $hosts
+        str += "HOSTS#{$hosts.length}):\r\n"
+        str += puts_or_empty($hosts)
     
-    if $phps.empty?
-      puts "PFTT: you should run 'rake get_newest_php' to automatically get a PHP build to test"
-    end
+        if $phps.empty?
+          str += "PFTT: suggestion: run 'pftt get_php' to get a PHP binary build to test\r\n"
+        end
     
-    puts 'PHP BUILDS('+$phps.length+'):'
-    puts_or_empty $phps
+        str += "PHP BUILDS(#{$phps.length}):\r\n"
+        str += puts_or_empty($phps)
     
-    # ensure user will have local-host and cli-middleware, if no other hosts or middlewares are specified.
-    puts 'MIDDLEWARES('+$middlewares.length+'):'
-    puts_or_empty $middlewares
+        # ensure user will have local-host and cli-middleware, if no other hosts or middlewares are specified.
+        str += "MIDDLEWARES(#{$middlewares.length}):\r\n"
+        str += puts_or_empty($middlewares)
     
-    flat_contexts = $scenarios.values.flatten
+        flat_scenarios = $scenarios.values.flatten
     
-    puts 'CONTEXTS('+flat_contexts.length+'):'
-    puts_or_empty flat_contexts
+        str += "CONTEXTS(#{flat_scenarios.length}):\r\n"
+        str += puts_or_empty(flat_scenarios)
+        str += "\r\n"
     
-    end
       end
+      
+      protected
+      
+      def puts_or_empty array
+        if array.empty?
+          return '<None>'
+        else
+          return array.to_s
         end
       end
+      
+    end
+  end
+end

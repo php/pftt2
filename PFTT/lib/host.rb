@@ -281,6 +281,34 @@ module Host
       end
       dir
     end
+    
+    def tmpdir
+      if windows?
+        systemdrive + '/temp'
+      else
+        '/tmp'
+      end
+    end
+    
+    def mktmpfile suffix, content=nil
+      tries = 10
+      begin
+        path = File.join( tmpdir(), String.random(4) + suffix )
+        
+        raise 'exists' if exists? path
+        
+        f = File.open(path, 'wb')
+        if content
+          f.puts(content)
+        end
+        f.close()
+        
+        return path
+      rescue
+        retry if (tries -= 1) > 0
+        raise $!
+      end
+    end
 
     def sane? path
       make_absolute! path

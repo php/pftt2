@@ -1,24 +1,24 @@
 
 module Report
-class Results # TODO
-  def initialize
-    @telemetry_url = ''
-    @run_id = ''
-  end
-  def list(status)
-    # return contents of PASS.list, FAIL.list, SKIP.list file
-  end
-end
-
-class ResultSet # TODO
-  def initialize
-    @results_by_host = {}
-    @results_by_host['host_0'] = Results.new()
-    @title = 'PHP 5.3.8-nts-Win32-x86-vc9-r21111 (include time revision was downloaded)'
-    @test_time = '10:30 10/8/2011 GMT'
-    @ini = ''
-  end
-end
+#class Results # 
+#  def initialize
+#    @telemetry_url = ''
+#    @run_id = ''
+#  end
+#  def list(status)
+#    # return contents of PASS.list, FAIL.list, SKIP.list file
+#  end
+#end
+#
+#class ResultSet # 
+#  def initialize
+#    @results_by_host = {}
+#    @results_by_host['host_0'] = Results.new()
+#    @title = 'PHP 5.3.8-nts-Win32-x86-vc9-r21111 (include time revision was downloaded)'
+#    @test_time = '10:30 10/8/2011 GMT'
+#    @ini = ''
+#  end
+#end
 
 class Base
 #  def initialize(db)
@@ -79,7 +79,7 @@ class Base
         :from => from_email, 
         :to => to_emails, 
         :subject => subject, 
-        # TODO :attachments => write_attachments(),
+        :attachments => write_attachments(),
         :html_body => write_html(), 
         :body => write_text(),
         :via => mail_via, 

@@ -10,7 +10,6 @@ module Report
           
           Report::Run::ByHost::ByBuild::ByMiddleware::Func.new().write_text()
           
-          
 #          @builds.each do |build|
 #            build.middlewares.each do |middleware|
 #              
@@ -22,7 +21,10 @@ module Report
         end
         
         def write_list
-          # TODO list builds
+          cm.add_row('Build')
+          builds.each do |build|
+            cm.add_row(build.to_s)
+          end
         end
         
         def write_html

@@ -7,6 +7,12 @@ module Scenario
   module WorkingFileSystem
       module Smb
         class Base < Base
+          def initialize(server, share, user, password)
+            @server = server
+            @share = share
+            @user = user
+            @password = password
+          end
           def deploy(host)
             # file share must have already been created
             #
@@ -16,10 +22,10 @@ module Scenario
             # create folder on file share
             #
             # LATER posix support
-            # TODO read from config
-            host.exec!("net use T: \\terastation\share /persistent:no /user:test test")
+            host.exec!("net use T: \\#{@server}\#{@share} /persistent:no /user:#{@user} #{@password}")
             
-            @remote_folder_base = "T:/PFTT-Scripts/"
+            # LATER pick drive letter. make PFTT-PHPTs
+            @remote_folder_base = "T:/PFTT-PHPTs/"
           end
           
           def docroot middleware 

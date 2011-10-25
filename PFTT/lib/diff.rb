@@ -4,10 +4,14 @@ require 'abstract_class'
 module Diff
   class Base
     abstract
-    def initialize( expected, actual, test_ctx )
+    def initialize( expected, actual, test_ctx, host, middleware, scn_set, php )
       @expected = expected
       @actual = actual
       @test_ctx = test_ctx
+      @host = host
+      @middleware = middleware
+      @scn_set = scn_set
+      @php = php
     end
 
     def to_s
@@ -34,6 +38,76 @@ module Diff
     def changes
       @changes ||= diff.count{|token| next true unless token[0]==:equals}
     end
+    
+    class TriageResults
+      attr_accessor :total_lines, :total_chunks, :diff_lines
+      attr_reader :deleted, :inserted, :changed_len, :lock
+        
+      def initialize
+        @total_lines = @total_chunks = @diff_lines = 0
+        @deleted = {:warnings=>0, :errors=>0, :arrays=>0, :strings=>0, :others=>0}
+        @inserted = {:warnings=>0, :errors=>0, :arrays=>0, :strings=>0, :others=>0}
+        @changed_len = {:arrays=>0, :strings=>0}
+        @lock = Mutex.new
+      end
+    end
+    
+    #
+    # triages diff and returns new TriageResults or adds to given TriageResults
+    def triage(tr=nil)
+      unless tr
+        tr = TriageResults.new()
+      end
+      
+      tr.lock.synchronize do
+        tr.total_lines += lines.length
+      end
+      
+      diff.each do |line|
+        dlm = DiffLineManager.new(line)
+        
+        tr.lock.synchronize do
+          tr.diff_lines += 1
+        end
+        
+        while dlm.get_next
+          chunk = dlm.chunk
+          chunk = chunk.downcase
+          
+          tr.lock.synchronize do
+            tr.total_chunks += 1
+          end
+          
+          # triage step #1: is it a changed length (of array or string)?
+          if chunk.include?('array(')
+            if dlm.matches?(chunk.gsub('array(%d)', 'array(\%d)'))
+              tr.lock.synchronize do
+                tr.changed_len[:arrays] += 1
+              end
+              next
+            end
+          elsif chunk.include?('string(')
+            if dlm.matches?(chunk.gsub('string(%d)', 'string(\%d)'))
+              tr.lock.synchronize do
+                tr.changed_len[:strings] += 1
+              end
+              next
+            end
+          end
+          # triage step #2: is chunk deleted (expected chunk not in actual output)
+          if dlm.delete?
+            _triage_chunk(tr, tr.delete, chunk)
+          # triage step #3: is chunk inserted (actual chunk not in expected output)
+          elsif insert
+            # triage into array, string, error, warning, or other, insertion
+            _triage_chunk(tr.insert, chunk)
+          end
+          
+        end
+      end
+      
+      return tr
+    end
 
     protected
 
@@ -43,9 +117,7 @@ module Diff
         @actual.lines.map{|i|i}    # so we can't just split
       )
     end
-    
-    protected
-    
+        
     def put_line(line)
       rline = line.rstrip
       puts 'Line:'+line.length.to_s+':'+((rline==line)?'0:':(line.length-rline.length).to_s+':(Trailing Whitespace)')
@@ -87,6 +159,14 @@ module Diff
           @test_ctx.chunk_replacement[dlm.chunk] = replace_with
         end
         return false # re-prompt
+      elsif ans=='t'
+        tr = triage()
+        
+        report = Report::Triage.new(tr)
+        
+        report.text_print()
+        
+        return false # re-prompt
       elsif ans=='N'
         # N next test case set
         @test_ctx.next_test_case()
@@ -113,18 +193,18 @@ module Diff
         return false # re-prompt
       elsif ans=='z'
         # z - re-run test case set
-        @test_ctx.rerun()
+        @test_ctx.rerun_combo(@host, @middleware, @php, @scn_set)
       elsif ans=='Z'
         # Z - re-run test case set (not interactive)
         $interactive_mode = false
-        @test_ctx.rerun()
+        @test_ctx.rerun_combo(@host, @middlware, @php, @scn_set) # TODO terminology: combo
       elsif ans=='w'
         # w - skip to next host
-        @test_ctx.next_host()
+        @test_ctx.next_host(@host, @middleware, @php, @scn_set)
       elsif ans=='W'
         # W - skip to next host (not interactive)
         $interactive_mode = false
-        @test_ctx.next_host()
+        @test_ctx.next_host(@host, @middleware, @php, @scn_set)
       elsif ans=='O'
         # O - interactive mode off (then skip change)
         $interactive_mode = false
@@ -150,7 +230,8 @@ module Diff
       puts '<Enter> - skip change'
       puts ' s      - skip line'
       puts ' S      - skip file'
-      puts ' f      - runs tests non-interactively, then prompt to re-run' # TODO
+      puts ' t      - Triage diffs in this test'
+      puts ' f      - runs tests non-interactively, then prompt to re-run'
       puts ' r      - replace expect with regex to match actual'
       puts ' R      - replace all in file'
       puts ' A      - replace all in test case set'
@@ -170,9 +251,34 @@ module Diff
     end
     
     def show_expect_info
+      # override this to display custom special characters
     end
     
     protected
+    
+    def _triage_chunk(tr, hash, chunk)
+      if chunk.include?('warning')
+        tr.lock.synchronize do
+          hash[:warnings]+=1
+        end
+      elsif chunk.include?('error')
+        tr.lock.synchronize do
+          hash[:errors]+=1
+        end
+      elsif chunk.include?('array')
+        tr.lock.synchronize do
+          hash[:arrays]+=1
+        end
+      elsif chunk.include?('string')
+        tr.lock.synchronize do
+          hash[:strings]+=1
+        end
+      else
+        tr.lock.synchronize do
+          hash[:others]+=1
+        end
+      end
+    end
 
     # This method gets replaced by sub-classes and is the part that does the actual
     # comparrisons.
@@ -280,7 +386,7 @@ module Diff
               end
             }
             if dlm.diff.empty?
-              # TODO line_diffs.delete
+              line_diffs.delete
             end
             if dlm.skip_file
               break
@@ -291,6 +397,7 @@ module Diff
         }
       end
       #
+      
       return line_diffs
     end
     
@@ -365,6 +472,10 @@ module Diff
       def replace(replace_with)
         @modified_expect_line = @modified_expect_line[0..in_col]+replace_with+@modified_expect_line[(@modified_expect_line.length-out_col-in_col)..@modified_expect_line.length]
         ignore
+      end
+      
+      def matches?(replacement_chunk)
+        return _compare_line(@modified_expect_line[in_col..out_col], replacement_chunk)
       end
       
       protected
@@ -511,8 +622,7 @@ module Diff
 
   class RegExp < Base
     def _compare_line( expectation, result )
-      #puts %Q{compare: #{expectation.inspect} to #{result.inspect}}
-      r = Regexp.new(%Q{\\A#{expectation}\\Z}) # TODO
+      r = Regexp.new(%Q{\\A#{expectation}\\Z})
       r.match(result) or r.match(result.rstrip.chomp)
     end
   end
@@ -549,88 +659,84 @@ module Diff
         return false
       elsif expectation == result or expectation.rstrip.chomp == result.rstrip.chomp
         return true
-      #elsif result.include?('string(70)')
-      #  return true
+      else
+        rex = Regexp.escape(expectation.rstrip.chomp)
+      
+        # arrange the patterns in longest-to shortest and apply them.
+        # the order matters because %string% must be replaced before %s.
+        patterns(rex)
+      
+        return super( rex, result ) or super( rex, result.rstrip.chomp )
       end
-      #puts expectation
-      rex = Regexp.escape(expectation.rstrip.chomp)
-      
-      # arrange the patterns in longest-to shortest and apply them.
-      # the order matters because %string% must be replaced before %s.
-      patterns.to_a.sort{|a,b|-1*(a[0].size <=> b[0].size)}.each{|pattern| rex.gsub!(pattern[0], pattern[1])}
-      
-      #rex.gsub!('%e', Regexp.escape('\\\\'))
-      #rex.gsub!('%s', '.+')
-      #rex.gsub!('%d', '\d+')
-      rex.gsub!('%unicode\|string%', 'string')
-      rex.gsub!('%string\|unicode%', 'string')
-      rex.gsub!('%u\|b%', '')
-      rex.gsub!('%b\|%u', '')
-      rex.gsub!('%binary_string_optional%', 'string')
-      rex.gsub!('%unicode_string_optional%', 'string')
-              
-      # TODO super( rex, result )
-      #puts rex
-      #puts result
-        
-      r = Regexp.new(rex)
-      r.match(result) != nil or r.match(result.rstrip.chomp) != nil
-      #if !b and result.include?('string(70)')
-      #  exit
-      #end
     end
 
     # and some default patterns
     # see run-tests.php line 1871
-    patterns ({
-      '%e' => '.+',#[\\\\|/]',
-      '%s' => '.+', # TODO use platform specific EOL @host.EOL 
-      '%S' => '[^\r\n]*',
-      '%a' => '.+',
-      '%A' => '.*',
-      '%w' => '\s*',
-      '%i' => '[+-]?\d+',
-      '%d' => '\d+',
-      '%x' => '[0-9a-fA-F]+',
-      '%f' => '[+-]?\.?\d+\.?\d*(?:[Ee][+-]?\d+)?',
-      '%c' => '.',
-    })
+    def patterns(rex)
+      rex.gsub!('%e', '.+') #[\\\\|/]',
+      rex.gsub!('%s', '.+') # TODO use platform specific EOL @host.EOL 
+      rex.gsub!('%S', '[^\r\n]*')
+      rex.gsub!('%a', '.+')
+      rex.gsub!('%A', '.*')
+      rex.gsub!('%w', '\s*')
+      rex.gsub!('%i', '[+-]?\d+')
+      rex.gsub!('%d', '\d+')
+      rex.gsub!('%x', '[0-9a-fA-F]+')
+      rex.gsub!('%f', '[+-]?\.?\d+\.?\d*(?:[Ee][+-]?\d+)?')
+      rex.gsub!('%c', '.')
+    end
 
     def show_expect_info
-      puts ' %e \\ or /'
+      puts '%e => [\\\\|/]        %s => .+'
+      puts '%S => [^\r\n]*        %a => .+'
+      puts '%A => .*              %w => \s*'
+      puts '%i => [+-]?\d+        %d => \d+'
+      puts '%x => [0-9a-fA-F]+    %f => [+-]?\.?\d+\.?\d*(?:[Ee][+-]?\d+)?'
+      puts '%c => .'
     end
 
     class Php5 < Formatted
-      patterns ({
-        '%u\|b%' => '',
-        '%b\|%u' => '', #PHP6+: 'u'
-        '%binary_string_optional%' => 'string', #PHP6+: 'binary_string'
-        '%unicode_string_optional%' => 'string', #PHP6+: 'Unicode string'
-        '%unicode\|string%' => 'string', #PHP6+: 'unicode'
-        '%string\|unicode%' =>  'string', #PHP6+: 'unicode'
-      })
+      def patterns(rex)
+        super(rex)
+        rex.gsub!('%u\|b%', '')
+        rex.gsub!('%b\|%u', '') #PHP6+: 'u'
+        rex.gsub!('%binary_string_optional%', 'string') #PHP6+: 'binary_string'
+        rex.gsub!('%unicode_string_optional%', 'string') #PHP6+: 'Unicode string'
+        rex.gsub!('%unicode\|string%', 'string') #PHP6+: 'unicode'
+        rex.gsub!('%string\|unicode%', 'string') #PHP6+: 'unicode'
+      end
       
       def show_expect_info
         super
         
-        puts '%string string'
+        puts 'PHP5'
+        puts '%u\|b%                   => \'\'      %b\|%u                    => \'\''
+        puts '%binary_string_optional% => string    %unicode_string_optional% => string'
+        puts '%unicode\|string%        => string    %string\|unicode%         =>  string'
       end
-    end
+    end # end Php5
+    
     class Php6 < Formatted
-      patterns ({
-        '%u\|b%' => 'u',
-        '%b\|%u' => 'u', #PHP6+: 'u'
-        '%binary_string_optional%' => 'binary_string', #PHP6+: 'binary_string'
-        '%unicode_string_optional%' => 'Unicode string', #PHP6+: 'Unicode string'
-        '%unicode\|string%' => 'unicode', #PHP6+: 'unicode'
-        '%string\|unicode%' =>  'unicode', #PHP6+: 'unicode'
-      })
+      def patterns(rex)
+        super(rex)
+        rex.gsub!('%u\|b%', 'u')
+        rex.gsub!('%b\|%u', 'u') #PHP6+: 'u'
+        rex.gsub!('%binary_string_optional%', 'binary_string') #PHP6+: 'binary_string'
+        rex.gsub!('%unicode_string_optional%', 'Unicode string') #PHP6+: 'Unicode string'
+        rex.gsub!('%unicode\|string%', 'unicode') #PHP6+: 'unicode'
+        rex.gsub!('%string\|unicode%', 'unicode') #PHP6+: 'unicode'
+      end
       
       def show_expect_info
         super
         
-        puts '%string  unicode'
+        puts 'PHP6'
+        puts '%u\|b%            => u          %b\|%u            => u'
+        puts '%unicode\|string% => unicode    %string\|unicode% => unicode'
+        puts '%binary_string_optional%  => binary_string'
+        puts '%unicode_string_optional% => Unicode string'
       end
-    end
+    end # end Php6
+    
   end
 end

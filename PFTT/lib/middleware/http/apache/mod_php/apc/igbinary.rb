@@ -8,6 +8,9 @@ module Middleware
             def mw_name
               'Apache-ModPHP-APC-IGBinary'
             end
+            def self.mw_name
+              'Apache-ModPHP-APC-IGBinary'
+            end
             def clone
               clone = Middleware::Http::Apache::ModPhp::APC::IGBinary.new(@host.clone, @php_build, @scenarios)
               clone.deployed_php = @deployed_php

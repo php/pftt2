@@ -1,8 +1,9 @@
 module Token
   module ArrayToken
     class Base < Array
-      # TODO def ==
-      #     .class == .class
+      def == (o)
+        return self.class == o.class
+      end
     end
   end
 end

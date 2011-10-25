@@ -16,14 +16,14 @@ module Report
               str = "\r\n"
               str += " == Host Run Completed == \r\n"
               str += "\r\n"
-              str += "Host: "+@host.name+" ("+@host.address+")\r\n"
-              str += "OS(actual): "+os_short_name(@host.osname)+"\r\n"
-              str += ("PHP: branch #{@php_build[:php_branch]} major #{@php_build[:php_version_major]} minor #{@php_build[:php_version_minor]} rev #{@php_build[:revision]} "+(@php_build[:threadsafe]?'TS':'NTS')+" SDK "+@php_build.sdk_info.values.to_s+" "+((@host.windows?)?((@php_build.sdk_info[:major]==6)?'':' (Only SDK 6 supported! may cause different output)'):''))+"\r\n"
-              str += "Middleware: #{@middleware.mw_name}\r\n"
+              str += " Host: "+@host.name+" ("+@host.address+")\r\n"
+              str += " OS(actual): "+os_short_name(@host.osname)+"\r\n"
+              str += (" PHP: branch #{@php_build[:php_branch]} major #{@php_build[:php_version_major]} minor #{@php_build[:php_version_minor]} rev #{@php_build[:revision]} "+(@php_build[:threadsafe]?'TS':'NTS')+" SDK "+@php_build.sdk_info.values.to_s+" "+((@host.windows?)?((@php_build.sdk_info[:major]==6)?'':' (Only SDK 6 supported! may cause different output)'):''))+"\r\n"
+              str += " Middleware: #{@middleware.mw_name}\r\n"
               if r.telemetry_folder
-                str += "Telemetry Folder: #{r.telemetry_folder}\r\n"
+                str += " Telemetry Folder: #{r.telemetry_folder}\r\n"
               elsif r.telemetry_url
-                str += "Telemetry URL: #{r.telemetry_url}\r\n"
+                str += " Telemetry URL: #{r.telemetry_url}\r\n"
               end
     
               

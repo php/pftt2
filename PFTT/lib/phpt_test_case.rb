@@ -8,36 +8,39 @@ class PhptTestCase
 
   include TestBenchFactor
 
+  # PHPT files may have many sections. some sections are required, some are optional.
+  #
+  # see http://qa.php.net/phpt_details.php for info about all the sections
   @@supported_sections = {
     :required => [
       [:file,:fileeof,:file_external],
-      [:expect,:expectf,:expectregex],
+      [:expect,:expectf,:expectregex,:expectheaders],
       [:test]
     ],
     :optional => [
-      #[:post,:post_raw],
       [:credit,:credits],
       [:ini],
       [:skipif],
       [:description],
-      # LATER implement support for these other sections
       [:clean],
+      [:redirecttest],
+      [:xfail],
+      # CLI middleware
+      [:stdin],
+      [:args], [:env],
+      # HTTP middlewares (iis, apache)
       [:request],
       [:post], [:post_raw], [:gzip_post], [:deflate_post], [:get],
       [:cookie],
-      [:stdin],
-      [:headers],
+      #    --headers-- would require using server-tests.php (instead of run-tests.php), but PFTT provides the capabilities of both
+      [:headers], 
       [:cgi],
-      # LATER support for expected failure
-      [:xfail],
-      [:expectheaders],
-      [:args], [:env],
-      # LATER I think pdo_mysql tests depend on this section (to run pdo tests)
-      [:redirecttest]
+      [:expectheaders]
+      
     ]
   }
 
-  attr_reader :phpt_path, :dir
+  attr_reader :phpt_path, :dir, :parts
 
   def initialize( dir, path, set=nil )
     if !File.exists?( path ) 
@@ -46,10 +49,202 @@ class PhptTestCase
     @dir = dir
     @phpt_path = path
     @set = set
+    @env = {} # enable mw_redirecttest to pass ENV vars to be returned by cli_env
   end
   attr_accessor :scn_list
-  attr_reader :set
-
+  attr_reader :set, :env
+  
+  def http_headers(mw_cli)
+    # support for --HEADERS-- section
+    #
+    # http://qa.php.net/phpt_details.php#headers_section
+    headers_str = parts[:headers]
+      
+    headers_str, err, status = mw_cli.php!('-r "echo '+headers_str+';"');
+    if status != 0
+      puts headers_str
+      puts err
+      return {}
+    end
+    
+    headers = {}
+    env_str.split('\n').each do |line|
+      i = line.index('=')
+      if i==-1
+        next # shouldn't happen
+      end
+      hdr_name = line[0..i]
+      hdr_value = line[i+1..line.length]
+                
+      headers[hdr_name] = hdr_value
+    end
+    return headers
+  end
+  
+  def mw_redirecttest(mw_cli)
+    # support for --REDIRECTTEST-- section
+    #
+    # return array(
+    #  'ENV' => array(
+    #      'PDOTEST_DSN' => 'sqlite2::memory:'
+    #    ),
+    #  'TESTS' => 'ext/pdo/tests'
+    #  );
+    #
+    # see http://qa.php.net/phpt_details.php#redirecttest_section
+    #
+    redirecttest_str = parts[:redirecttest]
+    
+    # run a quick php script through PHP to print out first the 'ENV' then the 'TEST' values  
+    env_str, err, status = mw_cli.php!('-r "$r = '+redirecttest_str+'; foreach($r[\'ENV\'] as $name, $value) {echo "$name=$value\n";}');
+    if status != 0
+      puts env_str
+      puts err
+      return []
+    end
+    #
+    
+    #
+    test_list_str, err, status = mw_cli.php!('-r "$r = '+redirecttest_str+'; foreach($r[\'TEST\'] as $test_name) {echo "$test_name\n";}');
+    if status != 0
+      puts test_list_str
+      puts err
+      return []
+    end
+    #
+    
+    env = {}
+    env_str.split('\n').each do |line|
+      i = line.index('=')
+      if i==-1
+        next # shouldn't happen
+      end
+      env_name = line[0..i]
+      env_value = line[i+1..line.length]
+            
+      env[env_name] = env_value
+    end
+    
+    test_list = []
+    test_list_str.split('\n').each do |line|
+      line.chomp!
+      
+      test_case = PhptTestCase.new(@dir, line, @set)
+      # copy the ENV section to this test_case. will be accessible by #cli_env
+      test_case.env = env 
+      test_list.push(test_case)
+    end
+      
+    test_list
+  end
+  
+  def cli_env(cwd, filepath)
+    # provides support for --ENV-- section, primarily for the CLI middleware,
+    # and for getting the ENV variables provided in a --REDIRECTTEST-- section (that redirected to this test)
+    #
+    # see http://qa.php.net/phpt_details.php#env_section
+    #
+    # looks like its meant for PHPTs that were originally meant to be run through server-tests.php not run-tests.php
+    unless parts.has_key?(:env)
+      return {}
+    end
+    
+    lines = parts[:env].split('\\n')
+      
+    env = @env
+      
+    lines.each do |line|
+      line.chomp!
+      
+      # the line may use one of the following variables, which we need to substitue for now
+      
+      #$filename - full native path to file, will become PATH_TRANSLATED
+      line.gsub!('\$filename', filepath)
+      #$filepath - =dirname($filename)
+      line.gsub!('\$filepath', filepath)
+      #$scriptname - this is what will become SCRIPT_NAME unless you override it
+      line.gsub!('\$scriptname', filepath)
+      #$this->conf - all server-tests configuration vars
+      line.gsub!('\$cwd', cwd)
+      # even though http://qa.php.net/phpt_details.php#env_section lists other variables like $docroot
+      #  server-tests.php doesn't seem to use support them at all (server-tests.php only seems to support these 4)
+      
+      i = line.index('=')
+      if i==-1
+        @borked_reasons||=[]
+        @borked_reasons << 'malformed environment variable line (PHPT ENV section)'
+        next
+      end
+      env_name = line[0..i]
+      env_value = line[i+1..line.length]
+      
+      env[env_name] = env_value
+    end
+    
+    env
+  end
+  
+  def http_request
+    # provides support for --REQUEST-- section
+    #
+    # see http://qa.php.net/phpt_details.php#request_section
+    #
+    # Valid settings for this section include:
+    #
+    # SCRIPT_NAME - The inital part of the request url
+    # PATH_INFO - The pathinfo part of a request url
+    # FRAGMENT - The fragment section of a url (after #)
+    # QUERY_STRING - The query part of a url (after ?)
+    #
+    unless parts.has_key?(:request)
+      return nil
+    end
+    
+    # parse the request to get the different parts of the request
+    parts = {}    
+    lines = parts[:request].split('\\n')
+    lines.each do |line|
+      line.chomp!
+      
+      i = line.index('=')
+      if i==-1
+        @borked_reasons||=[]
+        @borked_reasons << 'malformed environment variable line(PHPT REQUEST section)'
+        next
+      end
+      part_name = line[0..i]
+      part_value = line[i+1..line.length]
+            
+      parts[part_name.upcase] = part_value
+    end
+    #
+    #
+    
+    if parts.has_key?('PATH_INFO')
+      url = parts['PATH_INFO']
+    elsif parts.has_key?('SCRIPT_NAME')
+      url = parts['SCRIPT_NAME']
+    else
+      @borked_reasons||=[]
+      @borked_reasons << 'PHPT REQUEST section missing both PATH_INFO and SCRIPT_NAME'
+      return ''
+    end
+    if parts.has_key?('QUERY_STRING')
+      url += '?' + parts['QUERY_STRING']
+    end
+    if parts.has_key?('FRAGMENT')
+      url += '#' + parts['FRAGMENT']
+    end
+    
+    return url
+  end
+  
+  def compatible?(host, middleware, php, scn_set)
+    # if the --cgi-- section is present, this requires(is only compatible if) the middleware is http
+    not parts.has_key(:cgi) or middleware.instance_of?(Middleware::Http)
+  end
+    
+  
   def name
     @name ||= File.basename @phpt_path, '.phpt'
   end
@@ -120,6 +315,20 @@ class PhptTestCase
         if (parts.keys & group).length < 1;
           @bork_reasons << 'missing required section:'+group.to_s
         end
+      end
+      counte = (parts.has_key?(:expect)) ? 1 : 0
+      counte += (parts.has_key?(:expectf)) ? 1 : 0
+      counte += (parts.has_key?(:expectregex)) ? 1 : 0
+      if counte > 0
+        @bork_reasons << 'can only have one EXPECT or EXPECTF or EXPECTREGEX section, not '+counte.to_s
+      end
+      counth = (parts.has_key?(:get)) ? 1 : 0
+      counth = (parts.has_key?(:post)) ? 1 : 0
+      counth = (parts.has_key?(:post_raw)) ? 1 : 0
+      counth = (parts.has_key?(:gzip_post)) ? 1 : 0
+      counth = (parts.has_key?(:deflate_post)) ? 1 : 0
+      if counth > 0
+        @bork_reasons << 'can only have one GET, POST, POST_RAW, GZIP_POST or DEFLATE_POST section, not '+counth.to_s
       end
     end
     !@bork_reasons.length.zero?

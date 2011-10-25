@@ -9,6 +9,10 @@ module Middleware
           'IIS-FastCGI'
         end
         
+        def self.mw_name
+          'IIS-FastCGI'
+        end
+        
         def clone
           clone = Middleware::Http::IIS::FastCgi::Base.new(@host.clone, @php_build, @scenarios)
           clone.deployed_php = @deployed_php

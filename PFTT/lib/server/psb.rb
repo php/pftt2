@@ -14,11 +14,16 @@ module Web
     def do_fbc_list(response, base=nil)
       # list all functional test runs (if base!=nil, then this is to choose second run)
     
-      
-#Run
-#Start Time
-#Hosts
-#Builds
+      response.body += <<-TABLE
+<table>
+<tr>
+<td>Run</td>
+<td>Start Time</td>
+<td>Hosts</td>
+<td>Builds</td>
+</tr>
+</table>
+TABLE
     end
   
     def do_GET(request, response)
@@ -56,16 +61,16 @@ module Web
 <h2>Terminology</h2>
 <ul>
 <li><strong>PSB</strong> - PFTT Statisics Browser</li>
-<li><strong>FBC</strong> - Functional Build Comparison Report
+<li><strong>FBC</strong> Report - Functional Build Comparison Report
 <ul>
-<li><strong>FBC-D</strong> - For Daily use. One scenario set tested.</li>
-<li><strong>FBC-S</strong> - For Stable release. All scenarios tested.</li>
+<li><strong>FBC-D</strong> Report - For Daily use. One scenario set tested.</li>
+<li><strong>FBC-S</strong> Report - For Stable release. All scenarios tested.</li>
 </ul>
 </li>
 <li><strong>PBC</strong> - Performance Build Comparison Report
 <ul>
-<li><strong>PBC-D</strong> - For Daily use. One scenario set tested.</li>
-<li><strong>PBC-S</strong> - For Stable release. All scenarios tested.</li>
+<li><strong>PBC-D</strong> Report - For Daily use. One scenario set tested.</li>
+<li><strong>PBC-S</strong> Report - For Stable release. All scenarios tested.</li>
 </ul>
 <li><strong>PFTT</strong>
 <ul>
@@ -73,10 +78,10 @@ module Web
 <li><strong>PFTT Client</strong> - Executes tests on hosts.</li>
 <li><strong>PFTT Host</strong> - Machines that are tested.</li>
 </ul>
-<li><strong>FR</strong> - Functional Run Report (Functional Testing all OS/Build/Middlwares)</li>
-<li><strong>FCR</strong> - Functional Combination (Host/Build/Middleware) Run Report</li>
-<li><strong>PR</strong> - Performance Run Report (Performance Testing all OS/Build/Middlwares)</li>
-<li><strong>PCR</strong> - Performance Combination (Host/Build/Middlware) Run Report</li>
+<li><strong>FGR</strong> Report - Functional Group Run Report (combines multiple FCR reports)</li>
+<li><strong>FCR</strong> Report - Functional Combination (Host/Build/Middleware) Run Report</li>
+<li><strong>PGR</strong> Report - Performance Group Run Report (combines multiple PCR reports)</li>
+<li><strong>PCR</strong> Report - Performance Combination (Host/Build/Middlware) Run Report</li>
 </ul>
 HOME
     end

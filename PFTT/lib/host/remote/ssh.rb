@@ -73,6 +73,19 @@ module Host
       end
     end
 
+    #
+    # command:
+    #   command line to run. program name and arguments to program as one string
+    # options: a hash of
+    #  :chdir
+    #     the current directory of the command to run
+    #  :debug   true|false
+    #     runs the command with the host's debugger. if host has no debugger installed, command will be run normally
+    #  :stdin   ''
+    #     feeds given string to the commands Standard Input
+    # other options are silently ignored
+    #
+    # returns array of 3 elements. 0=> STDOUT output as string 1=>STDERR 2=>command's exit code (0==success)
     def exec command, opts={}
       @cwd = nil # clear cwd cache
       
@@ -84,6 +97,8 @@ module Host
       end
       
       Thread.start do
+        
+        stdin_data = (opts.has_key?(:stdin))? opts[:stdin] : nil 
         
         stdout, stderr = '',''
         exit_code = -254 # assume error unless success
@@ -98,6 +113,10 @@ module Host
               # important: don't do data.inspect!
               # that'll replace \ characters with \\ and \r\n with \\r\\n (bad!!)
               stdout += data
+              if stdin_data
+                ch.send_data(stdin_data)
+                stdin_data = nil
+              end
             end
             
             channel.on_extended_data do |ch, type, data|

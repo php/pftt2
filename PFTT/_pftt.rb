@@ -20,29 +20,20 @@ $single_threaded_tests = ['ext/standard/tests/http', 'ext/phar', 'mysql', 'pdo']
 $version = 0.1
 $release = '054107102011'
 
-# TODO be able to provide a build filter and have PFTT get build from server
-#        and leave out --phpt-dir and --php-dir
+# emerge dev-db/mysql dev-db/postgresql-server net-ftp/vsftpd
 
-# TODO auto-triage
-#   if :delete with 'array(' or 'string('
-#   if :insert with 'array(' or 'string(' 
-#   if :delete with warning
-#      if a corresponding :insert
-#           type=>'warning change'
-#      else
-#           type=>'warning missing'
-#   if :insert with warning
-#      type=>'warning added'
-#
-# report with:
-#  count of :equals vs :delete vs :insert for each test (show next to name of test when test is run)
-#  count of :equals vs :delete vs :insert for all tests
-#  tally up occurances of each type
-#  tally up tests with 1+ of each type
-#  tally up number of passed and failed tests 
-#
+$dep_server_share = '//terastation/share'
+$dep_server_user = 'test'
+$dep_server_password = 'password01!'
 
-## begin pftt
+# --enable-debug-pack and make all will produce the .pdb symbol files
+# --disable-zts will create a non-thread-safe build
+$cross_platform_config_ops = ' --with-mysqli=mysqlnd --with-mysql=mysqlnd --with-pdo-mysql=mysqlnd --enable-mysqlnd --enable-pdo --enable-openssl'
+#
+$windows_config_ops = ' --enable-debug-pack --disable-zts --enable-snapshot-build --enable-one-shot --with-extra-includes=%SYSTEMDRIVE%/php-sdk/deps/include --with-extra-libs=%SYSTEMDRIVE%/php-sdk/deps/lib'
+$linux_config_ops = ' --enable-debug '
+#
+#
 
 require File.join(File.dirname(__FILE__),'bootstrap.rb')
 
@@ -51,6 +42,7 @@ $db_file = "#{APPROOT}/all_pftt_results.sqlite"
 require 'optparse'
 require 'pp'
 require 'rbconfig'
+require 'util.rb'
 
 class String
   def convert_path
@@ -80,6 +72,7 @@ $debug_test = false
 $auto_triage = false
 $html_report = false
 $interactive_mode = false
+$pftt_debug = true
 $is_windows = RbConfig::CONFIG['host_os'].include?('mingw') or RbConfig::CONFIG['host_os'].include?('mswin')
   
 class PfttOptions < OptionsHash
@@ -114,7 +107,7 @@ class PfttOptions < OptionsHash
     when 'cs'
       # LATER
     when 'hc'
-      # LATER
+      # nothing to parse
     when 'perf'
     when 'unit'
     when 'ui'
@@ -125,6 +118,12 @@ class PfttOptions < OptionsHash
       options.parse_lock_release(args)
     when 'net_release'
       options.parse_lock_release(args)
+    when 'build_php'
+      # nothing to parse
+    when 'get_php'
+      # nothing to parse
+    when 'update_php'
+      # nothing to parse
     when 'update_config'
     when 'upgrade'
     when 'example'
@@ -177,7 +176,13 @@ class PfttOptions < OptionsHash
       when 'cs'
         # LATER
       when 'hc'
-        # LATER
+        puts 'PFTT: usage: pftt hc'
+      when 'get_php'
+        puts 'PFTT: usage: pftt get_php'
+      when 'update_php'
+        puts 'PFTT: usage: pftt update_php'
+      when 'build_php'
+        puts 'PFTT: usage: pftt build_php'
       when 'perf'
       when 'unit'
       when 'ui'
@@ -223,8 +228,11 @@ class PfttOptions < OptionsHash
     puts '  stress        - run Stress test'
     puts '  unit          - run PHPUnit tests from PHP-AzureSDK, MediaWiki, Symfony, etc'
     puts '  ui            - run automated UI tests (app compat)'
+    puts '  hc            - manually initiate configuring a Host for PFTT'
+    puts '  update_php    - update a checked out copy of PHP/PHPT source'
+    puts '  build_php     - compile the PHP interpreter'
+    puts '  get_php       - download a precompiled PHP binary'
     #puts '  cs            - ' # LATER
-    #puts '  hc            - ' # LATER
     puts
     # only show net_view net_lock net_release update_config when PFTT server configured
     if $client
@@ -393,6 +401,13 @@ class PfttOptions < OptionsHash
         'Generates an html copy of the final run report and displays in web browser'
       ) do
         $html_report = true
+      end
+      
+      opts.on(
+        '--pftt-debug',
+        'Debug PFTT for problems in PFTT'
+      ) do
+        $pftt_debug = true
       end
       
       opts.on(
@@ -607,18 +622,23 @@ $hosts = (Host::Array.new.load(CONFIG[:host,:path].convert_path)).filter(CONFIG[
 $hosts.push(Host::Remote::Ssh.new(:address=>'127.0.0.1', :username=>'administrator', :password=>'password01!'))#Host::Local.new()) # TODO
 require 'typed-array'
 $phps = PhpBuild.get_set(CONFIG[:php,:dir].convert_path||'').filter(CONFIG[:php,:filters])
-$middlewares = [Middleware::Cli]#, 
-  #Middleware::Http::IIS::FastCgi::Base]#, Middleware::Http::Apache::ModPhp::Base] # TODO Middleware::All#.filter([])# TODO CONFIG[:middleware,:filters])
+$middlewares = [#Middleware::Cli]#, 
+  Middleware::Http::IIS::FastCgi::Base]#, Middleware::Http::Apache::ModPhp::Base] # TODO Middleware::All#.filter([])# TODO CONFIG[:middleware,:filters])
   
 # LATER? what about NFSv3 support (which ships with Windows 7<) (not NFSv4)
-$scenarios = {}
-# must always have at least 1 working_file_system context! (other contexts are optional)
-$scenarios[:working_file_system] = [Scenario::WorkingFileSystem::Local.new()]# TODO , Scenario::WorkingFileSystem::Smb::LocalPhp.new(), Scenario::WorkingFileSystem::Smb::RemotePhp.new]
-$scenarios[:remote_file_system] = []#Scenario::RemoteFileSystem::Http.new(), Scenario::RemoteFileSystem::Ftp.new()]
-$scenarios[:database] = []# Scenario::Database::Mysql::Tcp.new(), Scenario::Database::Mysql::Ssl.new()]
-# LATER $scenarios[:date]
+$scenarios = [
+  Scenario::Set(
+      '1',
+      Scenario::WorkingFileSystem::Local.new()#,
+      #Scenario::RemoteFileSystem::Http.new,
+      #Scenario::Database::Mysql::Tcp.new()
+    )
+  ]
   
 if __FILE__ == $0
+  generate_shell_script("pftt", "_pftt.rb")
+  generate_shell_script("pftt_server", "_pftt_server.rb")
+  
   # this file is the main file of the app (this file isn't being imported into another app)
   #
   # store all the output in pftt_last_command.txt, in case it exceeds the buffer size of the user's terminal
@@ -652,8 +672,6 @@ if __FILE__ == $0
   #
   #
 
-  # TODO move these functions into class
-  #     makes PFTT programmable
   def lock_all(hosts)
     unless $client
       return # no PFTT server, ignore
@@ -674,9 +692,8 @@ if __FILE__ == $0
       end
     }
   end
-  def host_config
+  def host_config(host)
     return
-    host = Host.new() # TODO
       
     #
     if host.windows?
@@ -730,6 +747,7 @@ if __FILE__ == $0
       # install wcat (hopefully this is a x64 host)
       win_install(host, 'wcat.amd64.msi', '/Q')
       
+      win_install(host, "msysgit-v111", "/Q")
       
       puts 'PFTT: host_config: ensuring IIS installed...'
       unless host.exists?('%SYSTEMDIR%/system32/inetsrv/appcmd.exe')
@@ -746,6 +764,8 @@ if __FILE__ == $0
       linux_install(host, "autoconf")
       linux_install(host, "make")
       linux_install(host, "gcc")
+      linux_install(host, "unzip")
+      linux_install(host, 'git')
       puts 'PFTT: host_config: ensuring Apache installed...'
       linux_install(host, "apache-httpd")
     end
@@ -851,13 +871,11 @@ if __FILE__ == $0
         end
         
         if CONFIG[:action] == 'perf'
-          test_bench = TestBench::Wcat.new($phps, $hosts, $middlewares[0], $scenarios)
+          test_bench = TestBench::Wcat.new
         else
-          test_bench = TestBench::Phpt.new($phps, $hosts, $middlewares[0], $scenarios) # TODO
+          test_bench = TestBench::Phpt.new
         end
-      
-        # TODO print telemetry folder before starting (so user can read telemetry in real time)
-        
+              
         # finally do the testing...
         # iterate over all hosts, middlewares, etc..., running all tests for each
         test_ctx = test_bench.iterate( $phps, $hosts, $middlewares, $scenarios, $testcases )
@@ -899,13 +917,22 @@ if __FILE__ == $0
       end
       
       report.text_print()
-    
-    
-# TODO    if $html_report
-#      filename = $hosts[0].mktmpfile("report.html")
-#      report.html_file(filename)
-#      $hosts[0].exec("start \"#{filename}\"")
-#    end
+      
+      # show auto triage report
+      if $auto_triage
+        Report::Triage.new(test_ctx.tr).text_print()
+      end
+            
+      #
+      # if --html, show html formatted report in web browser
+      if $html_report
+        localhost = Host::Local.new()
+        
+        filename = localhost.mktmpfile("report.html", report.html_string())
+        
+        # LATER linux support for showing web browser
+        localhost.exec("start \"#{filename}\"")
+      end
       
     end
     #
@@ -916,12 +943,12 @@ if __FILE__ == $0
     # inspects what the configuration and arguments will have pftt do for the func_full or func_part actions
     # (lists PHPTs that will be run, hosts, middlewares, php builds and contexts)
     
-    report = Report::Inspect::Func.new()
+    report = Report::Inspect::Func.new(CONFIG.selected_tests().flatten())
     report.text_print()
     
     exit
   elsif CONFIG[:action] == 'hc'
-    host_config()
+    host_config(Host::Local.new()) # LATER remote host support
     exit
   elsif CONFIG[:action] == 'cs'
     scenario_config
@@ -1003,5 +1030,78 @@ if __FILE__ == $0
     report.text_print()
     
     puts   
+  elsif CONFIG[:action] == 'build_php'
+    host = Host::Local.new() # LATER, use remote host too
+
+    if host.windows?
+      # find Windows SDK
+      if host.exists?('%SYSTEMDRIVE%\Program Files\Microsoft SDKs\Windows\v7.0\Bin')
+        add_to_path_temp('%SYSTEMDRIVE%\Program Files\Microsoft SDKs\Windows\v7.0\Bin')
+      elsif host.exists?('%SYSTEMDRIVE%\Program Files\Microsoft SDKs\Windows\v6.0\Bin')
+        add_to_path_temp('%SYSTEMDRIVE%\Program Files\Microsoft SDKs\Windows\v6.0\Bin')
+      else
+        puts "PFTT: error: Can't find Windows SDK 6+ on Windows host. Therefore can't build PHP binary"
+        puts "PFTT: please install Windows SDK 6 from microsoft.com"
+        puts
+        exit(-20)
+      end
+    
+      host.exec!("setenv /x86 /xp /release")
+    end
+  
+    cd_php_sdk(host) # util.rb
+  
+    unless host.exist?(args.build)
+      puts "PFTT: build not found! #{args.build} in "+host.cwd
+      exit(-21)
+    end
+    
+    host.delete('Release')
+    host.delete('Release_TS')
+  
+    host.exec!("buildconf")
+    if host.windows?
+      out_err, status = host.exec!("configure #{$cross_platform_config_ops} #{$windows_config_ops}")
+    else
+      out_err, status = host.exec!("configure #{$cross_platform_config_ops} #{$linux_config_ops}")
+    end
+    unless status
+      puts 'PFTT: PHP Build configure failed!'
+      exit(-22)
+    end
+  
+    if host.posix?
+      host.exec!("make snap")
+    else
+      host.exec!("nmake snap")
+    end
+  
+    build_success = false
+    if $cross_platform_config_ops.include?('--disable-zts')
+      build_success = host.exist?('Release')
+    else
+      build_success = host.exist?('Release_TS')
+    end
+  
+    if build_success
+      puts 'PFTT: PHP Binary Built Successfully: see '+host.cwd
+      puts
+    else
+      puts 'PFTT: error: failed to build PHP Binary: see '+host.cwd
+      puts
+      exit(-1)
+    end
+    #
+    #
+  elsif CONFIG[:action] == 'get_php'
+    # LATER remote host support
+    sg = Server::SnapshotGetter.new(Host::Local.new())
+    files = sg.ensure_latest_snapshot
+    puts files.inspect
+    
+  elsif CONFIG[:action] == 'update_php'
+    # LATER remote host support
+    su = Server::SVNUpdater.new(Host::Local.new())
+    su.execute
   end
 end

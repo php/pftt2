@@ -31,11 +31,11 @@ module TestBench
       
       
       # write settings.ubr and client.ubr to a temp file to feed to wcctl
-      client_path = localhost.mktempfile('client.ubr', client(perf_case))
-      settings_path = localhost.mktempfile('settings.ubr', settings(perf_case))
+      client_path = localhost.mktmpfile('client.ubr', client(perf_case))
+      settings_path = localhost.mktmpfile('settings.ubr', settings(perf_case))
         
       # create temp file for the log fromm wcctl
-      log_path = localhost.mktempfile("wcat_log_#{clients_per_host}.xml")
+      log_path = localhost.mktmpfile("wcat_log_#{clients_per_host}.xml")
       
       # execute wcctl (WCAT) which will wait for wcclient from hosts to connect
       localhost.exec("#{wcat_path.convert_path}\wcctl.exe -t #{client_path} -f #{settings_path} -s #{target_host.host}:#{target_host.port} -v #{clients_per_host} -c 1 -o #{log_path} -x")

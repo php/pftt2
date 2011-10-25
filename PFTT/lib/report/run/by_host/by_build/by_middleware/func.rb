@@ -22,7 +22,6 @@ module Report
               
               str = "\r\n"
                         
-              # TODO this is the default report PFTT will use
 
               str += "     === Test Run Completed === \r\n"
               str += "\r\n"
@@ -59,7 +58,6 @@ module Report
                             
               str += cm.to_s
           
-              # TODO list number of tests that failed without modification too!
               str += "\r\n"
               str += "      === Test Run Results === \r\n"
               str += "\r\n"
@@ -90,22 +88,23 @@ module Report
                 {:text=>'Unsup!', :bgcolor=>bgcolor_pftt_bug, :colspan=>1, :center=>true},
                 {:text=>'', :bgcolor=>bgcolor_telemetry, :colspan=>1}
               )
-              # TODO row numbers
               
-              cm.add_row(
-                {:row_number=>true},
-                'Loc',
-                '50%',
-                '5000', 
-                '5000',
-                '0',
-                '0',
-                '0',
-                '0',
-                '0',
-                '0',
-                'r123456'
+              each do |r|
+                cm.add_row(
+                  {:row_number=>true},
+                  r.legend,
+                  r.rate,
+                  r.pass, 
+                  r.fail,
+                  r.xfail,
+                  r.skip,
+                  r.xskip,
+                  r.works,
+                  r.bork,
+                  r.unsupported,
+                  'r123456'
                 )
+              end
                 
               
               str += cm.to_s

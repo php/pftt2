@@ -1,3 +1,4 @@
+
 module PhptTestResult
   class Base
     def initialize( test_case, test_bench, deploydir )
@@ -101,7 +102,7 @@ module PhptTestResult
   end
 
   class Meaningful < Base
-    def initialize *args, php, result_str
+    def initialize *args, result_str
       super *args
 
       @result_str = result_str
@@ -112,8 +113,7 @@ module PhptTestResult
       
       @diff_spec = (case @test_case.expectation[:type]
         when :expect then Diff::Exact
-        # TODO :expectregex must be evaluated as a regular expression, will this do that??
-        when :expectregex then Diff::Exact
+        when :expectregex then Diff::RegExp
         when :expectf
           case php.properties[:php_version_major]
           when 5 then Diff::Formatted::Php5
@@ -123,8 +123,8 @@ module PhptTestResult
         end)
     end
     
-    def generate_diff(test_ctx)
-      @diff = @diff_spec.new( @filtered_expectation, @filtered_result, test_ctx )
+    def generate_diff(test_ctx, host, middleware, php, scn_set, tr=nil)
+      @diff = @diff_spec.new( middleware.filtered_expectation(@test_case, @filtered_expectation), @filtered_result, test_ctx, host, middleware, php, scn_set )
       
       self.extend (case [ !@test_case.has_section?(:xfail), @diff.changes.zero? ]
       when [true, true] then RPass # was expected to pass and did
@@ -138,9 +138,12 @@ module PhptTestResult
       files['result'] = @result_str
 
       files['diff']=@diff.to_s unless @diff.changes.zero?
-
-      self
-    end
+        
+      if $auto_triage
+        return @diff.triage(tr)
+      end
+      
+    end # def generate_diff
   end
 
   # we need to be able to mix these in after running the actual test scenario

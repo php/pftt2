@@ -7,6 +7,14 @@ class PhpIni
     @raw=[]
     configure ini unless ini.nil?
   end
+  
+  def add_extension(ext_name, host=nil)
+    line = "extension=#{ext_name}" + ((host==nil or host.windows?)?'.dll':'.so')
+    unless @raw.include?(line)
+      # don't include it more than once
+      @raw.push(line)
+    end
+  end
 
   def configure( ini )
     changes = 0

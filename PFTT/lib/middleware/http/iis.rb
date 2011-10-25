@@ -14,10 +14,6 @@ module Middleware
           root(r) + '/inetpub/wwwroot/'
         end
                       
-        # LATER NOTE root(r) and @host both handle files, possibly on remote hosts
-        #       but they are two different interfaces to two different systems of handling that
-        #       root(r) goes through T:/ or other mounted network drive (SMB)
-        #       while @host goes through SSH and executes the operation locally on the remote computer
         def appcmd args
           @host.exec!(@host.systemroot+"/System32/inetsrv/appcmd #{args}")
         end

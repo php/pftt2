@@ -23,8 +23,7 @@ def add_to_path_permanently(host, path_part)
   new_path = add_to_path_temp(host, path_part)
   
   if host.windows?
-    # windows stores %PATH% in this registry key
-    exec('regchg "SYSTEM\CurrentControlSet\Control\Session Manager\Environment\Path" '.new_path)
+    host.exec!("setx PATH #{new_path}")
     
   else
     # LATER update bash shell history, etc...

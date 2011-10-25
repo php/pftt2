@@ -30,11 +30,9 @@ module Report
           
           # table intrinsically does two builds and multiple hosts without making extra loops (just loop scenario, middleware and results)
           
-          # TODO scenario
-          [['context_1', 'context_2'], ['context_1', 'context_3']].each{|ctx_set|
+          @resultset_a[TypedToken::StringToken::ScenarioSet].each do |a|
       
-            # TODO middleware
-            ['IIS with WinCache', 'IIS', 'Command Line', 'Apache with APC', 'Apache with APC and IGBinary', 'Apache'].each{|mw_txt|
+            a[TypedToken::StringToken::MiddlewareName].each do|mw_txt|
               cm.add_row({:text=>(cm.html?)?'<strong>'+mw_txt+'</strong>':mw_txt, :colspan=>22, :center=>true})
               cm.add_row(
                 {:text=>'OS', :colspan=>2, :bgcolor=>bgcolor_os},
@@ -60,33 +58,34 @@ module Report
         
               windows_ini = posix_ini = ''
               
-              results = ['A Result']
+              results = a[mw_txt]
               if results.empty?
                 cm.add_row({:text=>'No Results', :colspan=>22, :center=>true})
               else
-                # TODO results
-                results.each{|resultset|
-                  platform = 'Win 2003r2 x86 SP0, SP1'
-                  pass_rate = resultset.rate
-                  change_pass_rate = -5
-                  pass = 5000
-                  change_pass = -100
-                  fail = 5000
-                  change_fail = +50
-                  xfail_pass = 0
-                  change_xfail_pass = -10
-                  skip = 0
-                  change_skip = -100
-                  xskip = 0
-                  change_xskip = -100
-                  xfail_work = 0
-                  change_xfail_work = -100
-                  bork = 0
-                  change_bork = 0
-                  unsupported = 0
-                  change_unsupported = +10
-                  telemetry_url_base = 'file://///10.200.51.33/share/PFTT'
-                  telemetry_url_test = 'file://///10.200.51.33/share/PHP'
+                resultset_base = nil
+                results.each do |resultset_test|
+                  platform = os_short_name(resultset_test.os_name)
+                  pass_rate = resultset_test.rate,
+                  change_pass_rate = pass_rate - resultset_base.rate
+                  pass = resultset_test.pass
+                  change_pass = pass - resultset_base.pass
+                  fail = resultset_test.fail
+                  change_fail = fail - resultset_base.fail
+                  xfail_pass = resultset_test.xfail
+                  change_xfail_pass = xfail_pass - resultset_base.xfail
+                  skip = resultset_test.skip
+                  change_skip = skip - resultset_base.skip
+                  xskip = resultset_test.xskip
+                  change_xskip = xskip - resultset_base.xskip
+                  xfail_work = resultset_test.works
+                  change_xfail_work = xfail_work - resultset_base.works
+                  bork = resultset_test.bork
+                  change_bork = bork - resultset_base.bork
+                  unsupported = resultset_test.unsupported
+                  change_unsupported = unsupported - resultset_base.unsupported
+                  # LATER do http:// instead of file:// (share w/ IIS to make directory listing)
+                  telemetry_url_base = resultset_base.telemetry_url
+                  telemetry_url_test = resultset_test.telemetry_url
         
                   cm.add_row(
                     # :row_number=> show/increment row number
@@ -114,7 +113,7 @@ module Report
                     {:text=>(cm.html?)?"<a href=\"#{telemetry_url_test}\" target=\"_blank\">Test</a>":telemetry_url_test, :bgcolor=>bgcolor_telemetry}
                   )
       
-                }
+                end
               end # end result
             
               cm.add_row(
@@ -131,9 +130,9 @@ module Report
                 {:text=>ctx_set.inspect.to_s, :colspan=>20}
               )
             
-            } # end middleware
+            end # middleware
       
-          } # end scenario
+          end # scenario
    
           return cm
         end
