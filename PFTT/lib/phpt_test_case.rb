@@ -316,20 +316,20 @@ class PhptTestCase
           @bork_reasons << 'missing required section:'+group.to_s
         end
       end
-      counte = (parts.has_key?(:expect)) ? 1 : 0
-      counte += (parts.has_key?(:expectf)) ? 1 : 0
-      counte += (parts.has_key?(:expectregex)) ? 1 : 0
-      if counte > 0
-        @bork_reasons << 'can only have one EXPECT or EXPECTF or EXPECTREGEX section, not '+counte.to_s
-      end
-      counth = (parts.has_key?(:get)) ? 1 : 0
-      counth = (parts.has_key?(:post)) ? 1 : 0
-      counth = (parts.has_key?(:post_raw)) ? 1 : 0
-      counth = (parts.has_key?(:gzip_post)) ? 1 : 0
-      counth = (parts.has_key?(:deflate_post)) ? 1 : 0
-      if counth > 0
-        @bork_reasons << 'can only have one GET, POST, POST_RAW, GZIP_POST or DEFLATE_POST section, not '+counth.to_s
-      end
+# TODO     counte = (parts.has_key?(:expect)) ? 1 : 0
+#      counte += (parts.has_key?(:expectf)) ? 1 : 0
+#      counte += (parts.has_key?(:expectregex)) ? 1 : 0
+#      if counte > 0
+#        @bork_reasons << 'can only have one EXPECT or EXPECTF or EXPECTREGEX section, not '+counte.to_s
+#      end
+#      counth = (parts.has_key?(:get)) ? 1 : 0
+#      counth = (parts.has_key?(:post)) ? 1 : 0
+#      counth = (parts.has_key?(:post_raw)) ? 1 : 0
+#      counth = (parts.has_key?(:gzip_post)) ? 1 : 0
+#      counth = (parts.has_key?(:deflate_post)) ? 1 : 0
+#      if counth > 0
+#        @bork_reasons << 'can only have one GET, POST, POST_RAW, GZIP_POST or DEFLATE_POST section, not '+counth.to_s
+#      end
     end
     !@bork_reasons.length.zero?
   end
@@ -395,15 +395,15 @@ class PhptTestCase
     parts.inspect
   end
 
-  def raw(deploy_dir)
-    @raw ||= IO.read(File.join(deploy_dir, full_name))
+  def raw()
+    @raw ||= IO.read(File.join('c:/php-sdk/svn/branches/php_5_4/', full_name)) # TODO phptdir
   end
 
-  def parse!(deploy_dir)
+  def parse!()
     reset!
     @result_tester = nil
     section = :none
-    raw(deploy_dir).lines do |line|
+    raw().lines do |line|
       if line =~ /^--(?<section>[A-Z_]+)--/
         section = Regexp.last_match[:section].downcase.to_sym
         @parts[section]=''
@@ -424,7 +424,7 @@ class PhptTestCase
     @parts[:file].gsub!(%Q{\r\n},%Q{\n}) unless @parts[:file].nil?
   end
 
-  protected
+  # TODO protected
 
   def reset!
     @parts = {}
@@ -432,7 +432,7 @@ class PhptTestCase
     @options = nil
   end
 
-  private
+  # TODO private
 
   def parse_line( line, context )
     return line unless line =~ /^\#\!?include (?<script>.*)/
@@ -479,27 +479,31 @@ class PhptTestCase::Array < TypedArray(PhptTestCase)
         end
       }
     end
-    
+        #tests_names = ['math/abs'] # TODO
     # search each directory for PHPT files
-    paths.map{|path|
+    paths.map do |path|
       Dir.glob( File.join( path, '**/*.phpt' ) ).each do |files|
         if test_names != nil and test_names.length > 0
-          test_names.each{|test_name|
+          test_names.each do |test_name|
+            # internally, ruby always uses / for filenames (check for / not \)
+            test_name.gsub!('\\', '/')
+#            puts files.inspect
+#            puts test_name.inspect
             if files.is_a?(Array)
-              files.each{|file|
+              files.each do |file|
                 if file.include?(test_name)
                   add_selected_file(path, file)
                 end
-              }
+              end
             elsif files.include?(test_name)
               add_selected_file(path, files)
             end
-          }
+          end
         else
           add_selected_file(path, files)
         end
       end
-    } 
+    end
     @selected = nil
     self
   end
@@ -507,9 +511,10 @@ class PhptTestCase::Array < TypedArray(PhptTestCase)
   class DuplicateTestError < StandardError
   end
   
-  private
+  # TODO private
   
   def add_selected_file(dir, file)
+    #puts file
     file = File.absolute_path(file)
     if file.starts_with?(dir)
       file = file[dir.length+1...file.length]

@@ -19,7 +19,7 @@ module Middleware
           @host.write( current_ini.to_a.join("\n"), ini_file )
           true
         else
-          false
+          false 
         end
       end
                   
@@ -36,7 +36,7 @@ module Middleware
       end
             
       def execute_php_script deployed_script, test_case, script_type, scenarios
-        scenarios.execute_script_start(env, test, script_type, deployed_script, self.php_binary, @php_build, current_ini, @host )
+        # TODO scenarios.execute_script_start(env, test, script_type, deployed_script, self.php_binary, @php_build, current_ini, @host )
         
         # send HTTP GET request to web server (middleware) asking it to execute the script
         # then compare the returned document just as is done for locally executed PHPT script (CLI middleware)
@@ -51,17 +51,19 @@ module Middleware
           
         url = URI.parse(url)
         
+        http = Net::HTTP.new('127.0.0.1', 80) # TODO 80
+        
         if test_case.parts.has_key?(:post_raw)
-          response = post(request, test_case, http, test_case.parts[:post_raw], url, nil, false)
+          response = post(test_case, http, test_case.parts[:post_raw], url, nil, false)
         elsif test_case.parts.has_key?(:post)
-          response = post(request, test_case, http, test_case.parts[:post_raw], url, 'application/x-www-form-urlencoded', true)
+          response = post(test_case, http, test_case.parts[:post_raw], url, 'application/x-www-form-urlencoded', true)
         elsif test_case.parts.has_key?(:gzip_post)
-          response = post(request, test_case, http, test_case.parts[:post_raw], url, 'gzip', true)
+          response = post(test_case, http, test_case.parts[:post_raw], url, 'gzip', true)
         elsif test_case.parts.has_key?(:deflate_post)
-          response = post(request, test_case, http, test_case.parts[:post_raw], url, 'deflate', true)
+          response = post(test_case, http, test_case.parts[:post_raw], url, 'deflate', true)
         else
           # for --GET--
-          response = get(request, test_case, http, url)
+          response = get(test_case, http, url)
         end
         
         #        
@@ -99,22 +101,22 @@ module Middleware
       protected
       
       def cookie(request, test_case)
-        if test_case.parts.has_key(:cookie)
+        if test_case.parts.has_key?(:cookie)
           request['Set-Cookie'] = test_case.parts[:cookie]
         end
       end
       
       def headers(request, test_case)
-        if test_case.parts.has_key(:header)
-          test_case.http_headers(Middleware::Cli.new(@host, @php, @scenarios)) do |name, value|
+        if test_case.parts.has_key?(:header)
+          test_case.http_headers(mw_cli) do |name, value|
             request[name] = value
           end
         end
       end
       
       # do POST GZIP_POST DEFLATE_POST POST_RAW (add_content_type=false) section
-      def post(request, test_case, http, data, url, content_type, add_content_type=true)
-        request = Net::HTTP::Post.new(url)
+      def post(test_case, http, data, url, content_type, add_content_type=true)
+        request = Net::HTTP::Post.new(url.request_uri)
         if add_content_type
           request['Content-Type'] = content_type
         end
@@ -127,18 +129,23 @@ module Middleware
       end
       
       # do GET section
-      def get(request, test_case, http, url)
+      def get(test_case, http, url)
         if test_case.parts.has_key?(:get)
           # add the query part of the URL
           url += '?' + test_case.parts[:get]
         end
         
-        request = Net::HTTP::Get.new(url)
+        request = Net::HTTP::Get.new(url.request_uri)
 
         cookie(request, test_case)
         headers(request, test_case)
         
         http.request(request)
+      end
+      
+      def mw_cli
+        # need CLI to execute some sections of some PHPTs
+        @cli ||= Middleware::Cli.new(@host, @php, @scenarios)
       end
                   
     end

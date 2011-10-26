@@ -1,15 +1,16 @@
 
 module PhptTestResult
   class Base
-    def initialize( test_case, test_bench, deploydir )
+    def initialize( test_case, test_bench, deploydir, php )
       @test_case = test_case
       @test_bench = test_bench
-      files['phpt'] = @test_case.raw(deploydir)
+      @php = php
+      files['phpt'] = @test_case.raw()# TODO deploydir)
       self
     end
 
     attr_reader :test_case, :test_bench
-    attr_accessor :status
+    attr_accessor :status 
 
     def to_s
       %Q{[#{status.to_s.upcase}] #{@test_bench} #{@test_case.relative_path}}
@@ -109,13 +110,12 @@ module PhptTestResult
       @filtered_expectation, @filtered_result = [@test_case.expectation[:content], result_str].map do |str|
         str.gsub("\r\n","\n").strip
       end
-      @diff = nil
       
       @diff_spec = (case @test_case.expectation[:type]
         when :expect then Diff::Exact
         when :expectregex then Diff::RegExp
         when :expectf
-          case php.properties[:php_version_major]
+          case @php.properties[:php_version_major]
           when 5 then Diff::Formatted::Php5
           when 6 then Diff::Formatted::Php6
           else Diff::Formatted

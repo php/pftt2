@@ -59,42 +59,43 @@ module TestBench
         #      provide a hash to the iteration (ex scenarios[:file_system] should have 1 scenario (not array) within the iteration)
         # input: takes in a a structure like this
         # {:working_file_system=>[#<Scenario::FileSystem::Smb:0x32ee198>], :database=>[#<Scenario::Database::Mysql::Tcp:0x329b218>]}
-        scenario_values = scenarios.values.flatten
+        scenario_values = scenarios# TODO ? .values.flatten
         
         # except for :working_file_system, try each combination with no scenarios of that type too (+scenarios.keys.length-1)
-        cg = CombinationGenerator.new(scenario_values.length+scenarios.keys.length-1, scenarios.keys.length)
-        scenarios = []
-        while cg.hasMore do
-          idicies = cg.getNext()
-          
-          scn_set = {}
-          skip_set = false
-          idicies.each do |idx|
-            if idx >= scenario_values.length
-              # if here, this is a combination that is meant to not include any of a particular scenario type
-              next
-            end
-            scn = scenario_values[idx]
-            
-            if scn_set.has_key? scn.scn_type
-              skip_set = true
-              break
-            else
-              scn_set[scn.scn_type] = scn
-            end
-          end
-          unless skip_set
-            scenarios.push(scn_set)
-          end
-        end
+# TODO       cg = CombinationGenerator.new(scenario_values.length+scenarios.keys.length-1, scenarios.keys.length)
+#        scenarios = []
+#        while cg.hasMore do
+#          idicies = cg.getNext() 
+#          
+#          scn_set = {}
+#          skip_set = false
+#          idicies.each do |idx|
+#            if idx >= scenario_values.length
+#              # if here, this is a combination that is meant to not include any of a particular scenario type
+#              next
+#            end
+#            scn = scenario_values[idx]
+#            
+#            if scn_set.has_key? scn.scn_type
+#              skip_set = true
+#              break
+#            else
+#              scn_set[scn.scn_type] = scn
+#            end
+#          end
+#          unless skip_set
+#            scenarios.push(scn_set)
+#          end
+#        end
         # output: produces a new structure like this
         # [{:working_file_system=>#<Scenario::FileSystem::Smb:0x32ee198>, :database=>#<Scenario::Database::Mysql::Tcp:0x329b218>}, 
         #  {:working_file_system=>#<Scenario::FileSystem::Smb:0x32ee198>, :database=>#<Scenario::Database::Mysql::Ssl:0x3297408>}, {:file_system=>#<Context::FileSystem::Http:0x32e8150>, 
         #
         #
+        scenarios = scenario_values # TODO
         
         final_test_cases = []
-        test_ctx = TestBenchRunContext.new(self, test_cases.flatten.length, final_test_cases)
+        test_ctx = TestBenchRunContext.new(self, test_cases.flatten.length, test_cases.flatten, final_test_cases)
         
         
         hosts.each do |host|
@@ -109,6 +110,11 @@ module TestBench
         
         #
         test_ctx.show_label_legend
+        
+        if test_cases.empty?
+          # no point in deploying, installing, uninstalling, and tearing down
+          return test_ctx
+        end
                   
         
         # iterate over all scenario sets (where there is one instance of each scenario type (file system, database))
@@ -125,27 +131,36 @@ module TestBench
                   next
                 end
                 
-                @test_bench.install(scn_set[:working_file_system], middleware)
+                install(scn_set.working_fs, middleware)
                 
-                test_ctx.create_entries(host, middleware, php, scn_set)
+                # tell middleware to start (ex: start IIS)
+                middleware.start!
                 
-                middlewares_uninstall.push([scn_set[:working_file_system], middleware])
+                test_ctx.create_entries(host, middleware, php, scn_set, test_cases)
+                
+                middlewares_uninstall.push([scn_set.working_fs, middleware])
               end
             end
           end
         end
         
         # execute each, use a pool of worker threads to consume all test case-scenario-host-build-middleware combinations
-        run(final_test_cases, test_ctx)
+        unless final_test_cases.empty?
+          run(final_test_cases, test_ctx)
+        end
         
         # do uninstall
         middlewares_uninstall.each do |params|
+          # tell middleware to stop (ex: shutdown IIS)
+          params[1].stop!
+          
           uninstall(params[0], params[1])
         end
         
         # teardown scenarios on each host
         hosts.each do |host|
           scenarios.each do |scn_set|
+            # TODO where is deploy ??
             scn_set.teardown(host)
           end
         end
@@ -302,8 +317,9 @@ module TestBench
   class TestBenchRunContext < ResultsContext
     attr_reader :tr, :test_case_len, :semaphore1, :semaphore2, :semaphore3, :semaphore4, :semaphore5, :chunk_replacement
     
-    def initialize(test_bench, test_case_len, final_test_cases)
+    def initialize(test_bench, test_case_len, test_cases, final_test_cases)
       @final_test_cases = final_test_cases
+      @test_cases = test_cases
       @tr = $auto_triage ? Diff::Base::TriageResults.new() : nil
       
       @test_bench = test_bench
@@ -361,7 +377,7 @@ module TestBench
           host_name_i = host_name.length - 1
           while host_name_i >= 0
           
-            name = ( scn_id[scn_id_i] + host_name[host_name_i] + mw_name[mw_name_i] + version ).upcase
+            name = ( scn_id[scn_id_i] + mw_name[mw_name_i] + version + host_name[host_name_i] ).upcase
           
             unless @labels.has_key?(name)
               set_label(host, middleware,  host_name, php, mw_name, scn_set, name)
@@ -398,7 +414,7 @@ module TestBench
         @labels.keys.each do |label|
           host_name, php, mw_name, scn_set = @labels[label]
           
-          puts "  #{label} - #{host_name} #{mw_name} #{php.to_s} Scenario #[scn_set.id}"
+          puts "  #{label} - Scenario #{scn_set.id} #{mw_name} #{php.to_s} #{host_name} "
           
         end
         puts
@@ -439,9 +455,9 @@ module TestBench
           results = @results[host][middleware][php][scn_set] = PhptTestResult::Array.new()
         end
         
-        if results.length > @test_case_len
-          raise 'TooManyResultsError' # shouldn't happen
-        end
+# TODO        if results.length > @test_case_len
+#          raise 'TooManyResultsError' # shouldn't happen
+#        end
         
         results.push(result)
         
@@ -457,7 +473,7 @@ module TestBench
         # user can follow telemetry in real-time
         label = legend_label(host, php, middleware, scn_set)
                     
-        console_out("  [#{label}] #{tf}")
+        console_out("  [#{label}] Telemetry #{tf}")
       end
       
       @semaphore5.synchronize do
@@ -466,7 +482,7 @@ module TestBench
       end
 
       if do_finished_host_build_middleware_scenarios
-        report = @test_bench.finished_host_build_middleware_scenarios(self, tf, host, php, middleware, scenarios, results)
+        report = @test_bench.finished_host_build_middleware_scenarios(self, tf, host, php, middleware, scn_set, results)
         
         @semaphore4.synchronize do
           # write list of scenarios tested
@@ -516,7 +532,7 @@ module TestBench
         @labels2[host].keys.each do |mw_spec|
           @labels2[host][mw_spec].keys.each do |php|
             @labels2[host][mw_spec][php].keys.each do |scn_set|
-              create_entries(host, mw_spec.new(host, php, scn_set), scn_set)
+              create_entries(host, mw_spec.new(host, php, scn_set), php, scn_set, test_cases)
             end
           end
         end
@@ -544,18 +560,18 @@ module TestBench
       # 1. delete any remaining entries for this combo
       delete_entries(host, middleware, scn_set, php)
       # 2. recreate all of them
-      create_entries(host, middleware, scn_set)
+      create_entries(host, middleware, php, scn_set, @test_cases)
     end
     
     def create_entries(host, middleware, php, scn_set, test_cases)
-      test_cases.each do |test_case|
+      test_cases.flatten.each do |test_case| # TODO flatten
           
         # make sure the test case is compatible too
-        unless test_case.compatible(host, middleware, php, scn_set)
-          next
-        end
+# TODO       unless test_case.compatible?(host, middleware, php, scn_set)
+#          next
+#        end
           
-        @final_test_cases.push({:test_case=>test_case, :host=>host, :php=>php, :middleware=>middleware, :scenarios=>scenarios})
+        @final_test_cases.push({:test_case=>test_case, :host=>host, :php=>php, :middleware=>middleware, :scenarios=>scn_set})
       end
     end
     

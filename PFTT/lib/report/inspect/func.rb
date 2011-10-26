@@ -1,7 +1,7 @@
 
 module Report
   module Inspect
-    class Func
+    class Func < Base
       def initialize(test_cases)
         @test_cases = test_cases
       end
@@ -9,17 +9,17 @@ module Report
         str = "\r\n"
         unless $brief_output
       
-          str += 'PHPTs('+test_cases.length+'):'
+          str += 'PHPTs('+@test_cases.length.to_s+"):\r\n"
       
-          test_cases.each do test_case
+          @test_cases.each do |test_case|
             str += test_case.full_name + "\r\n"
           end
         
           str += "\r\n"
         end
     
-        str += "HOSTS#{$hosts.length}):\r\n"
-        str += puts_or_empty($hosts)
+        str += "HOSTS(#{$hosts.length}):\r\n"
+        str += puts_or_empty($hosts) 
     
         if $phps.empty?
           str += "PFTT: suggestion: run 'pftt get_php' to get a PHP binary build to test\r\n"
@@ -32,21 +32,26 @@ module Report
         str += "MIDDLEWARES(#{$middlewares.length}):\r\n"
         str += puts_or_empty($middlewares)
     
-        flat_scenarios = $scenarios.values.flatten
+        flat_scenarios = $scenarios#[0].values# TODO [0] .values.flatten
     
-        str += "CONTEXTS(#{flat_scenarios.length}):\r\n"
+        str += "SCENARIO SETS(#{flat_scenarios.length}):\r\n"
         str += puts_or_empty(flat_scenarios)
         str += "\r\n"
     
+        str
       end
       
       protected
       
       def puts_or_empty array
         if array.empty?
-          return '<None>'
+          return "<None>\r\n\r\n"
         else
-          return array.to_s
+          str = ""
+          array.each do |e|
+            str += e.to_s+"\r\n"
+          end
+          return str+"\r\n"
         end
       end
       

@@ -332,7 +332,7 @@ module Host
       unless @_name
         # find a name that other hosts on the network will use to reference localhost
         if windows?
-          @_name = line!('echo %COMPUTERNAME%')
+          @_name = unquote_line!('echo %COMPUTERNAME%')
         else
           @_name = line!('echo $HOSTNAME')
         end

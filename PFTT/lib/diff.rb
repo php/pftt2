@@ -1,5 +1,6 @@
 
 require 'abstract_class'
+require 'iconv'
 
 module Diff
   class Base
@@ -12,6 +13,8 @@ module Diff
       @middleware = middleware
       @scn_set = scn_set
       @php = php
+      
+      @iconv = Iconv.new('US-ASCII//IGNORE', 'UTF-8')
     end
 
     def to_s
@@ -20,7 +23,8 @@ module Diff
         when :insert then '+'
         when :delete then '-'
         else ''
-        end + (String.not_nil(line[(line[0]==:delete)?3:1])).gsub(/\n\Z/,'')
+        # use iconv to fix character encoding problems
+        end + (@iconv.conv(String.not_nil(line[(line[0]==:delete)?3:1])).gsub(/\n\Z/,''))
       end.join("\n")
     end
 
@@ -666,7 +670,7 @@ module Diff
         # the order matters because %string% must be replaced before %s.
         patterns(rex)
       
-        return super( rex, result ) or super( rex, result.rstrip.chomp )
+        super( rex, result ) or super( rex, result.rstrip.chomp )
       end
     end
 
@@ -697,13 +701,13 @@ module Diff
 
     class Php5 < Formatted
       def patterns(rex)
-        super(rex)
-        rex.gsub!('%u\|b%', '')
-        rex.gsub!('%b\|%u', '') #PHP6+: 'u'
-        rex.gsub!('%binary_string_optional%', 'string') #PHP6+: 'binary_string'
         rex.gsub!('%unicode_string_optional%', 'string') #PHP6+: 'Unicode string'
+        rex.gsub!('%binary_string_optional%', 'string') #PHP6+: 'binary_string'
         rex.gsub!('%unicode\|string%', 'string') #PHP6+: 'unicode'
         rex.gsub!('%string\|unicode%', 'string') #PHP6+: 'unicode'
+        rex.gsub!('%u\|b%', '')
+        rex.gsub!('%b\|%u', '') #PHP6+: 'u'
+        super(rex)
       end
       
       def show_expect_info
@@ -718,13 +722,13 @@ module Diff
     
     class Php6 < Formatted
       def patterns(rex)
-        super(rex)
-        rex.gsub!('%u\|b%', 'u')
-        rex.gsub!('%b\|%u', 'u') #PHP6+: 'u'
-        rex.gsub!('%binary_string_optional%', 'binary_string') #PHP6+: 'binary_string'
         rex.gsub!('%unicode_string_optional%', 'Unicode string') #PHP6+: 'Unicode string'
+        rex.gsub!('%binary_string_optional%', 'binary_string') #PHP6+: 'binary_string'
         rex.gsub!('%unicode\|string%', 'unicode') #PHP6+: 'unicode'
         rex.gsub!('%string\|unicode%', 'unicode') #PHP6+: 'unicode'
+        rex.gsub!('%u\|b%', 'u')
+        rex.gsub!('%b\|%u', 'u') #PHP6+: 'u'
+        super(rex)
       end
       
       def show_expect_info

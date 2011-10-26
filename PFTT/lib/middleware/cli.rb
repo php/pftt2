@@ -12,6 +12,18 @@ module Middleware
       'CLI'
     end
     
+    def start!
+      # nothing to do
+    end
+    
+    def stop!
+      # nothing to do
+    end
+    
+    def running?
+      true
+    end
+    
     def clone
       clone = Middleware::Cli.new(@host.clone, @php_build, @scenarios)
       clone.deployed_php = @deployed_php
@@ -50,7 +62,7 @@ module Middleware
               
       # tell scenarios that script is about to be started
       # scenarios may modify env or current_ini
-      scenarios.execute_script_start(env, test, script_type, deployed_script, self.php_binary, @php_build, current_ini, @host )
+      # TODO scenarios.execute_script_start(env, test, script_type, deployed_script, self.php_binary, @php_build, current_ini, @host )
       
       # generate options for the command execution
       exe_options = {
@@ -81,7 +93,7 @@ module Middleware
         ].flatten.compact.join(' ')
        
       # save (in telemetry folder) the environment variables and the command line string used to run this case case
-      save_cmd(test_case, env, exe_options[:chdir], cmd_string)
+      # TODO save_cmd(test_case, env, exe_options[:chdir], cmd_string)
       
       # feed in stdin string if present to PHP's standard input
       if test_case.parts.has_key?(:stdin)
@@ -94,7 +106,7 @@ module Middleware
 
       
       # tell scenarios that script has stopped
-      scenarios.execute_script_stop(test, script_type, deployed_script, self.php_binary, @php_build, @host)
+      # TODO scenarios.execute_script_stop(test, script_type, deployed_script, self.php_binary, @php_build, @host)
       
       # return success|failure and the output
       [s==0, (o+e)]
@@ -104,7 +116,7 @@ module Middleware
     
     # saves the command line and environment variables to run the test case into a telemetry folder file
     # (save as a shell script or batch script)
-    def save_cmd(test_case, env, chdir, cmd_string)
+    def save_cmd(test_case, env, chdir, cmd_string) 
       file_name = telemetry_folder(@host, @php, @middleware, @scenarios) + '/' + test_case.relative_path+((@host.windows?)?'.cmd':'.sh')
       File.open(file_name, 'wb') do |f|
         if host.posix?

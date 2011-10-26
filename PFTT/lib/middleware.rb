@@ -18,6 +18,14 @@ module Middleware
       @host.close
     end
     
+    def self.to_s
+      mw_name
+    end
+    
+    def to_s
+      mw_name
+    end
+    
     def ==(o)
       return self.class == o.class
     end
@@ -48,7 +56,7 @@ module Middleware
       
       # ask scenarios for the folder to deploy PHP to
       deploy_to = nil
-      @scenarios.map{|scn_type, scn| deploy_to||= scn.deployed_php(self) }
+      # TODO @scenarios.map{|scn_type, scn| deploy_to||= scn.deployed_php(self) }
       
       unless deploy_to
         # fallback on storing php in a sub-folder in %SYSTEMDRIVE%/php-sdk/PFTT-PHPs or ~/php-sdk/PFTT-PHPs
@@ -64,7 +72,7 @@ module Middleware
       
       # if $force_deploy, make a new directory! otherwise, reuse existing directory (for quick manual testing can't take the time
       #          to copy everything again)
-      @deployed_php ||= @host.join(deploy_to, ( @php_build[:version] + ( $force_deploy ? '_'+String.random(4) : '' ) ) )
+      @deployed_php ||= @host.join(deploy_to, ( @php_build[:version] + ((@php_build[:threadsafe])?'-TS':'-NTS') + ( $force_deploy ? '_'+String.random(4) : '' ) ) )
       
       #
       if $force_deploy or not File.exists?(php_binary()) or File.mtime(@php_build.path) >= File.mtime(php_binary())
@@ -93,11 +101,11 @@ module Middleware
       apply_ini(@current_ini)
       
       # ask scenarios to add anything they need to this INI
-      scn_set.ini(platform, @current_ini)
+      # TODO scn_set.ini(platform, @current_ini)
                   
       @current_ini
     end
-
+ 
     def uninstall r=nil
       _undeploy_php_bin
       unset_ini

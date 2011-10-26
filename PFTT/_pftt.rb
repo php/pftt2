@@ -220,10 +220,10 @@ class PfttOptions < OptionsHash
     
   def help_list_actions
     puts
-    puts '  func_part     - runs selected PHPT tests (ex: manual tool)'
     puts '  func_full     - deploys PHP and runs PHPT tests (ex: automatic tool)'
     puts '  func_list     - write list of PHPT tests to file. useful with func_part'
     puts '  func_inspect  - inspects options/configs used for func_part or func_full'
+    puts '  func_part     - runs selected PHPT tests (ex: manual tool)'
     puts '  perf          - run Performance test'
     puts '  stress        - run Stress test'
     puts '  unit          - run PHPUnit tests from PHP-AzureSDK, MediaWiki, Symfony, etc'
@@ -600,9 +600,10 @@ class PfttOptions < OptionsHash
     
     begin
       list = []
-      self[:phpt].each{|phpt|
+      self[:phpt].each do |phpt|
+        # TODO puts phpt.inspect
         list.push(PhptTestCase::Array.new(phpt, self[:test_names]))
-      }
+      end
       return list
     rescue PhptTestCase::Array::DuplicateTestError
       puts "PFTT: error: same test occurs in multiple directories: #{file}"
@@ -619,15 +620,24 @@ CONFIG = PfttOptions.parse(ARGV)
 
 # set up our basic test bench factors
 $hosts = (Host::Array.new.load(CONFIG[:host,:path].convert_path)).filter(CONFIG[:host,:filters])
-$hosts.push(Host::Remote::Ssh.new(:address=>'127.0.0.1', :username=>'administrator', :password=>'password01!'))#Host::Local.new()) # TODO
+$hosts.push(#Host::Local.new(),#)# TODO
+  #OI1-PHP-FUNC-21-27
+  Host::Remote::Ssh.new(:address=>'10.200.50.72', :username=>'administrator', :password=>'password01!'),
+#  Host::Remote::Ssh.new(:address=>'10.200.50.39', :username=>'administrator', :password=>'password01!'),
+#  Host::Remote::Ssh.new(:address=>'10.200.50.33', :username=>'administrator', :password=>'password01!'),
+#  Host::Remote::Ssh.new(:address=>'10.200.50.37', :username=>'administrator', :password=>'password01!'),
+#  Host::Remote::Ssh.new(:address=>'10.200.50.36', :username=>'administrator', :password=>'password01!'),
+#  Host::Remote::Ssh.new(:address=>'10.200.50.77', :username=>'administrator', :password=>'password01!'), 
+#  Host::Remote::Ssh.new(:address=>'10.200.50.34', :username=>'administrator', :password=>'password01!'),
+  Host::Remote::Ssh.new(:address=>'127.0.0.1', :username=>'administrator', :password=>'password01!'))#Host::Local.new()) # TODO
 require 'typed-array'
 $phps = PhpBuild.get_set(CONFIG[:php,:dir].convert_path||'').filter(CONFIG[:php,:filters])
-$middlewares = [#Middleware::Cli]#, 
-  Middleware::Http::IIS::FastCgi::Base]#, Middleware::Http::Apache::ModPhp::Base] # TODO Middleware::All#.filter([])# TODO CONFIG[:middleware,:filters])
+$middlewares = [Middleware::Cli]#, 
+  #Middleware::Http::IIS::FastCgi::Base]#, Middleware::Http::Apache::ModPhp::Base] # TODO Middleware::All#.filter([])# TODO CONFIG[:middleware,:filters])
   
 # LATER? what about NFSv3 support (which ships with Windows 7<) (not NFSv4)
 $scenarios = [
-  Scenario::Set(
+  Scenario::Set.new(
       '1',
       Scenario::WorkingFileSystem::Local.new()#,
       #Scenario::RemoteFileSystem::Http.new,
@@ -833,14 +843,15 @@ if __FILE__ == $0
     
     unless CONFIG[:action] == 'perf'
       $testcases = CONFIG.selected_tests()
+      # TODO puts $testcases.inspect
     end
     
     #
     # add more threads to keep track of more hosts, but limit the size
-    $thread_pool_size = $thread_pool_size * $hosts.length
-    if $thread_pool_size > 60
-      $thread_pool_size = 60
-    end
+# TODO   $thread_pool_size = $thread_pool_size * $hosts.length
+#    if $thread_pool_size > 60
+#      $thread_pool_size = 60
+#    end
     #
     
     # stop Forefront Endpoint Protection and windows search service/indexer
@@ -860,11 +871,12 @@ if __FILE__ == $0
     
       require 'time'
     
+      # lock hosts with PFTT Server (if available) so they aren't used by two PFTT clients at same time
+      lock_all($hosts)
+      
       start_time = Time.now()
       begin
-        # lock hosts with PFTT Server (if available) so they aren't used by two PFTT clients at same time
-        lock_all($hosts)
-    
+        
         # if func_full automatically do host configuration
         if CONFIG[:action] == 'func_full'
           host_config
@@ -880,14 +892,31 @@ if __FILE__ == $0
         # iterate over all hosts, middlewares, etc..., running all tests for each
         test_ctx = test_bench.iterate( $phps, $hosts, $middlewares, $scenarios, $testcases )
 
+        end_time = Time.now()
+        run_time = end_time - start_time
+        
+        #
+        # reboot remote hosts to clean them up for next time
+        unless CONFIG[:action] == 'func_part'
+          $hosts.each do |host|
+            if host.instance_of?(Host::Remote::Base)
+              if host.windows?
+                host.exec!('shutdown /r /t 0')
+              else
+                host.exec!('shutdown -r -t 0')
+              end
+                  
+              sleep(5)
+            end
+          end
+        end
+        #
       ensure
         # ensure hosts are unlocked
         release_all($hosts)
-      
+        #
       end
-      end_time = Time.now()
-      run_time = end_time - start_time
-    
+      #
     ensure
       if CONFIG[:action] == 'func_full'
         # restart wsearch on hosts where it was already running (also, restart MsMpEng.exe)
@@ -937,7 +966,7 @@ if __FILE__ == $0
     end
     #
     #
-     
+    
     exit
   elsif CONFIG[:action] == 'func_inspect'
     # inspects what the configuration and arguments will have pftt do for the func_full or func_part actions

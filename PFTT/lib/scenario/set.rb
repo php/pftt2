@@ -9,6 +9,7 @@ module Scenario
     
     def initialize(id, working_filesystem_scenario, *optional_other_scenarios)
       @id = id
+      @working_fs = working_filesystem_scenario
       optional_other_scenarios.each do |scenario|
         case scenario.scn_type
         when :remote_file_system
@@ -63,6 +64,10 @@ module Scenario
       values.each do |scn|
         scn.teardown(host)
       end
+    end
+    
+    def to_s
+      "[Set #{@id} #{values.inspect}]"
     end
     
     def == (o)

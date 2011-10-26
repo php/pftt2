@@ -130,7 +130,7 @@ module Server
     end # def scrape_snapshot_urls
   
     def download_file_to_local(remote_url)
-      local_filename = ((@localhost.windows?)?@localhost.systemdrive+'/PFTT-PHPS/':'~/PFTT-PHPS')+File.basename(remote_url)
+      local_filename = ((@localhost.windows?)?@localhost.systemdrive+'/php-sdk/builds/':'~/php-sdk/builds/')+File.basename(remote_url)
       local_dir = local_filename
       
       # local dir should be same as local filename of ZIP without the .zip

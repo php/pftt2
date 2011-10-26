@@ -30,6 +30,10 @@ module Scenario
       return :unknown
     end
     
+    def to_s
+      scn_name
+    end
+    
     def self.instantiable
       All << self
     end

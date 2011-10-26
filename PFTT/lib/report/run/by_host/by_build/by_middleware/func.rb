@@ -21,7 +21,7 @@ module Report
               #
               
               str = "\r\n"
-                        
+                         
 
               str += "     === Test Run Completed === \r\n"
               str += "\r\n"
