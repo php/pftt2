@@ -3,6 +3,22 @@ module Util
   
 end
 
+class String
+  def convert_path
+    self.gsub('\\','/')
+  end
+  def convert_path!
+    self.gsub!('\\','/')
+  end
+  def self.not_nil(a)
+    if a==nil
+      ''
+    else
+      a
+    end
+  end
+end
+
 def generate_shell_script(cmd, ruby_script)
   if $is_windows
     if File.exists?("#{cmd}.cmd")

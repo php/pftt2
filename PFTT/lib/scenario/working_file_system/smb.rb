@@ -21,8 +21,8 @@ module Scenario
             #   mount -t cifs
             # create folder on file share
             #
-            # LATER posix support
-            host.exec!("net use T: \\#{@server}\#{@share} /persistent:no /user:#{@user} #{@password}")
+            # LATER posix support 
+            host.exec!("net use T: \\#{@server}\#{@share} /persistent:no /user:#{@user} #{@password}", Tracing::Context::Scenario::Deploy.new)
             
             # LATER pick drive letter. make PFTT-PHPTs
             @remote_folder_base = "T:/PFTT-PHPTs/"
@@ -33,7 +33,7 @@ module Scenario
           end
         
           def teardown(host)
-            host.exec!("net use T: /D")
+            host.exec!("net use T: /D", Tracing::Context::Scenario::Teardown.new)
           end
         end
       end

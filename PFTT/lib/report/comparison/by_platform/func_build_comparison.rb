@@ -9,7 +9,7 @@ module Report
         end
   
         def write_intro
-          "<html><body><h1>#{title}</h1><p>Comparing #{@resultset_a.title} (Base) with #{@resultset_b.title} (Test) (using tests current as of #{@resultset_a.test_time}</p><p>Click <a href=\"#{resultsets_comparison_url}\" target=\"_blank\">here</a> for a customizable comparison</p>"
+          "<html><body><h1>#{title}</h1><p>Comparing {@resultset_a.title} (Base) with {@resultset_b.title} (Test) (using tests current as of #{@resultset_a.test_time}</p><p>Click <a href=\"#{resultsets_comparison_url}\" target=\"_blank\">here</a> for a customizable comparison</p>"
         end
   
         def write_end
@@ -28,11 +28,24 @@ module Report
           bgcolor_bad = '#ff0000'
           #
           
+          
+          test_ctx_id = 1 # TODO
+          base_ctx_id = 2 # TODO
+          esc_base_ctx_id = @mysql.escape(base_ctx_id)
+          esc_test_ctx_id = @mysql.escape(test_ctx_id)
+          results = @mysql.query("SELECT test.*, base.* FROM phpt_results AS test, phpt_results AS base WHERE test.#{esc_test_ctx_id} AND base.test_ctx_id=#{esc_base_ctx_id} AND base.mw_name == test.mw_name GROUP BY base.mw_name, base.scenario_set_id")
+          
+          
           # table intrinsically does two builds and multiple hosts without making extra loops (just loop scenario, middleware and results)
           
-          @resultset_a[TypedToken::StringToken::ScenarioSet].each do |a|
-      
-            a[TypedToken::StringToken::MiddlewareName].each do|mw_txt|
+          last_mw_name = nil
+          results do |row|
+            
+            if row['test.mw_name'] != last_mw_name
+              last_mw_name = row['test.mw_name']
+                
+              mw_txt = row['test.mw_name']
+                                            
               cm.add_row({:text=>(cm.html?)?'<strong>'+mw_txt+'</strong>':mw_txt, :colspan=>22, :center=>true})
               cm.add_row(
                 {:text=>'OS', :colspan=>2, :bgcolor=>bgcolor_os},
@@ -57,88 +70,82 @@ module Report
               )
         
               windows_ini = posix_ini = ''
+            end
               
-              results = a[mw_txt]
-              if results.empty?
-                cm.add_row({:text=>'No Results', :colspan=>22, :center=>true})
-              else
-                resultset_base = nil
-                results.each do |resultset_test|
-                  platform = os_short_name(resultset_test.os_name)
-                  pass_rate = resultset_test.rate,
-                  change_pass_rate = pass_rate - resultset_base.rate
-                  pass = resultset_test.pass
-                  change_pass = pass - resultset_base.pass
-                  fail = resultset_test.fail
-                  change_fail = fail - resultset_base.fail
-                  xfail_pass = resultset_test.xfail
-                  change_xfail_pass = xfail_pass - resultset_base.xfail
-                  skip = resultset_test.skip
-                  change_skip = skip - resultset_base.skip
-                  xskip = resultset_test.xskip
-                  change_xskip = xskip - resultset_base.xskip
-                  xfail_work = resultset_test.works
-                  change_xfail_work = xfail_work - resultset_base.works
-                  bork = resultset_test.bork
-                  change_bork = bork - resultset_base.bork
-                  unsupported = resultset_test.unsupported
-                  change_unsupported = unsupported - resultset_base.unsupported
-                  # LATER do http:// instead of file:// (share w/ IIS to make directory listing)
-                  telemetry_url_base = resultset_base.telemetry_url
-                  telemetry_url_test = resultset_test.telemetry_url
+            # TODO cm.add_row({:text=>'No Results', :colspan=>22, :center=>true})
+              
+                  
+            change_pass_rate = ( row['test.pass_rate'] - row['base.pass_rate'] )
+            change_pass = ( row['test.pass'] - row['base.pass'] )
+            change_fail = ( row['test.fail'] - row['base.fail'] )
+            change_xfail_pass = ( row['test.xfail_pass'] - row['base.xfail_pass'] )
+            change_skip = ( row['test.skip'] - row['base.skip'] )
+            change_xskip = ( row['test.xskip'] - row['base.xskip'] )
+            change_xfail_work = ( row['test.xfail_work'] - row['base.xfail_work'] )
+            change_bork = ( row['test.bork'] - row['base.bork'] )
+            change_unsupported = ( row['test.unsupported'] - row['base.unsupported'] )
+                  
+            host_name = row['test.host_name']
+            if OS.has_key?(host_name)
+              platform = OS[host_name]
+            end
+            if platform.nil? or platform.length == 0
+              platform = os_short_name(resultset_test.os_name)
+            end
+                  
+            # LATER do http:// instead of file:// (share w/ IIS to make directory listing)
+            telemetry_url_base = row['base.telemetry_folder']
+            telemetry_url_test = row['test.telemetry_folder']
         
-                  cm.add_row(
-                    # :row_number=> show/increment row number
-                    {:row_number=>true, :bgcolor=>bgcolor_os},
-                    {:text=>platform, :bgcolor=>bgcolor_os},
-                    {:text=>pass_rate.to_s+'%', :bgcolor=>bgcolor_test},
-                    {:text=>((cm.html?)?'<small>':'')+((change_pass_rate>0)?'+':'')+change_pass_rate.to_s+'%'+((cm.html?)?'</small>':''), :bgcolor=>(change_pass_rate>=0)?((change_pass_rate>0)?bgcolor_good:bgcolor_test):bgcolor_bad},
-                    {:text=>pass.to_s, :bgcolor=>bgcolor_test},
-                    {:text=>((cm.html?)?'<small>':'')+((change_pass>0)?'+':'')+change_pass.to_s+((cm.html?)?'</small>':''), :bgcolor=>(change_pass>=0)?((change_pass>0)?bgcolor_good:bgcolor_test):bgcolor_bad},
-                    {:text=>fail.to_s, :bgcolor=>bgcolor_test},
-                    {:text=>((cm.html?)?'<small>':'')+((change_fail>0)?'+':'')+change_fail.to_s+((cm.html?)?'</small>':''), :bgcolor=>(change_fail>=0)?((change_fail>0)?bgcolor_bad:bgcolor_test):bgcolor_good},
-                    {:text=>xfail_pass.to_s, :bgcolor=>bgcolor_test},
-                    {:text=>((cm.html?)?'<small>':'')+((change_xfail_pass>0)?'+':'')+change_xfail_pass.to_s+((cm.html?)?'</small>':''), :bgcolor=>(change_xfail_pass>=0)?((change_xfail_pass>0)?bgcolor_good:bgcolor_test):bgcolor_bad},
-                    {:text=>skip.to_s, :bgcolor=>bgcolor_skip},
-                    {:text=>((cm.html?)?'<small>':'')+((change_skip>0)?'+':'')+change_skip.to_s+((cm.html?)?'</small>':''), :bgcolor=>(change_skip>=0)?((change_skip>0)?:bgcolor_bad:bgcolor_skip):bgcolor_good},
-                    {:text=>xskip.to_s, :bgcolor=>bgcolor_skip},
-                    {:text=>((cm.html?)?'<small>':'')+((change_xskip>0)?'+':'')+change_xskip.to_s+((cm.html?)?'</small>':''), :bgcolor=>(change_xskip>=0)?((change_xskip>0)?bgcolor_bad:bgcolor_skip):bgcolor_good},
-                    {:text=>xfail_work.to_s, :bgcolor=>bgcolor_test_bug},
-                    {:text=>((cm.html?)?'<small>':'')+((change_xfail_work>0)?'+':'')+change_xfail_work.to_s+((cm.html?)?'</small>':''), :bgcolor=>(change_xfail_work>=0)?((change_xfail_work>0)?bgcolor_bad:bgcolor_test_bug):bgcolor_good},
-                    {:text=>bork.to_s, :bgcolor=>bgcolor_test_bug},
-                    {:text=>((cm.html?)?'<small>':'')+((change_bork>0)?'+':'')+change_bork.to_s+((cm.html?)?'</small>':''), :bgcolor=>(change_bork>=0)?((change_bork>0)?bgcolor_bad:bgcolor_test_bug):bgcolor_good},
-                    {:text=>unsupported.to_s, :bgcolor=>bgcolor_pftt_bug},
-                    {:text=>((cm.html?)?'<small>':'')+((change_unsupported>0)?'+':'')+change_unsupported.to_s+((cm.html?)?'</small>':''), :bgcolor=>(change_unsupported>=0)?((change_unsupported>0)?bgcolor_bad:bgcolor_pftt_bug):bgcolor_good},
-                    {:text=>(cm.html?)?"<a href=\"#{telemetry_url_base}\" target=\"_blank\">Base</a>":telemetry_url_base, :bgcolor=>bgcolor_telemetry},
-                    {:text=>(cm.html?)?"<a href=\"#{telemetry_url_test}\" target=\"_blank\">Test</a>":telemetry_url_test, :bgcolor=>bgcolor_telemetry}
-                  )
+            cm.add_row(
+              # :row_number=> show/increment row number
+              {:row_number=>true, :bgcolor=>bgcolor_os},
+              {:text=>platform, :bgcolor=>bgcolor_os},
+              {:text=>row['test.pass_rate'].to_s+'%', :bgcolor=>bgcolor_test},
+              {:text=>((cm.html?)?'<small>':'')+((change_pass_rate>0)?'+':'')+change_pass_rate.to_s+'%'+((cm.html?)?'</small>':''), :bgcolor=>(change_pass_rate>=0)?((change_pass_rate>0)?bgcolor_good:bgcolor_test):bgcolor_bad},
+              {:text=>row['test.pass'].to_s, :bgcolor=>bgcolor_test},
+              {:text=>((cm.html?)?'<small>':'')+((change_pass>0)?'+':'')+change_pass.to_s+((cm.html?)?'</small>':''), :bgcolor=>(change_pass>=0)?((change_pass>0)?bgcolor_good:bgcolor_test):bgcolor_bad},
+              {:text=>row['test.fail'].to_s, :bgcolor=>bgcolor_test},
+              {:text=>((cm.html?)?'<small>':'')+((change_fail>0)?'+':'')+change_fail.to_s+((cm.html?)?'</small>':''), :bgcolor=>(change_fail>=0)?((change_fail>0)?bgcolor_bad:bgcolor_test):bgcolor_good},
+              {:text=>row['test.xfail_pass'].to_s, :bgcolor=>bgcolor_test},
+              {:text=>((cm.html?)?'<small>':'')+((change_xfail_pass>0)?'+':'')+change_xfail_pass.to_s+((cm.html?)?'</small>':''), :bgcolor=>(change_xfail_pass>=0)?((change_xfail_pass>0)?bgcolor_good:bgcolor_test):bgcolor_bad},
+              {:text=>row['test.skip'].to_s, :bgcolor=>bgcolor_skip},
+              {:text=>((cm.html?)?'<small>':'')+((change_skip>0)?'+':'')+change_skip.to_s+((cm.html?)?'</small>':''), :bgcolor=>(change_skip>=0)?((change_skip>0)?:bgcolor_bad:bgcolor_skip):bgcolor_good},
+              {:text=>row['test.xskip'].to_s, :bgcolor=>bgcolor_skip},
+              {:text=>((cm.html?)?'<small>':'')+((change_xskip>0)?'+':'')+change_xskip.to_s+((cm.html?)?'</small>':''), :bgcolor=>(change_xskip>=0)?((change_xskip>0)?bgcolor_bad:bgcolor_skip):bgcolor_good},
+              {:text=>row['test.xfail_work'].to_s, :bgcolor=>bgcolor_test_bug},
+              {:text=>((cm.html?)?'<small>':'')+((change_xfail_work>0)?'+':'')+change_xfail_work.to_s+((cm.html?)?'</small>':''), :bgcolor=>(change_xfail_work>=0)?((change_xfail_work>0)?bgcolor_bad:bgcolor_test_bug):bgcolor_good},
+              {:text=>row['test.bork'].to_s, :bgcolor=>bgcolor_test_bug},
+              {:text=>((cm.html?)?'<small>':'')+((change_bork>0)?'+':'')+change_bork.to_s+((cm.html?)?'</small>':''), :bgcolor=>(change_bork>=0)?((change_bork>0)?bgcolor_bad:bgcolor_test_bug):bgcolor_good},
+              {:text=>row['test.unsupported'].to_s, :bgcolor=>bgcolor_pftt_bug},
+              {:text=>((cm.html?)?'<small>':'')+((change_unsupported>0)?'+':'')+change_unsupported.to_s+((cm.html?)?'</small>':''), :bgcolor=>(change_unsupported>=0)?((change_unsupported>0)?bgcolor_bad:bgcolor_pftt_bug):bgcolor_good},
+              {:text=>(cm.html?)?"<a href=\"#{telemetry_url_base}\" target=\"_blank\">Base</a>":telemetry_url_base, :bgcolor=>bgcolor_telemetry},
+              {:text=>(cm.html?)?"<a href=\"#{telemetry_url_test}\" target=\"_blank\">Test</a>":telemetry_url_test, :bgcolor=>bgcolor_telemetry}
+            )
       
-                end
-              end # end result
+          end
             
-              cm.add_row(
-                {:text=>(cm.html?)?'<strong>Windows INI:</strong>':'INI:', :colspan=>2},
-                {:text=>windows_ini.to_s, :colspan=>20}
-              )
-              cm.add_row(
-                {:text=>(cm.html?)?'<strong>Linux INI:</strong>':'INI:', :colspan=>2},
-                {:text=>posix_ini.to_s, :colspan=>20}
-              )
+# LATER              cm.add_row(
+#                {:text=>(cm.html?)?'<strong>Windows INI:</strong>':'INI:', :colspan=>2},
+#                {:text=>windows_ini.to_s, :colspan=>20}
+#              )
+#              cm.add_row(
+#                {:text=>(cm.html?)?'<strong>Linux INI:</strong>':'INI:', :colspan=>2},
+#                {:text=>posix_ini.to_s, :colspan=>20}
+#              )
+#            
+#              cm.add_row(
+#                {:text=>(cm.html?)?'<strong>Scenarios:</strong>':'Scenarios:', :colspan=>2},
+#                {:text=>ctx_set.inspect.to_s, :colspan=>20}
+#              )
             
-              cm.add_row(
-                {:text=>(cm.html?)?'<strong>Scenarios:</strong>':'Scenarios:', :colspan=>2},
-                {:text=>ctx_set.inspect.to_s, :colspan=>20}
-              )
-            
-            end # middleware
-      
-          end # scenario
-   
           return cm
         end
   
         def write_attachments
           attachments = {}
+            
+            # TODO generate an inline list for each platform
         
           # for each platform, attach a diff of each PASS, FAIL, SKIP, etc... list between each result set (test run)
           resultsets_by_platform().each{|resultsets|
@@ -202,6 +209,41 @@ module Report
       
           return text
         end
+        
+  OS = {}
+  OS['OI1-PHP-FUNC-0'] = 'XP Pro SP3 x64'  
+  OS['OI1-PHP-FUNC-1'] = 'XP Pro SP3 x86' 
+  OS['OI1-PHP-FUNC-2'] = '2003 SP0 x86'
+  OS['OI1-PHP-FUNC-3'] = '2003 SP1 x86'
+  OS['OI1-PHP-FUNC-4'] = '2003 SP2 x86'
+  OS['OI1-PHP-FUNC-5'] = '2003r2 SP0 x64'
+  OS['OI1-PHP-FUNC-6'] = '2003r2 SP1 x64'
+  OS['OI1-PHP-FUNC-7'] = '2008 SP0 x64'
+  OS['OI1-PHP-FUNC-8'] = '2008 SP1 x64'
+  OS['OI1-PHP-FUNC-9'] = 'Vista SP0 x64'
+  OS['OI1-PHP-FUNC-10'] = 'Vista SP1 x64'
+  OS['OI1-PHP-FUNC-11'] = 'Vista SP2 x64' 
+  OS['OI1-PHP-FUNC-12'] = '7 SP0 x64'
+  OS['OI1-PHP-FUNC-13'] = '7 SP1 x64'
+  OS['OI1-PHP-FUNC-14'] = '2008r2 SP0'
+  OS['OI1-PHP-FUNC-15'] = '2008r2 SP1'
+  OS['OI1-PHP-FUNC-16'] = '8 Preview x64'
+  OS['OI1-PHP-FUNC-17'] = '8 Server Preview'
+  OS['OI1-PHP-FUNC-18'] = '2003r2 SP0 x86'
+  OS['OI1-PHP-FUNC-19'] = '2003r2 SP1 x86'
+  OS['OI1-PHP-FUNC-20'] = '2008 SP0 x86'
+  OS['OI1-PHP-FUNC-21'] = '2008 SP1 x86'
+  OS['OI1-PHP-FUNC-22'] = 'Vista SP0 x86'
+  OS['OI1-PHP-FUNC-23'] = 'Vista SP1 x86'
+  OS['OI1-PHP-FUNC-24'] = 'Vista SP2 x86'
+  OS['OI1-PHP-FUNC-25'] = '7 SP0 x86'
+  OS['OI1-PHP-FUNC-26'] = '7 SP1 x86'
+  OS['OI1-PHP-FUNC-27'] = '8 Preview x86'
+    # TODO Gentoo Linux (Calculate Linux)
+    # TODO CentOS Linux
+    # TODO Ubuntu Linux
+    # TODO Fedora
+    # TODO PC-BSD
     
       end
     end

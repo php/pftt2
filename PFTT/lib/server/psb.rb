@@ -1,7 +1,7 @@
 
 require 'webrick'
 
-module Web
+module Server
   class PSB < WEBrick::HTTPServlet::AbstractServlet
 
     def do_fbc_report(response, base, test)
@@ -32,20 +32,24 @@ TABLE
       
       do_header(response)
       if request.query['report'] == 'fbc'
-        if request.query['base']
-          if request.query['test']
-            do_fbc_report(response, request.query['base'], request.query['test'])
-          else
-            # show the func run list again, but
-            # have the user pick the second run to compare to
-            do_fbc_list(response, request.query['base'])
-          end
-        else
-          do_fbc_list(response)
-        end
+        response.body += "<p>FBC reporting not yet implemented</p>"
+# TODO       if request.query['base']
+#          if request.query['test']
+#            do_fbc_report(response, request.query['base'], request.query['test'])
+#          else
+#            # show the func run list again, but
+#            # have the user pick the second run to compare to
+#            do_fbc_list(response, request.query['base'])
+#          end
+#        else
+#          do_fbc_list(response)
+#        end
       elsif request.query['report'] == 'pbc'
         # LATER PSB support for PBC reports
         response.body += "<p>PBC reporting not yet implemented</p>"
+      elsif request.query['report'] == 'net_view'
+        # LATER PSB support for net_view reports
+        response.body += "<p>net_view not yet implemented</p>"
       else
         do_home(response)
       end
@@ -55,7 +59,7 @@ TABLE
     def do_home(response)
       response.body += <<-HOME
 <h3>To start, choose Functional or Performance reporting</h3>
-    
+<br/>
 <p><a href="https://github.com/OSTC/PFTT2" target="_blank"><font color="blue">PFTT Project</font></a></p>
 <br/>
 <h2>Terminology</h2>
@@ -67,7 +71,7 @@ TABLE
 <li><strong>FBC-S</strong> Report - For Stable release. All scenarios tested.</li>
 </ul>
 </li>
-<li><strong>PBC</strong> - Performance Build Comparison Report
+<li><strong>PBC</strong> Report - Performance Build Comparison Report
 <ul>
 <li><strong>PBC-D</strong> Report - For Daily use. One scenario set tested.</li>
 <li><strong>PBC-S</strong> Report - For Stable release. All scenarios tested.</li>
@@ -82,6 +86,18 @@ TABLE
 <li><strong>FCR</strong> Report - Functional Combination (Host/Build/Middleware) Run Report</li>
 <li><strong>PGR</strong> Report - Performance Group Run Report (combines multiple PCR reports)</li>
 <li><strong>PCR</strong> Report - Performance Combination (Host/Build/Middlware) Run Report</li>
+<li><strong>PSC</strong> Protocol - PFTT SSH Communications Protocol enables PFTT clients and hosts (so hosts only need base OS and ssh to be used with PFTT)</li> 
+</ul>
+<br/>
+<h2>PFTT Features</h2>
+<ul>
+<li>Track changes <b>over time</b> with PSB</li>
+<li>Makes testing many OS/Versions <b>quick and convenient</b>, instead of laborious and tedious (helps to avoid bugs like PHP #57578). </li>
+<li>PHP-Core, application devs, analysts and reviewers get a <b>consistent, reproducable system to compare</b> PHP-Core and Apps accross multiple OSs, Versions and Hosting Platforms.</li>
+<li>Test hosts only need a network connection and SSH support. PFTT does the rest! </li>
+<li>Automating entire test series and <b>repetitive tasks related to manual testing</b>, PFTT provides Faster, efficient and more predictable test cycles!</li>
+<li>Configures multiple middlewares, scenarios and PHP builds (TS and NTS) for <b>easy to reproduce setups</b> (auto documents test setups for transparency too!)</li>
+<li>Manage revisions and create PHP builds</li>      
 </ul>
 HOME
     end
@@ -100,6 +116,7 @@ HOME
 <td><a href="/"><font color="blue">Home</font></a></td>
 <td><a href="/?report=fbc"><font color="blue">Functional (FBC)</font></a></td>
 <td><a href="/?report=pbc"><font color="blue">Performance (PBC)</font></a></td>
+<td><a href="/?report=net_view"><font color="blue">Network</font></a></td>
 </tr>
 </table>
 

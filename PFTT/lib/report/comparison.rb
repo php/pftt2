@@ -10,7 +10,8 @@ module Report
   
       def resultsets_comparison_url
         # see Server::PSB
-        "http://pftt_server/?report=fbc&base=#{@resultset_a.run_id}&test=#{@resultset_b.run_id}"
+        # LATER report=pbc
+        "http://157.59.85.152/?report=fbc&base=#{@resultset_a.run_id}&test=#{@resultset_b.run_id}"
       end
       
       protected

@@ -5,7 +5,7 @@ class PhpBuild
 
   def self.get_set(*globs)
     set = Class.new(TypedArray( self )){include TestBenchFactorArray}.new
-      
+       
     globs.each do |glob|
       Dir.glob( glob ) do |php|
         next if php.end_with? '.zip'
@@ -27,6 +27,16 @@ class PhpBuild
     end
     
     set
+  end
+  
+  def self.from_xml(xml)
+    PhpBuild.new(xml['@path'])
+  end
+  
+  def to_xml
+    {
+      '@path' => @path,
+    }
   end
 
   def initialize path, hsh={}
@@ -136,8 +146,9 @@ class PhpBuild
         end
         property :compiler => (parts.select{|i| i =~ /vc[0-9]+/i }).first.upcase
 
-      rescue
-        raise 'Unsupported PHP Build Type(Info Format)'
+      rescue  
+        # TODO TUE raise 'Unsupported PHP Build Type(Info Format)'
+property :threadsafe => false
       end
     end
     

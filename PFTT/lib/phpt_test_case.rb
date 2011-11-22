@@ -9,16 +9,17 @@ class PhptTestCase
   include TestBenchFactor
 
   # PHPT files may have many sections. some sections are required, some are optional.
-  #
+  # 
   # see http://qa.php.net/phpt_details.php for info about all the sections
   @@supported_sections = {
     :required => [
       [:file,:fileeof,:file_external],
-      [:expect,:expectf,:expectregex,:expectheaders],
+      [:expect,:expectf,:expectregex],
       [:test]
     ],
     :optional => [
       [:credit,:credits],
+      [:comment],
       [:ini],
       [:skipif],
       [:description],
@@ -40,19 +41,74 @@ class PhptTestCase
     ]
   }
 
-  attr_reader :phpt_path, :dir, :parts
+  attr_reader :phpt_path, :dir# TODO , :parts
 
   def initialize( dir, path, set=nil )
-    if !File.exists?( path ) 
-      raise 'File not found: ['+path+']'
+    unless $hosted_int
+      if path.starts_with?('G:/abc')
+        path = path['G:/abc'.length+1...path.length]
+        # TODO TUE  
+      end
+#      unless path.starts_with?('C:/abc')
+#        path = 'C:/abc/'+path
+#      end
+      
     end
+# TODO TUE   if !File.exists?( path ) 
+#      raise 'File not found: ['+path+']'
+#    end
     @dir = dir
     @phpt_path = path
     @set = set
     @env = {} # enable mw_redirecttest to pass ENV vars to be returned by cli_env
+    @parts = {}
   end
   attr_accessor :scn_list
   attr_reader :set, :env
+  
+  def path(type)
+    # TODO
+    # :http  :local_working :remote_working
+  end
+  
+  def to_xml()
+    xml = {
+      '@dir' => dir,
+      '@path' => @phpt_path
+    }
+    # don't need to include the phpt sections, the client will already have it
+    # this saves a lot of resources
+    #
+    # TODO client needs to read this data from memory, not file!!
+#    xml['part'] = []
+ #   parts.each do |key, content|
+  #    xml['part'].push({'@part_name'=>key, 'text'=>content})
+   # end
+    return xml
+  end
+   
+  def self.from_xml(xml)
+    dir = xml['@dir']
+    unless dir.is_a?(String)
+      dir = dir.to_s
+    end
+    dir.gsub!('G:/', 'C:/')
+    test_case = PhptTestCase.new(dir, xml['@path'])
+#    xml['part'].each do |part|
+ #     part_name = part['@part_name']
+  #    text = part['text']
+  #      
+      # match symbol to string
+        # TODO .flatten
+   #   @@supported_sections.flatten.each do |part_sym|
+    #    if part_sym.to_s == part_name
+#          test_case.parts[part_sym] = text
+ #         break
+ #       end
+  #    end
+   # end
+    return test_case
+  end
   
   def http_headers(mw_cli)
     # support for --HEADERS-- section
@@ -170,7 +226,7 @@ class PhptTestCase
       #  server-tests.php doesn't seem to use support them at all (server-tests.php only seems to support these 4)
       
       i = line.index('=')
-      if i==-1
+      unless i
         @borked_reasons||=[]
         @borked_reasons << 'malformed environment variable line (PHPT ENV section)'
         next
@@ -249,6 +305,14 @@ class PhptTestCase
     @name ||= File.basename @phpt_path, '.phpt'
   end
   
+  def full_name_wo_phpt
+    fn = full_name
+    if fn.ends_with?('.phpt')
+      fn = fn[0..fn.length-'.phpt'.length-1]
+    end
+    return fn
+  end
+  
   def full_name
     test_case_name = @phpt_path
     if test_case_name.starts_with?(@dir)
@@ -281,8 +345,22 @@ class PhptTestCase
   end
 
   def expectation
-    @expectation_type ||= (parts.keys & [:expect,:expectf,:expectregex]).first
-    @expectation ||= {:type => @expectation_type, :content => self[@expectation_type]}
+    if @expectation
+      return @expectation
+    end
+    p = parts()
+    if p.has_key?(:expect)
+      @expectation_type = :expect
+    elsif p.has_key?(:expectf)
+      @expectation_type = :expectf
+    elsif p.has_key?(:expectregex)
+      @expectation_type = :expectregex
+    else
+      return nil
+    end
+    # TODO include :expectheaders here too??
+    @expectation = {:type => @expectation_type, :content => p[@expectation_type]}
+    return @expectation
   end
 
   def options
@@ -348,7 +426,7 @@ class PhptTestCase
   end
 
   def has_section? section
-    return parts.has_key?(section)
+    return parts.has_key?(section) # LATER
   end
 
   def save_section( section, path, extension=section.to_s )
@@ -396,7 +474,7 @@ class PhptTestCase
   end
 
   def raw()
-    @raw ||= IO.read(File.join('c:/php-sdk/svn/branches/php_5_4/', full_name)) # TODO phptdir
+    @raw ||= IO.read(File.join(@dir, full_name))
   end
 
   def parse!()
@@ -408,6 +486,7 @@ class PhptTestCase
         section = Regexp.last_match[:section].downcase.to_sym
         @parts[section]=''
       else
+        @parts[section]||=''
         @parts[section] += parse_line line, File.dirname( @phpt_path )
       end
     end
@@ -427,7 +506,7 @@ class PhptTestCase
   # TODO protected
 
   def reset!
-    @parts = {}
+    # TODO @parts = {}
     @ini = nil
     @options = nil
   end
@@ -445,7 +524,9 @@ class PhptTestCase
   end
 
   def parts
-    parse! unless @parts
+    parse! if @parts.empty?
+#    puts @parts.inspect
+#    exit
     @parts
   end
 end
@@ -531,6 +612,10 @@ class PhptTestCase::Array < TypedArray(PhptTestCase)
     if file.starts_with?('Release') or file.starts_with?('Release_TS')
       return
     end
+    # TODO 
+    if file.include?('basedir') or file.include?('zlib') or file.include?('gzgetc') or file.include?('gzfile') or file.include?('bug52820') or file.include?('bug47644') or file.include?('bug53241') or file.include?('bug55124') or file.include?('phar') or file.include?('bug53848')
+      return
+      end 
     @selected.push(file)
     push(PhptTestCase.new( dir, File.join(dir, file), self ))
   end

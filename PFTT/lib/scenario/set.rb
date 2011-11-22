@@ -11,6 +11,9 @@ module Scenario
       @id = id
       @working_fs = working_filesystem_scenario
       optional_other_scenarios.each do |scenario|
+        if scenario.nil?
+          next # for from_xml
+        end
         case scenario.scn_type
         when :remote_file_system
           @remote_fs = scenario
@@ -20,6 +23,43 @@ module Scenario
           @database = scenario
         end
       end
+    end
+    
+    def self.from_xml(xml)
+      remote_fs = nil
+      working_fs = nil
+      database = nil
+      date = nil
+      if xml.has_key?('remote_fs')
+        remote_fs = Scenario::RemoteFileSystem.from_xml(xml['remote_fs'])
+      end
+      if xml.has_key?('database')
+        remote_fs = Scenario::Database.from_xml(xml['database'])
+      end
+      if xml.has_key?('date')
+        remote_fs = Scenario::Date.from_xml(xml['date'])
+      end
+      if xml.has_key?('working_fs')
+        remote_fs = Scenario::WorkingFileSystem.from_xml(xml['working_fs'])
+      end
+      Scenario::Set.new(xml['@id'], working_fs, remote_fs, date, database)
+    end
+    
+    def to_xml
+      xml = {
+        '@id' => @id,
+        'working_fs' => @working_fs.to_xml        
+      }
+      if @remote_fs
+        xml['remote_fs'] = @remote_fs.to_xml
+      end
+      if @date
+        xml['date'] = @date.to_xml
+      end
+      if @database
+        xml['database'] = @database.to_xml
+      end
+      return xml
     end
     
     def execute_script_start(env, test, script_type, deployed_script, php_binary, php_build, current_ini, host)
@@ -63,6 +103,12 @@ module Scenario
     def teardown(host)
       values.each do |scn|
         scn.teardown(host)
+      end
+    end
+    
+    def deploy(host)
+      values.each do |scn|
+        scn.deploy(host)
       end
     end
     

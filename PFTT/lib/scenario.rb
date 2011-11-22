@@ -1,10 +1,12 @@
 
+require 'php_ini.rb'
+
 # Provide methodology for adding scenarios (filesystem, code caching, etc.)
 # in an abstract way. These will get mixed in at the iteration level.
 module Scenario
   class Base
     include PhpIni::Inheritable
-
+    
     def deploy(host_info)
     end
     

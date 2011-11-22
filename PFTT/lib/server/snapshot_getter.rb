@@ -40,10 +40,12 @@ module Server
     protected
     
     def wget(local_filename, remote_url)
+      ctx = Tracing::Context::Dependency::Install.new
+      
       if @localhost.windows?
-        @localhost.exec!(@localhost.systemdrive+"/php-sdk/bin/wget -O #{local_filename} #{remote_url}")
+        @localhost.exec!(@localhost.systemdrive+"/php-sdk/bin/wget -O #{local_filename} #{remote_url}", ctx)
       else
-        @localhost.exec!("wget -O #{local_filename} #{remote_url}")
+        @localhost.exec!("wget -O #{local_filename} #{remote_url}", ctx)
       end
     end
     
@@ -179,11 +181,13 @@ module Server
         # decompress into a directory named with the filename
         @localhost.mkdir(local_dir)
         
+        ctx = Tracing::Context::Dependency::Install.new
+        
         # run unzip from that directory
         if @localhost.windows?
-          @localhost.exec!(@localhost.systemdrive+"/php-sdk/bin/unzip #{local_filename}", {:chdir=>local_dir})
+          @localhost.exec!(@localhost.systemdrive+"/php-sdk/bin/unzip #{local_filename}", ctx, {:chdir=>local_dir})
         else
-          @localhost.exec!("unzip #{local_filename}", {:chdir=>local_dir})
+          @localhost.exec!("unzip #{local_filename}", ctx, {:chdir=>local_dir})
         end
       end
     

@@ -1,12 +1,99 @@
 
+require 'diff.rb' # ensure Diff:: is resolved
+
 module PhptTestResult
   class Base
     def initialize( test_case, test_bench, deploydir, php )
+      # parse here so PhptTestCase#to_xml can ommit the test case (other than path)
+      test_case.parse! # TODO need to read from memory, not file
+      
       @test_case = test_case
       @test_bench = test_bench
       @php = php
-      files['phpt'] = @test_case.raw()# TODO deploydir)
+      files['phpt'] = @test_case.raw()
       self
+    end
+    
+    def self.from_xml(xml, test_bench, deploydir, php)
+      rclass = case xml['@result_type']
+      when 'PhptTestResult::XSkip'
+        PhptTestResult::XSkip
+      when 'PhptTestResult::Skip'
+        PhptTestResult::Skip
+      when 'PhptTestResult::Bork'
+        PhptTestResult::Bork
+      when 'PhptTestResult::Unsupported'
+        PhptTestResult::Unsupported
+      when 'PhptTestResult::Meaningful'
+        PhptTestResult::Meaningful
+      end
+      if xml['@status'] == 'unsupported'
+        r = rclass.new(PhptTestCase.from_xml(xml['test_case'][0]), test_bench, deploydir, php)
+      elsif xml.has_key?('@reason')
+        r = rclass.new(PhptTestCase.from_xml(xml['test_case'][0]), test_bench, deploydir, php, xml['@reason'])
+      else
+        #
+        begin
+        result_str = xml['result_str'][0]['text']
+        rescue
+        unless result_str
+          # TODO tue 
+          begin
+          result_str = xml['diff'][0]['result_str'][0]['text']
+  rescue
+  end  
+        end
+        end
+        #
+        unless result_str.is_a?(String)
+          result_str = result_str.to_s
+        end
+        r = rclass.new(PhptTestCase.from_xml(xml['test_case'][0]), test_bench, deploydir, php, result_str)
+      end
+      case xml['@status']
+      when 'pass'
+        r.status = :pass
+      when 'fail'
+        r.status = :fail
+      when 'skip'
+        r.status = :skip
+      when 'xskip'
+        r.status = :xskip
+      when 'bork'
+        r.status = :bork
+      when 'unsupported'
+        r.status = :unsupported
+      when 'works'
+        r.status = :works
+      when 'xfail'
+        r.status = :xfail
+      end
+      if xml.has_key?('diff')
+        r.diff = xml['diff'][0]
+        unless r.diff.is_a?(String)
+          r.diff = ''
+        end
+      end
+      r.set_files
+      return r
+    end
+    
+    def to_xml
+      xml = {
+        '@result_type' => self.class.to_s,
+        'test_case' => @test_case.to_xml,
+        '@status' => @status
+      }
+      if @diff
+        xml['diff'] = @diff.to_s
+      end
+      if @reason
+        xml['@reason'] = @reason
+      end
+      if @result_str
+        xml['result_str'] = @result_str
+      end 
+      return xml
     end
 
     attr_reader :test_case, :test_bench
@@ -16,16 +103,17 @@ module PhptTestResult
       %Q{[#{status.to_s.upcase}] #{@test_bench} #{@test_case.relative_path}}
     end
 
-    def save(base_path)
-      
-      FileUtils.mkdir_p base_path
-      File.open( File.join( base_path, %Q{#{status.to_s.upcase}.list} ), 'a' ) do |file|
-        file.write test_case.relative_path + "\n"
-      end
-      specific = File.join( base_path, File.dirname( test_case.relative_path ) )
+    def save_shared(files)
+      files[@status].write @test_case.relative_path + "\n"
+    end
+    
+    def save_single(base_path)
+      # IMPORTANT: save .diff files, expected output, actual output, etc...
+      # see #set_files and its usage
+      specific = File.join( base_path, File.dirname( @test_case.full_name ) )
       FileUtils.mkdir_p specific
       files.each_pair do |extension, contents|
-        File.open( File.join( specific, %Q{#{test_case.name}.#{extension}}),'w') do |file|
+        File.open( File.join( specific, @test_case.name + '.' + extension.to_s ),'w') do |file|
           file.write contents
         end
       end
@@ -40,19 +128,28 @@ module PhptTestResult
       global_db.execute("INSERT INTO results (iter_id, test_module, test_case, test_bench, result) VALUES(?, ?, ?, ?, ?)", global_iter_id, @test_case.ext_name, @test_case.full_name, @test_bench.to_s, self.status.to_s)
       local_db.execute("INSERT INTO results (iter_id, test_module, test_case, test_bench, result) VALUES(?, ?, ?, ?, ?)", local_iter_id, @test_case.ext_name, @test_case.full_name, @test_bench.to_s, self.status.to_s)
     end
+    
+    def set_files
+    end
 
     private
 
     def files # { '.php' => 'contents of the file' }
       @files ||= {}    
     end
+    
   end
   
   class XSkip < Base
-    def initialize *args, reason
-      super *args
+    def initialize test_case, test_bench, deploydir, php, reason
+      super test_case, test_bench, deploydir, php
       self.status = :xskip
       @reason = reason
+      set_files
+      self
+    end
+    def set_files
+      super
       files['xskipif.php'] = @test_case[:skipif]
       files['xskipif_result'] = @reason
       self
@@ -64,13 +161,17 @@ module PhptTestResult
   end
 
   class Skip < Base
-    def initialize *args, reason
-      super *args
+    def initialize test_case, test_bench, deploydir, php, reason
+      super test_case, test_bench, deploydir, php
       self.status = :skip
       @reason = reason
+      set_files
+      self
+    end
+    def set_files
+      super
       files['skipif.php'] = @test_case[:skipif]
       files['skipif_result'] = @reason
-      self
     end
 
     def to_s
@@ -79,34 +180,44 @@ module PhptTestResult
   end
 
   class Bork < Skip
-    def initialize test_case, test_bench, deploydir
-      super test_case, test_bench, deploydir, test_case.bork_reasons
+    def initialize test_case, test_bench, deploydir, php, reason=''
+      # TODO PCS problem, can't give more than 1 bork reason or it'll create 2 xml tags named @reason, which causes parsing to fail
+      super test_case, test_bench, deploydir, php, ( ( test_case.bork_reasons.length > 1 ) ? test_case.bork_reasons[0] : test_case.bork_reasons )
       self.status = :bork
+      set_files
+      self
+    end
+    def set_files
+      super
       files.delete('skipif.php')# LATER fix inheritance so we don't need to do this
       files.delete('skipif_result')
       files.delete('xskipif.php')
       files.delete('xskipif_result')
-      self
     end
   end
 
   class Unsupported < Skip
-    def initialize test_case, test_bench, deploydir
-      super test_case, test_bench, deploydir, 'unsupported sections:'+test_case.unsupported_sections.join(',')
+    def initialize test_case, test_bench, deploydir, php
+      super test_case, test_bench, deploydir, php, 'unsupported sections:'+test_case.unsupported_sections.join(',')
       self.status = :unsupported
+      set_files
+      self
+    end
+    def set_files
+      super
       files.delete('skipif.php') # LATER fix inheritance so we don't need to do this
       files.delete('skipif_result')
       files.delete('xskipif.php')
       files.delete('xskipif_result')
-      self
     end
   end
 
   class Meaningful < Base
-    def initialize *args, result_str
-      super *args
+    def initialize test_case, test_bench, deploydir, php, result_str
+      super test_case, test_bench, deploydir, php
 
       @result_str = result_str
+      # probably still a good idea to do the \r\n and \n replacement on both the client and host side
       @filtered_expectation, @filtered_result = [@test_case.expectation[:content], result_str].map do |str|
         str.gsub("\r\n","\n").strip
       end
@@ -122,8 +233,25 @@ module PhptTestResult
           end
         end)
     end
-    
+    def set_files
+      super
+      files['php'] = @test_case[:file]
+      files[@test_case.expectation[:type]] = @test_case.expectation[:content]
+      files['result'] = @result_str
+      
+        unless @diff.is_a?(String)
+          @diff = @diff.to_s
+        end
+      if @diff.length > 0
+        files['diff']= @diff
+      end
+    end
+    attr_accessor :diff
     def generate_diff(test_ctx, host, middleware, php, scn_set, tr=nil)
+      if @diff
+        # this is probably the client, and the host already provided the diff
+        return @diff
+      end
       @diff = @diff_spec.new( middleware.filtered_expectation(@test_case, @filtered_expectation), @filtered_result, test_ctx, host, middleware, php, scn_set )
       
       self.extend (case [ !@test_case.has_section?(:xfail), @diff.changes.zero? ]
@@ -133,11 +261,8 @@ module PhptTestResult
       when [false, false] then RXFail::RPass # was expected to fail and failed
       end)
 
-      files['php'] = test_case[:file]
-      files[test_case.expectation[:type]] = test_case.expectation[:content]
-      files['result'] = @result_str
-
-      files['diff']=@diff.to_s unless @diff.changes.zero?
+      # don't need to do this on the host (thats why its not in #initialize)
+      set_files
         
       if $auto_triage
         return @diff.triage(tr)
@@ -214,6 +339,14 @@ module PhptTestResult
       #@end_time
           
     end
+    
+    def to_s
+      generate_stats().inspect
+    end
+    
+    def inspect
+      to_s
+    end
 
     def pass
       generate_stats[:pass]
@@ -264,7 +397,7 @@ module PhptTestResult
     end
 
     def rate
-      return 'NA' if (fail+pass).zero?
+      return 0 if (fail+pass).zero?
       ( pass * 100 ) / pass_plus_fail 
     end
     
@@ -328,13 +461,14 @@ module PhptTestResult
     end
     
     def generate_stats
-      if @counts
+      counts = @counts
+      if counts
         # don't need to generate again, list hasn't changed
-        return @counts
+        return counts
       end
       
-      @counts = Hash.new(0)
-      @results = {}
+      counts = Hash.new(0)
+      results = {}
       # count up all results
       self.each do |result|
         #
@@ -342,7 +476,7 @@ module PhptTestResult
         #
         count_status = result.status
         if count_status == :skip
-          @results.keys do |test_ctxs_status|
+          results.keys do |test_ctxs_status|
             test_ctxs_status.map do |ctx, status|
               if status == :pass
                 count_status = :pass
@@ -351,19 +485,21 @@ module PhptTestResult
             end
           end
         end
-        if not @results.has_key?(result.test_case.name)
-          @results[result.test_case.name] = {}
+        if not results.has_key?(result.test_case.name)
+          results[result.test_case.name] = {}
         end
+        if result and result.test_case and result.test_case.scn_list # TODO 
         result.test_case.scn_list.values.each do |scn|
-          @results[result.test_case.name][scn] = count_status
+          results[result.test_case.name][scn] = count_status
+        end
         end
         #
         #
         
-        @counts[count_status]||=0
-        @counts[count_status]+=1
+        counts[count_status]||=0
+        counts[count_status]+=1
       end
-      @counts
+      return @counts = counts
     end
   end
 

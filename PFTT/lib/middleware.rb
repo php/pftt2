@@ -1,18 +1,42 @@
 
 require 'monkeypatch/string/unindent.rb'
+require 'util/install.rb'
 
 module Middleware
   class Base
     
     include TestBenchFactor
     include PhpIni::Inheritable
-
-    def self.instantiable
-      All << self
-    end
+ 
+#    def self.instantiable
+#      All << self
+#    end
 
     attr_accessor :docroot, :host
     attr_accessor :deployed_php
+    
+    def self.from_xml(xml, host, php_build, scn_set)
+      case xml['@name']
+      when 'CLI'
+        return Middleware::Cli.new(host, php_build, scn_set)
+      when 'IIS-FastCGI'
+        return Middleware::Http::Iis::FastCgi.new()
+      when 'IIS-FastCGI-WinCache'
+        return Middleware::Http::Iis::FastCgi::Wincache.new(host, php_build, scn_set)
+      when 'Apache-ModPHP'
+        return Middleware::Http::Apache::ModPhp.new(host, php_build, scn_set)
+      when 'Apache-ModPHP-APC'
+        return Middleware::Http::Apache::ModPhp::APC.new(host, php_build, scn_set)
+      when 'Apache-ModPHP-APC-IGBinary'
+        return Middleware::Http::Apache::ModPhp::APC::IGBinary.new(host, php_build, scn_set)
+      end
+    end
+    
+    def to_xml
+      {
+        '@name' => mw_name
+      }
+    end     
     
     def close
       @host.close
@@ -53,6 +77,8 @@ module Middleware
     end
 
     def _deploy_php_bin
+      # TODO try running php.exe -n --help to make sure it will run (VC9 runtime, etc...) 
+      
       
       # ask scenarios for the folder to deploy PHP to
       deploy_to = nil
@@ -74,14 +100,22 @@ module Middleware
       #          to copy everything again)
       @deployed_php ||= @host.join(deploy_to, ( @php_build[:version] + ((@php_build[:threadsafe])?'-TS':'-NTS') + ( $force_deploy ? '_'+String.random(4) : '' ) ) )
       
-      #
-      if $force_deploy or not File.exists?(php_binary()) or File.mtime(@php_build.path) >= File.mtime(php_binary())
-        puts "uploading... "+@deployed_php
-        @host.upload(@php_build.path,@deployed_php) unless @host.exist? @deployed_php
-        puts "uploaded!"
-      else
-        puts "PFTT: reusing deployed php: #{@deployed_php}"
-      end
+      #    
+#  TODO TUE    if $force_deploy or not File.exists?(php_binary()) or File.mtime(@php_build.path) >= File.mtime(php_binary())
+        unless $hosted_int
+        puts "PFTT:deploy: uploading... "+@deployed_php
+      host.upload_force("c:/php-sdk/5.4.0beta2-NTS.7z", host.systemdrive+'/5.4.0beta2-NTS.7z', false) # critical: false
+                
+      sd = host.systemdrive
+      host.delete_if("#{sd}\\php-sdk\\PFTT-PHPs\\5.4.0beta2-NTS")
+          ctx = Tracing::Context::Dependency::Check.new # TODO
+      host.exec!("#{sd}\\php-sdk\\bin\\7za.exe x -o#{sd}\\php-sdk\\PFTT-PHPs #{sd}\\5.4.0beta2-NTS.7z > #{sd}\\null.txt", ctx, {:chdir=>"#{sd}\\"})
+        #@host.upload(@php_build.path,@deployed_php) 
+        puts "PFTT:deploy: uploaded!"
+        end
+#      else
+#        puts "PFTT:deploy: reusing deployed php: #{@deployed_php}"
+#      end
       
       @deployed_php 
     end
@@ -93,8 +127,13 @@ module Middleware
     end
 
     def install r=nil
+      # TODO set host's clock to the same time as the client's clock
       _deploy_php_bin
       apply_ini(@current_ini)
+      
+      vc9 = Util::Install::VC9.new(@host)
+      vc9.ensure_installed()
+      
     end
     
     def create_ini(scn_set, platform)
@@ -196,7 +235,7 @@ module Middleware
 
   end
 
-  All = (Class.new(TypedArray( Class )){include TestBenchFactorArray}).new #awkward, but it works.
+  # TODO jruby All = (Class.new(TypedArray( Class )){include TestBenchFactorArray}).new #awkward, but it works.
 end
 
 # Load up all of our middleware classes right away instead of waiting for the autoloader
@@ -204,4 +243,4 @@ end
 # although it technically does not matter the order in which they are loaded (as they will trigger
 # autoload events on missing constants), reverse tends to get shallow before deep and should improve
 # performance, if only marginally.
-Dir.glob(File.join( File.dirname(__FILE__), 'middleware/**/*.rb')).reverse_each &method(:require)
+# TODO jruby Dir.glob(File.join( File.dirname(__FILE__), 'middleware/**/*.rb')).reverse_each &method(:require)

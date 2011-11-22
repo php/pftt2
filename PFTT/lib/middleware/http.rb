@@ -5,7 +5,7 @@ require "uri"
 module Middleware
   module Http
     class HttpBase < Base
-      property :interface => 'http'
+      #property :interface => 'http'
       
       def translate_path(deployed_script) # TODO fix URL translation 8080 for apache
         'http://127.0.0.1/'+deployed_script.gsub('C:\\Users\v-mafick\Desktop\sf\workspace\SSHD','').gsub('C:/inetpub/wwwroot', '').gsub('C:/Program Files (x86)/Apache Software Foundation/Apache2.2/htdocs/', '')

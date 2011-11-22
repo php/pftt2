@@ -14,7 +14,7 @@ module Diff
       @scn_set = scn_set
       @php = php
       
-      @iconv = Iconv.new('US-ASCII//IGNORE', 'UTF-8')
+      # TODO @iconv = Iconv.new('US-ASCII//IGNORE', 'UTF-8') 
     end
 
     def to_s
@@ -24,7 +24,8 @@ module Diff
         when :delete then '-'
         else ''
         # use iconv to fix character encoding problems
-        end + (@iconv.conv(String.not_nil(line[(line[0]==:delete)?3:1])).gsub(/\n\Z/,''))
+        # TODO end + (@iconv.conv(String.not_nil(line[(line[0]==:delete)?1:3])).gsub(/\n\Z/,''))
+      end + ((String.not_nil(line[(line[0]==:delete)?1:3])).gsub(/\n\Z/,''))
       end.join("\n")
     end
 
@@ -133,127 +134,10 @@ module Diff
             
       ans = @test_ctx.prompt(((dlm.delete?)?'-':'+')+'PFTT:'+dlm.line_num.to_s+':'+((dlm.delete?)?'-':'+')+dlm.line_num.to_s+'( d=delete a=add p=print i=ignore r=replace m=more )'+((dlm.delete?)?'-':'+'))
       
-      if ans=='-' or ans=='d'
-        # delete: modify expect
-        dlm.delete
-      elsif ans=='+' or ans=='a'
-        # add: modify expect
-        dlm.add
-      elsif ans=='i'
-        # ignore: remove from diffs
-        dlm.ignore
-      elsif ans.length==0
-        # skip change
-        return
-      elsif ans=='s'
-        # skip line
-        dlm.skip_line = true
-      elsif ans=='S'
-        # skip file
-        dlm.skip_file = true
-      elsif ans=='r' or ans=='R' or ans=='A'
-        # r replace expect with regex to match actual
-        # R replace all in file
-        # A replace all in test case set
-        replace_with = @test_ctx.prompt('Change to(expect_type)') # TODO expect_type
-        dlm.replace(replace_with)
-        if ans=='R'
-          chunk_replacement[dlm.chunk] = replace_with
-        elsif ans=='A'
-          @test_ctx.chunk_replacement[dlm.chunk] = replace_with
-        end
-        return false # re-prompt
-      elsif ans=='t'
-        tr = triage()
+      # TODO p = Tracing::Prompt::Diff.new()
+      #p.prompt 
+    end # def prompt 
         
-        report = Report::Triage.new(tr)
-        
-        report.text_print()
-        
-        return false # re-prompt
-      elsif ans=='N'
-        # N next test case set
-        @test_ctx.next_test_case()
-      elsif ans=='X'
-        if @test_ctx.prompt_yesno('Are you sure you want to exit?')
-          exit
-        end
-        return false # re-prompt
-      elsif ans=='l'
-        # l - show modified expect line (or original if not modified)
-        put_line(dlm.modified_expect_line)
-        return false # re-prompt
-      elsif ans=='L'
-        # L - show original expect line
-        put_line(dlm.original_expect_line)
-        return false # re-prompt
-      elsif ans=='E'
-        # E - show original expect section
-        put_line(dlm.original_expect_section)
-        return false # re-prompt
-      elsif ans=='e'
-        # e - show modified expect section (or original if not modified)
-        put_line(dlm.modified_expect_section)
-        return false # re-prompt
-      elsif ans=='z'
-        # z - re-run test case set
-        @test_ctx.rerun_combo(@host, @middleware, @php, @scn_set)
-      elsif ans=='Z'
-        # Z - re-run test case set (not interactive)
-        $interactive_mode = false
-        @test_ctx.rerun_combo(@host, @middlware, @php, @scn_set) # TODO terminology: combo
-      elsif ans=='w'
-        # w - skip to next host
-        @test_ctx.next_host(@host, @middleware, @php, @scn_set)
-      elsif ans=='W'
-        # W - skip to next host (not interactive)
-        $interactive_mode = false
-        @test_ctx.next_host(@host, @middleware, @php, @scn_set)
-      elsif ans=='O'
-        # O - interactive mode off (then skip change)
-        $interactive_mode = false
-      elsif ans=='m'
-        puts
-        help
-        puts
-        return false # re-prompt
-      else
-        puts
-        help
-        show_expect_info
-        puts
-        return false # re-prompt
-      end
-      return true
-    end # def prompt
-    
-    def help
-      puts ' d      - (-) delete: modify expect'
-      puts ' a      - (+) add: modify expect'
-      puts ' i      - ignore: remove from diffs'
-      puts '<Enter> - skip change'
-      puts ' s      - skip line'
-      puts ' S      - skip file'
-      puts ' t      - Triage diffs in this test'
-      puts ' f      - runs tests non-interactively, then prompt to re-run'
-      puts ' r      - replace expect with regex to match actual'
-      puts ' R      - replace all in file'
-      puts ' A      - replace all in test case set'
-      puts ' N      - next test case set'
-      puts ' X      - exit'
-      puts ' l      - show modified expect line (or original if not modified)'
-      puts ' L      - show original expect line'
-      puts ' E      - show original expect section'
-      puts ' e      - show modified expect section (or original if not modified)'
-      puts ' z      - re-run test case set'
-      puts ' Z      - re-run test case set (not interactive)'
-      puts ' w      - skip to next host'
-      puts ' W      - skip to next host (not interactive)'
-      puts ' m      - display more commands (this whole list)'
-      puts ' O      - interactive mode off'
-      puts ' h      - help'
-    end
-    
     def show_expect_info
       # override this to display custom special characters
     end
@@ -287,7 +171,7 @@ module Diff
     # This method gets replaced by sub-classes and is the part that does the actual
     # comparrisons.
     def _compare_line( expectation, result )
-      expectation == result or expectation.rstrip.chomp == result.rstrip.chomp
+      expectation == result or (result.rstrip!=nil and expectation.rstrip.chomp == result.rstrip.chomp)
     end
 
     def _get_diff( expectation, result )
@@ -620,14 +504,14 @@ module Diff
 
   class Exact < Base
     def _compare_line( expectation, result )
-      expectation == result or expectation.rstrip.chomp == result.rstrip.chomp
+      expectation == result or expectation.rstrip.chomp == (result!=nil and result.rstrip.chomp)
     end
   end
 
   class RegExp < Base
     def _compare_line( expectation, result )
       r = Regexp.new(%Q{\\A#{expectation}\\Z})
-      r.match(result) or r.match(result.rstrip.chomp)
+      r.match(result) or (result!=nil and r.match(result.rstrip.chomp))
     end
   end
 
@@ -661,16 +545,19 @@ module Diff
     def _compare_line( expectation, result )
       if expectation == nil || result == nil
         return false
-      elsif expectation == result or expectation.rstrip.chomp == result.rstrip.chomp
+      end
+      rresult = result.rstrip.chomp
+      expectation = expectation.rstrip.chomp
+      if expectation == result or expectation == rresult
         return true
       else
-        rex = Regexp.escape(expectation.rstrip.chomp)
+        rex = Regexp.escape(expectation)
       
         # arrange the patterns in longest-to shortest and apply them.
         # the order matters because %string% must be replaced before %s.
         patterns(rex)
       
-        super( rex, result ) or super( rex, result.rstrip.chomp )
+        super( rex, result ) or super( rex, rresult )
       end
     end
 
@@ -678,7 +565,8 @@ module Diff
     # see run-tests.php line 1871
     def patterns(rex)
       rex.gsub!('%e', '.+') #[\\\\|/]',
-      rex.gsub!('%s', '.+') # TODO use platform specific EOL @host.EOL 
+      rex.gsub!('%s', '.+') # TODO use platform specific EOL @host.EOL
+      # host.eol_escaped 
       rex.gsub!('%S', '[^\r\n]*')
       rex.gsub!('%a', '.+')
       rex.gsub!('%A', '.*')

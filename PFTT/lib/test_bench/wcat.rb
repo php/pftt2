@@ -29,16 +29,17 @@ module TestBench
         check_run_content = false
       end
       
+      ctx = Tracing::Context::Test::Run.new()
       
       # write settings.ubr and client.ubr to a temp file to feed to wcctl
-      client_path = localhost.mktmpfile('client.ubr', client(perf_case))
-      settings_path = localhost.mktmpfile('settings.ubr', settings(perf_case))
+      client_path = localhost.mktmpfile('client.ubr', client(perf_case), ctx)
+      settings_path = localhost.mktmpfile('settings.ubr', settings(perf_case), ctx)
         
       # create temp file for the log fromm wcctl
-      log_path = localhost.mktmpfile("wcat_log_#{clients_per_host}.xml")
+      log_path = localhost.mktmpfile("wcat_log_#{clients_per_host}.xml", ctx)
       
       # execute wcctl (WCAT) which will wait for wcclient from hosts to connect
-      localhost.exec("#{wcat_path.convert_path}\wcctl.exe -t #{client_path} -f #{settings_path} -s #{target_host.host}:#{target_host.port} -v #{clients_per_host} -c 1 -o #{log_path} -x")
+      localhost.exec("#{wcat_path.convert_path}\wcctl.exe -t #{client_path} -f #{settings_path} -s #{target_host.host}:#{target_host.port} -v #{clients_per_host} -c 1 -o #{log_path} -x", {}, ctx)
       
       wcat_controller_machine_name = localhost.hostname
       
@@ -46,7 +47,7 @@ module TestBench
       # running the performance test
       hosts.each{|host|
         # exec wcclient in another thread
-        host.exec("wcclient.exe #{wcat_controller_machine_name}")
+        host.exec("wcclient.exe #{wcat_controller_machine_name}", {}, ctx)
       }
       
       #

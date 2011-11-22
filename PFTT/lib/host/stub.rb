@@ -1,5 +1,5 @@
 module Host
-  class Stub < Base
+  class Stub < HostBase
     def exec
       Thread.start do
         ['content','',-255]

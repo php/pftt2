@@ -7,6 +7,14 @@ module Scenario
       def scn_name
         'work_fs_local'
       end
+      
+      def from_xml(xml)
+        Scenario::WorkingFileSystem::Local.new()
+      end
+      
+      def to_xml
+        {'@scn_name' => scn_name}
+      end
     end
   end
 end

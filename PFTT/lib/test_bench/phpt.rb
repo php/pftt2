@@ -1,5 +1,7 @@
 
-module TestBench
+require 'util/package.rb'
+
+module TestBench 
   class Phpt < Base
 #    class << self
 #      def results_array
@@ -7,216 +9,509 @@ module TestBench
 #      end
 #    end
 #
-#    def save_dir
+#    def save_dir 
 #      File.join(
 #        %{#{@php.properties[:version]}-#{String.random(4)}}
 #      )
 #    end
+    
+    def initialize
+      super
+      @hm = Host::Remote::PSC::ClientManager.new
+    end
 
     #helper method. perhaps find a better place to put this.
     def deploy_phpt_section(host, test_case, section )
-      deployed_location = File.join(host.cwd, %Q{#{test_case.name}.#{test_case.extension[section]}})
+      # TODO 
+      deployed_location = File.join(host.systemdrive+'//abc', %Q{#{test_case.full_name_wo_phpt}.#{test_case.extension[section]}})
       
-      if $force_deploy or not host.exist?(deployed_location)
-        host.write(test_case[section], deployed_location)
+      #deployed_location.gsub!('/', '\\')
+       
+      unless $hosted_int.nil? # TODO $force_deploy or not host.exist?(deployed_location)
+        # only do this on host
+        host.write(test_case[section], deployed_location, Tracing::Context::Phpt::Upload.new)
       end
 
       deployed_location
     end
     
-    def run(test_case_sets, test_ctx)
-      
-      #
-      #test_case_sets.map do |test_cases|
-        #begin
-          # keep a separate cache for each call to #run (different calls may have different scenarios
-          #  therefore different SKIPIF results)
-          skip_if_code_cache = []
-          skip_if_result_cache = []
-          thread_pool = []
-          single_thread = nil
-          single_thread_test_cases = []
-          #
-            
-          # TODO 
-            #puts test_case_sets.inspect
-          scn_set = test_case_sets[0][:scenarios]#.values
-            
-          #fs_scn = test_case_sets[0][:scenarios].working_fs# TODO [:working_file_system]
-          host = test_case_sets[0][:host]
-          middleware = test_case_sets[0][:middleware]
-          middleware.host = host
-          php = test_case_sets[0][:php]
-          test_cases = test_case_sets#[0]
-#          if test_cases.is_a?(Array)
-#            test_cases = test_cases.first # TODO
-#          end
-          #   
-            
-          
-          # create a temporary directory to deploy to. the working filesystem scenario will
-          # decide where (either a local directory, remote SMB share, etc...)
-          deploy_root = scn_set.working_fs.docroot(middleware)
-          if $force_deploy
-            tmpdir = host.mktmpdir(deploy_root)
-          else
-            tmpdir = File.join(deploy_root, php[:version])
-          end
-          #
-
-          # run PHPTs in place unless $force_deploy (only true for the 'func_full' command or --force-deploy argument to 'func_part' command)
-          # parse all the phpt's and upload the files at the same time.
-          uploader = Thread.start{
-#  TODO          if $force_deploy or not host.exist?(tmpdir)
-#              puts 'uploading '+scn_set.working_fs.to_s;
-#              host.upload test_cases.path, tmpdir; # 
-#              puts 'uploaded.'
-#            end
-          }
-
-          test_cases.each do |entry|
-            #puts entry.inspect
-            entry[:test_case].parse!()#tmpdir)
-          end
-          # note: each test_case is an instance of PhptTestCase
-          puts %Q{selected #{test_ctx.test_case_len} test cases}
-          puts
-          
-          # wait... does deployment and test case parsing at same time.
-          uploader.join
-          
-          deployed = {}
-          
-          #   
-          # create a pool of threads to run each test case
-          single_thread = nil
-          block = true
-#          while block
-#            test_ctx.semaphore1.synchronize{
-#              thread_pool.push(Thread.start {
-                while true
-                  test_case = nil
-                  test_ctx.semaphore1.synchronize {
-                    if test_cases.empty?
-                      thread_pool.delete(Thread.current)
-                    else
-                      # remove test case from list
-                      test_case = test_cases.shift
-                    end
-                  }
-                  unless test_case
-                    break
-                  end    
-                  test_case = test_case[:test_case] # TODO              
-                  # some groups of tests may not have multiple tests from that group running at same time
-                  # because they try to use a resource that can't be used by more than one test
-                  # (ex: creating a web server on the same tcp port)
-                  # check if this is one of those threads here
-                  do_single_thread = 0
-                  $single_threaded_tests.each{|t|
-                    if test_case.full_name.include?(t)
-                      do_single_thread = 1
-                      break
-                    end
-                  }
-                  if do_single_thread == 1
-                    test_ctx.semaphore1.synchronize{
-                      if single_thread
-                        do_single_thread = 2
-                      end
-                    }
-                    
-                    if do_single_thread == 2
-                      # another thread is already executing the single thread tasks
-                      # put test_case back onto the list and move to the next test case
-                      # this, or other thread, will get the test case again when the single thread is free
-                      if test_cases.length < $thread_pool_size*2
-                        test_cases.push(test_case)
-                      else
-                        # try running the test case soon, since it may use resources of other tests
-                        # we'll be running soon (in which case, it may be faster)
-                        test_cases.insert($thread_pool_size, test_case)
-                      end
-                      next
-                    else
-                      single_thread = Thread.current
-                      # continue running test case
-                      do_single_thread = 3
-                    end
-                  end
-                  #
-                  #
-                  
-                  # see PhpTestResult::Array#generate_stats
-                  test_case.scn_list = scn_set#scenarios
-                  
-                  # run the test case!
-                  if $pftt_debug
-                    run_do_single_test_case(php, host, middleware, tmpdir, deployed, skip_if_code_cache, skip_if_result_cache, test_ctx, test_cases, test_case, scn_set)
-                  else
-                    begin
-                      run_do_single_test_case(php, host, middleware, tmpdir, deployed, skip_if_code_cache, skip_if_result_cache, test_ctx, test_cases, test_case, scn_set)
-                    rescue
-                      test_ctx.add_exception(host, php, middleware, scn_set, $!)
-                    end
-                  end
-                  
-                  if do_single_thread == 3
-                    test_ctx.semaphore1.synchronize {
-                      # clear thread so this|other thread can run other single thread test cases
-                      single_thread = nil
-                    }
-                  end
-                end
-#              })
-#              
-#              block = thread_pool.length < $thread_pool_size
-#            }
-#          end
-          
-          #
-          # wait for all threads to finish
-          while true
-            thread = nil
-            test_ctx.semaphore1.synchronize{
-              unless thread_pool.empty?
-                thread = thread_pool[0]
-              end
-            }
-            if thread
-              thread.join
-            else
-              break
-            end
-          end
-          #
-#        ensure
-#          # delete the deployment directory if func_full or func_part with --force-deploy
-#          if $force_deploy
-#            @host.delete tmpdir
-#          end
+    def deploy(host, php, middleware, scn_set, test_ctx, local_phpt_zip)
+      deploy_root = scn_set.working_fs.docroot(middleware)
+      if $force_deploy
+        tmpdir = host.mktmpdir(deploy_root)
+      else
+        tmpdir = File.join(deploy_root, php[:version])
+        tmpdir = host.systemdrive+'/abc' # TODO
+        # important: ensure tmpdir exists
+#   TODO     unless host.exist?(tmpdir)
+#          host.mkdir(tmpdir)
 #        end
+      end
+      puts 'deploy 45'
+      # LATER --force-local
+      if host.remote?
         
-        
-        
-        #
-        # done with deployment and testing of this set of test cases
-        #
-        # move on to next set of test cases (if any)
-        #
-        #results
-      #end # end test_case_sets.map
-      #
-    end # end def run
+        r = Host::Remote::ClientToHostedClientInterface.new(host, php, middleware, scn_set, test_ctx, @hm)
+        begin
+          r.deploy
+          
+          # have to upload all test cases to remote host to ensure it has the 
+          # ones it needs (and the non-phpt files they depend on, etc...)
+          # LATER only upload new files
+          #host.upload('c:/php-sdk/svn/branches/PHP_5_4', host.systemdrive+'/abc')
+          
+          # LATER only compress to 7zip if 260+ PHPTs or --compress or core_full
+          # LATER rename deploy() to install() or upload()
+  
+          # TODO TUE          
+          local_host = Host::Local.new()
+          
+          upload_7zip(local_host, host)
+          remote_phpt_zip = host.systemdrive+'/PHP_5_4.7z'
+          host.upload_force(local_phpt_zip, remote_phpt_zip, Tracing::Context::Phpt::Upload.new)
+          host.delete_if(host.systemdrive+'/abc', Tracing::Context::Phpt::Decompress.new)
+          host.delete_if(host.systemdrive+'/PHP_5_4', Tracing::Context::Phpt::Decompress.new)
+          # TODO unpackage(host, host.systemdrive, remote_phpt_zip)
+          sd = host.systemdrive
+          #sleep(20)
+          # critical: must chdir to output directory or directory where 7zip file is stored!!!
+          host.exec!("#{sd}\\php-sdk\\bin\\7za.exe x -o#{sd}\\ #{sd}\\PHP_5_4.7z > #{sd}\\null.txt", Tracing::Context::Phpt::Decompress.new, {:chdir=>"#{sd}\\"})
+          # TODO host.move(host.systemdrive+'/PHP_5_4', host.systemdrive+'/abc')
+          #sleep(20)
+          host.cmd!("move #{sd}\\php_5_4 #{sd}\\abc", Tracing::Context::PhpBuild::Compress.new)
+          
+          
+          
+          # TODO TUE
+          
+          puts "deploy 88"
+#           
+          if r.can_run_remote?
+            puts "deploy 91"
+            host.remote_interface = r
+          end 
+          puts "deploy 94"
+        rescue Exception => ex
+          if ctx
+            ctx.pftt_exception(self, ex)
+          else
+            Tracing::Context::Base.show_exception(ex)
+          end
+        end
+      end
+    end
     
-    def run_do_single_test_case(php, host, middleware, tmpdir, deployed, skip_if_code_cache, skip_if_result_cache, test_ctx, test_cases, test_case, scn_set)
-      do_single_test_case(php, host, middleware, tmpdir, deployed, skip_if_code_cache, skip_if_result_cache, test_ctx, test_cases, test_case, tmpdir, scn_set)
+    def do_parse(test_cases)
+      puts "PFTT:phpt: parsing test cases..."
+      test_cases.each do |test_case|
+        # note: each test_case is an instance of PhptTestCase
+        test_case.parse!()
+      end
+
+      puts "PFTT:phpt: selected/parsed #{test_cases.length} test cases"
+      puts
+    end
+        
+    def run(hosts, queue_entries_by_mw, test_ctx)
+      # there are separate queues for each middleware
+      queue_entries_by_mw.map do |middleware_spec, queue_entry_info|
+        install_thread_pool = Util::ThreadPool.new(queue_entry_info[:middlewares_by_host].length)
+          
+        #
+        # do installation of middleware and php build, and starting of middleware, in a thread
+        # deploying PHP may take a while (since a whole php build may have to be sent over network)
+        # therefore, do that for all hosts at once with threads 
+        queue_entry_info[:middlewares_by_host].map do |host, middleware|
+          install_thread_pool.add do
+            begin
+              install(queue_entry_info[:scn_set].working_fs, middleware)
+          
+            queue_entry_info[:scn_set].deploy(host)
+        
+            middleware.start!
+            rescue Exception => ex
+              if ctx
+                ctx.pftt_exception(self, ex)
+              else
+                Tracing::Context::Base.show_exception(ex)
+              end
+            end
+          end # Thread
+        end
+        
+        # wait until all deploying and installing is done
+# TODO TUE       install_thread_pool.each do |t|
+#          t.join
+#        end
+#        sleep(120)
+        install_thread_pool.join_seconds(120) # TODO 120
+        
+        puts
+        
+        puts "run 142"
+        ###
+        remotes = []
+        queue_entry_info[:middlewares_by_host].map do |host, middleware|
+          puts "run 146"
+          if host.remote? and host.remote_interface
+            puts "run 148"
+            fallback_entries = []
+            hosted_test_cases = []
+            php = nil
+              
+            # TODO do this in begin..rescue block to be sure to fallback
+          
+            # delete all queue entries for this host and middleware
+            queue_entry_info[:queue].delete_if do |entry|
+              if entry[:host] == host
+                fallback_entries.push(entry)
+                hosted_test_cases.push(entry[:test_case])
+                php = entry[:php] # TODO
+                false # delete
+              end
+              true # don't delete!
+            end
+            
+            # send all the test cases and php, middleware and scenarios to be run
+#   TODO         host.remote_interface.send_scn_set(queue_entry_info[:scn_set])
+#            #host.remote_interface.send_php(php)
+#            host.remote_interface.send_middleware(middleware)
+#            
+#            # send each test case to the client
+#            queue_entry_info[:queue].each do |entry|
+#              host.remote_interface.send_test_case(entry[:test_case])
+#            end
+                          
+            # send the message to start running the tests
+            host.remote_interface.send_start
+          
+            puts "run 179"
+            # run the hosted client (can't send messages to it anymore)
+            host.remote_interface.run(hosted_test_cases) do
+              # fallback
+              puts "FALLBACK to local control of tests #{host.name}"
+              # LATER PDT support here
+              # run tests locally
+              run_mw_single(queue_entry_info[:queue], test_ctx)
+              #run_mw_threaded(queue_entry_info[:queue], test_ctx)
+            end
+            puts "run 188"
+            # we'll need this later to wait for host to complete
+            remotes.push(host.remote_interface)
+          
+            
+          end # if
+        end # each
+        ###
+        puts "run 196"
+        
+        # if any entries in this queue need to be run locally, run them now
+        if $hosted_int
+          run_mw_single(queue_entry_info[:queue], test_ctx)
+          #run_mw_threaded(queue_entry_info[:queue], test_ctx)
+        end
+        
+        puts 'sleeping'
+               # TODO tue
+               sleep(9000) # Wait
+          
+        # wait until hosted done (probably done first though)
+        remotes.each do |remote|
+          remote.wait
+        end
+        
+       
+        
+        # run all tests for this middleware class BEFORE starting next
+        # (IIS and Apache middlewares can't both be run at the same time on the same host)
+        queue_entry_info[:middlewares_by_host].map do |host, middleware|
+          middleware.stop!
+        
+          uninstall(queue_entry_info[:scn_set].working_fs, middleware)
+          
+          queue_entry_info[:scn_set].teardown(host)
+        end
+        
+      end
+    end
+    
+    def run_mw_single(test_cases, test_ctx)
+      thread_pool = []
+      block = true
+      while block do
+        
+          thread = Thread.start do
+            block2 = true
+            while block2 do
+              # try to stagger starting of php.exe instances to stagger when they terminate
+              # if many of them terminate at once, you'll get a drop in cpu usage which wastes run time
+              #Thread.pass
+              if $hosted_int # LATER improve this later
+                sleep(1) # there are like ~50+ threads, sleep to give them a chance
+              end
+                            
+            test_case = nil
+            len = 0
+            test_ctx.semaphore1.synchronize do
+              if test_cases.empty?
+                block2 = false
+                break
+              else
+                test_case = test_cases.shift
+                len = test_cases.length
+              end
+            end # synchronize
+        
+            if test_case
+            begin
+              #puts len.to_s
+              do_test_case_in_thread(test_cases, test_case, test_ctx)
+            rescue Exception => ex
+              if ctx
+                ctx.pftt_exception(self, ex)
+              else
+                Tracing::Context::Base.show_exception(ex)
+              end
+            end
+            end
+            
+            end # while
+          end # Thread
+          
+        test_ctx.semaphore1.synchronize do
+          thread_pool.push(thread)
+          block = thread_pool.length < $thread_pool_size
+        end # synchronize
+      end # while
+      
+      # wait until all are done
+      thread_pool.each do |thread|
+        thread.join
+      end
+    end # run_mw_single
+    
+    def run_mw_threaded(test_cases, test_ctx) 
+      #deployed = {}
+      
+      #####
+      #####  run all the test case entries now (in threads)
+      #####
+      thread_pool = []
+      single_thread = nil
+      single_thread_test_cases = []
+                
+        
+      # create a pool of threads to run each test case
+      single_thread = nil
+      block = true
+      thread_create_count = 0
+  #    puts '103'
+      # TODO Thread.abort_on_exception = true
+      while block
+        test_ctx.semaphore1.synchronize do
+          thread = Thread.start do
+ #           puts '107'
+            begin
+            while true do
+#              puts '109'
+              test_case = nil
+
+                  i = 0
+                  # search for an unlocked task
+                  while test_case == nil do #i < test_cases.length
+  #                  puts '122'
+                    test_ctx.semaphore5.synchronize do
+ #                     puts '125'
+                      if i >= test_cases.length
+                        test_case = 'stop'
+                      else
+                        if test_cases[i][:host].lock.empty? # if not locked
+#                          puts '130'
+                          test_case = test_cases[i]
+                          test_cases.delete_at(i)
+                          # TODO let middleware lock!
+                          if test_cases[i][:host].remote? 
+                            test_case[:host].lock.push(1) # lock it
+                          end
+                        end
+                      end
+                    end # synchronize
+                    i += 1
+                    #puts '136'
+                  end
+#                  puts '138'
+                  # if all tasks are locked, test_case == nil, wait 1 second then repeat thread's main loop
+#                end
+#              end # synchronize
+              #puts '150 '#+test_case#.to_s
+              if test_case.is_a?(Hash)
+#                puts test_case.inspect
+              
+                
+                # TODO still do single threaded test check (some middlewares might not host but some test cases can only be run one at a time on a host)
+                # TODO have middleware do host locking (cli will lock host, http will not)
+                # TODO do diff engine, result display and result storage outside of host lock
+                # NOTES:
+                # to run on a host, including localhost, either:
+                #   1. SSHD must be an nt-service
+                #   2. SSHD must be run as administrator
+                #   3. UAC must be turned off
+                # -error catching (syntax errors, missing vars, etc.. in ruby)
+                # -for cli, run one test per host, thats it
+                begin
+#                  puts '131 '+thread_pool.index(Thread.current)
+                do_test_case_in_thread(test_cases, test_case, test_ctx)
+#                
+                rescue Exception => ex
+                  if ctx
+                    ctx.pftt_exception(self, ex)
+                  else
+                    Tracing::Context::Base.show_exception(ex)
+                  end
+                ensure
+#                  puts '148 '+thread_pool.index(Thread.current)
+                test_ctx.semaphore5.synchronize do
+                  test_case[:host].lock.clear # unlock
+                end
+#                puts '152 '+thread_pool.index(Thread.current).to_s
+                end
+              else
+                # wait one second before checking for more tasks on unlocked hosts
+                sleep(1)
+              end
+            end # while
+            
+            
+            rescue Exception => ex
+              if ctx
+                ctx.pftt_exception(self, ex)
+              else
+                Tracing::Context::Base.show_exception(ex)
+              end
+            end
+          end # Thread
+          
+          thread_pool.push(thread)
+          thread_create_count += 1
+                              
+          block = thread_create_count < $thread_pool_size
+          
+        end # synchronize
+        
+      end # while true
+                
+      #
+      # wait until queue empty instead
+      #
+      wait = true
+      while wait do
+        sleep(1)
+        test_ctx.semaphore5.synchronize do
+          wait = !( test_cases.empty? )
+        end
+      end
+      #
+      
+    end # run_mw_threaded
+    
+    def do_test_case_in_thread(test_cases, test_case, test_ctx)
+      #test_case[:host].lock.synchronize do
+                                       #puts '227'
+                    
+                                       # TODO track single threaded test cases in 'cache'
+                                       
+                    middleware = test_case[:middleware]
+                    host = test_case[:host]
+                    php = test_case[:php]
+                    cache = test_case[:cache]
+                    scn_set = test_case[:scenarios]
+                    test_case = test_case[:test_case] # TODO rename test_case to entry
+                      
+                      tmpdir = host.systemdrive+'/abc'#PFTT-PHPs/5.4.0beta1-NTS' # TODO temp
+                      
+                    # some groups of tests may not have multiple tests from that group running at same time
+                    # because they try to use a resource that can't be used by more than one test
+                    # (ex: creating a web server on the same tcp port)
+                    # check if this is one of those threads here
+      #  TODO            do_single_thread = 0
+      #              $single_threaded_tests.each do |t|
+      #                if test_case.full_name.include?(t)
+      #                  do_single_thread = 1
+      #                  break
+      #                end
+      #              end
+      #              if do_single_thread == 1
+      #                test_ctx.semaphore1.synchronize do
+      #                  if single_thread
+      #                    do_single_thread = 2
+      #                  end
+      #                end # synchronize
+      #                          
+      #                if do_single_thread == 2
+      #                  # another thread is already executing the single thread tasks
+      #                  # put test_case back onto the list and move to the next test case
+      #                  # this, or other thread, will get the test case again when the single thread is free
+      #                  if test_cases.length < $thread_pool_size*2
+      #                    test_cases.push(test_case)
+      #                  else
+      #                    # try running the test case soon, since it may use resources of other tests
+      #                    # we'll be running soon (in which case, it may be faster)
+      #                    test_cases.insert($thread_pool_size, test_case)
+      #                  end
+      #                  next
+      #                else
+      #                  single_thread = Thread.current
+      #                  # continue running test case
+      #                  do_single_thread = 3
+      #                end
+      #              end
+                              
+                    # see PhpTestResult::Array#generate_stats
+                    test_case.scn_list = scn_set
+                    #puts '277'
+       
+      deployed = {}
+                    
+                    # run the test case!
+                    #puts '165'
+                    
+                      run_do_single_test_case(php, host, middleware, tmpdir, deployed, cache, test_ctx, test_cases, test_case, scn_set)
+# TODO                    else
+#                      begin
+#                        run_do_single_test_case(php, host, middleware, tmpdir, deployed, cache, test_ctx, test_cases, test_case, scn_set)
+#                      rescue
+#                        test_ctx.add_exception(host, php, middleware, scn_set, $!)
+#                      end
+#                    end
+                    
+                    #end # synchronize
+                              
+      # TODO            if do_single_thread == 3
+      #                test_ctx.semaphore1.synchronize do
+      #                  # clear thread so this|other thread can run other single thread test cases
+      #                  single_thread = nil
+      #                end # synchronize
+      #              end
+    end # def do_test_case_in_thread
+    
+    def run_do_single_test_case(php, host, middleware, tmpdir, deployed, cache, test_ctx, test_cases, test_case, scn_set)
+      #puts '214'
+      do_single_test_case(php, host, middleware, tmpdir, deployed, cache, test_ctx, test_cases, test_case, tmpdir, scn_set)
+    end
+    
+    def make_cache(host)
+      {
+        # use a different skip-if cache for each combination (important)
+        :skip_if_code_cache => [],
+        :skip_if_result_cache => [],
+        :skip_if_cache_size => ( host.remote? ) ? 60 : 4
+      }
     end
     
     def write_ext_file(telemetry_folder, ext_list, file_name)
       ext_file = File.join(telemetry_folder, file_name)
       arw = Util::ArgRewriter.new(ARGV)
-      arw.cmd('func_part')
+      arw.cmd('core_part')
       arw.replace('--test-list', file_name)
     
       f = File.open(ext_file, 'wb')
@@ -250,35 +545,57 @@ module TestBench
       write_ext_file(telemetry_folder, r.ext(:all), 'EXT_ALL.list')
       write_ext_file(telemetry_folder, r.ext(:skip), 'EXT_SKIP.list')
       
+      #
+      # save list of exceptions in PFTT
+      exc_f = File.open(File.join(telemetry_folder, 'EXCEPTIONS.txt'), 'wb')
+      r.exceptions.each do |exc|
+        exc_f.puts(exc.backstrace.inspect)
+        exc_f.puts("\r\n\r\n")
+      end
+      exc_f.close()
+      #
+      
       return report
     end
     
-    def do_single_test_case(php, host, middleware, deploydir, deployed, skip_if_code_cache, skip_if_result_cache, test_ctx, test_cases, test_case, tmpdir, scn_set)
-      tmiddleware = middleware.clone
-      
+    def do_single_test_case(php, host, middleware, deploydir, deployed, cache, test_ctx, test_cases, test_case, tmpdir, scn_set)
+      #puts '366'
+      #puts test_case.full_name # TODO
+      if $hosted_int
+        tmiddleware = middleware
+      else
+        tmiddleware = middleware.clone
+      end
+      #puts '280'
+      skip_if_code_cache = cache[:skip_if_code_cache]
+      skip_if_result_cache = cache[:skip_if_result_cache]
+      #puts '370'
+        
+        
       #
       # if this test case has a --REDIRECTTEST-- section, eval add run its test cases
       # see http://qa.php.net/phpt_details.php#redirecttest_section
-      if test_case.parts.has_key?(:redirecttest)
-        # #mw_redirecttest requires a Middleware::Cli
-        redirect_tests = test_case.mw_redirecttest(tmiddleware.instance_of(Middleware::Cli)?tmiddleware:Middleware::Cli.new(host, php, scn_set))
-        unless redirect_tests.empty?
-          test_ctx.add_tests(redirect_tests)
-          return # don't run the rest of this test case
-        end
-      end
+# TODO     if test_case.parts.has_key?(:redirecttest)
+#        # #mw_redirecttest requires a Middleware::Cli
+#        redirect_tests = test_case.mw_redirecttest(tmiddleware.instance_of(Middleware::Cli)?tmiddleware:Middleware::Cli.new(host, php, scn_set))
+#        unless redirect_tests.empty?
+#          test_ctx.add_tests(redirect_tests)
+#          return # don't run the rest of this test case
+#        end
+#      end
       #
                      
       # important: some PHPT tests use paths relative to their deployment location (must change CWD)
       # after test case is run, will be undone by calling #popd
-      tmiddleware.host.pushd(File.join(
-        tmpdir,
-        File.dirname( test_case.full_name )
-      ))
-                  
+#      tmiddleware.host.pushd(File.join(
+#        tmpdir,
+#        File.dirname( test_case.full_name )
+#      ))
+        #puts '384'          
       # catch the result here
       result_spec = catch(:result) do
         # return early if this test case is not supported or is borked
+        # TODO report bork|unsupported if running in interactive mode
         case
         when test_case.borked? then throw :result, [PhptTestResult::Bork]
         when test_case.unsupported? then throw :result, [PhptTestResult::Unsupported]
@@ -288,19 +605,21 @@ module TestBench
       
         unless $skip_none
           # if a skipif section is present, see if we should skip this test
-          unless test_case[:skipif].nil?
+          if test_case.parts.has_key?(:skipif)
             
             # cache results of the last few skipif sections (which are all pretty common) to speed up execution
-            cache_key = test_case[:skipif].strip
+            cache_key = test_case.parts[:skipif].strip
+              
             skip_if_result = nil
-            test_ctx.semaphore2.synchronize{
-              skip_if_idx = skip_if_code_cache.index(cache_key)
-              if skip_if_idx
-                skip_if_result = skip_if_result_cache[skip_if_idx]
+            if $hosted_int
+              skip_if_result = lookup_skip_cache(skip_if_code_cache, skip_if_result_cache, cache_key)
+            else
+              test_ctx.semaphore2.synchronize do
+                skip_if_result = lookup_skip_cache(skip_if_code_cache, skip_if_result_cache, cache_key)
               end
-            }
+            end
             
-            unless skip_if_result # TODO ensure skip_if_cache isn't shared between host/build/middleware
+            unless skip_if_result
               skip_if_result = [] # ensure there is a non-null result to cache
                 
               deployed[:skipif] = deploy_phpt_section(host, test_case, :skipif)
@@ -311,13 +630,21 @@ module TestBench
                 
                 # evaluate the result to see if we're supposed to skip this test
                 check_skipif = skipif.downcase # preserve original skipif result
-                if check_skipif.start_with? 'skip'
+                if check_skipif.include?('skip') 
                   # if test was skipped because of wrong platform (test requires linux, but host is windows, etc...)
                   # then count that as XSkip not Skip (there is no way to run it)
                   if check_skipif.include?('only')
+                    # ex: 'only run on <opposite platform>'
                     if host.windows? and check_skipif.include?('linux')
                       skip_if_result = [PhptTestResult::XSkip, skipif]
                     elsif host.posix? and check_skipif.include?('windows')
+                      skip_if_result = [PhptTestResult::XSkip, skipif]
+                    end
+                  elsif check_skipif.include?('not')
+                    # ex: 'do not run on windows' or 'not on windows'
+                    if host.windows? and check_skipif.include?('windows')
+                      skip_if_result = [PhptTestResult::XSkip, skipif]
+                    elsif host.posix? and check_skipif.include?('linux')
                       skip_if_result = [PhptTestResult::XSkip, skipif]
                     end
                   end
@@ -325,25 +652,26 @@ module TestBench
                   # so having a high number of skipped should be suspicious (means some extensions aren't enabled for some reason)
                   #
                   # record as skipped. if lots of skipped tests, something may be wrong with how user setup their environment
-                  unless skip_if_result
+                  if skip_if_result.empty?
                     skip_if_result = [PhptTestResult::Skip, skipif]
                   end
                 end
-              rescue
-                puts $!.to_s
+              rescue Exception => ex
+                if ctx
+                  ctx.pftt_exception(self, ex)
+                else
+                  Tracing::Context::Base.show_exception(ex)
+                end
               end # end begin
             
               # cache result
-              test_ctx.semaphore2.synchronize{
-                if skip_if_code_cache.length+1 >= 4
-                  # limit size of cache
-                  skip_if_code_cache.shift
-                  skip_if_result_cache.shift
+              if $hosted_int
+                store_skip_cache(skip_if_code_cache, skip_if_result_cache, cache, cache_key, skip_if_result)
+              else
+                test_ctx.semaphore2.synchronize do
+                  store_skip_cache(skip_if_code_cache, skip_if_result_cache, cache, cache_key, skip_if_result)
                 end
-              
-                skip_if_code_cache.push(cache_key)
-                skip_if_result_cache.push(skip_if_result)
-              }
+              end
             end # end unless skip_if_result
             
             # dispatch
@@ -351,86 +679,113 @@ module TestBench
               throw :result, skip_if_result
             end
             
-          end # 
-        end # end unless $skip_none
+          end # if
+        end # unless $skip_none
                       
+
+        
         begin
           # we did not skip the test case, run it.
           deployed[:file] = deploy_phpt_section(host, test_case, :file)
                        
           out_err = ''
-          if $pftt_debug
-            out_err = do_single_test_case_execute(deployed, test_case, scn_set, tmiddleware)
-          else
-            begin
-              out_err = do_single_test_case_execute(deployed, test_case, scn_set, tmiddleware)
+          
+          out_err = do_single_test_case_execute(deployed, test_case, scn_set, tmiddleware)
               
-            rescue
-              test_ctx.add_exception(host, php, middleware, scn_set, $!)
-            end
-          end
-                        
+                   #puts '398'     
           throw :result, [PhptTestResult::Meaningful, out_err]
-        ensure
+        ensure 
           # and clean up if we are supposed to
-          unless test_case[:clean].nil? or CONFIG[:skip_cleanup]
+          if test_case.parts.has_key?(:clean) # LATER or CONFIG[:skip_cleanup]
             deployed[:clean] = deploy_phpt_section(host, test_case, :clean)
             begin
-              tmiddleware.execute_php_script(deployed[:clean], test_case, :clean, contexts)
-            rescue
-              puts $!.to_s
+              tmiddleware.execute_php_script(deployed[:clean], test_case, :clean, scn_set)
+            rescue Exception => ex
+              if ctx
+                ctx.pftt_exception(self, ex)
+              else
+                Tracing::Context::Base.show_exception(ex)
+              end
             end
           end
         end # end begin
       
       end # end catch
+      #puts '413'
+#      tmiddleware.host.popd
+      unless $hosted_int
+        # close this cloned middleware and the host behind it (free ups host resources)
+        tmiddleware.close
+      end
       
-      tmiddleware.host.popd
-      # close this cloned middleware and the host behind it (free ups host resources)
-      tmiddleware.close
       
       #
       # run of this test case done
       #
       # display, report and store result of this test case
-      if $pftt_debug
-        do_single_test_case_result(test_ctx, host, php, middleware, scn_set, test_case, deploydir, result_spec)
-      else
-        begin
-          do_single_test_case_result(test_ctx, host, php, middleware, scn_set, test_case, deploydir, result_spec)
-        rescue
-        end
-      end
+      do_single_test_case_result(test_ctx, host, php, middleware, scn_set, test_case, deploydir, result_spec)
       #
+      
     end # def do_single_test_case
     
+    def lookup_skip_cache(skip_if_code_cache, skip_if_result_cache, cache_key)
+      skip_if_idx = skip_if_code_cache.index(cache_key)
+      if skip_if_idx
+        return skip_if_result_cache[skip_if_idx]
+      else
+        return nil
+      end
+    end
+    
+    def store_skip_cache(skip_if_code_cache, skip_if_result_cache, cache, cache_key, skip_if_result)
+      if skip_if_code_cache.length+1 >= cache[:skip_if_cache_size]
+        # limit size of cache
+        skip_if_code_cache.shift
+        skip_if_result_cache.shift
+      end
+                    
+      skip_if_code_cache.push(cache_key)
+      skip_if_result_cache.push(skip_if_result)
+    end
+    
     def do_single_test_case_execute(deployed, test_case, scn_set, tmiddleware)
+      #puts '434'
       return tmiddleware.execute_php_script( deployed[:file], test_case, :test, scn_set )[1]
     end
     
     def do_single_test_case_result(test_ctx, host, php, middleware, scn_set, test_case, deploydir, result_spec)
+      #puts '439'
       result = nil
-      test_ctx.semaphore2.synchronize do
-        # don't modify result_spec, its cached/shared with other threads
-        a = result_spec[0]
-            
-        # take the caught result and build the proper object out of it
-        result = a.new( test_case, self, deploydir, php, *result_spec[1...result_spec.length] )
+      if $hosted_int
+        result = result_new(result_spec, test_case, deploydir, php)
+      else
+        test_ctx.semaphore2.synchronize do
+          result = result_new(result_spec, test_case, deploydir, php)
+        end
       end
+      #puts '448'
       if result
         # generate the diff here in the thread unlocked
         if result.is_a?(PhptTestResult::Meaningful)
           result.generate_diff(test_ctx, host, middleware, php, scn_set, test_ctx.tr)
         end
-              
-        # lookup Legend Label for this host/php/middleware combination
-        label = test_ctx.legend_label(host, php, middleware, scn_set)
+        
+        
+        
+        # provide the final result (this will take care of storage and display)      
+        test_ctx.add_result(host, php, middleware, scn_set, result, test_case)
                 
-        test_ctx.console_out("  [#{label}] [#{result.status.to_s.upcase}] #{@self} #{test_case.relative_path}")
-                
-        test_ctx.add_result(host, php, middleware, scn_set, result)
+        
       end
     end 
+    
+    def result_new(result_spec, test_case, deploydir, php)
+      # don't modify result_spec, its cached/shared with other threads
+      a = result_spec[0]
+                          
+      # take the caught result and build the proper object out of it
+      return a.new( test_case, self, deploydir, php, *result_spec[1...result_spec.length] )
+    end
     
   end # end class Phpt 
   

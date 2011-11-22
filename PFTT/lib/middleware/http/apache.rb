@@ -48,6 +48,14 @@ module Middleware
         def apache_ctl args, r=nil
           ((@host.windows?) ? root(r)+'/bin/httpd' : root(r)+'/usr/bin/apache')
         end
+        
+        def install(r)
+          super(r)
+
+          apache = Util::Install::Apache.new()
+          apache.ensure_installed(@host)
+          
+        end
 
       end
     end
