@@ -1,5 +1,18 @@
 == PFTT - the Practically-Formulated-Test-Tool ==
 
+Multi-platform test tool
+(Beyond cross-platform)
+cross-platform tools allow testing on different platforms
+multi-platform testing is designed to test on multiple platforms
+-Windows XP SP3-Windows 8 Preview
+-Linux, FreeBSD
+
+http://redmine.ruby-lang.org/projects/ruby-trunk/wiki/SupportedPlatforms
+Java:
+-Windows, Linux(x86, x64, IA64, ARM)
+-z/OS, Solaris, AIX, BSD
+
+
 PFTT is a BSD-licensed automated testing framework for PHP, built to systematically identify bugs in 
 complex PHP installations. Its components are responsible for installing PHP in various configurations, 
 setting up complex filesystem scenarios, and running tests in every possible combination of the various 
