@@ -1,8 +1,10 @@
 
+# TODO be able to load this file later, to work around extra warnings, etc....
+# TODO be able to print a list of all insertions or all insertions contianing 'Warning', etc...
 module Tracing
   module Prompt
 
-class Diff < Base
+class Diff < TestCaseRunPrompt
       
   def initialize(dlm)
     @dlm = dlm
@@ -11,14 +13,13 @@ class Diff < Base
       
   def help
     super
-    puts ' d  - (-) delete: modify expect'
-    puts ' a  - (+) add: modify expect'
-    puts ' i  - ignore: remove from diffs'
-    puts ' s  - skip line'
-    puts ' S  - skip file'
+    puts ' d  - (or -) delete: modify expect'
+    puts ' a  - (or +) add: modify expect'
+    puts ' i  - ignore: remove from diffs' # TODO
+    puts ' s  - skip line, count'
     puts ' m  - display more commands (this whole list)'
     puts ' t  - Triage diffs in this test'
-    puts ' I  - runs tests non-interactively, then prompt to re-run'
+    puts ' T  - Triage all diffs from all tests'
     puts ' r  - replace expect with regex to match actual'
     puts ' R  - replace all in file'
     puts ' A  - replace all in test case set'
@@ -28,6 +29,10 @@ class Diff < Base
     puts ' p  - show modified expect section (or original if not modified)'
     puts ' v  - show PHPT file format documentation (HTML)'
     puts ' H  - highlight diff (Swing UI)'
+    puts ' y  - save chunk replacements to file'
+    puts ' Y  - load chunk replacements from a file'
+    puts ' k  - save diff to file (insertions and deletions)'
+    puts ' K  - save all inserted chunks to file'
   end # def help
       
   def execute(ans)
@@ -43,9 +48,6 @@ class Diff < Base
     elsif ans=='s'
       # skip line
       @dlm.skip_line = true
-    elsif ans=='S'
-      # skip file
-      @dlm.skip_file = true
     elsif ans=='r' or ans=='R' or ans=='A'
       # r replace expect with regex to match actual
       # R replace all in file
@@ -53,7 +55,6 @@ class Diff < Base
       replace_with = @test_ctx.prompt('Change to(expect_type)') # TODO expect_type
       @dlm.replace(replace_with)
       if ans=='R'
-        # TODO chunk_replacement
         chunk_replacement[@dlm.chunk] = replace_with
       elsif ans=='A'
         @test_ctx.chunk_replacement[@dlm.chunk] = replace_with
@@ -95,9 +96,6 @@ class Diff < Base
       # W - skip to next host (not interactive)
       $interactive_mode = false
       @test_ctx.next_host(@host, @middleware, @php, @scn_set)
-    elsif ans=='O'
-      # O - interactive mode off (then skip change)
-      $interactive_mode = false
     elsif ans=='v'
       # TODO show PHPT file format documentation (HTML)
                 

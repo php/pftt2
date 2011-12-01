@@ -239,11 +239,7 @@ module Report
   OS['OI1-PHP-FUNC-25'] = '7 SP0 x86'
   OS['OI1-PHP-FUNC-26'] = '7 SP1 x86'
   OS['OI1-PHP-FUNC-27'] = '8 Preview x86'
-    # TODO Gentoo Linux (Calculate Linux)
-    # TODO CentOS Linux
-    # TODO Ubuntu Linux
-    # TODO Fedora
-    # TODO PC-BSD
+    
     
       end
     end

@@ -42,7 +42,8 @@ module Middleware
           start!
         end
         
-        def start!
+        # TODO move to apache.rb
+        def start!(ctx)
           start_ctx = Tracing::Context::Middleware::Start.new()
           
           if @host.windows?
@@ -60,7 +61,7 @@ module Middleware
           
           @running = true
         end
-        def stop!
+        def stop!(ctx)
           stop_ctx = Tracing::Context::Middleware::Stop.new()
           
           if @host.windows?

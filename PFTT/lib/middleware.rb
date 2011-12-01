@@ -5,7 +5,7 @@ require 'util/install.rb'
 module Middleware
   class Base
     
-    include TestBenchFactor
+    include Test::Factor
     include PhpIni::Inheritable
  
 #    def self.instantiable
@@ -76,7 +76,7 @@ module Middleware
       return filtered_expectation # see Middleware::Http#filtered_expectation
     end
 
-    def _deploy_php_bin
+    def _deploy_php_bin(ctx)
       # TODO try running php.exe -n --help to make sure it will run (VC9 runtime, etc...) 
       
       
@@ -86,15 +86,15 @@ module Middleware
       
       unless deploy_to
         # fallback on storing php in a sub-folder in %SYSTEMDRIVE%/php-sdk/PFTT-PHPs or ~/php-sdk/PFTT-PHPs
-        if @host.windows?
-          deploy_to = @host.systemdrive+"/php-sdk/PFTT-PHPs"
+        if @host.windows?(ctx)
+          deploy_to = @host.systemdrive(ctx)+"/php-sdk/PFTT-PHPs"
         else
           deploy_to = '~/php-sdk/PFTT-PHPs'
         end
       end
       
       # ensure folder exists
-      @host.mkdir(deploy_to)
+      @host.mkdir(deploy_to, ctx)
       
       # if $force_deploy, make a new directory! otherwise, reuse existing directory (for quick manual testing can't take the time
       #          to copy everything again)
@@ -104,12 +104,13 @@ module Middleware
 #  TODO TUE    if $force_deploy or not File.exists?(php_binary()) or File.mtime(@php_build.path) >= File.mtime(php_binary())
         unless $hosted_int
         puts "PFTT:deploy: uploading... "+@deployed_php
-      host.upload_force("c:/php-sdk/5.4.0beta2-NTS.7z", host.systemdrive+'/5.4.0beta2-NTS.7z', false) # critical: false
+      host.upload_force("c:/php-sdk/5.4.0beta2-NTS.7z", host.systemdrive(ctx)+'/5.4.0beta2-NTS.7z', false, ctx) # critical: false
                 
       sd = host.systemdrive
-      host.delete_if("#{sd}\\php-sdk\\PFTT-PHPs\\5.4.0beta2-NTS")
-          ctx = Tracing::Context::Dependency::Check.new # TODO
-      host.exec!("#{sd}\\php-sdk\\bin\\7za.exe x -o#{sd}\\php-sdk\\PFTT-PHPs #{sd}\\5.4.0beta2-NTS.7z > #{sd}\\null.txt", ctx, {:chdir=>"#{sd}\\"})
+          ctx = Tracing::Context::Dependency::Check.new # TODO ctx.new
+      host.delete_if("#{sd}\\php-sdk\\PFTT-PHPs\\5.4.0beta2-NTS", ctx)
+          
+      host.exec!("#{sd}\\php-sdk\\bin\\7za.exe x -o#{sd}\\php-sdk\\PFTT-PHPs #{sd}\\5.4.0beta2-NTS.7z ", ctx, {:chdir=>"#{sd}\\", :null_output=>true})
         #@host.upload(@php_build.path,@deployed_php) 
         puts "PFTT:deploy: uploaded!"
         end
@@ -120,20 +121,34 @@ module Middleware
       @deployed_php 
     end
 
-    def _undeploy_php_bin
+    def _undeploy_php_bin(ctx)
       if $force_deploy
        @host.delete( @deployed_php )
       end
     end
 
-    def install r=nil
-      # TODO set host's clock to the same time as the client's clock
-      _deploy_php_bin
+    def install ctx, r=nil
+      # LATER set host's clock to the same time as the client's clock
+      
+      _deploy_php_bin(ctx)
       apply_ini(@current_ini)
       
+      unless $hosted_int
       vc9 = Util::Install::VC9.new(@host)
-      vc9.ensure_installed()
+      vc9.ensure_installed(ctx)
       
+      if @host.windows?
+        # turn on file sharing... (add PHP_SDK) share
+        # make it easy for user to share files with this windows machine
+        # (during cleanup or analysis or triage, after tests have run)
+        #
+        # user can access PHP_SDK and the system drive ( \\hostname\C$ \\hostname\G$ etc...)
+        #
+        if @host.credentials
+          @host.exec!('NET SHARE PHP_SDK='+@host.systemdrive+'\\php-sdk /Grant:"'+@host.credentials[:user]+'",Full', ctx)
+        end
+      end
+      end
     end
     
     def create_ini(scn_set, platform)
@@ -145,8 +160,8 @@ module Middleware
       @current_ini
     end
  
-    def uninstall r=nil
-      _undeploy_php_bin
+    def uninstall ctx, r=nil
+      _undeploy_php_bin(ctx)
       unset_ini
     end
 
@@ -155,9 +170,9 @@ module Middleware
       @deployed_scripts << @host.deploy( local_file, deploy_path )
     end
 
-    def undeploy_script()
+    def undeploy_script(ctx)
       @deployed_scripts.reject! do |script|
-        @host.delete script
+        @host.delete script, ctx
       end
     end
 
@@ -205,6 +220,8 @@ module Middleware
       @current_ini ||= []
     end
 
+    # E_ALL | E_STRICT (from run-tests.php) == 32767
+    # see: http://php.net/manual/en/errorfunc.constants.php
     ini <<-INI
       display_startup_errors=0
       output_handler=      
@@ -235,7 +252,7 @@ module Middleware
 
   end
 
-  # TODO jruby All = (Class.new(TypedArray( Class )){include TestBenchFactorArray}).new #awkward, but it works.
+  # TODO jruby All = (Class.new(TypedArray( Class )){include Test::FactorArray}).new #awkward, but it works.
 end
 
 # Load up all of our middleware classes right away instead of waiting for the autoloader

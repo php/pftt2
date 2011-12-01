@@ -7,6 +7,6 @@ module Scenario
       end
     end
 
-    All = (Class.new(TypedArray( Class )){include TestBenchFactorArray}).new #awkward, but it works.
+    All = (Class.new(TypedArray( Class )){include Test::FactorArray}).new #awkward, but it works.
   end
 end

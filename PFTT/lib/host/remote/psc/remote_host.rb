@@ -61,7 +61,7 @@ class RemoteHost < BaseRemoteHostAndClient
       # TODO
       @middlewares.push(Middleware.from_xml(xml, @host, @phps.first, @scn_sets.first))
     elsif msg_type == 'test_case'
-      @test_cases.push(PhptTestCase.from_xml(xml))
+      @test_cases.push(Test::Case::Phpt.from_xml(xml))
     elsif msg_type == 'scn_set'
       @scn_sets.push(Scenario::Set.from_xml(xml))
     elsif msg_type == 'php'

@@ -1,10 +1,10 @@
 
 class PhpBuild
-  include TestBenchFactor
+  include Test::Factor
   include PhpIni::Inheritable
 
   def self.get_set(*globs)
-    set = Class.new(TypedArray( self )){include TestBenchFactorArray}.new
+    set = Class.new(TypedArray( self )){include Test::FactorArray}.new
        
     globs.each do |glob|
       Dir.glob( glob ) do |php|

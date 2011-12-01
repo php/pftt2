@@ -6,6 +6,17 @@ require 'util/install.rb'
 require 'xmlsimple'
 require 'nokogiri'
 
+# TODO search incoming blocks for <Flash>, if found, extract message between <Flash> and <Boundary>
+#           still enqueue the message for file storage
+# TODO switch to a new PSC file when queue is empty after being filled
+#      empty the old PSC file into the queue (so 1 file is always write-only and 1 file is always read-only)
+#      blocks won't be written direct from network into queue until all psc files have been emptied
+#          this maintains message order too
+# TODO make sure flash messages go into a queue before being parsed at all so ssh sessions don't back up
+# TODO when starting hosts, client should tell them the result reporting increment-time (default=90 seconds)
+#      host should send a flash message whenever that increment is reached
+#           and when host is done
+#      then client will know how many test cases the host has run even if it hasn't processed all the results yet
 module Host
   module Remote
     module PSC
@@ -54,7 +65,7 @@ class BaseRemoteHostAndClient
     #    # see http://www.artima.com/weblogs/viewpost.jsp?thread=214719
     #    require 'kxml2-2.3.0.jar'
         
-        # TODO ruby MRI support
+        # LATER ruby MRI support
         
         # TODO share parser within thread
         parser = org.kxml2.io.KXmlParser.new
@@ -181,8 +192,8 @@ class BaseRemoteHostAndClient
           xml = to_simple(full_block)#XmlSimple.xml_in(full_block, {'AttrPrefix' => true, 'ContentKey'=>'text'})
           #puts xml.inspect
           dispatch_recvd_xml(xml)
-        rescue Exception => ex
-          puts @host.name+" "+ex.inspect+" "+ex.backtrace.inspect
+        rescue
+          puts @host.name+" "+$!.inspect+" "+$!.backtrace.inspect
           puts xml
           puts full_block # TODO
           if @test_ctx

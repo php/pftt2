@@ -63,7 +63,7 @@ module Util
         end
       end
         
-      def ensure_installed
+      def ensure_installed(ctx=nil)
         unless windows?
           if @host.windows?
             return :wrong_platform
@@ -114,7 +114,7 @@ module Util
         #
         @host.exec!("net use S: #{$share_name} /user:test /persistent:no test", ctx)
         # /I important! also /E
-        @host.exec!("XCOPY /E /Q /I S:#{$folder}\\#{src} #{dst}", ctx)
+        @host.exec!("XCOPY /E /Q /I /Y S:#{$folder}\\#{src} #{dst}", ctx)
         @host.exec!("net use S: /d", ctx)
       end
   

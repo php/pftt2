@@ -24,7 +24,7 @@ module Middleware
           
           ctx = Tracing::Context::Middleware::Config.new()
           # ensure IIS is stopped before editing this file (otherwise, we might not be able to edit it)
-          @host.exec('net stop w3svc', ctx)
+          @host.exec!('net stop w3svc', ctx)
           
           @host.write(content, @host.systemroot+"/System32/inetsrv/fcgext.ini", ctx)
             
@@ -36,7 +36,7 @@ module Middleware
           @host.exec!(@host.systemroot+"/System32/inetsrv/appcmd #{args}", Tracing::Context::Middleware::Config.new())
         end
               
-        def start!
+        def start!(ctx)
           start_ctx = Tracing::Context::Middleware::Start.new()
           
           # ensure Apache is stopped
@@ -48,7 +48,7 @@ module Middleware
           @running = true
         end
 
-        def stop!
+        def stop!(ctx)
           stop_ctx = Tracing::Context::Middleware::Stop.new()
           
           @host.exec!('net stop w3svc', stop_ctx)

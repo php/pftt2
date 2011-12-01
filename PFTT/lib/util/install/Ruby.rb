@@ -30,7 +30,7 @@ module Util
           # TODO TUE
           @host.upload_force(local_host.systemdrive+"/php-sdk/Ruby192.7z", @host.systemdrive+'/Ruby192.7z', ctx, false) # critical: false
                   
-          @host.exec!("#{sd}\\php-sdk\\bin\\7za.exe x -o#{sd}\\ #{sd}\\Ruby192.7z > #{sd}\\null.txt", ctx, {:chdir=>"#{sd}\\"})
+          @host.exec!("#{sd}\\php-sdk\\bin\\7za.exe x -o#{sd}\\ #{sd}\\Ruby192.7z ", ctx, {:chdir=>"#{sd}\\", :null_output=>true})
         end
         
         # TODO @host.exec!(@host.systemdrive+'\\Ruby192\\bin\\bundle install')

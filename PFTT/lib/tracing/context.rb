@@ -9,6 +9,10 @@ module Tracing
 #        @combo_ctx = combo_ctx
 #      end
       
+      def new(ctx_type)
+        ctx_type.new
+      end
+      
       def find_debugger(host)
         nil
       end
@@ -42,28 +46,28 @@ module Tracing
       end
           
       def fs_op0 host, op, &do_over
-        handle(:cmd_exe, :success, host, nil, nil, Tracing::Prompt::FS0Op, do_over, 5)
+        handle(op, :success, host, nil, nil, Tracing::Prompt::FS0Op, do_over, 5)
       end
       
       def fs_op1 host, op, path, &do_over
-        handle(:cmd_exe, :success, host, nil, nil, Tracing::Prompt::FS1Op, do_over, 5)
+        handle(op, :success, host, nil, nil, Tracing::Prompt::FS1Op, do_over, 5)
       end
       
       def fs_op2 host, op, src, dst, &do_over
-        handle(:cmd_exe, :success, host, nil, nil, Tracing::Prompt::FS2Op, do_over, 5)
+        handle(op, :success, host, nil, nil, Tracing::Prompt::FS2Op, do_over, 5)
       end
       
       def self.show_exception(ex)
         puts ex.inspect+" "+ex.backtrace.inspect
       end
           
-      def pftt_exception(obj, ex)
+      def pftt_exception(obj, ex, host=nil)
         Tracing::Context::Base.show_exception(ex)
-        handle(:cmd_exe, :success, obj.is_a?(Host) ? obj : nil, nil, nil, Tracing::Prompt::GenericException, nil, 5, obj)
+        handle(:pftt, :failure, !(host.nil?) ? host : obj.is_a?(Host::HostBase) ? obj : nil, obj, nil, Tracing::Prompt::GenericException, nil, 5, ex)
       end
           
       def write_file host, content, file, &do_over
-        handle(:write_file, :success, host, file, nil, Tracing::Prompt::FS1Op, do_over, 5, content)
+        # TODO handle(:write_file, :success, host, file, nil, Tracing::Prompt::FS1Op, do_over, 5, content)
       end
           
       def read_file host, content, file, &do_over
@@ -81,31 +85,52 @@ module Tracing
       
       protected
       
-      def do_break?(action_type, initial_result, initial_file, initial_code, msg=nil)
+      def do_break?(host, action_type, initial_result, initial_file, initial_code, msg=nil)
         # OVERRIDE: to control what to break on
-        # TODO
-        initial_result == :failure or ( msg.is_a?(Tracing::Command::Expected) and initial_code.is_a?(Tracing::Command::Actual) and msg.validate(initial_code) )
+        initial_result == :failure or ( msg.is_a?(Tracing::Command::Expected) and initial_code.is_a?(Tracing::Command::Actual) and msg.success?(initial_code) )
       end
       
-      def exe_prompt(prompt_type, prompt_timeout)
-        prompt = prompt_type.new
+      def read_char(host)
+        if host.posix?
+          return STDIN.getc
+        else
+          require "Win32API"
+          
+          integer = Win32API.new("crtdll", "_getch", [], "L").Call
+          c = integer.chr
+          
+          STDOUT.write(c) # _getch keeps char from being shown on console
+          
+          save_cmd_out(c)
+          
+          return c
+        end
+      end
+      
+      def exe_prompt(prompt_type, prompt_timeout, action_type, result, host, file, code, do_over, msg)
+        prompt = prompt_type.new(nil, action_type, result, host, file, code, do_over, msg) # TODO nil @test_ctx
         
         while true do
-          # show the prompt line to the user
-          puts prompt.prompt_str
+          # TODO empty all STDIN chars now (before user is prompted to enter a char we shouldn't ignore)
           
-          # TODO use test_ctx to lock console
-        
+          # show the prompt line to the user
+          STDOUT.write(host.name+'('+host.osname_short+')'+prompt.prompt_str)
+                  
           # get user input (wait only for timeout if given)
-          if timeout.is_a?(Integer) and timeout > 0
-            STDIN.select(timeout)
+          if prompt_timeout.is_a?(Integer) and prompt_timeout > 0
+#            if IO.select([STDIN], [], [], prompt_timeout).nil?
+#              puts 'timeout' # TODO
+#            end
           end
-          ans = STDIN.gets()
-        
+          ans = read_char(Host::Local.new) # 
+          
+          #ans.chomp! # important for STDIN.gets
+          puts # new line
+                  
           # execute answer
           if prompt.execute(ans)
             # if true, break out of loop, if false, re-prompt
-            timeout = nil # user will be providing input now, so block
+            prompt_timeout = nil # user will be providing input now, so block
             break
           end
           
@@ -115,13 +140,19 @@ module Tracing
         return :none
       end # def exe_prompt
       
+      def prompt_lock(timeout)
+        '1' # TODO
+      end
+      
+      def prompt_unlock(lock_id)
+        # TODO
+      end
+      
       def handle(action_type, initial_result, host, initial_file, initial_code, prompt_type, do_over, prompt_timeout=10, msg=nil)
         puts initial_file
         #return
         # TODO @combo_ctx.record(self, action_type, initial_result, initial_file, initial_code, msg)
         
-        # TODO
-        # TODO do_over.call
                
         result = initial_result
         file = initial_file
@@ -132,7 +163,7 @@ module Tracing
           # loop for each attempt/prompt
           while true do
             # decide if should break on this result
-            unless false # TODO do_break?(action_type, initial_result, initial_file, initial_code, msg)
+            unless $hosted_int.nil? and do_break?(host, action_type, initial_result, initial_file, initial_code, msg)
               break
             end
           
@@ -144,7 +175,7 @@ module Tracing
             #
            
             # prompt user for answer
-            answer = exe_prompt(prompt_type, prompt_timeout)
+            answer = exe_prompt(prompt_type, prompt_timeout, action_type, initial_result, host, initial_file, initial_code, do_over, msg)
           
             @combo_ctx.record(self, :break_prompt, answer, file, 0)
                 
@@ -181,8 +212,8 @@ module Tracing
             end
           end # while
           
-        rescue Exception => ex
-          puts ex.inspect+" "+ex.backtrace.inspect
+        rescue
+          puts $!.inspect+" "+$!.backtrace.inspect
           
         ensure
           # ensure prompt gets unlocked

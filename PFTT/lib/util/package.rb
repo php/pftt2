@@ -1,12 +1,12 @@
 
+# TODO package telemetry from a single OS/host (or subset of a few OS/hosts) in a single archive
 def unpackage(remote_host, remote_dir, remote_zip)
   ctx = Tracing::Context::PhpBuild::Decompress.new
   
   remote_host.format_path!(remote_dir, ctx)
   remote_host.format_path!(remote_zip, ctx)
     
-  # TODO null.txt
-  remote_host.exec!(remote_host.systemdrive+"/php-sdk/bin/7za.exe x -o#{remote_dir}\\ #{remote_zip} > "+remote_host.systemdrive+"\\null.txt", ctx)
+  remote_host.exec!(remote_host.systemdrive+"/php-sdk/bin/7za.exe x -o#{remote_dir}\\ #{remote_zip}", ctx, {:null_output=>true})
 end
 
 def upload_7zip(local_host, remote_host)

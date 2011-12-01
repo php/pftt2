@@ -1,0 +1,2 @@
+<?php
+%{classname}::%{methodname}(%{args});

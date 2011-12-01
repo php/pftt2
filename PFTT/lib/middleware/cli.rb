@@ -12,7 +12,8 @@ module Middleware
       'CLI'
     end
     
-    def start!
+    def start!(ctx)
+      unless $hosted_int
       if @host.windows?
         # remove application exception debuggers (Dr Watson, Visual Studio, etc...)
         # otherwise, if php crashes a dialog box will appear and prevent PHP from exiting (thus blocking that
@@ -23,16 +24,18 @@ module Middleware
         # disable Hard Error Popup Dialog boxes (will still get this even without a debugger)
         # see http://support.microsoft.com/kb/128642
         @host.exec!('REG ADD "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Windows" /v ErrorMode /d 2 /t REG_DWORD /f', config_ctx)
-              
-          # TODO for ErrorMode change to take effect, host must be rebooted!
           
         # disable windows firewall
         # LATER edit firewall rules instead (what if on public network, ex: Azure)
         @host.exec!('netsh firewall set opmode disable', config_ctx)
+
+        # for ErrorMode change to take effect, host must be rebooted!        
+        # TODO @host.reboot()
+      end
       end
     end
     
-    def stop!
+    def stop!(ctx)
       # nothing to do
     end
     
@@ -77,8 +80,7 @@ module Middleware
     def execute_php_script deployed_script, test_case, script_type, scenarios
       # some tests will want this environment variable
       env = { 'TEST_PHP_EXECUTABLE' => self.php_binary, 'IS_PFTT' => 'true' }
-      # LATER support for env['SKIP_SLOW_TESTS']
-              
+                    
       # tell scenarios that script is about to be started
       # scenarios may modify env or current_ini
       # TODO scenarios.execute_script_start(env, test, script_type, deployed_script, self.php_binary, @php_build, current_ini, @host )
@@ -86,7 +88,7 @@ module Middleware
       # generate options for the command execution
       exe_options = {
         # many PHPT tests require that the CWD be the directory they are stored in (or else they'll fail big)
-        # NOTE: chdir seems to be ignored on Windows if / is NOT converted to \ !!
+        # NOTE: chdir seems to be ignored on Windows(even Win7) if / is NOT converted to \ !!
         :chdir=> @host.format_path(File.dirname(deployed_script)),
             
         # set pipes to binary mode (may affect output on Windows)
@@ -104,28 +106,36 @@ module Middleware
       # merge in any environment variables the test case provides 
       env.merge(test_case.cli_env(exe_options[:chdir], deployed_script))
         
-      if @host.windows?
-        # important: convert path to script
-        #
-        #  otherwise, this is known to pass on all longhorn+ windows SKUs
-        #  except Vista SP0 (where it fails to find the file). it passes with / on Vista SP1+ and Windows 2008
-        deployed_script.gsub!('/', '\\')
-        #  also remove double \\ (ex: g:\\abc) as it can cause a problem on the same Windows SKUs
-        deployed_script.gsub!('\\\\', '\\')
-      end
+      # important: fix the ///s in the path to the script       
+      deployed_script = @host.format_path(deployed_script)
         
       # generate the command line to execute
       cmd_string =[
-        self.php_binary,
+        @host.format_path(self.php_binary),
         '-n', # make sure php doesn't use a php.ini, but only the directives we give it here
-        # pass current_ini to php.exe using the -d CLI param
-        current_ini.to_a.map{|directive| %Q{-d #{@host.escape(directive)}}},
+        #
+        # pass current_ini to php.exe using -d CLI params
+        current_ini.to_a.map{|directive|
+          
+          if directive.include?('/') or directive.include?('\\')
+            # directive contains a path (ex:  extension.dir=c:/php/ext)
+            #
+            # fix the //s or PHP will pass those ///s as is to the OS which may then fail it if its the wrong
+            # type of //s (a problem PHP won't catch)
+            i = directive.index('=')
+            if i
+              directive = directive[0..i]+@host.format_path(directive[i+1..directive.length])
+            end
+          end
+        
+          %Q{-d #{@host.escape(directive)}}
+        },
         (test_case.parts.has_key?(:args))?test_case.parts[:args]:'',
         deployed_script
         ].flatten.compact.join(' ')
        
       # save (in telemetry folder) the environment variables and the command line string used to run this case case
-      # TODO save_cmd(test_case, env, exe_options[:chdir], cmd_string)
+      # TODO sm.get_by_host_middleware_build(host, middleware, php, Test::Runner::Stage::PHPT).save_cmd(test_case, env, exe_options[:chdir], cmd_string)
       
       # feed in stdin string if present to PHP's standard input
       if test_case.parts.has_key?(:stdin)
@@ -136,6 +146,11 @@ module Middleware
       # finally, execute PHP
       o,e,s = @host.exec!(cmd_string, Tracing::Context::Test::Run.new(), exe_options)
       
+      if s != 0 and e.length+o.length==0
+        # try detecting crash or some other weird exit condition in php.exe
+        e = "\nPFTT: error: maybe crash?: php.exe exited with non-zero code: #{s}"
+      end
+      
       # tell scenarios that script has stopped
       # TODO scenarios.execute_script_stop(test, script_type, deployed_script, self.php_binary, @php_build, @host)
       
@@ -145,36 +160,6 @@ module Middleware
       [false, @host.name+' operation timed out.']
     end
     
-    # saves the command line and environment variables to run the test case into a telemetry folder file
-    # (save as a shell script or batch script)
-    def save_cmd(test_case, env, chdir, cmd_string) 
-      file_name = telemetry_folder(@host, @php, @middleware, @scenarios) + '/' + test_case.relative_path+((@host.windows?)?'.cmd':'.sh')
-      File.open(file_name, 'wb') do |f|
-        if host.posix?
-          f.puts('#!/bin/sh')
-        end
-        # save chdir
-        if chdir
-          f.puts("cd \"#{chdir}\""+((@host.windows?)?:"\r":''))
-        end
-        # save environment variables
-        unless env.empty?
-          f.puts(((@host.windows?)?'rem':'#')+' environment variables:'+((@host.windows?)?:"\r":''))
-        end
-        env.map do |name, value|
-          f.puts(((@host.windows?)?'set ':'export ')+name+'="'+value+'"'+((@host.windows?)?:"\r":''))
-        end
-        # save command line
-        f.puts(((@host.windows?)?'rem':'#')+' the command to run the test case'+((@host.windows?)?:"\r":''))
-        f.puts(cmd_string+((@host.windows?)?:"\r":''))
-        f.close()
-      end
-      if @host.posix?
-        # make it executable on posix (.cmd extension is enough to make it executable on windows)
-        system("chmod +x #{file_name}")
-      end
-    end
-
     def deploy_path
       @script_deploy_path||= @host.tmpdir
     end

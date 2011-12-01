@@ -38,7 +38,7 @@ def open_combo_files(telemetry_folder)
       file = File.open(file_name)
       host = host
 
-      results = PhptTestResult::Array.new()
+      results = Test::Result::Phpt::Array.new()
       telemetry_folder = 'C:/php-sdk/pftt-results/'+host.name+'.'+Time.now.to_s.gsub(' ', '_').gsub(':', '-')
 
       FileUtils.mkdir_p(telemetry_folder)
@@ -64,7 +64,7 @@ def open_combo_files(telemetry_folder)
           xml = to_simple(buf)
 
           if xml['@msg_type'] == 'result'
-                result = PhptTestResult::Base.from_xml(xml, 'test_bench', 'deploydir', php) 
+                result = Test::Result::Phpt::Base.from_xml(xml, 'test_bench', 'deploydir', php) 
             #puts host.name+' ' +result.to_s
             result.save_shared(shared_files)
             
@@ -72,8 +72,8 @@ def open_combo_files(telemetry_folder)
 
                 results.push(result)
           end
-          rescue Exception => ex
-          puts host.name+' '+ex.inspect+' '+ex.backtrace.inspect
+          rescue 
+          puts host.name+' '+$!.inspect+' '+$!.backtrace.inspect
           end
   
 
@@ -92,7 +92,7 @@ def to_simple(raw_xml)
 #    # see http://www.artima.com/weblogs/viewpost.jsp?thread=214719
 #    require 'kxml2-2.3.0.jar'
     
-    # TODO ruby MRI support
+    # LATER ruby MRI support
     
     # TODO share parser within thread
     parser = org.kxml2.io.KXmlParser.new

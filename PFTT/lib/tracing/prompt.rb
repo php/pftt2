@@ -4,16 +4,25 @@ module Tracing
     
 class Base
       
-  def initialize(test_ctx)
+  def initialize(test_ctx, action_type, result, host, file, code, do_over, msg)
     @test_ctx = test_ctx
+    @action_type = action_type
+    @result = result
+    @host = host
+    @file = file
+    @code = code
+    @do_over = do_over
+    @msg = msg
+  end
+  
+  def prompt_str
+    self.class.to_s.gsub('Tracing::Prompt', '')+'> '
   end
       
   def help
-    puts ' g  - go'
-    puts ' G  - go (interactive mode off)'
     puts ' h  - help'
     puts ' n  - next test case set'
-    puts ' X  - exit'
+    puts ' Q  - quit | exit'
     puts ' z  - re-run test case set'
     puts ' Z  - re-run test case set (not interactive)'
     puts ' N  - skip to next host'
@@ -22,15 +31,13 @@ class Base
   end
       
   def execute(ans)
-    if ans == 'g' or ans == 'G'
-      # TODO
-    elsif ans == 'h'
+    if ans == 'h'
       help
     elsif ans=='N'
       # N next test case set
       @test_ctx.next_test_case()
-    elsif ans=='X'
-      if @test_ctx.prompt_yesno('Are you sure you want to exit?')
+    elsif ans=='Q'
+      if @test_ctx.prompt_yesno('Are you sure you want to quit?')
         exit
       end
       return false # re-prompt
@@ -41,6 +48,8 @@ class Base
       # Z - re-run test case set (not interactive)
       $interactive_mode = false
       @test_ctx.rerun_combo(@host, @middlware, @php, @scn_set)
+    else
+      help
     end
     return false # re-prompt
   end # def execute
@@ -85,22 +94,36 @@ class Pftt < Base
   end # def change_wait_time
   
 end # class Pftt
-    
-class GenericException < Pftt
+
+class TryAgainPftt < Pftt
   
   def help
     super
-    puts ' e  - show exception'
-    puts ' o  - do it over'
+    puts ' A - run it again'
+  end
+  
+  def execute(ans)
+    if ans == 'A'
+      # TODO
+      return true
+    end
+    return super(ans)
+  end # def execute
+  
+end # class TryAgainPftt
+    
+class GenericException < TryAgainPftt
+  
+  def help
+    super
+    if @msg.is_a?(Exception)
+      puts ' e  - show exception'
+    end
   end
   
   def execute(ans)
     if ans == 'e'
       show_exception
-          
-      return false # re-prompt
-    elsif ans == 'o'
-      do_over
           
       return false # re-prompt
     end
@@ -109,14 +132,16 @@ class GenericException < Pftt
   
   def show_exception
     # e
-    # TODO
+    unless @msg.is_a?(Exception)
+      return
+    end
+
+    puts @msg.message
+    @msg.backtrace.each do |frame|
+      puts frame.inspect 
+    end
   end
-  
-  def do_over
-    # o or g
-    # TODO
-  end
-  
+    
 end # class GenericException
     
     module Network
@@ -125,10 +150,14 @@ class Connect < GenericException
   
   def help
     super
-    puts ' u - set username'
-    puts ' v - view credentials'
-    puts ' p - set password'
-    puts ' a - set address'
+    puts ' u - username'
+    puts ' U - change username'
+    puts ' p - password'
+    puts ' P - change password'
+    puts ' a - address'
+    puts ' A - change address'
+    puts ' n - port number'
+    puts ' N - change port number'
   end
         
   def execute(ans)
@@ -144,11 +173,14 @@ class CmdExecute < GenericException
   
   def help
     super
-    puts ' c  - change the command to execute'
+    puts ' c  - view command'
+    puts ' C  - change command'
   end
   
   def execute(ans)
     if ans == 'c'
+      # TODO
+    elsif ans == 'C'
       change_command
 
       return false # re-prompt
@@ -157,8 +189,17 @@ class CmdExecute < GenericException
   end # def execute
 
   def change_command
-    # c
-    # TODO
+    # C
+    puts 'Current Command: '+@file
+    new_cmd = prompt('New Command: ')
+    
+    @do_over.call(new_cmd)
+  end
+  
+  def prompt(label)
+    # TODO use @test_ctx.prompt
+    STDOUT.write(label)
+    return STDIN.gets.chomp
   end
   
 end # class CmdExecute
@@ -174,11 +215,11 @@ class FS1Op < FSOp
   
   def help
     super
-    puts ' j  - change file'
+    puts ' J  - change file'
   end
   
   def execute(ans)
-    if ans == 'j'
+    if ans == 'J'
       change_file
     end
     return super(ans)
@@ -201,14 +242,14 @@ class FS2Op < FSOp
   
   def help
     super
-    puts ' j  - change src file'
-    puts ' k  - change dst file'
+    puts ' J  - change src file'
+    puts ' K  - change dst file'
   end
   
   def execute(ans)
-    if ans == 'j'
+    if ans == 'J'
       change_src
-    elsif ans == 'k'
+    elsif ans == 'K'
       change_dst
     end
     return super(ans)
@@ -276,6 +317,36 @@ class ThreadControl < Pftt
   end
   
 end # class ThreadControl
+
+class TestCaseRunPrompt < TryAgainPftt
+  # each phpt is a test case
+  # for performance and stress testing, each app+middleware+php is a test case
+  def help
+    super
+    puts ' I - ignore test case, count as Failure' # TODO 
+    puts ' S - skip test case - ignore failure, count as Pass'
+    puts ' X - xdebug this test case'
+    puts ' D - use system debugger (windbg or gdb) on this test case'
+  end # def help
+        
+  def execute(ans)
+    if ans == 'I'
+      # TODO
+      return true
+    elsif ans == 'S'
+      # TODO
+      return true
+    elsif ans == 'X'
+      # TODO
+      return true
+    elsif ans == 'D'
+      # TODO
+      return true
+    end
+    return super(ans)
+  end # def execute
+  
+end # class TestCaseRunPrompt
     
     
   end

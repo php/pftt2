@@ -1,4 +1,8 @@
 
+require 'java'
+include_class 'java.util.Timer'
+include_class 'java.util.TimerTask'
+
 module Host
   class Local < HostBase
     #instantiable 'local'
@@ -6,7 +10,7 @@ module Host
     def reboot_wait(seconds, ctx)
       if ctx
         # get approval before rebooting localhost
-        if Tracing::Context::SystemSetup::Reboot.new(ctx).approve_reboot_localhost()
+        if ctx.new(SystemSetup::Reboot).approve_reboot_localhost()
           super(seconds, ctx)          
         end
       else
@@ -46,8 +50,8 @@ module Host
       # overwrites the file if it exists or creates it if it doesn't exist
       #
       if ctx
-        ctx.write_file(string, path) do |string, path|
-          return write(string, path, nil)
+        ctx.write_file(self, string, path) do |string, path|
+          return write(string, path, ctx)
         end
       end
       f = open_file(path, 'wb')
@@ -60,8 +64,8 @@ module Host
       out = f.gets()
       f.close()
       if ctx
-        ctx.read_file(out, path) do |path|
-          return read(path, nil)
+        ctx.read_file(self, out, path) do |path|
+          return read(path, ctx)
         end
       end
       return out
@@ -70,7 +74,7 @@ module Host
     def cwd ctx=nil
       if ctx
         ctx.fs_op0(self, :cwd) do
-          return cwd(nil)
+          return cwd(ctx)
         end
       end
       return Dir.getwd()
@@ -79,7 +83,7 @@ module Host
     def cd path, hsh, ctx=nil
       if ctx
         ctx.fs_op1(self, :cd, path) do |path|
-          return cd(path, hsh, nil)
+          return cd(path, hsh, ctx)
         end
       end
       make_absolute! path
@@ -93,35 +97,39 @@ module Host
       @dir_stack.clear unless hsh.delete(:no_clear) || false
           
       return path
-    end
+    end # def cd
 
     alias :upload :copy
     alias :download :copy
-
+    
     def exist? file, ctx=nil
       if ctx
         ctx.fs_op1(self, :exist, file) do |file|
-          return exist?(file, nil)
+          return exist?(file, ctx)
         end
       end
       make_absolute! file
       File.exist? file
     end
+    
+    alias :exists? :exist?
+    alias :exist :exist?
+    alias :exists :exist?
 
     def directory? path, ctx=nil
       if ctx
         ctx.fs_op1(self, :is_dir, path) do |path|
-          return directory?(path, nil)
+          return directory?(path, ctx)
         end
       end
       make_absolute! path
       exist?(path) && File.directory?(path)
     end
 
-    def open_file path, flags='r', ctx, &block
+    def open_file path, flags='r', ctx=nil, &block
       if ctx
         ctx.fs_op1(self, :open, path) do |path|
-          return open_file(path, flags, nil, block)
+          return open_file(path, flags, ctx, block)
         end
       end
       make_absolute! path
@@ -132,7 +140,7 @@ module Host
     def list path, ctx
       if ctx
         ctx.fs_op1(self, :list, path) do |path|
-          return list(path, nil)
+          return list(path, ctx)
         end
       end
       make_absolute! path
@@ -149,16 +157,29 @@ module Host
     protected
     
     class LocalExecHandle < ExecHandle
-      def initialize(stdout, stderr)
-        # TODO 
+      def initialize(stdout, stderr, process=nil)
+        @stdout = stdout
+        @stderr = stderr
+        @process = process
       end
       def write_stdin(stdin_data)
+        if @process
+          @process.getOutputStream().write(opts[:stdin_data].toByteArray())
+        end
+      end
+      def post(type, buf)
+        case type
+        when :stdout
+          @stdout = buf
+        when :stderr
+          @stderr = buf
+        end
       end
       def read_stderr
-        ''
+        @stderr
       end
       def read_stdout
-        ''
+        @stdout
       end
     end # class LocalExecHandle
     
@@ -191,51 +212,60 @@ module Host
           builder.directory(java.io.File.new(opts[:chdir]))
         end
          
-        #     
+        # start the process
         process = builder.start()
         
         #
         if opts[:timeout].is_a?(Integer) and opts[:timeout] > 0
-          # monitor the process to make sure it exits in time, or kill it
-          Thread.start do
-            sleep(opts[:timeout])
-                      
-            begin
-              process.exitValue()
-              # process is not running anymore
-                      
-            rescue java.lang.IllegalThreadStateException => ex
-              # process is still running, kill it
-                      
-              process.destroy
-                      
+          # share a thread amongst all hosts rather than one thread per exec!() call
+          # (that can lead to thread exhaustion)
+          #
+          # LATER MRI support
+          @@timer.schedule(ExitMonitorTask.new(process), opts[:timeout]*1000)
+        end # if
+        #
+        
+        lh = LocalExecHandle.new('', '', process)
+              
+        # 
+        def copy_stream(src, dst, type, lh, block, max_len)
+          # see https://github.com/jruby/jruby/wiki/CallingJavaFromJRuby
+          buf = Java::byte[128].new
+          len = 0
+          total_len = 0
+          while ( ( len = src.read(buf)) != -1 ) do
+            dst.write(buf, 0, len)
+            
+            if block
+              lh.post(type, buf)
+              block.call(lh)
+            end
+            
+            if max_len > 0
+              total_len += 1
+              # when output limit reached, stop copying automatically
+              if total_len > max_len
+                break
+              end
             end
           end
         end
         #
-              
-        def copy_stream(src, dst)
-          # see https://github.com/jruby/jruby/wiki/CallingJavaFromJRuby
-          block = Java::byte[128].new
-          len = 0
-          while ( ( len = src.read(block)) != -1 ) do
-            dst.write(block, 0, len)
-          end
-        end
                 
         if opts[:stdin_data]
-          process.getOutputStream().write(opts[:stdin_data].toByteArray())
+          lh.write_stdin(opts[:stdin_data])
         end
               
         output = java.io.ByteArrayOutputStream.new()
         error = java.io.ByteArrayOutputStream.new()
-        copy_stream(java.io.BufferedInputStream.new(process.getInputStream()), output)
-        copy_stream(java.io.BufferedInputStream.new(process.getErrorStream()), error)
+        # copy the output streams
+        copy_stream(java.io.BufferedInputStream.new(process.getInputStream()), output, :stdout, lh, block, opts[:max_len])
+        copy_stream(java.io.BufferedInputStream.new(process.getErrorStream()), error, :stderr, lh, block, opts[:max_len])
               
         o = output.toString()
         e = error.toString()
         
-        # wait for the process to exit
+        # wait while the process runs/wait for the process to exit
         w = process.waitFor()
         
         #
@@ -256,34 +286,51 @@ module Host
         
         # may get Errno:E2BIG (arg list too long)
         o, e, w = Open3.capture3(env, command, new_opts)
-      end
       
-      if block
-        lh = LocalExecHandle.new(o, e)
-        o = nil
-        e = nil
-        # TODO block.call(lh)
+        if block
+          lh = LocalExecHandle.new(o, e)
+          o = nil
+          e = nil
+          block.call(lh)
+        end
       end
             
       return [o, e, w]
     end # def _exec_impl
-
-    def _delete path, ctx
-      if ctx
-        ctx.fs_op1(self, :delete, path) do |path|
-          return _delete(path, nil)
-        end
+    
+    # used as a timer/shared thread to monitor all processes started by exec!() to
+    # ensure they end within the timeout or are killed
+    @@timer = Timer.new
+    
+    class ExitMonitorTask < TimerTask
+      
+      def initialize(process)
+        super()
+        @process = process
       end
+      
+      def run
+        # check the process to make sure exited in time. if not, kill it
+        begin
+          @process.exitValue()
+          # process is not running anymore
+                        
+        rescue java.lang.IllegalThreadStateException => ex
+          # process is still running, kill it
+                        
+          @process.destroy
+        end # begin
+              
+      end # def run
+      
+    end # class ExitMonitorTask
+    
+    def _delete path, ctx
       make_absolute! path
       File.delete path
     end
 
     def _mkdir path, ctx
-      if ctx
-        ctx.fs_op1(self, :mkdir, path) do |path|
-          return _mkdir(path, nil)
-        end
-      end
       make_absolute! path
       Dir.mkdir path
     end

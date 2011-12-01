@@ -27,8 +27,8 @@ class Client < BaseRemoteHostAndClient
       # TODO temp do we really need to do this anymore?
       @host.exec!('taskkill /im:jruby.exe /f', ctx)
       @host.exec!('taskkill /im:jruby.exe /f', ctx)
-    rescue Exception => ex
-      puts @host.name+" "+ex.inspect+" "+ex.backtrace.inspect
+    rescue 
+      puts @host.name+" "+$!.inspect+" "+$!.backtrace.inspect
     end
           
 
@@ -101,29 +101,25 @@ class Client < BaseRemoteHostAndClient
         @wait_lock.synchronize do
               begin
                 # set JAVA_HOME=\\jruby-1.6.5\\jre
-                # TODO ""
-                #@host.exec!(@host.systemdrive+'\\ruby192\\bin\\ruby _pftt_hc.rb ""', {:chdir=>@host.systemdrive+'\\php-sdk\\1\\PFTT', :stdin=>@stdin}, Tracing::Context::Phpt::RunHost.new()) do |stream, block|
                   @host.exec!('_pftt_hc.cmd ""', Tracing::Context::Phpt::RunHost.new(), {:chdir=>@host.systemdrive+'\\php-sdk\\1\\PFTT', :stdin=>@stdin}) do |handle|
                   if handle.has_stderr?
                     recv_ssh_block(handle.read_stderr)
                   end
                 end
-              rescue Exception => ex
-                puts @host.name+" "+ex.inspect+" "+ex.backtrace.inspect
+              rescue 
+                puts @host.name+" "+$!.inspect+" "+$!.backtrace.inspect
                 
                 # TODO be able to resume: rerun _pftt_hc, but limit the list of tests to those that results weren't received for
                 
                 # retry
                 begin
-                          # TODO ""
-                          #@host.exec!(@host.systemdrive+'\\ruby192\\bin\\ruby _pftt_hc.rb ""', {:chdir=>@host.systemdrive+'\\php-sdk\\1\\PFTT', :stdin=>@stdin}, Tracing::Context::Phpt::RunHost.new()) do |stream, block|
                   @host.exec!('_pftt_hc.cmd ""', Tracing::Context::Phpt::RunHost.new(), {:chdir=>@host.systemdrive+'\\php-sdk\\1\\PFTT', :stdin=>@stdin}) do |handle|
                                     if handle.has_stderr?
                                       recv_ssh_block(handle.read_stderr)
                                     end
                                   end
-                        rescue Exception => ex
-                  puts @host.name+" "+ex.inspect+" "+ex.backtrace.inspect
+                        rescue
+                  puts @host.name+" "+$!.inspect+" "+$!.backtrace.inspect
                   end
               ensure
                 @running = false
@@ -144,8 +140,8 @@ class Client < BaseRemoteHostAndClient
       #              end
       #            end
                 
-                rescue Exception => ex
-                  puts @host.name+" "+ex.inspect+" "+ex.backtrace.inspect
+                rescue 
+                  puts @host.name+" "+$!.inspect+" "+$!.backtrace.inspect
                 end
                 
                 # LESSON ensure report finished
@@ -154,8 +150,8 @@ class Client < BaseRemoteHostAndClient
             end
             #
              
-            rescue Exception => ex
-              puts @host.name+" "+ex.inspect+" "+ex.backtrace.inspect
+            rescue
+              puts @host.name+" "+$!.inspect+" "+$!.backtrace.inspect
             end
           end # thread
         end
@@ -177,7 +173,7 @@ class Client < BaseRemoteHostAndClient
             #puts msg_type
           if msg_type == 'result'
             # display
-            result = PhptTestResult::Base.from_xml(xml, 'test_bench', 'deploydir', @php) # TODO
+            result = Test::Result::Phpt::Base.from_xml(xml, 'test_bench', 'deploydir', @php) # TODO
             #puts result.inspect
             @test_ctx.add_result(@host, @php, @middleware, @scn_set, result, result.test_case)
           elsif msg_type == 'started'

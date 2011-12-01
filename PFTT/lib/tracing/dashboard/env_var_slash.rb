@@ -9,6 +9,7 @@ include_class 'javax.swing.JPanel'
 include_class 'javax.swing.JScrollPane'
 include_class 'javax.swing.JTextArea'
 include_class 'javax.swing.JTree'
+include_class 'javax.swing.tree.DefaultMutableTreeNode'
 require 'RiverLayout.jar'
 include_class 'se.datadosen.component.RiverLayout'
 
@@ -16,10 +17,11 @@ module Tracing
 module Dashboard
   class EnvVarSlash
     def selected?(local_host, cmd_line)
+      puts cmd_line
       if local_host.windows?
-        return cmd_line.ends_with?('\\') or cmd_line.ends_with?('%') or cmd_line.ends_with?('-')
+        cmd_line.ends_with?('\\') or cmd_line.ends_with?('%') or cmd_line.ends_with?('-') or cmd_line.ends_with?('=')
       else
-        return cmd_line.ends_with?('/') or cmd_line.ends_with?('-')
+        cmd_line.ends_with?('/') or cmd_line.ends_with?('-') or cmd_line.ends_with?('=')
       end
     end
     
@@ -55,7 +57,36 @@ module Dashboard
       
       add_components
       
-      # TODO dir listing... sub files/dirs if trailing \" \ or / or /" but not for trailing - or -"
+      root = Folder.new(@base)
+      @tree.getModel().setRoot(root)
+      
+      host = Host::Local.new()
+      ctx = nil
+      host.list(@base, ctx).each do |file|
+        if host.directory?(file)
+          root.add(Folder.new(file))
+        else
+          root.add(File.new(file))
+        end
+      end
+    end
+    
+    class Folder < DefaultMutableTreeNode
+      def initialize(path)
+        @path = path
+      end
+      def toString
+        @path
+      end
+    end
+    
+    class File < DefaultMutableTreeNode
+      def initialize(path)
+        @path = path
+      end
+      def toString
+        @path
+      end
     end
     
     def add_components
@@ -67,7 +98,8 @@ module Dashboard
       
       add('p left hfill', JLabel.new('Choose Directory'))
       
-      add('p left hfill vfill', JScrollPane.new(JTree.new()))
+      @tree = JTree.new()
+      add('p left hfill vfill', JScrollPane.new(@tree))
       
       @clear_button = JButton.new('Clear')
       @clear_button.addActionListener(ClearClick.new(@text_area))

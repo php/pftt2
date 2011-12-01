@@ -22,11 +22,11 @@ module Util
         t = Thread.start do
           begin
             block.call()
-          rescue Exception => ex
+          rescue 
             if @ctx
-              @ctx.pftt_exception(block, ex)
+              @ctx.pftt_exception(block, $!)
             else
-              Tracing::Context::Base.show_exception(ex)
+              Tracing::Context::Base.show_exception($!)
             end
           end
         end

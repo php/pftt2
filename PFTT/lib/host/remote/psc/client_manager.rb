@@ -67,14 +67,14 @@ class ClientManager
                     break
                   end
                 
-                rescue Exception => ex
+                rescue
                   # NOTE: this branch doesn't seem to get reached for variables that aren't defined/defined in scope of a block!!
-                  puts "RECV_EXCEPTION" + @host.name+" "+ex.inspect+" "+ex.backtrace.inspect
+                  puts "RECV_EXCEPTION" + @host.name+" "+$!.inspect+" "+$!.backtrace.inspect
                 end # begin
               end # while
               end # each
-            rescue Exception => ex
-              puts "RECV_EXCEPTION2" + @host.name+" "+ex.inspect+" "+ex.backtrace.inspect
+            rescue 
+              puts "RECV_EXCEPTION2" + @host.name+" "+$!.inspect+" "+$!.backtrace.inspect
             end
           end # while
 

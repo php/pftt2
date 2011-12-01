@@ -46,18 +46,89 @@ def generate_shell_script(cmd, ruby_script)
 end
 
 def os_short_name(os)
-  os.sub!('Windows', 'Win')
-  os.sub!('RTM', 'SP0')
-  
+  os.gsub!('Windows', 'Win')
+    
   # remove common words
-  os.sub!('Professional', '')
-  os.sub!('Standard', '')
-  os.sub!('Enterprise', '')
-  os.sub!('Microsoft', '')
-  os.sub!('PC', '')
-  os.sub!('-based', '')
-  os.sub!('  ', ' ')
-  os.sub!('  ', ' ')
+  os.gsub!('Professional', '')
+  os.gsub!('Standard', '')
+  os.gsub!('Enterprise', '')
+  os.gsub!('Basic', '')
+  os.gsub!('Premium', '')
+  os.gsub!('Ultimate', '')
+  unless os.include?('XP')
+    # XP Home != XP Pro
+    os.gsub!('Home', '')
+  end
+  os.gsub!('(R)', '')
+  os.gsub!(',', '')
+  os.gsub!('Edition', '')
+  os.gsub!('2008 R2', '2008r2')
+  os.gsub!('2003 R2', '2003r2')
+  os.gsub!('RTM', '')
+  os.gsub!('Service Pack 1', '')
+  os.gsub!('Service Pack 2', '')
+  os.gsub!('Service Pack 3', '')
+  os.gsub!('Service Pack 4', '')
+  os.gsub!('Service Pack 5', '')
+  os.gsub!('Service Pack 6', '')
+  os.gsub!('Microsoft', '')
+  os.gsub!('N/A', '')
+  os.gsub!('PC', '')
+  os.gsub!('Server', '')
+  os.gsub!('-based', '')
+  os.gsub!('Build', '')
+  # 
+  os.gsub!('6.1.7600', '')
+  os.gsub!('6.1.7601', '')
+  os.gsub!('6.0.6000', '')
+  os.gsub!('6.0.6001', '')
+  os.gsub!('6.0.6002', '')
+  os.gsub!('5.1.3786', '')
+  os.gsub!('5.1.3787', '')
+  os.gsub!('5.1.3788', '')
+  os.gsub!('5.1.3789', '')
+  os.gsub!('5.1.3790', '')
+  os.gsub!('5.0.2600', '')
+  os.gsub!('5.0.2599', '')
+  os.gsub!('5.2.SP2', '')
+  os.gsub!('5.2', '')
+  os.gsub!('7600', 'SP0') # win7/win2k8r2 sp0
+  os.gsub!('7601', 'SP1') # win7/win2k8r2 sp1
+  os.gsub!('6000', 'SP0') # winvista/win2k8 sp0
+  os.gsub!('6001', 'SP1') # winvista/win2k8 sp1
+  os.gsub!('6002', 'SP2') # winvista/win2k8 sp2
+  os.gsub!('3786', 'SP0') # win2k3 sp0?
+  os.gsub!('3787', 'SP1') # win2k3 sp1?
+  os.gsub!('3788', 'SP0') # win2k3r2 sp0?
+  os.gsub!('3789', 'SP1') # win2k3r2 sp1?
+  os.gsub!('3790', 'SP2') # win2k3r2 sp2
+  os.gsub!('2600', 'SP3') # windows xp sp3
+  os.gsub!('2599', 'SP2') # windows xp sp2?
+  #
+  os.gsub!('  ', ' ')
+  os.gsub!('  ', ' ')
+  os.gsub!('  ', ' ')
+  os.gsub!('  ', ' ')
+  os.gsub!('  ', ' ')
+  os.gsub!('  ', ' ')
+  os.gsub!('  ', ' ')
+  os.gsub!('  ', ' ')
+  os.gsub!('  ', ' ')
+  os.gsub!('  ', ' ')
+  os.gsub!('  ', ' ')
+  os.gsub!('  ', ' ')
+  os.gsub!('  ', ' ')
+  os.gsub!('  ', ' ')
+  os.gsub!('  ', ' ')
+  os.gsub!('  ', ' ')
+  os.gsub!('  ', ' ')
+  os.gsub!('  ', ' ')
+  os.gsub!('  ', ' ')
+  os.gsub!('  ', ' ')
+  os.gsub!('  ', ' ')
+  os.gsub!('  ', ' ')
+  os.gsub!('  ', ' ')
+  os.gsub!('  ', ' ')
   
   return os.lstrip.rstrip
 end

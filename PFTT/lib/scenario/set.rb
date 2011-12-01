@@ -2,7 +2,7 @@
 module Scenario
   class Set
     
-    include TestBenchFactor
+    include Test::Factor
     
     attr_accessor :working_fs, :remote_fs, :date, :database
     attr_reader :id

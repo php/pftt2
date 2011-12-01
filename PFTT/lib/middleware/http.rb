@@ -51,7 +51,7 @@ module Middleware
           
         url = URI.parse(url)
         
-        http = Net::HTTP.new('127.0.0.1', 80) # TODO 80
+        http = Net::HTTP.new('127.0.0.1', 80) 
         
         if test_case.parts.has_key?(:post_raw)
           response = post(test_case, http, test_case.parts[:post_raw], url, nil, false)
