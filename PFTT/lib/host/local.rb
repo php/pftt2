@@ -2,6 +2,7 @@
 require 'java'
 include_class 'java.util.Timer'
 include_class 'java.util.TimerTask'
+require 'FileUtils'
 
 module Host
   class Local < HostBase
@@ -102,20 +103,6 @@ module Host
     alias :upload :copy
     alias :download :copy
     
-    def exist? file, ctx=nil
-      if ctx
-        ctx.fs_op1(self, :exist, file) do |file|
-          return exist?(file, ctx)
-        end
-      end
-      make_absolute! file
-      File.exist? file
-    end
-    
-    alias :exists? :exist?
-    alias :exist :exist?
-    alias :exists :exist?
-
     def directory? path, ctx=nil
       if ctx
         ctx.fs_op1(self, :is_dir, path) do |path|
@@ -154,7 +141,28 @@ module Host
       false
     end
     
+    def mtime(file)
+      # TODO implement for ssh
+      File.mtime(file).to_i
+    end
+    
     protected
+    
+    def _exist?(file, ctx)
+      File.exist? file
+    end
+    
+    def move_file(from, to, ctx)
+      FileUtils.move_file(from, to)
+    end
+    
+    def copy_file(from, to, ctx, mk)
+      if mk
+        mkdir(File.dirname(to), ctx)
+      end
+                  
+      FileUtils.copy_file(from, to)
+    end
     
     class LocalExecHandle < ExecHandle
       def initialize(stdout, stderr, process=nil)

@@ -25,8 +25,8 @@ class Client < BaseRemoteHostAndClient
             
       #
       # TODO temp do we really need to do this anymore?
-      @host.exec!('taskkill /im:jruby.exe /f', ctx)
-      @host.exec!('taskkill /im:jruby.exe /f', ctx)
+      @host.exec!('taskkill /im:jruby.exe /f', ctx, {:success_exit_code=>128})
+      @host.exec!('taskkill /im:jruby.exe /f', ctx, {:success_exit_code=>128})
     rescue 
       puts @host.name+" "+$!.inspect+" "+$!.backtrace.inspect
     end
@@ -97,30 +97,21 @@ class Client < BaseRemoteHostAndClient
       #      end
             
         #
+        # TODO
+        send_php(PhpBuild.new('g:/php-sdk/PFTT-PHPS/'+$php_build_path))
         @running = true
         @wait_lock.synchronize do
               begin
+                
+                
                 # set JAVA_HOME=\\jruby-1.6.5\\jre
-                  @host.exec!('_pftt_hc.cmd ""', Tracing::Context::Phpt::RunHost.new(), {:chdir=>@host.systemdrive+'\\php-sdk\\1\\PFTT', :stdin=>@stdin}) do |handle|
-                  if handle.has_stderr?
-                    recv_ssh_block(handle.read_stderr)
-                  end
-                end
+                do_it()
+                
               rescue 
                 puts @host.name+" "+$!.inspect+" "+$!.backtrace.inspect
                 
-                # TODO be able to resume: rerun _pftt_hc, but limit the list of tests to those that results weren't received for
+                do_it() #again
                 
-                # retry
-                begin
-                  @host.exec!('_pftt_hc.cmd ""', Tracing::Context::Phpt::RunHost.new(), {:chdir=>@host.systemdrive+'\\php-sdk\\1\\PFTT', :stdin=>@stdin}) do |handle|
-                                    if handle.has_stderr?
-                                      recv_ssh_block(handle.read_stderr)
-                                    end
-                                  end
-                        rescue
-                  puts @host.name+" "+$!.inspect+" "+$!.backtrace.inspect
-                  end
               ensure
                 @running = false
                 @started = false
@@ -155,6 +146,13 @@ class Client < BaseRemoteHostAndClient
             end
           end # thread
         end
+        def do_it
+          @host.exec!(@host.systemdrive+'/php-sdk/1/pftt/_pftt_hc.cmd', Tracing::Context::Phpt::RunHost.new(), {:stdin_data=>@stdin, :max_len=>0, :chdir=>@host.systemdrive+'\\php-sdk\\1\\PFTT', :stdin=>@stdin}) do |handle|
+            if handle.has_stderr?
+              recv_ssh_block(handle.read_stderr)
+            end
+          end
+        end
         def hosted_client_failed
           # terminate _pftt_hc.rb if its still running
           @host.close
@@ -166,6 +164,7 @@ class Client < BaseRemoteHostAndClient
         def send_full_block(block)
           block += "<Boundary>\n"
           
+          puts block
           @stdin += block
         end
         def dispatch_recvd_xml(xml)
@@ -194,7 +193,7 @@ class Client < BaseRemoteHostAndClient
           end
         end
         def send_start
-          send_xml({}, 'start')
+          # TODO TUE send_xml({}, 'start')
         end
         def send_stop
           send_xml({}, 'stop')

@@ -39,7 +39,10 @@ class RemoteHost < BaseRemoteHostAndClient
           
     while @run
       line = STDIN.gets()
-      recv_ssh_block(line)
+      # TODO fucked up recv_ssh_block(line)
+      xml = to_simple(line)
+      dispatch_recvd_xml(xml)
+      dispatch_recvd_xml({'@msg_type'=>'start'}) # TODO
     end
   end
   def send_result(result)

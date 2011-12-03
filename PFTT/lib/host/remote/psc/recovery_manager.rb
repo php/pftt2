@@ -8,12 +8,12 @@ module Host
 class HostRecoveryManager
     def initialize(hosts, php, middleware, scn_set)
   #hosts = [hosts.first]
-      php = PhpBuild.new('C:/php-sdk/builds/php-5.4-nts-windows-vc9-x86-r319120')
+      php = PhpBuild.new('C:\\php-sdk\\builds\\php-5.4.0rc2-nts-Win32-VC9-x86')
 
       threads = []
       hosts.each do |host|
 
-        file_name = 'C:/php-sdk/PFTT-PSCC/r319120/'+host.name
+        file_name = 'C:/php-sdk/PFTT-PSCC/540rc2'# r319120/'+host.name
         if File.exists?(file_name)
           #t = Thread.start do
             recover(file_name, host, php, middleware, scn_set)
@@ -136,13 +136,17 @@ def to_simple(raw_xml)
                             
           when 4#Xml.TEXT
             text = parser.getText();
-      
+#      if text.include?('+Warning: strtotime()')
+#        puts text
+#      end
             if t['text']
               t['text'] += text
             else
               t['text'] = text
             end
-            
+  if text.include?('+Warning: strtotime()')
+    puts t.inspect
+  end
           when 3#Xml.END_TAG
             if s.length > 1
               s.pop # double pop

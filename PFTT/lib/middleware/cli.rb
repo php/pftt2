@@ -20,10 +20,10 @@ module Middleware
         # phpt thread) 
         config_ctx = Tracing::Context::Middleware::Config.new()
         
-        @host.exec!('REG DELETE "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug" /v Debugger /f', config_ctx)
+        # TODO @host.exec!('REG DELETE "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug" /v Debugger /f', config_ctx)
         # disable Hard Error Popup Dialog boxes (will still get this even without a debugger)
         # see http://support.microsoft.com/kb/128642
-        @host.exec!('REG ADD "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Windows" /v ErrorMode /d 2 /t REG_DWORD /f', config_ctx)
+        # TODO @host.exec!('REG ADD "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Windows" /v ErrorMode /d 2 /t REG_DWORD /f', config_ctx)
           
         # disable windows firewall
         # LATER edit firewall rules instead (what if on public network, ex: Azure)

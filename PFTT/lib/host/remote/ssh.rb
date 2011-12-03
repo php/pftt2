@@ -152,35 +152,6 @@ module Host
       end
     end
     
-    def exist? path, ctx=nil
-      if ctx
-        ctx.fs_op1(self, :exist, path) do |path|
-          return exist?(path, ctx)
-        end
-      end
-      
-      # see T_* constants in Net::SFTP::Protocol::V01::Attributes
-      # v04 and v06 attributes don't have a directory? or file? method (which v01 does)
-      # doing it this way will work for all 3 (v01, v04, v06 attributes)
-      begin
-        a = wait_for(sftp(ctx).stat(path), :attrs)
-        # types: regular(1), directory(2), symlink, special, unknown, socket, char_device, block_device, fifo
-        #        # if type is any of those, then path exists
-        if a.nil?
-          return false
-        else
-          return ( a.type > 0 and a.type < 10 )
-        end
-      rescue
-        if_closed
-        return false
-      end
-    end
-    
-    alias :exists? :exist?
-    alias :exist :exist?
-    alias :exists :exist?
-
     def list(path, ctx)
       if ctx
         ctx.fs_op1(self, :list, path) do |path|
@@ -267,11 +238,11 @@ module Host
       # LATER remove this gotcha/rule/limitation (implement using File.basename)
       #
       if windows?
-        to_windows_path!(local_file)
-        to_windows_path!(remote_path)
+        local_file = to_windows_path(local_file)
+        remote_path = to_windows_path(remote_path)
       else
-        to_posix_path!(local_file)
-        to_posix_path!(remote_path)
+        local_file = to_posix_path(local_file)
+        remote_path = to_posix_path(remote_path)
       end
       #
       
@@ -318,6 +289,38 @@ module Host
 
     protected
     
+    def _exist?(path, ctx)
+      # see T_* constants in Net::SFTP::Protocol::V01::Attributes
+      # v04 and v06 attributes don't have a directory? or file? method (which v01 does)
+      # doing it this way will work for all 3 (v01, v04, v06 attributes)
+      begin
+        a = wait_for(sftp(ctx).stat(path), :attrs)
+        # types: regular(1), directory(2), symlink, special, unknown, socket, char_device, block_device, fifo
+        #        # if type is any of those, then path exists
+        if a.nil?
+          return false
+        else
+          return ( a.type > 0 and a.type < 10 )
+        end
+      rescue
+        if_closed
+        return false
+      end
+    end
+    
+    def move_file(from, to, ctx)
+      move_cmd(from, to, ctx)
+    end
+    
+    def copy_file(from, to, ctx, mk)
+      to = File.dirname(to)
+      if mk
+        mkdir(to, ctx)
+      end
+      
+      copy_cmd(from, to, ctx)
+    end
+    
     # for #clone()
     attr_accessor :rebooting, :rebooting_reconnect_tries
     
@@ -355,11 +358,21 @@ module Host
       def write_stdin(stdin_data)
         @channel.send_data(stdin_data)
       end
+      def has_stderr?
+        @stderr.length > 0
+      end
+      def has_stdout?
+        @stdout.length > 0
+      end
       def read_stderr
-        @stderr
+        x = @stderr
+        @stderr = ''
+        return x
       end
       def read_stdout
-        @stdout
+        x = @stdout
+        @stdout = ''
+        return x
       end
       def post_stdout(data)
         @stdout = data
@@ -388,7 +401,7 @@ module Host
       stdout, stderr = '',''
       stdin_data = opts[:stdin_data]
       exit_code = -254 # assume error unless success
-      
+            
       ssh(ctx).open_channel do |channel|
         channel.exec(command) do |channel, success|
           unless success
@@ -404,7 +417,7 @@ module Host
             if stdin_data
               ch.send_data(stdin_data)
               stdin_data = nil
-            end
+            end            
             if block
               sh.post_stdout(data)
               block.call(sh)
@@ -470,11 +483,11 @@ module Host
 
     def _delete path, ctx
       if windows?
-        to_windows_path!(path)
+        path = to_windows_path(path)
         
         cmd!("DEL /Q /F \"#{path}\"", ctx)
       else
-        to_posix_path!(path)
+        path = to_posix_path(path)
         
         exec!("rm -rf \"#{path}\"", ctx)
       end

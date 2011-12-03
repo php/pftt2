@@ -7,10 +7,10 @@ module Test
 class Package < Tracing::Stage
   
   def run()
-    notify_start
+    notify_start 
     
     puts 'PFTT:compress: compressing PHPTs...'
-    local_phpt_zip = package_svn(Host::Local.new(), 'c:/php-sdk/svn/branches/PHP_5_4')
+    local_phpt_zip = package_svn(Host::Local.new(), $phpt_path)
     puts 'PFTT:compress: compressed PHPTs...'
     
     notify_end(true)
@@ -18,7 +18,7 @@ class Package < Tracing::Stage
     return local_phpt_zip
   end
   
-end      
+end # class Package
 
       end # module PHPT
     end # module Stage

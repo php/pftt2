@@ -112,7 +112,7 @@ module Tracing
         
         while true do
           # TODO empty all STDIN chars now (before user is prompted to enter a char we shouldn't ignore)
-          
+           
           # show the prompt line to the user
           STDOUT.write(host.name+'('+host.osname_short+')'+prompt.prompt_str)
                   

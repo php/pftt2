@@ -98,14 +98,19 @@ module Middleware
       
       # if $force_deploy, make a new directory! otherwise, reuse existing directory (for quick manual testing can't take the time
       #          to copy everything again)
-      @deployed_php ||= @host.join(deploy_to, ( @php_build[:version] + ((@php_build[:threadsafe])?'-TS':'-NTS') + ( $force_deploy ? '_'+String.random(4) : '' ) ) )
+      @deployed_php ||= @php_build.path # TODO @host.join(deploy_to, ( @php_build[:version] + ((@php_build[:threadsafe])?'-TS':'-NTS') + ( $force_deploy ? '_'+String.random(4) : '' ) ) )
       
       #    
 #  TODO TUE    if $force_deploy or not File.exists?(php_binary()) or File.mtime(@php_build.path) >= File.mtime(php_binary())
         unless $hosted_int
         puts "PFTT:deploy: uploading... "+@deployed_php
-      host.upload_force("c:/php-sdk/5.4.0beta2-NTS.7z", host.systemdrive(ctx)+'/5.4.0beta2-NTS.7z', false, ctx) # critical: false
+        
+        zip_name = package_php_build(Host::Local.new(), 'c:/php-sdk/builds/'+$php_build_path)
+        
+          # TODO package_php_build
+      host.upload_force(zip_name, host.systemdrive(ctx)+'/5.4.0beta2-NTS.7z', false, ctx) # critical: false
                 
+      # TODO check if build already on remote host (so compression and upload can be skipped)
       sd = host.systemdrive
           ctx = Tracing::Context::Dependency::Check.new # TODO ctx.new
       host.delete_if("#{sd}\\php-sdk\\PFTT-PHPs\\5.4.0beta2-NTS", ctx)

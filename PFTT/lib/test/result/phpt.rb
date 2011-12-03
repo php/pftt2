@@ -17,20 +17,33 @@ module Test
     end
     
     def self.from_xml(xml, test_bench, deploydir, php)
-      rclass = case xml['@result_type']
-      when 'XSkip'
+      rclass = case xml['@status']
+      when 'xskip'
         Test::Result::Phpt::XSkip
-      when 'Skip'
+      when 'skip'
         Test::Result::Phpt::Skip
-      when 'Bork'
+      when 'bork'
         Test::Result::Phpt::Bork
-      when 'Unsupported'
+      when 'unsupported'
         Test::Result::Phpt::Unsupported
-      when 'Mean'
+      when 'xfail'
+        Test::Result::Phpt::Meaningful
+      when 'fail'
+        Test::Result::Phpt::Meaningful
+      when 'works'
+        Test::Result::Phpt::Meaningful
+      when 'pass'
         Test::Result::Phpt::Meaningful
       end
-      if xml['@status'] == 'unsupported'
+      if rclass.nil?
+#      puts rclass
+#      puts xml['@result_type']
+#        puts xml.inspect
+      end
+      
+      if xml['@status'] == 'unsupported' or xml['@status'] == 'bork'
         r = rclass.new(Test::Case::Phpt.from_xml(xml['test_case'][0]), test_bench, deploydir, php)
+      # TODO included borked reasons array (field)
       elsif xml.has_key?('@reason')
         r = rclass.new(Test::Case::Phpt.from_xml(xml['test_case'][0]), test_bench, deploydir, php, xml['@reason'])
       else
@@ -51,6 +64,7 @@ module Test
           result_str = result_str.to_s
         end
         r = rclass.new(Test::Case::Phpt.from_xml(xml['test_case'][0]), test_bench, deploydir, php, result_str)
+          
       end
       case xml['@status']
       when 'pass'
@@ -70,11 +84,14 @@ module Test
       when 'xfail'
         r.status = :xfail
       end
+      #puts xml.inspect
       if xml.has_key?('diff')
+        #r.diff = xml['diff'][0]['result_str'][0]['text']
         r.diff = xml['diff'][0]
         unless r.diff.is_a?(String)
           r.diff = ''
         end
+        #puts xml.inspect
       end
       r.set_files
       return r
@@ -82,24 +99,24 @@ module Test
     
     def to_xml
       #
-      result_type = case self.class
-      when Test::Result::Phpt::XSkip
-        'XSkip'
-      when Test::Result::Phpt::Skip
-        'Skip'
-      when Test::Result::Phpt::Bork
-        'Bork'
-      when Test::Result::Phpt::Unsupported
-        'Unsupported'
-      when Test::Result::Phpt::Meaningful
-        'Meaningful'
-      else
-        ''
-      end
+#      result_type = case self.class
+#      when Test::Result::Phpt::XSkip
+#        'XSkip'
+#      when Test::Result::Phpt::Skip
+#        'Skip'
+#      when Test::Result::Phpt::Bork
+#        'Bork'
+#      when Test::Result::Phpt::Unsupported
+#        'Unsupported'
+#      when Test::Result::Phpt::Meaningful
+#        'Meaningful'
+#      else
+#        ''
+#      end
       #
       
       xml = {
-        '@result_type' => result_type,
+        #'@result_type' => result_type,
         'test_case' => @test_case.to_xml,
         '@status' => @status
       }
@@ -277,8 +294,10 @@ module Test
         unless @diff.is_a?(String)
           @diff = @diff.to_s
         end
+        #puts @diff.length.to_s
       if @diff.length > 0
         files['diff']= @diff
+          
       end
     end
     attr_accessor :diff

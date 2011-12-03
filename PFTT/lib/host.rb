@@ -17,6 +17,17 @@ module Host
       @@hosts||={}
     end
   end
+  
+  def self.sub base, path
+    if path.starts_with?(base)
+      return path[base.length..path.length]
+    end
+    return path
+  end
+  
+  def self.join *path_array
+    path_array.join('/')
+  end
 
   def self.administrator_user (platform)
     if platform == :windows
@@ -44,11 +55,15 @@ module Host
     
   def self.to_windows_path!(path)
     # remove \\ from path too. they may cause problems on some Windows SKUs
-    return path.gsub!('/', '\\').gsub!('\\\\', '\\').gsub!('\\\\', '\\')
+    path.gsub!('/', '\\')
+    path.gsub!('\\\\', '\\')
+    path.gsub!('\\\\', '\\')
   end
             
   def self.to_posix_path!(path)
     path.gsub!('\\', '/')
+    path.gsub!('//', '/')
+    path.gsub!('//', '/')
   end
   
   def self.fs_op_to_cmd(fs_op, src, dst)
@@ -109,27 +124,23 @@ module Host
     end
     
     def no_trailing_slash(path)
-      if path.ends_with?('/') or path.ends_with?('\\')
-        path = path[0..path.length-1]
-      end
-      return path
+      Host.no_trailing_slash(path)
     end
     
     def to_windows_path(path)
-      # remove \\ from path too. they may cause problems on some Windows SKUs
-      return path.gsub('/', '\\').gsub('\\\\', '\\').gsub('\\\\', '\\')
+      Host.to_windows_path(path)
     end
         
     def to_posix_path(path)
-      return path.gsub('\\', '/')
+      Host.to_posix_path(path)
     end
     
     def to_windows_path!(path)
-      path.gsub!('/', '\\')
+      Host.to_windows_path!(path)
     end
             
     def to_posix_path!(path)
-      path.gsub!('\\', '/')
+      Host.to_posix_path!(path)
     end
     
     def number_of_processors(ctx=nil)
@@ -212,14 +223,14 @@ module Host
         end
       end
       
-      cmd!(case
-      when posix? then %Q{cp -R "#{from}" "#{to}"}
-      else
-        to_windows_path!(from)
-        to_windows_path!(to)
-              
-        %Q{xcopy /Y /s /i /q "#{from}" "#{to}"}
-      end, ctx)
+      if !directory?(from)
+        copy_file(from, to, ctx, mk)
+        return
+      elsif mk
+        mkdir(File.dirname(to), ctx)
+      end
+      
+      copy_cmd(from, to, ctx)
     end
     
     def move from, to, ctx
@@ -229,17 +240,12 @@ module Host
         end
       end
       
-      from = no_trailing_slash(from)
-      to = no_trailing_slash(to)
+      if !directory?(from)
+        move_file(from, to, ctx)
+        return
+      end
       
-      cmd!(case
-      when posix? then %Q{mv "#{from}" "#{to}"}
-      else
-        to_windows_path!(from)
-        to_windows_path!(to)
-        
-        %Q{move "#{from}" "#{to}"}        
-      end, ctx)
+      move_cmd(from, to, ctx)
     end
     
     def time=(time)
@@ -290,6 +296,9 @@ module Host
     end
     
     def userprofile(ctx=nil)
+      unless @_userprofile.nil?
+        return @_userprofile
+      end
       p = nil
       if posix?
         p = env_value('HOME', ctx)
@@ -298,44 +307,50 @@ module Host
       end
       
       if exists?(p, ctx)
-        return p
+        return @_userprofile = p
       else
-        return nil
+        return @_userprofile = systemdrive(ctx)
       end
     end
     
     def appdata(ctx=nil)
+      unless @_appdata.nil?
+        return @_appdata
+      end
       if posix?
         p = env_value('HOME', ctx)
         if p and exists?(p, ctx)
-          return p
+          return @_appdata = p
         end  
       else
         p = env_value('USERPROFILE', ctx)
         if p
           q = p + '\\AppData\\'
           if exists?(q, ctx)
-            return q
+            return @_appdata = q
           elsif exists?(p, ctx)
             mkdir(q, ctx)
-            return q
+            return @_appdata = q
           end
         end
       end
       
-      return systemdrive(ctx)
+      return @_appdata = systemdrive(ctx)
     end # def appdata
     
     def appdata_local(ctx=nil)
+      unless @_appdata_local.nil?
+        return @_appdata_local
+      end
       if posix?
         p = env_value('HOME', ctx)
         if p
           q = p + '/PFTT'
           if exists?(q, ctx)
-            return q
+            return @_appdata_local = q
           elsif exists?(p, ctx)
             mkdir(q, ctx)
-            return q
+            return @_appdata_local = q
           end
         end
       else
@@ -343,34 +358,37 @@ module Host
         if p
           q = p + '\\AppData\\Local'
           if exists?(q, ctx)
-            return q
+            return @_appdata_local = q
           elsif exists?(p, ctx)
             mkdir(q, ctx)
-            return q
+            return @_appdata_local = q
           end
         end
       end
             
-      return systemdrive(ctx)
+      return @_appdata_local = systemdrive(ctx)
     end # def appdata_local
     
     def tempdir ctx
+      unless @_tempdir.nil?
+        return @_tempdir
+      end
       if posix?
         p = '/usr/local/tmp'
         q = p + '/PFTT'
         if exists?(q, ctx)
-          return q
+          return @_tempdir = q
         elsif exists?(p, ctx)
           mkdir(q, ctx)
-          return q
+          return @_tempdir = q
         end
         p = '/tmp'
         q = p + '/PFTT'
         if exists?(q, ctx)
-          return q
+          return @_tempdir = q
         elsif exists?(p, ctx)
           mkdir(q, ctx)
-          return q
+          return @_tempdir = q
         end
       else
         # try %TEMP%\\PFTT
@@ -378,10 +396,10 @@ module Host
         if p
           q = p + '\\PFTT'
           if exists?(q, ctx)
-            return q
+            return @_tempdir = q
           elsif exists?(p, ctx)
             mkdir(q, ctx)
-            return q
+            return @_tempdir = q
           end
         end
         
@@ -390,10 +408,10 @@ module Host
         if p
           q = p + '\\PFTT'
           if exists?(q, ctx)
-            return q
+            return @_tempdir = q
           elsif exists?(p, ctx)
             mkdir(q, ctx)
-            return q
+            return @_tempdir = q
           end
         end
         
@@ -403,10 +421,10 @@ module Host
           p = '\\AppData\\Local\\Temp\\' + p
           q = p + '\\PFTT'
           if exists?(q, ctx)
-            return q
+            return @_tempdir = q
           elsif exists?(p, ctx)
             mkdir(q, ctx)
-            return q
+            return @_tempdir = q
           end
         end
         
@@ -414,15 +432,15 @@ module Host
         p = systemdrive(ctx)+'\\temp'
         q = p + '\\PFTT'
         if exists?(q, ctx)
-          return q
+          return @_tempdir = q
         elsif exists?(p, ctx)
           mkdir(q, ctx)
-          return q
+          return @_tempdir = q
         end
         
       end
                   
-      return systemdrive(ctx)
+      return @_tempdir = systemdrive(ctx)
     end # def tempdir
     
     alias :tmpdir :tempdir
@@ -592,7 +610,7 @@ module Host
     #     the current directory of the command to run
     #  :debug   true|false
     #     runs the command with the host's debugger. if host has no debugger installed, command will be run normally
-    #  :stdin   ''
+    #  :stdin_data   ''
     #     feeds given string to the commands Standard Input
     #  :null_output true|false
     #     if true, returns '' for both STDOUT and STDERR. (if host is remote, STDOUT and STDERR are not sent over
@@ -606,6 +624,7 @@ module Host
     #  :success_exit_code int, or [int] array   default=0
     #     what exit code(s) defines success
     #     note: this is ignored if Command::Expected is used (which evaluates success internally)
+    # LATER :elevate and :sudo support for windows and posix
     # other options are silently ignored
     #
     #
@@ -676,7 +695,7 @@ module Host
       
       # Windows will always have a C:\ even if the C:\ drive is not the systemdrive
       # posix doesn't have C: D: etc... drives
-      @is_windows = exist?('C:\\', ctx)
+      @is_windows = _exist?('C:\\', ctx)
       
       if ctx
         # cool stuff: allow user to override OS detection
@@ -687,7 +706,6 @@ module Host
     end
 
     def posix?(ctx=nil)
-      return false # TODO TUE
       unless @posix.nil?
         return @posix
       end
@@ -696,7 +714,7 @@ module Host
       end
       ctx = ctx==nil ? nil : ctx.new(Tracing::Context::Dependency::Detect::OS::Type)
       
-      @posix = exist?('/usr', ctx)
+      @posix = _exist?('/usr', ctx)
         
       if ctx
         @posix = ctx.check_os_type_detect(:posix, @posix)
@@ -707,13 +725,32 @@ module Host
 
     def make_absolute! *paths
       paths.map do |path|
+        # support for Windows drive letters
+        # (if drive letter present, path is absolute)
         return path if !posix? && path =~ /\A[A-Za-z]:\//
-        return path if path =~ /\A[A-Za-z]:\//  
+        return path if path =~ /\A[A-Za-z]:\//
+        #  
         
         path.replace( File.absolute_path( path, cwd() ) )
         path
       end
     end
+    
+    def exist? path, ctx=nil
+      make_absolute! path
+      
+      if ctx
+        ctx.fs_op1(self, :exist, path) do |path|
+          return exist?(path, ctx)
+        end
+      end
+      
+      _exist?(path, ctx)
+    end
+    
+    alias :exists? :exist?
+    alias :exist :exist?
+    alias :exists :exist?
 
     def format_path path, ctx=nil
       case
@@ -753,10 +790,14 @@ module Host
       else
         return '/'
       end
+    end 
+    
+    def sub base, path
+      Host.sub(base, path)
     end
     
     def join *path_array
-      path_array.join(separator)
+      Host.join(path_array)
     end
     
     def upload_if_not(local, remote, ctx)
@@ -832,13 +873,16 @@ module Host
       _mkdir(path, ctx) unless directory? path
     end
 
-    def mktmpdir path, ctx
-      ctx = ctx==nil ? nil : ctx.new(SystemSetup::TempDirectory)
+    def mktmpdir ctx, path=nil, suffix=''
+      ctx = ctx==nil ? nil : ctx.new(Tracing::Context::SystemSetup::TempDirectory)
+      unless path
+        path = tempdir(ctx)
+      end
       
       make_absolute! path
       tries = 10
       begin
-        dir = File.join( path, String.random(4) )
+        dir = File.join( path, String.random(6)+suffix )
         raise 'exists' if directory? dir
         mkdir(dir, ctx)
       rescue
@@ -865,6 +909,9 @@ module Host
         raise $!
       end
     end
+    
+    alias :mktempfile :mktmpfile
+    alias :mktempdir :mktmpdir
 
     def sane? path
       make_absolute! path
@@ -894,6 +941,7 @@ module Host
     end
     
     def name ctx=nil
+      return 'OI1-PHP-FUNC-15' # TODO TUE
       unless @_name
         # find a name that other hosts on the network will use to reference localhost
         if windows?(ctx)
@@ -906,6 +954,31 @@ module Host
     end
     
     protected
+    
+    def move_cmd(from, to, ctx)
+      from = no_trailing_slash(from)
+      to = no_trailing_slash(to)
+      
+      cmd!(case
+      when posix? then %Q{mv "#{from}" "#{to}"}
+      else
+        from = to_windows_path(from)
+        to = to_windows_path(to)
+        
+        %Q{move "#{from}" "#{to}"}        
+      end, ctx)
+    end
+    
+    def copy_cmd(from, to, ctx)
+      cmd!(case
+      when posix? then %Q{cp -R "#{from}" "#{to}"}
+      else
+        from = to_windows_path(from)
+        to = to_windows_path(to)
+                      
+        %Q{xcopy /Y /s /i /q "#{from}" "#{to}"}
+      end, ctx)
+    end
     
     def _exec in_thread, command, opts, ctx, block
       @cwd = nil # clear cwd cache
@@ -940,7 +1013,7 @@ module Host
       end
       #
       
-      if !opts.has_key?(:max_len) or opts[:max_len].is_a?(Integer) or opts[:max_len] < 0
+      if !opts.has_key?(:max_len) or !opts[:max_len].is_a?(Integer) or opts[:max_len] < 0
         opts[:max_len] = 128*1024 
       end
       
@@ -949,8 +1022,6 @@ module Host
         command = debug_wrap(command)
       end
       
-      stdin_data = (opts.has_key?(:stdin))? opts[:stdin] : nil 
-        
       if in_thread
         Thread.start do
           ret = _exec_thread(command, opts, ctx, block)
@@ -1042,7 +1113,7 @@ module Host
       return [stdout, stderr, exit_code]
     end # def _exec_thread
     
-    attr_accessor :_systeminfo, :_name, :_osname, :_systeminfo, :_systemdrive, :_systemroot, :posix, :is_windows
+    attr_accessor :_systeminfo, :_name, :_osname, :_systeminfo, :_systemdrive, :_systemroot, :posix, :is_windows, :_appdata, :_appdata_local, :_tempdir, :userprofile
     
     def clone(clone)
       clone._systeminfo = @systeminfo
@@ -1054,6 +1125,10 @@ module Host
       clone.posix = @posix
       clone.is_windows = @is_windows
       clone._name = @_name
+      clone._appdata = @_appdata
+      clone._appdata_local = @_appdata_local 
+      clone._tempdir = @_tempdir
+      clone._userprofile = @_userprofile
       clone
     end
     

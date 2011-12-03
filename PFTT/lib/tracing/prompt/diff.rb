@@ -3,37 +3,144 @@
 # TODO be able to print a list of all insertions or all insertions contianing 'Warning', etc...
 module Tracing
   module Prompt
-
-class Diff < TestCaseRunPrompt
+    module Diff
+    
+      
+      
+#class BaseDiff < TestCaseRunPrompt
+#  
+#  def axis_label
+#      
+#    end
+#    
+#    def prompt_str
+#      axis_label+'::Diff> '
+#    end
+#    
+#        
+#    def help
+#      super
+#      puts
+#      puts 'Axes: [Run] [Host] [[Zoom] [Diff]]'
+#      puts ' [Run]  - Base - only Base run            Test - only Test run'
+#      puts '          Base+Test - all results from Base and Test (duplicates removed)'
+#      puts '          Base=Test - only results from Base and Test that match'
+#      puts '          Test-Base - only results from Base not matching those in Test run'
+#      puts '          Base-Test - only results from Test not matching those in Base run'
+#      puts ' [Host] - All - all selected hosts        {Hostname} - named host'
+#      puts ' [Zoom] - A - All tests                   E - One extension'
+#      puts '          T - One test case               L - One line from a test case'
+#      puts '          C - One chunk from one line'
+#      puts ' [Diff] - E - original Expected output    A - original Actual output'
+#      puts '          + - only added output           - - only removed output'
+#      puts '          d - + and -'
+#      puts '          e - Expected output (changed?)  a - Actual (changed?)'
+#      puts
+#      help_diff_cmds
+#      puts ' c  - change'
+#      puts ' C  - change (&next)'
+#      puts ' t  - Triage'
+#      puts ' h  - help'
+#      puts ' v  - view diff'
+#      puts ' V  - view PHPT documentation'
+#      puts ' y  - save chunk replacements'
+#      puts ' Y  - load chunk replacements'
+#      puts ' k  - save diff to file'
+#      puts ' l  - locate - os middleware build and other info'
+#      help_zoom_out
+#      puts ' F  - find'    
+#      puts ' R  - run'
+#      puts ' N  - network/host'
+#      puts ' Z  - zoom'
+#      puts ' D  - diff'
+#      
+#    end # def help
+#    
+#  def help_zoom_out
+#    # top level can't zoom out
+#  end
+#    
+#    def confirm_find
+#      true
+#    end
+#    
+#  def help_diff_cmds
+#  end
+#  
+#end # class BaseDiff
+#    
+#class All < BaseDiff
+#  
+#  
+#  def confirm_find
+#    # LATER ask user to confirm searching everything (b/c it can be slow)
+#  end
+#end
+#
+#class BaseNotAll < BaseDiff
+#  def help_zoom_out
+#        puts ' o  - zoom out'#
+#      end
+#      
+#      def execute(ans)
+#        if ans == 'o'
+#        end
+#      end
+#end    
+#
+#class Ext < BaseNotAll
+#end
+#
+#class TestCaseLineChunk < BaseNotAll
+#  def help_diff_cmds
+#    puts ' d  - delete (&next)'
+#    puts ' a  - add (&next)'
+#    puts ' s  - skip (&next)'
+#    puts ' p  - pass (&next)'      
+#  end
+#  
+#  def execute(ans)
+#    if ans == 'd' or ans == '-'
+#    elsif ans == 'a' or ans == '+'
+#    elsif ans == 's'
+#    elsif ans == 'p'
+#    end
+#  end
+#end
+#
+#class TestCase < TestCaseLineChunk
+#end
+#
+#class Line < TestCaseLineChunk
+#end
+#
+#class Chunk < TestCaseLineChunk
+#end
+#    
+class Diff 
       
   def initialize(dlm)
     @dlm = dlm
     # TODO
   end
-      
-  def help
-    super
-    puts ' d  - (or -) delete: modify expect'
-    puts ' a  - (or +) add: modify expect'
-    puts ' i  - ignore: remove from diffs' # TODO
-    puts ' s  - skip line, count'
-    puts ' m  - display more commands (this whole list)'
-    puts ' t  - Triage diffs in this test'
-    puts ' T  - Triage all diffs from all tests'
-    puts ' r  - replace expect with regex to match actual'
-    puts ' R  - replace all in file'
-    puts ' A  - replace all in test case set'
-    puts ' l  - show modified expect line (or original if not modified)'
-    puts ' L  - show original expect line'
-    puts ' P  - show original expect section'
-    puts ' p  - show modified expect section (or original if not modified)'
-    puts ' v  - show PHPT file format documentation (HTML)'
-    puts ' H  - highlight diff (Swing UI)'
-    puts ' y  - save chunk replacements to file'
-    puts ' Y  - load chunk replacements from a file'
-    puts ' k  - save diff to file (insertions and deletions)'
-    puts ' K  - save all inserted chunks to file'
-  end # def help
+  
+  
+  
+  def show_diff
+    if host.windows?
+      if host.exist?('winmerge')
+        host.exec!("winmerge #{expected} #{result}")
+        return
+      end
+    else
+      if host.exec('winmeld')
+        host.exec("winmeld #{expected} #{result}")
+        return
+      end
+    end
+    
+    # LATER fallback swing display
+  end
       
   def execute(ans)
     if ans=='-' or ans=='d'

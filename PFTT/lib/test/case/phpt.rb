@@ -497,7 +497,9 @@ class Phpt
       @parts[:file]=@parts.delete(:fileeof).gsub(/\r?\n\Z/,'')
     elsif @parts.has_key? :file_external
       context = File.dirname( @phpt_path )
-      external_file = File.absolute_path( @parts.delete(:file_external).gsub(/\r?\n\Z/,''), context ) 
+      external_file = File.absolute_path( @parts.delete(:file_external).gsub(/\r?\n\Z/,''), context )
+      # TODO TUE c:/abc/ 
+      # ('c:/abc/'+external_file).gsub('C:/php-sdk/0/PFTT2/PFTT', '')
       @parts[:file]= IO.read( external_file ).lines do |line|
         parse_line line, context
       end
