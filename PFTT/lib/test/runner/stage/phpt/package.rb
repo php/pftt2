@@ -6,11 +6,11 @@ module Test
       
 class Package < Tracing::Stage
   
-  def run()
+  def run(test_cases)
     notify_start 
     
     puts 'PFTT:compress: compressing PHPTs...'
-    local_phpt_zip = package_svn(Host::Local.new(), $phpt_path)
+    local_phpt_zip = package_svn(Host::Local.new(), $phpt_path, test_cases)
     puts 'PFTT:compress: compressed PHPTs...'
     
     notify_end(true)

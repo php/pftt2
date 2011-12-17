@@ -16,7 +16,7 @@
 module Test
 module Factor
   def results
-    @_results ||= TestResult::Array.new
+    @_results ||= TestTelemetry::Array.new
 
   end
 

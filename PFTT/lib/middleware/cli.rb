@@ -108,14 +108,32 @@ module Middleware
         
       # important: fix the ///s in the path to the script       
       deployed_script = @host.format_path(deployed_script)
+      
+      
+      #
+      # generate INI configuration to pass to PHP. INI directives may come from several sources(3)
+      ini = nil
+      # test case may provide INI directives
+      if test_case.has_section?(:ini)
+        # TODO if scn_set.has_ini?
+        ini = current_ini.clone + test_case.ini
+        # scenario-set can override middleware's ini
+        # TODO ini.add(scn_set.get_ini())
+        # test case ini overrides both
+        #ini.add(test_case.ini())
+      else
+        ini = current_ini
+      end      
+      #
+      #
         
       # generate the command line to execute
       cmd_string =[
         @host.format_path(self.php_binary),
         '-n', # make sure php doesn't use a php.ini, but only the directives we give it here
         #
-        # pass current_ini to php.exe using -d CLI params
-        current_ini.to_a.map{|directive|
+        # pass the INI to php.exe using -d CLI params
+        ini.to_a.map{|directive|
           
           if directive.include?('/') or directive.include?('\\')
             # directive contains a path (ex:  extension.dir=c:/php/ext)
@@ -124,31 +142,44 @@ module Middleware
             # type of //s (a problem PHP won't catch)
             i = directive.index('=')
             if i
-              directive = directive[0..i]+@host.format_path(directive[i+1..directive.length])
+              name = directive[0..i-1]
+              value = directive[i+1..directive.length]
+              # date.timezone must use / not \ !!!!
+              # do not change / in date.timezone (causes test failures)
+              if name=='extension_dir'
+                # using the right \ or / for the extension_dir directive
+                # somtimes seems to matter to Apache (possibly other middlewares)
+                value = @host.format_path(value)
+                
+                directive = name+'='+value
+                
+              # shouldn't need to change / in other directives
+              # other file paths in INI should be using / so they'll work on either
+              # Windows or Linux (native / on linux ; on Windows, php should convert / to \ itself)
+              end
             end
-          end
+          end # if
         
+          # encode (shell escape) directive safely for the command processor on host
           %Q{-d #{@host.escape(directive)}}
         },
         (test_case.parts.has_key?(:args))?test_case.parts[:args]:'',
         deployed_script
         ].flatten.compact.join(' ')
-       
-      # save (in telemetry folder) the environment variables and the command line string used to run this case case
-      # TODO sm.get_by_host_middleware_build(host, middleware, php, Test::Runner::Stage::PHPT).save_cmd(test_case, env, exe_options[:chdir], cmd_string)
+        
+      # TODO Test::Telemetry::Folder def save_cmd(test_case, env, exe_options[:chdir], cmd_string)
       
       # feed in stdin string if present to PHP's standard input
       if test_case.parts.has_key?(:stdin)
         exe_options[:stdin] = test_case.parts[:stdin]
       end
-      
             
       # finally, execute PHP
       o,e,s = @host.exec!(cmd_string, Tracing::Context::Test::Run.new(), exe_options)
       
-      if s != 0 and e.length+o.length==0
+      if s != 0 and o.chomp.length==0
         # try detecting crash or some other weird exit condition in php.exe
-        e = "\nPFTT: error: maybe crash?: php.exe exited with non-zero code: #{s}"
+        o = "\nPFTT: error: maybe crash?: php.exe exited with non-zero code: #{s}"
       end
       
       # tell scenarios that script has stopped

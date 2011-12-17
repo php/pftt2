@@ -34,15 +34,15 @@ module Tracing
       end
           
       def cmd_exe_start host, cmd_line, opts, &do_over
-        handle(:cmd_exe, :start, host, cmd_line, nil, Tracing::Prompt::CmdExecute, do_over, 5, opts)
+        # TODO TUE handle(:cmd_exe, :start, host, cmd_line, nil, Tracing::Prompt::CmdExecute, do_over, 5, opts)
       end
           
       def cmd_exe_failure host, cmd_line, opts, exit_code, output, &do_over
-        handle(:cmd_exe, :failure, host, cmd_line, exit_code, Tracing::Prompt::CmdExecute, do_over, 10, opts)
+        # TODO TUE handle(:cmd_exe, :failure, host, cmd_line, exit_code, Tracing::Prompt::CmdExecute, do_over, 10, opts)
       end
       
       def cmd_exe_success host, cmd_line, opts, exit_code, output, &do_over
-        handle(:cmd_exe, :success, host, cmd_line, exit_code, Tracing::Prompt::CmdExecute, do_over, 5, opts)
+        # TODO TUE handle(:cmd_exe, :success, host, cmd_line, exit_code, Tracing::Prompt::CmdExecute, do_over, 5, opts)
       end
           
       def fs_op0 host, op, &do_over
@@ -329,7 +329,7 @@ module Tracing
       end
       class Run < TestBase
       end
-      class Result < TestBase
+      class Telemetry < TestBase
       end
     end
     

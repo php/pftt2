@@ -173,7 +173,7 @@ module Host
         else
           Tracing::Context::Base.show_exception($!)
         end
-        raise ex
+        raise $!
       end
     end
 
@@ -198,7 +198,7 @@ module Host
         else
           Tracing::Context::Base.show_exception($!)
         end
-        raise ex
+        raise $!
       end
     end
 
@@ -218,7 +218,7 @@ module Host
         else
           Tracing::Context::Base.show_exception($!)
         end
-        raise ex
+        raise $!
       end
     end
 
@@ -262,7 +262,7 @@ module Host
         else
           Tracing::Context::Base.show_exception($!)
         end
-        raise ex
+        raise $!
       end
     end
 
@@ -283,7 +283,7 @@ module Host
         else
           Tracing::Context::Base.show_exception($!)
         end
-        raise ex
+        raise $!
       end
     end
 
@@ -391,19 +391,94 @@ module Host
     end # class SshExecHandle
     
     def _exec_impl command, opts, ctx, block
-      if opts.has_key?(:chdir)
-        command = "CMD /C pushd #{opts[:chdir]} & #{command} & popd"
+      #
+      # support for setting environment variables remotely
+      ssh_command = command
+      cleanup_file = nil
+      if opts[:env] and !opts[:env].empty?
+        env_len = 0
+        opts[:env].map do |key, value|
+          env_len += key.length
+          env_len += value.length
+        end
+        
+        if env_len + command.length < 1024
+          # environment vars are short enough that we can probably include them in
+          # the command line
+          command = ""
+          if windows?(ctx)
+            opts[:env].map do |key, value|
+              command = " set #{key}=\"#{value} & "
+            end
+          else
+            opts[:env].map do |key, value|
+              command = " export #{key}=\"#{value} && "
+            end
+          end
+          
+          # then run the actual command
+          command += ssh_command
+          
+        else
+          # (environment variables + command are long)
+          #          
+          # try to generate a batch or shell script that will set the environment
+          # variables then execute the actual command
+          begin
+            str = ""
+            if windows?(ctx)
+              # batch script
+              str += "@echo off\r\n" # important: don't change the output
+              opts[:env].map do |key, value|
+                str += "set #{key}=\"#{value}\"\r\n"
+              end
+              str += "\"#{command}\"\r\n"
+            else
+              # shell script
+              str += "#!/bin/sh\n"
+              opts[:env].map do |key, value|
+                str += "export #{key}=\"#{value}\"\n"
+              end
+              str += "\"#{command}\"\n"
+            end
+            
+            # write file
+            mktmpfile((windows?(ctx))?'.cmd':'.sh', ctx, str)
+            
+            if posix?(ctx)
+              # make it executable on posix
+              exec!("chmod +x #{tmp_file}")
+            end
+            
+            # have this file executed
+            ssh_command = tmp_file
+            
+            # try to delete this file when done with it
+            cleanup_file = tmp_file
+          rescue
+            # fallback on just running the command without environment variables
+            # depending on the command, it may still work right
+            ssh_command = command
+          end
+        end
       end
-      # LATER opts[:env] support
-      #  - primary: generate shell/batch script with all envs in it, then execute that
-      #  - fallback: put ENV vars into one line command
+      #
+      #
+      
+      if opts.has_key?(:chdir)
+        if windows?(ctx)
+          ssh_command = "CMD /C pushd #{opts[:chdir]} & #{ssh_command} & popd"
+        else
+          ssh_command = "pushd #{opts[:chdir]} && #{ssh_command} && popd"
+        end
+      end
                           
       stdout, stderr = '',''
       stdin_data = opts[:stdin_data]
       exit_code = -254 # assume error unless success
             
       ssh(ctx).open_channel do |channel|
-        channel.exec(command) do |channel, success|
+        channel.exec(ssh_command) do |channel, success|
           unless success
             exit_code = -255
             raise "could not execute command #{command}"
@@ -476,6 +551,16 @@ module Host
       
       # loop until exit signal received
       ssh(ctx).loop { exit_code == -254 }
+        
+      #
+      # cleanup generated batch/shell script (if any)
+      if cleanup_file
+        begin
+          delete(cleanup_file, ctx)
+        rescue
+        end
+      end
+      #
                       
       return [stdout, stderr, exit_code]
     end # def _exec_impl
@@ -503,7 +588,7 @@ module Host
         else
           Tracing::Context::Base.show_exception($!)
         end
-        raise ex
+        raise $!
       end
     end
          

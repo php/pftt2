@@ -4,6 +4,7 @@ require 'util/install.rb'
 
 module Middleware
   class Base
+    @@temp_lock = Mutex.new 
     
     include Test::Factor
     include PhpIni::Inheritable
@@ -103,9 +104,14 @@ module Middleware
       #    
 #  TODO TUE    if $force_deploy or not File.exists?(php_binary()) or File.mtime(@php_build.path) >= File.mtime(php_binary())
         unless $hosted_int
+          # TODO bug - this will compress multiple copies of PHP build at same time if using multiple hosts!
         puts "PFTT:deploy: uploading... "+@deployed_php
         
-        zip_name = package_php_build(Host::Local.new(), 'c:/php-sdk/builds/'+$php_build_path)
+        # TODO TUE
+        zip_name = nil
+        @@temp_lock.synchronize do 
+        zip_name = package_php_build(Host::Local.new(), 'c:/php-sdk/builds/5_4/'+$php_build_path)
+        end
         
           # TODO package_php_build
       host.upload_force(zip_name, host.systemdrive(ctx)+'/5.4.0beta2-NTS.7z', false, ctx) # critical: false
@@ -248,11 +254,12 @@ module Middleware
       magic_quotes_runtime=0
       ignore_repeated_errors=0
       precision=14
-      date.timezone = 'UTC'
+      date.timezone='UTC'
       unicode.runtime_encoding=ISO-8859-1
       unicode.script_encoding=UTF-8
       unicode.output_encoding=UTF-8
       unicode.from_error_mode=U_INVALID_SUBSTITUTE
+      phar.readonly=0
     INI
 
   end

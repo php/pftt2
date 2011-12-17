@@ -94,7 +94,7 @@ class Phpt
     unless dir.is_a?(String)
       dir = dir.to_s
     end
-    dir.gsub!('G:/', 'C:/')
+    dir.gsub!('G:/', 'C:/') # TODO TUE
     test_case = Test::Case::Phpt.new(dir, xml['@path'])
 #    xml['part'].each do |part|
  #     part_name = part['@part_name']
@@ -499,7 +499,10 @@ class Phpt
       context = File.dirname( @phpt_path )
       external_file = File.absolute_path( @parts.delete(:file_external).gsub(/\r?\n\Z/,''), context )
       # TODO TUE c:/abc/ 
-      # ('c:/abc/'+external_file).gsub('C:/php-sdk/0/PFTT2/PFTT', '')
+      
+      # TODO TUE TEMP 
+      external_file = (($phpt_path+'/'+external_file).gsub('C:/php-sdk/0/PFTT2/PFTT', ''))
+      
       @parts[:file]= IO.read( external_file ).lines do |line|
         parse_line line, context
       end
@@ -571,6 +574,10 @@ class Test::Case::Phpt::Array < TypedArray(Test::Case::Phpt)
   class DuplicateTestError < StandardError
   end
   
+  def ext
+    # TODO list extensions included in test case array
+  end
+  
   protected
   
   def add_selected_file(dir, file)
@@ -590,9 +597,230 @@ class Test::Case::Phpt::Array < TypedArray(Test::Case::Phpt)
     if file.starts_with?('Release') or file.starts_with?('Release_TS')
       return
     end 
+    # TODO skip these slow things
+    #if file.include?('/windows_acl') #or file.include?('oci8') or file.include?('sql') or file.include?('/pdo') or file.include?('/soap')
+     # return
+    #els
+    if file.include?('/http/')
+      # assume this passes TODO TUE
+      return
+    end    
     @selected.push(file)
     push(Test::Case::Phpt.new( dir, File.join(dir, file), self ))
   end
+  
+  def can_ini_set?(directive_name)
+    # returns if directive_name can be used with php's ini_set() function
+    # directive_name is either a String or an Array of Strings
+    #
+    if directive_name.is_a?(Array)
+      directive_name.each do |n|
+        if @@user_ini_directives.include?(n)
+          return true
+        end
+      end
+      return false
+    end
+  
+    # if its not on this list, assume it can't be set by an ini_set() call
+    @@user_ini_directives.include?(directive_name)
+  end
+
+# the INI directives that can be set using ini_set()
+# see http://us2.php.net/manual/en/ini.list.php
+# see http://us2.php.net/manual/en/configuration.changes.modes.php
+#
+# includes any/all PHP_INI_ALL or PHP_INI_USER
+# but not PHP_INI_PERDIR or PHP_INI_SYSTEM
+@@user_ini_directives = [
+'apd.bitmask', 'apd.dumpdir', 'apd.statement_tracing',
+#
+'arg_separator', 'arg_separator.output', 
+'asp_tags', 
+#
+'assert.active', 'assert.bail', 'assert.callback', 'assert.quiet_eval', 'assert.warning',
+#   
+'async_send', 
+'auto_detect_line_endings', 
+'axis2.client_home', 'axis2.enable_exception', 'axis2.enable_trace', 'axis2.log_path',
+#   
+'bcmath.scale',   
+'bcompiler.enabled', 
+'birdstep.max_links', 
+'blenc.key_file',
+#   
+'cgi.nph', 'cgi.rfc2616_headers',
+# 
+'child_terminate',
+# 
+'cli.pager', 'cli.prompt',
+# 
+'coin_acceptor.autoreset', 'coin_acceptor.auto_initialize', 'coin_acceptor.auto_reset', 'coin_acceptor.command_function', 
+'coin_acceptor.delay', 'coin_acceptor.delay_coins', 'coin_acceptor.delay_prom', 'coin_acceptor.device', 
+'coin_acceptor.lock_on_close', 'coin_acceptor.start_unlocked',
+#
+'com.autoregister_casesensitive', 'com.autoregister_typelib', 'com.autoregister_verbose', 'com.code_page',
+# 
+'daffodildb.default_host', 'daffodildb.default_password', 'daffodildb.default_socket', 'daffodildb.default_user',   
+'daffodildb.port',
+#
+'date.default_latitude', 'date.default_longitude', 'date.sunrise_zenith', 'date.sunset_zenith',  'date.timezone',
+# 
+'dba.default_handler',
+# 
+'default_charset', 'default_mimetype', 'default_socket_timeout', 'define_syslog_variables', 'detect_unicode', 
+'display_errors', 'display_startup_errors', 'docref_ext', 'docref_root', 'engine', 
+'error_append_string', 'error_log', 'error_prepend_string', 'error_reporting',   
+#
+'etpan.default.charset', 'etpan.default.protocol',
+#   
+'exif.decode_jis_intel', 'exif.decode_jis_motorola', 'exif.decode_unicode_intel', 'exif.decode_unicode_motorola', 
+'exif.encode_jis', 'exif.encode_unicode',
+# 
+'expect.logfile', 'expect.loguser', 'expect.timeout',
+#    
+'fbsql.batchsize', 
+#
+'from',
+#   
+'gd.jpeg_ignore_warning',
+# 
+'geoip.custom_directory', 'geoip.database_standard',
+# 
+'gpc_order', 
+#
+'highlight.bg', 'highlight.comment', 'highlight.default', 'highlight.html', 'highlight.keyword', 'highlight.string',
+#   
+'http.allowed_methods', 'http.allowed_methods_log', 'http.cache_log', 'http.composite_log', 'http.etag.mode', 
+'http.etag_mode', 'http.force_exit', 'http.log.allowed_methods', 'http.log.cache', 'http.log.composite', 
+'http.log.not_found', 'http.log.redirect', 'http.ob_deflate_flags', 'http.ob_inflate_flags', 'http.only_exceptions', 
+'http.persistent.handles.ident', 'http.redirect_log', 'http.request.methods.allowed', 'http.send.deflate.start_flags', 
+'http.send.inflate.start_flags', 'http.send.not_found_404',
+#  
+'ibase.dateformat', 'ibase.default_charset', 'ibase.default_password', 'ibase.default_user', 'ibase.timeformat',   
+'ibase.timestampformat',
+#   
+'ibm_db2.binmode',
+#   
+'iconv.input_encoding', 'iconv.internal_encoding', 'iconv.output_encoding',
+# 
+'ifx.blobinfile', 'ifx.byteasvarchar', 'ifx.charasvarchar', 'ifx.nullformat', 'ifx.textasvarchar',
+# 
+'ignore_repeated_errors', 'ignore_repeated_source', 'ignore_user_abort',
+#   
+'imlib2.font_cache_max_size', 'imlib2.font_path',
+#   
+'include_path',   
+'ingres.array_index_start', 'ingres.blob_segment_length', 'ingres.cursor_mode', 'ingres.default_database', 
+'ingres.default_password', 'ingres.default_user', 'ingres.report_db_warnings', 'ingres.timeout', 'ingres.trace_connect',
+# 
+'ircg.control_user', 'ircg.keep_alive_interval', 'ircg.max_format_message_sets', 'ircg.shared_mem_size', 'ircg.work_dir',
+# 
+'last_modified', 'ldap.base_dn', 'log.dbm_dir', 'log_errors', 'log_errors_max_len', 'magic_quotes_runtime', 
+'magic_quotes_sybase', 'mail.force_extra_parameters', 'mail.log', 'mailparse.def_charset', 
+#
+'maxdb.default_db', 'maxdb.default_host', 'maxdb.default_pw', 'maxdb.default_user', 'maxdb.long_readlen',
+#   
+'max_execution_time',   
+#
+'mbstring.detect_order', 'mbstring.encoding_translation', 'mbstring.http_input', 'mbstring.http_output', 
+'mbstring.internal_encoding', 'mbstring.language', 'mbstring.script_encoding', 'mbstring.strict_detection', 
+'mbstring.substitute_character', 
+#
+'mcrypt.algorithms_dir', 'mcrypt.modes_dir',
+# 
+'memcache.allow_failover', 'memcache.chunk_size', 'memcache.default_port', 'memcache.hash_function', 
+'memcache.hash_strategy', 'memcache.max_failover_attempts',
+#
+'memory_limit',
+#
+'msql.allow_persistent', 'msql.max_links', 'msql.max_persistent', 'mssql.batchsize', 'mssql.charset', 
+'mssql.compatability_mode', 'mssql.connect_timeout', 'mssql.datetimeconvert', 'mssql.max_procs', 
+'mssql.min_error_severity', 'mssql.min_message_severity', 'mssql.textlimit', 'mssql.textsize', 'mssql.timeout', 
+#
+'mysql.default_host', 'mysql.default_password', 'mysql.default_port', 'mysql.default_socket', 'mysql.default_user',   
+'mysql.trace_mode', 'mysqli.default_host', 'mysqli.default_port', 'mysqli.default_pw', 'mysqli.default_socket', 
+'mysqli.default_user',
+# 
+'namazu.debugmode', 'namazu.lang', 'namazu.loggingmode', 'namazu.sortmethod', 'namazu.sortorder',
+#   
+'nsapi.read_timeout',
+#     
+'odbc.defaultbinmode', 'odbc.defaultlrl', 'odbc.default_db', 'odbc.default_pw', 'odbc.default_user',
+'odbtp.datetime_format', 'odbtp.detach_default_queries', 'odbtp.guid_format', 'odbtp.interface_file', 'odbtp.truncation_errors',
+#
+'opendirectory.default_separator', 'opendirectory.max_refs', 'opendirectory.separator',
+# 
+'oracle.allow_persistent', 'oracle.max_links', 'oracle.max_persistent',
+# 
+'pam.servicename',
+#   
+'pcre.backtrack_limit', 'pcre.recursion_limit',
+#
+'pdo_odbc.connection_pooling',
+# 
+'pfpro.defaulthost', 'pfpro.defaultport', 'pfpro.defaulttimeout', 'pfpro.proxyaddress', 
+'pfpro.proxylogon', 'pfpro.proxypassword','pfpro.proxyport', 
+#
+'pgsql.ignore_notice', 'pgsql.log_notice', 
+#
+'phar.extract_list', 'phar.readonly', 'phar.require_hash',
+#   
+'precision', 'printer.default_printer', 'python.append_path', 'python.prepend_path',
+'report_memleaks', 'report_zend_debug', 'sendmail_from', 'serialize_precision',
+#  
+'session.auto_start', 'session.cache_expire', 'session.cache_limiter', 'session.cookie_domain', 
+'session.cookie_httponly', 'session.cookie_lifetime', 'session.cookie_path', 'session.cookie_secure', 
+'session.entropy_file', 'session.entropy_length', 'session.gc_divisor', 'session.gc_maxlifetime',   
+'session.gc_probability', 'session.hash_bits_per_character', 'session.hash_function', 'session.name',   
+'session.referer_check', 'session.save_handler', 'session.save_path', 'session.serialize_handler',   
+'session.use_cookies', 'session.use_only_cookies',
+#   
+'simple_cvs.authMethod', 'simple_cvs.compressionLevel', 'simple_cvs.cvsRoot', 'simple_cvs.host',   
+'simple_cvs.moduleName', 'simple_cvs.userName', 'simple_cvs.workingDir',
+#   
+'SMTP', 'smtp_port',
+# 
+'soap.wsdl_cache', 'soap.wsdl_cache_dir', 'soap.wsdl_cache_enabled', 'soap.wsdl_cache_limit', 'soap.wsdl_cache_ttl',
+# 
+'sqlite.assoc_case',
+#  
+'sybase.hostname', 'sybase.interface_file', 'sybase.login_timeout', 'sybase.min_client_severity', 'sybase.min_error_severity',   
+'sybase.min_message_severity', 'sybase.min_server_severity', 'sybase.timeout', 'sybct.deadlock_retry_count', 
+'sybct.hostname', 'sybct.login_timeout',
+#
+'sysvshm.init_mem', 'track_errors', 'track_vars', 'unserialize_callback_func', 'uploadprogress.file.filename_template',   
+'url_rewriter.tags', 'user_agent', 
+#
+'valkyrie.auto_validate', 'valkyrie.config_path',
+#   
+'variables_order', 'velocis.max_links', 'xbithack', 
+#
+'xdebug.auto_profile', 'xdebug.auto_profile_mode', 'xdebug.auto_trace', 'xdebug.collect_includes', 'xdebug.collect_params',   
+'xdebug.collect_return', 'xdebug.collect_vars', 'xdebug.default_enable', 'xdebug.dump.COOKIE', 'xdebug.dump.ENV NULL',
+'xdebug.dump.FILES', 'xdebug.dump.GET', 'xdebug.dump.POST', 'xdebug.dump.REQUEST', 'xdebug.dump.SERVER',   
+'xdebug.dump.SESSION', 'xdebug.dump_globals', 'xdebug.dump_once', 'xdebug.dump_undefined', 'xdebug.idekey', 
+'xdebug.manual_url', 'xdebug.max_nesting_level', 'xdebug.remote_autostart', 'xdebug.remote_enable', 'xdebug.remote_handler',   
+'xdebug.remote_host', 'xdebug.remote_log', 'xdebug.remote_mode', 'xdebug.remote_port', 'xdebug.show_exception_trace', 
+'xdebug.show_local_vars', 'xdebug.show_mem_delta', 'xdebug.trace_format', 'xdebug.trace_options', 'xdebug.trace_output_dir', 
+'xdebug.trace_output_name', 'xdebug.var_display_max_children', 'xdebug.var_display_max_data', 'xdebug.var_display_max_depth',
+# 
+'xmlrpc_error_number',
+# 
+'xmms.path', 'xmms.session',
+#   
+'y2k_compliance',
+#   
+'yami.response.timeout',
+# 
+'yaz.keepalive', 'yaz.log_file', 'yaz.log_mask', 'yaz.max_links',
+# 
+'zend.enable_gc', 'zend.ze1_compatibility_mode', 
+#
+'zlib.output_compression', 'zlib.output_compression_level', 'zlib.output_handler'
+]
+  
+  
 
 end # class Phpt
 end # module Case

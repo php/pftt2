@@ -1,14 +1,18 @@
 
 require 'util/package.rb'
+require 'test/runner'
 
 # TODO split into Test::Runner::PHPT::Client and Test::Runner::PHPT::Host
 module Test
   module Runner
-  class Phpt < Base
+  class Phpt < RunnerBase
     
     def initialize(sm)
       super
       @hm = Host::Remote::PSC::ClientManager.new
+      
+      @om = Diff::OverrideManager.new()
+      
     end
     
     def add_stages
@@ -103,6 +107,11 @@ module Test
         remotes = []
         queue_entry_info[:middlewares_by_host].map do |host, middleware|
           puts "run 146"
+          
+          # start clock for this combo
+          # LATER :php
+          # TODO test_ctx.add_combo(host, queue_entry_info[:queue][0][:php], middleware, nil)# LATER , scn_set)
+          
           if host.remote? and host.remote_interface
             puts "run 148"
             fallback_entries = []
@@ -136,7 +145,8 @@ module Test
             host.remote_interface.send_start
           
             puts "run 179"
-            # run the hosted client (can't send messages to it anymore)
+            # run the hosted client 
+            #Thread.start do # TODO
             host.remote_interface.run(hosted_test_cases) do
               # fallback
               puts "FALLBACK to local control of tests #{host.name}"
@@ -145,6 +155,7 @@ module Test
               run_mw_single(queue_entry_info[:queue], test_ctx)
               #run_mw_threaded(queue_entry_info[:queue], test_ctx)
             end
+            #end
             puts "run 188"
             # we'll need this later to wait for host to complete
             remotes.push(host.remote_interface)
@@ -160,13 +171,20 @@ module Test
           run_mw_single(queue_entry_info[:queue], test_ctx)
         end
         
-        puts 'sleeping'
+        #puts 'sleeping'
                # TODO tue
-               sleep(9000) # Wait
+               #sleep(9000) # Wait
+        
+        # LATER stop clock for this combo
+        # LATER test_ctx.stop_combo(host, php, middleware, scn_set)
           
+        unless $hosted_int
+          puts 'waiting all....'
         # wait until hosted done (probably done first though)
         remotes.each do |remote|
           remote.wait
+        end
+        puts 'done waiting all...'
         end
         
        
@@ -176,7 +194,7 @@ module Test
         queue_entry_info[:middlewares_by_host].map do |host, middleware|
           middleware.stop!(test_ctx)
         
-          uninstall(test_ctx, queue_entry_info[:scn_set].working_fs, middleware)
+          # TODO uninstall(test_ctx, queue_entry_info[:scn_set].working_fs, middleware)
           
           queue_entry_info[:scn_set].teardown(host)
         end
@@ -185,57 +203,98 @@ module Test
     end
     
     def run_mw_single(test_cases, test_ctx)
+      #
+      #
+      thread_test_cases = {:multi=>{:entries=>[], :lock=>Mutex.new()}}    
+      single_threaded_tests = []
+      $single_threaded_tests.each do |name_frags|
+        if name_frags.is_a?(String)
+          name_frags = [name_frags]
+        elsif !name_frags.is_a?(Array)
+          next
+        end
+
+        single_threaded_tests.push(name_frags)
+        thread_test_cases[name_frags]||= {:entries=>[], :lock=>Mutex.new}
+      end
+      #
+      test_cases.each do |test_case|
+        single_thread = false
+        single_threaded_tests.each do |name_frags|
+          name_frags.each do |name_frag|
+            if test_case[:test_case].full_name.include?(name_frag)
+              # test must be run single threaded
+              single_thread = true
+              
+              thread_test_cases[name_frags][:entries].push(test_case)
+              
+              break # check next test case
+            end
+          end
+          if single_thread
+            break
+          end
+        end
+        unless single_thread
+          # safe to multi-thread this test case
+          thread_test_cases[:multi][:entries].push(test_case)
+        end
+      end
+      #
+      thread_pool_size = $thread_pool_size
+      original_thread_pool_size = thread_pool_size
+      if thread_test_cases.length > thread_pool_size
+        # ensure thread pool is big enough
+        thread_pool_size = thread_test_cases.length
+      end
+      #
+      multi_thread_test_cases = thread_test_cases.delete(:multi)
+      single_thread_test_cases = thread_test_cases.values # order not predictable, but order doesn't matter
+      #
+      #
+      
       thread_pool = []
-      block = true
-      while block do
+      not_full = true
+      while not_full do
         
-          thread = Thread.start do
-            block2 = true
-            while block2 do
-              # try to stagger starting of php.exe instances to stagger when they terminate
-              # if many of them terminate at once, you'll get a drop in cpu usage which wastes run time
-              #Thread.pass
-              if $hosted_int # LATER improve this later
-                sleep(1) # there are like ~50+ threads, sleep to give them a chance
-              end
-                            
-            test_case = nil
-            len = 0
+        test_cases = nil
+        # spin up threads for the single-threaded tests first
+        if single_thread_test_cases.empty?
+          # then fill up the pool with threads for the tests that are ok being multi-threaded
+          test_cases = multi_thread_test_cases
+        else
+          test_cases = single_thread_test_cases.shift
+        end
+        
+        thread = Thread.start do
+          begin
+            _run_mw_single_a_thread(test_ctx, test_cases)
+            #
             test_ctx.semaphore1.synchronize do
-              if test_cases.empty?
-                block2 = false
-                break
-              else
-                test_case = test_cases.shift
-                len = test_cases.length
-              end
-            end # synchronize
-        
-              # NOTES:
-                              # to run on a host, including localhost, either:
-                              #   1. SSHD must be an nt-service
-                              #   2. SSHD must be run as administrator
-                              #   3. UAC must be turned off
-            if test_case
-            begin
-              #puts len.to_s
-              do_test_case_in_thread(test_cases, test_case, test_ctx)
-            rescue 
-              if test_ctx
-                test_ctx.pftt_exception(self, $!)
-              else
-                Tracing::Context::Base.show_exception($!)
+              if thread_pool.length > original_thread_pool_size
+                # if there are 'extra' threads
+                # (threads created over the pool size to accomodate all the single-threaded test case groups) 
+                # then end this thread
+                thread_pool.delete(Thread.current)
+                return
               end
             end
-            end
-            
-            end # while
-          end # Thread
+            #
+            # help out, run any of the multi-threaded test cases left
+            _run_mw_single_a_thread(test_ctx, multi_thread_test_cases)
           
-        test_ctx.semaphore1.synchronize do
+          ensure
+            test_ctx.semaphore1.synchronize do
+              thread_pool.delete(Thread.current)
+            end
+          end
+        end # Thread
+          
+        # TODO test_ctx.semaphore1.synchronize do
           thread_pool.push(thread)
-          block = thread_pool.length < 25 # TODO $thread_pool_size
-        end # synchronize
+          not_full = thread_pool.length < thread_pool_size
+        #end # synchronize
+        
       end # while
       
       # wait until all are done
@@ -243,6 +302,47 @@ module Test
         thread.join
       end
     end # run_mw_single
+    
+    def _run_mw_single_a_thread(test_ctx, test_cases)
+      block2 = true
+      while block2 do
+        # try to stagger starting of php.exe instances to stagger when they terminate
+        # if many of them terminate at once, you'll get a drop in cpu usage which wastes run time
+        #Thread.pass
+        if $hosted_int # LATER improve this later
+          sleep(1) # there are like ~50+ threads, sleep to give them a chance
+        end
+                      
+      test_case = nil
+      test_cases[:lock].synchronize do
+        if test_cases[:entries].empty?
+          block2 = false
+          break
+        else
+          test_case = test_cases[:entries].shift
+        end
+      end # synchronize
+  
+        # NOTES:
+                        # to run on a host, including localhost, either:
+                        #   1. SSHD must be an nt-service
+                        #   2. SSHD must be run as administrator
+                        #   3. UAC must be turned off
+      if test_case
+        begin
+          #puts len.to_s
+          do_test_case_in_thread(test_cases[:entries], test_case, test_ctx)
+        rescue 
+          if test_ctx
+            test_ctx.pftt_exception(self, $!)
+          else
+            Tracing::Context::Base.show_exception($!)
+          end
+        end        
+      end
+      
+      end # while
+    end # def run_mw_single_a_thread
         
     def do_test_case_in_thread(test_cases, test_case, test_ctx)
       #test_case[:host].lock.synchronize do
@@ -296,7 +396,7 @@ module Test
       #                end
       #              end
                               
-                    # see PhpTestResult::Array#generate_stats
+                    # see PhpTestTelemetry::Array#generate_stats
                     test_case.scn_list = scn_set
                     #puts '277'
        
@@ -334,7 +434,7 @@ module Test
         # use a different skip-if cache for each combination (important)
         :skip_if_code_cache => [],
         :skip_if_result_cache => [],
-        :skip_if_cache_size => ( host.remote? ) ? 60 : 4
+        :skip_if_cache_size => ( host.remote? ) ? $thread_pool_size*4 : $thread_pool_size*1
       }
     end
     
@@ -393,8 +493,8 @@ module Test
         # return early if this test case is not supported or is borked
         # TODO report bork|unsupported if running in interactive mode
         case
-        when test_case.borked? then throw :result, [Test::Result::Phpt::Bork]
-        when test_case.unsupported? then throw :result, [Test::Result::Phpt::Unsupported]
+        when test_case.borked? then throw :result, [Test::Telemetry::Phpt::Bork]
+        when test_case.unsupported? then throw :result, [Test::Telemetry::Phpt::Unsupported]
         end
       
         tmiddleware.apply_ini test_case.ini.to_a.map{|i|i.gsub('{PWD}', tmiddleware.host.cwd)}
@@ -422,22 +522,22 @@ module Test
                 
                 # evaluate the result to see if we're supposed to skip this test
                 check_skipif = skipif.downcase # preserve original skipif result
-                if check_skipif.include?('skip') 
+                if check_skipif.include?('skip') or test_case.full_name.include?('/windows_acl') # TODO TUE 
                   # if test was skipped because of wrong platform (test requires linux, but host is windows, etc...)
                   # then count that as XSkip not Skip (there is no way to run it)
                   if check_skipif.include?('only')
                     # ex: 'only run on <opposite platform>'
                     if host.windows? and check_skipif.include?('linux')
-                      skip_if_result = [Test::Result::Phpt::XSkip, skipif]
+                      skip_if_result = [Test::Telemetry::Phpt::XSkip, skipif]
                     elsif host.posix? and check_skipif.include?('windows')
-                      skip_if_result = [Test::Result::Phpt::XSkip, skipif]
+                      skip_if_result = [Test::Telemetry::Phpt::XSkip, skipif]
                     end
                   elsif check_skipif.include?('not')
                     # ex: 'do not run on windows' or 'not on windows'
                     if host.windows? and check_skipif.include?('windows')
-                      skip_if_result = [Test::Result::Phpt::XSkip, skipif]
+                      skip_if_result = [Test::Telemetry::Phpt::XSkip, skipif]
                     elsif host.posix? and check_skipif.include?('linux')
-                      skip_if_result = [Test::Result::Phpt::XSkip, skipif]
+                      skip_if_result = [Test::Telemetry::Phpt::XSkip, skipif]
                     end
                   end
                   # missing extensions are NOT counted as XSKIP, still count as SKIP (we should test all extensions)
@@ -445,7 +545,7 @@ module Test
                   #
                   # record as skipped. if lots of skipped tests, something may be wrong with how user setup their environment
                   if skip_if_result.empty?
-                    skip_if_result = [Test::Result::Phpt::Skip, skipif]
+                    skip_if_result = [Test::Telemetry::Phpt::Skip, skipif]
                   end
                 end
               rescue 
@@ -481,7 +581,7 @@ module Test
           out_err = do_single_test_case_execute(deployed, test_case, scn_set, tmiddleware)
               
                    #puts '398'     
-          throw :result, [Test::Result::Phpt::Meaningful, out_err]
+          throw :result, [Test::Telemetry::Phpt::Meaningful, out_err]
         ensure 
           # and clean up if we are supposed to
           if test_case.parts.has_key?(:clean) # LATER or CONFIG[:skip_cleanup]
@@ -550,7 +650,7 @@ module Test
       #puts '448'
       if result
         # generate the diff here in the thread unlocked
-        if result.is_a?(Test::Result::Phpt::Meaningful)
+        if result.is_a?(Test::Telemetry::Phpt::Meaningful)
           result.generate_diff(test_ctx, host, middleware, php, scn_set, test_ctx.tr)
         end
         
@@ -568,7 +668,7 @@ module Test
       a = result_spec[0]
                           
       # take the caught result and build the proper object out of it
-      return a.new( test_case, self, deploydir, php, *result_spec[1...result_spec.length] )
+      return a.new( @om, test_case, self, deploydir, php, *result_spec[1...result_spec.length] )
     end
     
   end # class Phpt 

@@ -59,7 +59,7 @@ module Report
               str += cm.to_s
           
               str += "\r\n"
-              str += "      === Test Run Results === \r\n"
+              str += "      === Test Run Telemetrys === \r\n"
               str += "\r\n"
           
               cm = Util::ColumnManager::Text.new(12)

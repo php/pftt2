@@ -1,7 +1,8 @@
 
 module Tracing
   module Prompt
-    
+   
+
 class Base
       
   def initialize(test_ctx, action_type, result, host, file, code, do_over, msg)

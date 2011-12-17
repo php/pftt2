@@ -17,7 +17,7 @@ module Report
       protected
       
       def diff_file(file_contents_a, file_contents_b)
-        diff = Diff::Exact.new(file_contents_a, file_contents_b)
+        diff = Diff::Engine::Exact.new(file_contents_a, file_contents_b)
         
         return diff.to_s
       end

@@ -49,7 +49,9 @@ class BaseRemoteHostAndClient
         @file_name = 'c:/php-sdk/PFTT-PSCC/'+host.name
         # TODO @file = File.open(@file_name, 'w+')
     
-          @file = File.open(@file_name, File::Constants::WRONLY|File::Constants::CREAT|File::Constants::NONBLOCK|File::Constants::BINARY)
+        
+          @file = File.open(@file_name, 'wb')#File::Constants::WRONLY|File::Constants::CREAT|File::Constants::NONBLOCK|File::Constants::BINARY)
+          
     @file.sync = true
     
     # @file = java.io.FileOutputStream.new(@file_name) # TODO , 16384)
@@ -210,6 +212,9 @@ class BaseRemoteHostAndClient
         # this function must return quickly!
         # receive blocks from the remote host as quickly as they send it so nothing gets lost
         if block.starts_with?("<Flash/>\n")
+          # TODO start recovery now
+           puts "done #{@host.name}"
+          
           # this is a special message (FLASH OVERRIDE) that must be processed now
           Thread.start do
             _recv_full_block(block)
@@ -294,11 +299,16 @@ class BaseRemoteHostAndClient
       def send_xml(xml, msg_type=nil, flash=false)
         # sends message
         #
+        block = nil
+        if xml.is_a?(Hash) # TODO
         if msg_type
           xml['@msg_type'] = msg_type
         end
         
         block = XmlSimple.xml_out(xml, 'AttrPrefix' => true, 'ContentKey'=>'text')
+        else
+          block = xml
+        end
         if flash
           block = "<Flash/>\n" + block
         end

@@ -37,7 +37,6 @@ class ClientManager
                     begin
 
                       content = thread.file_contents.pop(true)
-
                     rescue
                       # queue empty
                     end
@@ -48,6 +47,7 @@ class ClientManager
                         init_thread_buf_len = ( ( thread.file_contents.length + content.length ) / 2 )
                       end
 
+                      #
                       thread.file.write_nonblock(content)
 
                       proc_buf_len += content.length

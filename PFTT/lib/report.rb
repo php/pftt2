@@ -1,6 +1,6 @@
 
 module Report
-#class Results # 
+#class Telemetrys # 
 #  def initialize
 #    @telemetry_url = ''
 #    @run_id = ''
@@ -10,10 +10,10 @@ module Report
 #  end
 #end
 #
-#class ResultSet # 
+#class TelemetrySet # 
 #  def initialize
 #    @results_by_host = {}
-#    @results_by_host['host_0'] = Results.new()
+#    @results_by_host['host_0'] = Telemetrys.new()
 #    @title = 'PHP 5.3.8-nts-Win32-x86-vc9-r21111 (include time revision was downloaded)'
 #    @test_time = '10:30 10/8/2011 GMT'
 #    @ini = ''

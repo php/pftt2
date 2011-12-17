@@ -2,6 +2,19 @@
 require "net/http"
 require "uri"
 
+
+# TODO group tests by INI
+#     -run each group one at a time
+#          -see Test::Case::Phpt#can_use_ini_set?
+#          -within the group, can run multiple tests at same time
+#                  -but still checks Single_Threaded_Test_Cases, as with Middleware::CLI
+#     -have to apply_ini between each group
+#          -
+# TODO have middleware prepend code to php code (EXPECT and SKIPIF sections) to set ini directives
+#      save that modified php file!
+#      -ensure that telemetry folder actually saves it in that case
+#          -so analyst can see the modifications
+
 module Middleware
   module Http
     class HttpBase < Base

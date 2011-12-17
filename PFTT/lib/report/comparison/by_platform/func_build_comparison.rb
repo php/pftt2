@@ -72,7 +72,7 @@ module Report
               windows_ini = posix_ini = ''
             end
               
-            # TODO cm.add_row({:text=>'No Results', :colspan=>22, :center=>true})
+            # TODO cm.add_row({:text=>'No Telemetrys', :colspan=>22, :center=>true})
               
                   
             change_pass_rate = ( row['test.pass_rate'] - row['base.pass_rate'] )

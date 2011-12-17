@@ -28,9 +28,10 @@ module Tracing
 #      puts '          Test-Base - only results from Base not matching those in Test run'
 #      puts '          Base-Test - only results from Test not matching those in Base run'
 #      puts ' [Host] - All - all selected hosts        {Hostname} - named host'
-#      puts ' [Zoom] - A - All tests                   E - One extension'
-#      puts '          T - One test case               L - One line from a test case'
-#      puts '          C - One chunk from one line'
+#      puts ' [Zoom] - A - All tests (All Combos)      E - One extension (All Combos)'
+#      puts '          a - all tests                   e - one extension'
+#      puts '          T - One test case (All Combos)  t - one test case'
+#      puts '          l - One line from a test case   C - One chunk from one line'
 #      puts ' [Diff] - E - original Expected output    A - original Actual output'
 #      puts '          + - only added output           - - only removed output'
 #      puts '          d - + and -'
@@ -219,5 +220,6 @@ class Diff
       
 end # class Diff
 
+    end
   end
 end

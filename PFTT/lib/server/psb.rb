@@ -47,11 +47,13 @@ TABLE
       elsif request.query['report'] == 'pbc'
         # LATER PSB support for PBC reports
         response.body += "<p>PBC reporting not yet implemented</p>"
+      elsif request.query['report'] == 'fuzz'
+        response.body += "<p>Fuzz reporting not yet implemented</p>"
       elsif request.query['report'] == 'net_view'
         # LATER PSB support for net_view reports
-        response.body += "<p>net_view not yet implemented</p>"
+        response.body += "<p>Network report not yet implemented</p>"
       else
-        do_home(response)
+        do_home(response) 
       end
       do_footer(response)
     end
@@ -60,7 +62,17 @@ TABLE
       response.body += <<-HOME
 <h3>To start, choose Functional or Performance reporting</h3>
 <br/>
-<p><a href="https://github.com/OSTC/PFTT2" target="_blank"><font color="blue">PFTT Project</font></a></p>
+<h2>PFTT Features</h2>
+<ul>
+<li>Track changes <b>over time</b> with PSB</li>
+<li>Makes testing many OS/Versions <b>quick and convenient</b>, instead of laborious and tedious (helps to avoid bugs like PHP #57578). </li>
+<li>Can test across many OS/Versions much earlier and more often <b>decreasing the net cost to achieve and maintain full functionality</b> on an OS/Version</li>
+<li>PHP-Core, application devs, analysts and reviewers get a <b>consistent, reproducable system to compare</b> PHP-Core and Apps accross multiple OSs, Versions and Hosting Platforms.</li>
+<li>Test hosts only need a network connection and SSH support. PFTT does the rest! </li>
+<li>Automating entire test series and <b>repetitive tasks related to manual testing</b>, PFTT provides Faster, efficient and more predictable test cycles!</li>
+<li>Configures multiple middlewares, scenarios and PHP builds (TS and NTS) for <b>easy to reproduce setups</b> (auto documents test setups for transparency too!)</li>
+<li>Manage revisions and create PHP builds</li>      
+</ul>
 <br/>
 <h2>Terminology</h2>
 <ul>
@@ -86,19 +98,12 @@ TABLE
 <li><strong>FCR</strong> Report - Functional Combination (Host/Build/Middleware) Run Report</li>
 <li><strong>PGR</strong> Report - Performance Group Run Report (combines multiple PCR reports)</li>
 <li><strong>PCR</strong> Report - Performance Combination (Host/Build/Middlware) Run Report</li>
+<li><strong>FUZ</strong> Report - Fuzz Report</li>
 <li><strong>PSC</strong> Protocol - PFTT SSH Communications Protocol enables PFTT clients and hosts (so hosts only need base OS and ssh to be used with PFTT)</li> 
 </ul>
 <br/>
-<h2>PFTT Features</h2>
-<ul>
-<li>Track changes <b>over time</b> with PSB</li>
-<li>Makes testing many OS/Versions <b>quick and convenient</b>, instead of laborious and tedious (helps to avoid bugs like PHP #57578). </li>
-<li>PHP-Core, application devs, analysts and reviewers get a <b>consistent, reproducable system to compare</b> PHP-Core and Apps accross multiple OSs, Versions and Hosting Platforms.</li>
-<li>Test hosts only need a network connection and SSH support. PFTT does the rest! </li>
-<li>Automating entire test series and <b>repetitive tasks related to manual testing</b>, PFTT provides Faster, efficient and more predictable test cycles!</li>
-<li>Configures multiple middlewares, scenarios and PHP builds (TS and NTS) for <b>easy to reproduce setups</b> (auto documents test setups for transparency too!)</li>
-<li>Manage revisions and create PHP builds</li>      
-</ul>
+<p><a href="https://github.com/OSTC/PFTT2" target="_blank"><font color="blue">PFTT Project</font></a></p>
+<br/>
 HOME
     end
 
@@ -111,33 +116,30 @@ HOME
 <body>
 <h1>PSB: PFTT Statistics Browser</h1>
 
-<table>
-<tr>
-<td><a href="/"><font color="blue">Home</font></a></td>
-<td><a href="/?report=fbc"><font color="blue">Functional (FBC)</font></a></td>
-<td><a href="/?report=pbc"><font color="blue">Performance (PBC)</font></a></td>
-<td><a href="/?report=net_view"><font color="blue">Network</font></a></td>
-</tr>
-</table>
-
-
 HEAD
+      do_toolbar(response)
     end
   
     def do_footer(response)
+      do_toolbar(response)
       response.body += <<-FOOT
-      
-<table>
-<tr>
-<td><a href="/"><font color="blue">Home</font></a></td>
-<td><a href="/?report=fbc"><font color="blue">Functional (FBC)</font></a></td>
-<td><a href="/?report=pbc"><font color="blue">Performance (PBC)</font></a></td>
-</tr>
-</table>
       
 </body>
 </html>
 FOOT
+    end
+    
+    def do_toolbar(response)
+      response.body += '<table>      
+<tr>
+<td><a href="/"><font color="blue">Home</font></a></td>
+<td><a href="/?report=fbc"><font color="blue">Functional (FBC)</font></a></td>
+<td><a href="/?report=pbc"><font color="blue">Performance (PBC)</font></a></td>
+<td><a href="/?report=fuzz"><font color="blue">Fuzz</font></a></td>
+<td><a href="/?report=net_view"><font color="blue">Network</font></a></td>
+<td><a href="/"><font color="blue">Install PFTT Client</font></a></td>
+</tr>
+</table>'
     end
 
   end # end class PSB

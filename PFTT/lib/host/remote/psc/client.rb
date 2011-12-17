@@ -9,9 +9,8 @@ class Client < BaseRemoteHostAndClient
   def initialize(host, php, middleware, scn_set, test_ctx, hm)
     super(host, php, middleware, scn_set, hm)
     @test_ctx = test_ctx
-    @running = false
+    @_running = false
     @can_run_remote = false
-    @started = false
     @wait_lock = Mutex.new
     @stdin = ''
   end
@@ -45,37 +44,36 @@ class Client < BaseRemoteHostAndClient
     @can_run_remote = s == :installed or s == :already_installed
           
   end # def deploy
+  
   def can_run_remote?
     @can_run_remote
   end
+  
   def running?
-    # most likely, you'll want started?
-    @running
-  end
-  def started?
-    @started
-  end
-  def wait
-    unless @running
-      # not running anymore (never started, or already ended or already failed)
-      #
-      # don't need to bother locking
-      return
+    @wait_lock.synchronize do
+      return @_running
     end
-          
-    # synchronize to wait until lock released
-    @wait_lock.lock()
-          
-    @wait_lock.unlock()
-          
-    # if hosted_client_failed, wait() will terminate immediately because
-    # hosted_client_failed() will close the host, so host.exec! will end
-    # and release @wait_lock
   end
+  
+  def wait
+    puts "waiting "+@host.name
+    while true do
+      if running?
+        sleep(1)
+      else
+        break
+      end
+    end
+    puts "done waiting... "+@host.name
+  end # def wait
+  
   def run(test_cases, &fallback_block)
+    @wait_lock.synchronize do
+      @_running = true
+    end
     @fallback_block = fallback_block
     Thread.start do
-      begin
+      #begin
         # TODO
         #@host.upload_force('C:\\php-sdk\\0\\PFTT2\\PFTT', @host.systemdrive+'\\php-sdk\\1\\PFTT')
             
@@ -96,123 +94,114 @@ class Client < BaseRemoteHostAndClient
       #                end
       #      end
             
-        #
-        # TODO
-        send_php(PhpBuild.new('g:/php-sdk/PFTT-PHPS/'+$php_build_path))
-        @running = true
+      #
+      # TODO
+      send_php(PhpBuild.new(@host.systemdrive+'/php-sdk/PFTT-PHPS/'+$php_build_path))
+      
+      #
+      begin
+        # TODO resume if dies half way through 
+        begin
+          do_it()
+              
+        rescue
+          puts @host.name+" "+$!.inspect+" "+$!.backtrace.inspect
+              
+          do_it() # try again
+        end
+      rescue
+        puts @host.name+" "+$!.inspect+" "+$!.backtrace.inspect   
+      ensure
+        begin
+          @test_ctx.finished(@host, @php, @middleware, @scn_set)
+        rescue
+          puts @host.name+" "+$!.inspect+" "+$!.backtrace.inspect
+        end  
+        
+        # critical that this block is reached! (or it'll lock up Test::Runner::Phpt)
         @wait_lock.synchronize do
-              begin
-                
-                
-                # set JAVA_HOME=\\jruby-1.6.5\\jre
-                do_it()
-                
-              rescue 
-                puts @host.name+" "+$!.inspect+" "+$!.backtrace.inspect
-                
-                do_it() #again
-                
-              ensure
-                @running = false
-                @started = false
-                
-                begin
-                # wait for queue of blocks to be emptied
-                # LESSON 
-                # TODO check if tracing message flow rate here
-                  sleep(10000)
-      #            while true do
-      #              block_len = next_block_or_not
-      #            
-      #              unless block_len[0].nil?
-      #                _recv_full_block(block_len[0])
-      #              else
-      #                break
-      #              end
-      #            end
-                
-                rescue 
-                  puts @host.name+" "+$!.inspect+" "+$!.backtrace.inspect
-                end
-                
-                # LESSON ensure report finished
-                @test_ctx.finished(@host, @php, @middleware, @scn_set)
-              end
-            end
-            #
-             
-            rescue
-              puts @host.name+" "+$!.inspect+" "+$!.backtrace.inspect
-            end
-          end # thread
+          puts '120 '+@_running.to_s
+          @_running = false
         end
-        def do_it
-          @host.exec!(@host.systemdrive+'/php-sdk/1/pftt/_pftt_hc.cmd', Tracing::Context::Phpt::RunHost.new(), {:stdin_data=>@stdin, :max_len=>0, :chdir=>@host.systemdrive+'\\php-sdk\\1\\PFTT', :stdin=>@stdin}) do |handle|
-            if handle.has_stderr?
-              recv_ssh_block(handle.read_stderr)
-            end
-          end
-        end
-        def hosted_client_failed
-          # terminate _pftt_hc.rb if its still running
-          @host.close
-          
-          if @fallback_block
-            @fallback_block.call
-          end
-        end
-        def send_full_block(block)
-          block += "<Boundary>\n"
-          
-          puts block
-          @stdin += block
-        end
-        def dispatch_recvd_xml(xml)
-          msg_type = xml['@msg_type']
-            #puts msg_type
-          if msg_type == 'result'
-            # display
-            result = Test::Result::Phpt::Base.from_xml(xml, 'test_bench', 'deploydir', @php) # TODO
-            #puts result.inspect
-            @test_ctx.add_result(@host, @php, @middleware, @scn_set, result, result.test_case)
-          elsif msg_type == 'started'
-            # hosted client has started
-            @started = true
-      #    elsif debug_prompt_popup
-      #      # display
-      #    elsif debug_prompt_answer
-      #      # return
-      #    elsif debug_out
-      #      # display
-      #    elsif ptt_out
-      #      # display
-      #    elsif ptt_prompt_popup
-      #      # display
-      #    elsif ptt_prompt_answer
-      #      # return
-          end
-        end
-        def send_start
-          # TODO TUE send_xml({}, 'start')
-        end
-        def send_stop
-          send_xml({}, 'stop')
-        end
-        def send_php(php)
-          send_xml(php.to_xml, 'php')
-        end
-        def send_middleware(mw)
-          send_xml(mw.to_xml, 'middleware')
-        end
-        def send_scn_set(scn_set)
-          send_xml(scn_set.to_xml, 'scn_set')
-        end
-        def send_test_case(test_case)
-          send_xml(test_case.to_xml, 'test_case')
-        end
-        def exe_prompt(prompt_type, prompt_timeout)
-          # TODO
-        end
+      end
+      #
+    end # thread
+  end # def run
+    
+  protected
+    
+  def do_it
+    # sometimes on some SSH servers, sharing a connection/session with pftt_hc and everything else
+    # can cause thread sync problems, so create a new connection just for pftt_hc
+    h = @host.clone
+    #
+    
+    # TODO TUE /1/
+    h.exec!(h.systemdrive+"/php-sdk/1/pftt/_pftt_hc.cmd", Tracing::Context::Phpt::RunHost.new(), {:ignore_failure=>true, :max_len=>0, :stdin_data=>@stdin}) do |handle|
+      if handle.has_stderr?
+        recv_ssh_block(handle.read_stderr)
+      end
+    end
+    
+    # wait for pftt_hc to finish
+    puts 'do_it done '+@host.name
+  end
+  
+  
+  public
+  
+  def send_full_block(block)
+    block += "<Boundary>\n"
+    
+    puts block
+    @stdin += block
+  end
+  def dispatch_recvd_xml(xml)
+    msg_type = xml['@msg_type']
+      #puts msg_type
+    if msg_type == 'result'
+      # display
+      result = Test::Telemetry::Phpt::Base.from_xml(xml, 'test_bench', 'deploydir', @php) # TODO
+      #puts result.inspect
+      @test_ctx.add_result(@host, @php, @middleware, @scn_set, result, result.test_case)
+    elsif msg_type == 'started'
+      # hosted client has started
+      @started = true
+#    elsif debug_prompt_popup
+#      # display
+#    elsif debug_prompt_answer
+#      # return
+#    elsif debug_out
+#      # display
+#    elsif ptt_out
+#      # display
+#    elsif ptt_prompt_popup
+#      # display
+#    elsif ptt_prompt_answer
+#      # return
+    end
+  end
+  def send_start
+    # TODO TUE send_xml({}, 'start')
+  end
+  def send_stop
+    send_xml({}, 'stop')
+  end
+  def send_php(php)
+    send_xml(php.to_xml, 'php')
+  end
+  def send_middleware(mw)
+    send_xml(mw.to_xml, 'middleware')
+  end
+  def send_scn_set(scn_set)
+    send_xml(scn_set.to_xml, 'scn_set')
+  end
+  def send_test_case(test_case)
+    send_xml(test_case.to_xml, 'test_case')
+  end
+  def exe_prompt(prompt_type, prompt_timeout)
+    # TODO
+  end
 end # class Client
       
     end

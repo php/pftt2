@@ -19,12 +19,21 @@ class RemoteHost < BaseRemoteHostAndClient
     @run = false
   end
   def send_full_block(block)
+    if block.is_a?(String) # TODO
     block += "<Boundary>\n"
+    end
             
     # send via STDERR stream since normally PFTT will write to STDOUT
     # keeps any unexpected call to puts() from getting mixed in
     @lock.synchronize do
+      if block.is_a?(String)
       STDERR.write(block)
+      else
+        require 'java'
+        java.lang.System.err.write(block, 0, block.length)
+        java.lang.System.err.print("<Boundary>\n")
+      end
+      
     end
   end
   def running?
@@ -43,11 +52,14 @@ class RemoteHost < BaseRemoteHostAndClient
       xml = to_simple(line)
       dispatch_recvd_xml(xml)
       dispatch_recvd_xml({'@msg_type'=>'start'}) # TODO
+        break
     end
   end
   def send_result(result)
     xml = result.to_xml
+    if xml.is_a?(Hash) # TODO
     xml['@msg_type'] = 'result'
+    end
     send_xml(xml)
   end
   def dispatch_recvd_xml(xml)

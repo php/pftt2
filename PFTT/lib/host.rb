@@ -20,7 +20,7 @@ module Host
   
   def self.sub base, path
     if path.starts_with?(base)
-      return path[base.length..path.length]
+      return path[base.length+1..path.length]
     end
     return path
   end
@@ -170,7 +170,7 @@ module Host
       if p.is_a?(Integer) and p > 0
         return p
       else
-        return 1 # ensure 1> not returned
+        return 1 # ensure > 0 returned
       end
     end # def number_of_processors
     
@@ -259,13 +259,21 @@ module Host
     end
     
     def env_value(name, ctx=nil)
+      # TODO if local, get using a local API
+      
       # get the value of the named environment variable from the host
       if posix?(ctx)
-        return unquote_line!('echo $'+name, ctx)
+        return unquote_line!("echo $#{name}", ctx)
       else 
-        return unquote_line!('echo %'+name+'%', ctx)
+        out = unquote_line!("echo %#{name}%", ctx)
+        if out == "%#{name}%"
+          # variable is not defined
+          return ''
+        else
+          return out
+        end
       end
-    end
+    end # def env_value
     
     def systemroot(ctx=nil)
       # get's the file system path pointing to where the host's operating system is stored
@@ -464,6 +472,7 @@ module Host
     end
     
     def osname(ctx=nil)
+      return name # TODO TUE
       # returns the name, version and hardware architecture of the Host's operating system
       # ex: Windows 2008r2 SP1 x64
       unless @_osname
@@ -483,6 +492,10 @@ module Host
       end
       return @_osname
     end
+    
+    # TODO os_short_name
+    
+    alias :os_name osname
     
     def line_prefix!(prefix, cmd, ctx)
       # executes the given cmd, splits the STDOUT output by lines and then returns
@@ -526,7 +539,7 @@ module Host
       end
       return cmd_line
     end
-    
+        
     def debugger ctx
       if posix?
         if exists?('/usr/bin/gdb') or exists?('/usr/local/gdb')
@@ -561,7 +574,17 @@ module Host
       #set the opts as properties in the Test::Factor sense
       opts.each_pair do |key,value|
         property key => value
+        # LATER merge Test::Factor and host info (name, os_version)
+        # so both Test::Factor and host info can access each other
       end
+      
+      # allow override what #name() returns
+      # so at least that can be used even
+      # when a host is not accessible
+      if opts.has_key?(:hostname)
+        @_name = opts[:hostname]
+      end
+      #
       
       @dir_stack = []
     end
@@ -624,6 +647,9 @@ module Host
     #  :success_exit_code int, or [int] array   default=0
     #     what exit code(s) defines success
     #     note: this is ignored if Command::Expected is used (which evaluates success internally)
+    #  :ignore_failure true|false
+    #     ignores exit code and always assumes command was successful unless
+    #     there was an internal PFTT exception (ex: connection to host failed)
     # LATER :elevate and :sudo support for windows and posix
     # other options are silently ignored
     #
@@ -897,11 +923,13 @@ module Host
       
       tries = 10
       begin
-        path = File.join( tmpdir(), String.random(6) + suffix )
+        path = File.join( tmpdir(ctx), String.random(6) + suffix )
         
         raise 'exists' if exists?(path, ctx) 
         
-        write(content, path, ctx)
+        if content
+          write(content, path, ctx)
+        end
         
         return path
       rescue
@@ -940,8 +968,7 @@ module Host
       end
     end
     
-    def name ctx=nil
-      return 'OI1-PHP-FUNC-15' # TODO TUE
+    def name ctx=nil 
       unless @_name
         # find a name that other hosts on the network will use to reference localhost
         if windows?(ctx)
@@ -1061,33 +1088,38 @@ module Host
                   
         # execution done... evaluate and report success/failure
         if ctx
-          c_exit_code = exit_code
-          #
-          # decide if command was successful
-          #
-          success = exit_code == 0
-          if command.is_a?(Tracing::Command::Expected)
-            # custom evaluation
+          success = false
+          if opts[:ignore_failure]
+            success = true
+          else
+            c_exit_code = exit_code
             #
-            exit_code = Tracing::Command::Actual.new(command.cmd_line, stdout, stderr, exit_code, opts)
-            # exit_code => share with _exec
-            success = command.success?(exit_code)
-            
-          elsif opts.has_key?(:success_exit_code)
+            # decide if command was successful
             #
-            if opts[:success_exit_code].is_a?(Array)
-              # an array of succesful values
+            success = exit_code == 0
+            if command.is_a?(Tracing::Command::Expected)
+              # custom evaluation
               #
-              success = false # override exit_code==0 above
-              opts[:success_exit_code].each do |sec|
-                if exit_code == sec
-                  success = true
-                  break
+              exit_code = Tracing::Command::Actual.new(command.cmd_line, stdout, stderr, exit_code, opts)
+              # exit_code => share with _exec
+              success = command.success?(exit_code)
+              
+            elsif opts.has_key?(:success_exit_code)
+              #
+              if opts[:success_exit_code].is_a?(Array)
+                # an array of succesful values
+                #
+                success = false # override exit_code==0 above
+                opts[:success_exit_code].each do |sec|
+                  if exit_code == sec
+                    success = true
+                    break
+                  end
                 end
+              elsif opts[:success_exit_code].is_a?(Integer)
+                # a single successful value
+                success = exit_code == opts[:success_exit_code]
               end
-            elsif opts[:success_exit_code].is_a?(Integer)
-              # a single successful value
-              success = exit_code == opts[:success_exit_code]
             end
           end
           #
@@ -1113,7 +1145,7 @@ module Host
       return [stdout, stderr, exit_code]
     end # def _exec_thread
     
-    attr_accessor :_systeminfo, :_name, :_osname, :_systeminfo, :_systemdrive, :_systemroot, :posix, :is_windows, :_appdata, :_appdata_local, :_tempdir, :userprofile
+    attr_accessor :_systeminfo, :_name, :_osname, :_systeminfo, :_systemdrive, :_systemroot, :posix, :is_windows, :_appdata, :_appdata_local, :_tempdir, :_userprofile
     
     def clone(clone)
       clone._systeminfo = @systeminfo
@@ -1152,9 +1184,217 @@ module Host
   require 'typed-array'
   
   class Array < TypedArray(HostBase)
-    # make it filterable
+    # TODO make it filterable and #count(:posix) etc...
     include Test::FactorArray
 
+    # TODO ensure hosts are locked
+    def exec! command, ctx, opts={}
+      ret = {}
+      each_thread do |host|
+        ret[host] = host.exec!(command, ctx, opts)
+      end
+      ret
+    end
+    
+    def cmd! cmdline, ctx
+      ret = {}
+      each_thread do |host|
+        ret[host] = host.cmd!(cmdline, ctx)
+      end
+      ret
+    end
+
+    def line! cmdline, ctx
+      ret = {}
+      each_thread do |host|
+        ret[host] = host.line!(cmdline, ctx)
+      end
+      ret
+    end
+    
+    def unquote_line! cmdline, ctx
+      ret = {}
+      each_thread do |host|
+        ret[host] = host.unquote_line!(cmdline, ctx)
+      end
+      ret
+    end
+    
+    def line_prefix!(prefix, cmd, ctx)
+      ret = {}
+      each_thread do |host|
+        ret[host] = host.line_prefix!(prefix, cmd, ctx)
+      end
+      ret
+    end
+    
+    def reboot!(prefix, cmd, ctx) # TODO
+      each_thread do |host|
+        host.reboot(prefix, cmd, ctx)
+      end
+    end
+    
+def line_prefix!(prefix, cmd, ctx)
+      ret = {}
+      each_thread do |host|
+        ret[host] = host.line_prefix!(prefix, cmd, ctx)
+      end
+      ret
+    end
+    
+    
+    # rebooting?
+    # env_value
+def line_prefix!(prefix, cmd, ctx)
+      ret = {}
+      each_thread do |host|
+        ret[host] = host.line_prefix!(prefix, cmd, ctx)
+      end
+      ret
+    end
+    
+#    
+#    
+#    def time=
+#      # TODO
+#    end
+#    
+#    def name
+#    end
+#    
+#    def mkdir
+#    end
+#    
+#    
+#    mktmpdir
+#    mktmpfile
+#    mktempfile
+#    mktempdir
+#    delete
+#    delete_if
+#    upload
+#    upload_if_not
+#    glob
+    def exist?(path, ctx=nil)
+      ret = {}
+      each_thread do |host|
+        ret[host] = host.exist?(path, ctx)
+      end
+      ret
+    end
+    
+    alias :exist :exist?
+    alias :exists :exist?
+    alias :exists? :exist?
+    
+    def copy from, to, ctx, mk=true
+      each_thread do |host|
+        host.copy(from, to, ctx, mk)
+      end
+    end
+    
+    def move from, to, ctx
+      each_thread do |host|
+        host.move(from, to, ctx)
+      end
+    end
+
+#    upload_force
+#    time
+#    shell
+    # systeminfo
+    # 
+    def number_of_processors(ctx=nil)
+      ret = {}
+      each_thread do |host|
+        ret[host] = host.number_of_processors(ctx)
+      end
+      ret
+    end
+    
+    def systemroot(ctx=nil)
+      ret = {}
+      each_thread do |host|
+        ret[host] = host.systemroot(ctx)
+      end
+      ret
+    end
+    
+    def systemdrive(ctx=nil)
+      ret = {}
+      each_thread do |host|
+        ret[host] = host.systemdrive(ctx)
+      end
+      ret
+    end
+    
+    def desktop(ctx=nil)
+      ret = {}
+      each_thread do |host|
+        ret[host] = host.desktop(ctx)
+      end
+      ret
+    end
+    
+    def userprofile(ctx=nil)
+      ret = {}
+      each_thread do |host|
+        ret[host] = host.userprofile(ctx)
+      end
+      ret
+    end
+    
+    def appdata(ctx=nil)
+      ret = {}
+      each_thread do |host|
+        ret[host] = host.appdata(ctx)
+      end
+      ret
+    end
+    
+    def appdata_local(ctx=nil)
+      ret = {}
+      each_thread do |host|
+        ret[host] = host.appdata_local(ctx)
+      end
+      ret
+    end
+    
+    def tempdir(ctx)
+      ret = {}
+      each_thread do |host|
+        ret[host] = host.tempdir(ctx)
+      end
+      ret
+    end
+    
+    alias :tmpdir :tempdir
+    
+    protected
+    
+    def each_thread &block
+      # TODO
+    end
+    
+    public
+    
+    def osname(ctx=nil)
+      ret = {}
+      each do |host|
+        ret[host] = host.osname(ctx)
+      end
+      ret
+    end
+    
+    alias :os_name osname
+        
+    def has_debugger?(ctx)
+      ret = {}
+      each do |host|
+        ret[host] = host.has_debugger?(ctx)
+      end
+      return ret
+    end
 
     def load( path )
       path = File.absolute_path( path )

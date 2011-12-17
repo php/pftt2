@@ -46,6 +46,18 @@ def generate_shell_script(cmd, ruby_script)
 end
 
 def os_short_name(os)
+  os.gsub!('Windowsr', 'Win') # (r)
+  os.gsub!('Microsoftr', '') # (r)
+  os.gsub!('Serverr', '') # (r)
+  os.gsub!('Developer Preview', 'Win 8')
+  os.gsub!('Win 8 Win 8', 'Win 8')
+  os.gsub!('Full', '')
+  os.gsub!('Installation', '')
+  os.gsub!('(', '')
+  os.gsub!(')', '')
+  os.gsub!('tm', '')
+  os.gsub!('VistaT', 'Vista')
+  
   os.gsub!('Windows', 'Win')
     
   # remove common words
@@ -59,6 +71,7 @@ def os_short_name(os)
     # XP Home != XP Pro
     os.gsub!('Home', '')
   end
+  os.gsub!('Win Win', 'Win')
   os.gsub!('(R)', '')
   os.gsub!(',', '')
   os.gsub!('Edition', '')

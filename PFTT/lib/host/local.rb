@@ -210,8 +210,7 @@ module Host
         # JRuby's Open3 implementation (specifically IO.popen3 (which uses ShellLauncher))
         # adds cmd /C (and possibly other manipulations) to the command, which prevents it
         # from finding the file to execute
-        require 'java'
-              
+                      
         builder = java.lang.ProcessBuilder.new(command.split(' '))
         if env
           builder.environment().putAll(java.util.HashMap.new(env))
@@ -319,16 +318,21 @@ module Host
       
       def run
         # check the process to make sure exited in time. if not, kill it
-        begin
-          @process.exitValue()
-          # process is not running anymore
+        tries = 0
+        while tries < 10 do
+          begin
+            @process.exitValue()
+            # process is not running anymore
+                    
+            break    
+          rescue java.lang.IllegalThreadStateException => ex
+            # process is still running, kill it
                         
-        rescue java.lang.IllegalThreadStateException => ex
-          # process is still running, kill it
-                        
-          @process.destroy
-        end # begin
-              
+            @process.destroy
+            # check and ensure process is done (if not, try killing again)
+          end # begin
+          tries += 1
+        end # while
       end # def run
       
     end # class ExitMonitorTask

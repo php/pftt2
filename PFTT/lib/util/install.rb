@@ -2,6 +2,7 @@
 # LATER config file
 $share_name = "\\\\terastation\\share"
 $folder = "\\PFTT\\deps"
+$http_proxy = ""
 
 require 'util/package.rb'
 
@@ -112,6 +113,7 @@ module Util
         # usage example:
         # copy_files('Ruby192', @host.systemdrive+'\\Ruby192')
         #
+        # TODO
         @host.exec!("net use S: #{$share_name} /user:test /persistent:no test", ctx)
         # /I important! also /E
         @host.exec!("XCOPY /E /Q /I /Y S:#{$folder}\\#{src} #{dst}", ctx)
@@ -119,26 +121,48 @@ module Util
       end
   
       def msi_install(msi, opts, ctx)
-        @host.exec!("net use R: #{$share_name} /user:test /persistent:no test", ctx)
+        remote_path = Host.join(@host.mktempdir(ctx), msi)
+        
+        # TODO TUE
+        @host.upload("C:\\php-sdk\\2\\deps\\#{msi}", remote_path, ctx)
+        
         if msi.ends_with?('.exe')
-          @host.exec!("R:#{$folder}\\#{msi} #{opts}", ctx)
+          @host.exec!("#{remote_path} #{opts}", ctx)
         else
-          @host.exec!("msiexec /i R:#{$folder}\\#{msi} #{opts}", ctx)
+          @host.exec!("msiexec /i #{remote_path} #{opts}", ctx)
         end
-        @host.exec!("net use R: /d", ctx)
+        
+        # TODO @host.delete(remote_path)
+# TODO       
+#        @host.exec!("net use R: #{$share_name} /user:test /persistent:no test", ctx)
+#        if msi.ends_with?('.exe')
+#          @host.exec!("R:#{$folder}\\#{msi} #{opts}", ctx)
+#        else
+#          @host.exec!("msiexec /i R:#{$folder}\\#{msi} #{opts}", ctx)
+#        end
+#        @host.exec!("net use R: /d", ctx)
       end
   
       def emerge_install(name, ctx)
-        @host.exec!("emerge #{name}", ctx)
+        @host.exec!("emerge #{name}", ctx, {:env=>linux_install_env})
       end
   
       def yum_install(name, ctx)
-        @host.exec!("yum install #{name}", ctx)
+        @host.exec!("yum -y -q install #{name}", ctx, {:env=>linux_install_env})
       end
   
       def apt_get_install(name, ctx)
-        # install using apt-get on Debian Linux or Mac OS X (with Fink installed)
-        @host.exec!("apt-get install #{name}", ctx)
+        # install using apt-get on Debian Linux
+        # LATER ??? Mac OS X (with Fink installed) ???
+        @host.exec!("apt-get install #{name}", ctx, {:env=>linux_install_env})
+      end
+      
+      def linux_install_env
+        if $http_proxy and $http_proxy.length > 0
+          return {'http_proxy'=>$http_proxy}
+        else
+          return {}
+        end
       end
   
       def has_cmd(cmd, ctx)

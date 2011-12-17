@@ -70,7 +70,7 @@ module Case
       elsif @compare_len == Guess_Compare_Len
         return true # nothing to do, just have to hope its ok
       else
-        return run_content.length >= @compare_len and original_content.length >= @compare_len and run_content[0, @compare_len] == original_content[0, @compare_len]
+        return ( run_content.length >= @compare_len and original_content.length >= @compare_len and run_content[0, @compare_len] == original_content[0, @compare_len] )
       end
     end
   end

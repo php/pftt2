@@ -2,7 +2,7 @@
 module Test
   module Runner
     
-class Fuzz
+class Fuzz < RunnerBase
 	METHOD_ONLY   = 1
 	FUNCTION_ONLY = 2
 	CLASS_ONLY    = 4
@@ -361,7 +361,7 @@ class TemplateFuzzer
       exit_code = execute(metadata['name'], template.getSource)
       
       case exit_code
-      when 139: # signall 11
+      when 139 # signall 11
         puts "SIGSEGV #{exit_code}"
       else
         puts "Exit status = #{exit_code}"

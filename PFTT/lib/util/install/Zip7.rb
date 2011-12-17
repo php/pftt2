@@ -21,6 +21,11 @@ module Util
         msi_install('', '', ctx)
       end
       
+      def install_yum(ctx)
+        # Fedora16
+        yum_install('p7zip-plugins', ctx)
+      end
+      
     end
   end
 end

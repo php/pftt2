@@ -38,15 +38,26 @@ end
 
 def package_telemetry(local_host, path)
   # TODO
-  # pftt_php54_rXXXXX.7z
+  # pftt_php54_rXXXXX.pftt_telem.7z
   # php54_rxxxx/
   # php54_rxxxx/CLI/
   # php54_rxxxx/CLI/[hostname]
   #
-  # store in /PFTT-Results/PHP_5_4/[rXXXXX]/[pftt_php54_rXXXX].7z
+  # store in /PFTT-Telemetry/PHP_5_4/[rXXXXX]/[pftt_php54_rXXXX].7z
+  #
+  # pftt_telem.7z indicates it was made by pftt, so pftt can search diff files directly from it, etc...
+  
+  #
+  # see http://docs.bugaco.com/7zip/MANUAL/switches/method.htm
+  # see http://www.comprexx.com/UsrHelp/Advanced_Compression_Parameters_(7-Zip_Archive_Type).htm
+  # see http://www.dotnetperls.com/7-zip-examples
+  # (-mmt seems to override mt=)
+  # 7z a -ms=on -mfb=200 -mx1 -m0=LZMA2:mt=4 -ssc [archive] [folder]
+  #
+  # {:null_output=>true}
 end
 
-def package_svn(local_host, path)
+def package_svn(local_host, path, test_cases)
   ctx = Tracing::Context::PhpBuild::Compress.new
   
   tmp_dir = File.join(local_host.mktmpdir(ctx), File.basename(path))
@@ -61,11 +72,18 @@ def package_svn(local_host, path)
   # (don't need the complete source code, just the PHPTs and files they might need)
   # (the fewer the files, the smaller the archive, the faster the test cycle => greater SDE/SDET productivity)
   # TODO local_host.glob(path, '**/*', ctx) do |file|
-  Dir.glob(path+'/**/*') do |file|
+  
+  # TODO should include the base path for each set of test cases
+  #        here test_cases is just 1 array, but should be test_cases = [test_cases]
+  
+  test_cases.each do |test_case|
+  #Dir.glob(path+'/**/*') do |file|
     # for each file
-    s_file = Host.sub(path, file)
+    s_file = test_case.relative_path
     
-    if s_file.include?('/tests/') or s_file.include?('/test/')
+    file = Host.join(path, test_case.relative_path)
+    
+    #if s_file.include?('/tests/') or s_file.include?('/test/')
       
       mtime = local_host.mtime(file)
       if mtime > greatest_mtime
@@ -77,7 +95,7 @@ def package_svn(local_host, path)
       # save the list of dirs... we could copy each test file, buts its fewer copy operations
       # to copy entire directories => so the copy process is faster
       test_dirs[File.dirname(file)] = File.dirname(Host.join(package_tmp_dir, s_file))
-    end
+    #end
   end 
   #
   
@@ -97,6 +115,8 @@ def package_svn(local_host, path)
   end
   # go ahead and create a new archive of test_files
   #
+  
+  # TODO if ony a few phpt files have changed, but host has the rest, just upload the changed ones (important to be fast)
   
   # copy test dirs
   test_dirs.each do |entry|

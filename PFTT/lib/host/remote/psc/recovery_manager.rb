@@ -3,20 +3,37 @@ require 'host/remote/psc.rb' # temp
 
 module Host
   module Remote
-    module PSC # temp Psc?
+    module PSC
 
 class HostRecoveryManager
     def initialize(hosts, php, middleware, scn_set)
   #hosts = [hosts.first]
-      php = PhpBuild.new('C:\\php-sdk\\builds\\php-5.4.0rc2-nts-Win32-VC9-x86')
+      php = PhpBuild.new('C:\\php-sdk\\builds\\5_4\\'+$php_build_path)
 
+tf = Test::RunContext.new(nil, 'c:/php-sdk/pftt-telemetry/'+php[:version]+'-'+Time.now().to_s.gsub(' ', '_').gsub(':', '_'))
+    
       threads = []
+      results_file = nil # TODO File.open('results.txt', 'w')
       hosts.each do |host|
+	puts host.name
 
-        file_name = 'C:/php-sdk/PFTT-PSCC/540rc2'# r319120/'+host.name
+        file_name = 'C:/php-sdk/PFTT-PSCC/PHP_5_4_r321040/'+host.name
         if File.exists?(file_name)
           #t = Thread.start do
-            recover(file_name, host, php, middleware, scn_set)
+          combo = nil
+begin
+            combo = recover(results_file, file_name, host, php, middleware, scn_set, tf)
+rescue
+puts host.name+" "+$!.to_s+" "+$!.backtrace.inspect
+end
+begin
+if !combo.finished
+  tf.finished_combo(combo)
+end
+  rescue
+  puts host.name+" "+$!.to_s+" "+$!.backtrace.inspect
+  end
+
           #end
           #threads.push(t)
         end
@@ -24,70 +41,78 @@ class HostRecoveryManager
       #threads.each do |t|
       # t.join
       #end
-    end
-def open_combo_files(telemetry_folder)
+      #results_file.close
       
-      files = {}
-      [:pass, :fail, :works, :bork, :unsupported, :xfail, :skip, :xskip].each do |status|
-        files[status] = File.open( File.join( telemetry_folder, %Q{#{status.to_s.upcase}.list} ), 'a' )
-      end
-            
-      return files
+      return 'C:/php-sdk/pftt-telemetry/'+php[:version]
     end
-    def recover(file_name, host, php, middleware, scn_set)
-      file = File.open(file_name)
-      host = host
+    def recover(results_file, file_name, host, php, middleware, scn_set, tf)
 
-      results = Test::Result::Phpt::Array.new()
-      telemetry_folder = 'C:/php-sdk/pftt-results/'+host.name+'.'+Time.now.to_s.gsub(' ', '_').gsub(':', '-')
-
-      FileUtils.mkdir_p(telemetry_folder)
+combo = tf.add_combo(host, php, middleware, scn_set)
 
 
-      #File.open(telemetry_folder+'/systeminfo.txt', 'w') do |f|
-      # f.write(host.systeminfo)
-      #end
-
-      shared_files = open_combo_files(telemetry_folder)
+#file = results_file
+file = IO.readlines(file_name)
 
 
-
-
-
+      parser = org.kxml2.io.KXmlParser.new
+      
       buf = ''
       file.each do |line|
-        if line.ends_with?("<Boundary>\n")
-          line = line[0..'<Boundary>'.length]
-          buf += line
-
+        line = buf += line
+        if buf.ends_with?("<Boundary>\n")
+          buf = buf[0..buf.length-"<Boundary>\n".length-1]
+        #puts '64'
+        t = Thread.start do
           begin
-          xml = to_simple(buf)
-
-          if xml['@msg_type'] == 'result'
-                result = Test::Result::Phpt::Base.from_xml(xml, 'test_bench', 'deploydir', php) 
-            #puts host.name+' ' +result.to_s
-            result.save_shared(shared_files)
+            #puts '66'
             
-            result.save_single(telemetry_folder)
+            
+            
+            raw_xml = buf
+            parser.setInput(java.io.ByteArrayInputStream.new(raw_xml.to_java_bytes), 'utf-8')
+#            
+#            
+#            
+#          xml = to_simple(buf)
+#            #puts '68'
+#          if xml['@msg_type'] == 'result'
+                result = Test::Telemetry::Phpt::Base.from_xml(parser, 'test_bench', 'deploydir', php)
 
-                results.push(result)
-          end
+tf.add_result(host, php, middleware, scn_set, result, nil)# TODO test_case)
+
+            #puts '71' 
+#            puts host.name+' ' +result.to_s
+#            result.save_shared(shared_files)
+            #puts '74'
+#            result.save_single(telemetry_folder)
+            #puts '76'
+#                results.push(result)
+            #puts '77'
+#          end
           rescue 
+            puts raw_xml
           puts host.name+' '+$!.inspect+' '+$!.backtrace.inspect
           end
-  
+        end
+        if t.join(10)
+          t.terminate
+        end
+        #puts '83'
 
           buf = ''    
-        else
-          buf += line
         end
       end
 
-      puts '['+host.name+'] '+results.inspect
+      #puts '['+host.name+'] '+results.inspect
+      #results_file.puts('['+host.name+'] '+results.inspect)
 
-      file.close
+      #file.close
+      return combo
     end
 def to_simple(raw_xml)
+  return XmlSimple.xml_in(raw_xml, {'AttrPrefix' => true, 'ContentKey'=>'text'}) # TODO TUE
+  puts raw_xml
+  return {}
 #    require 'java'
 #    # see http://www.artima.com/weblogs/viewpost.jsp?thread=214719
 #    require 'kxml2-2.3.0.jar'

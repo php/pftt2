@@ -1,8 +1,8 @@
 
 module Test
   module Runner
-  class Wcat < Base
-    requirement :platform => :windows
+  class Wcat < RunnerBase
+    # TODO requirement :platform => :windows
     
     def run(local_host, hosts, perf_case, target_host)
       # test with 8, 16, and 32 virtual clients for each physical host

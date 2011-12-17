@@ -91,7 +91,7 @@ class PhpBuild
         
         property :threadsafe => parts[parts.length-1] == 'Release_TS' ? 'ts' : 'nts'
       else
-        property :threadsafe => Dir.exists(File.join(path, 'Release_TS')) ? 'ts' : 'nts'
+        property :threadsafe => File.exists?(File.join(path, 'Release_TS')) ? 'ts' : 'nts'
       end
         
       if base_name == 'PHP_5_4'
