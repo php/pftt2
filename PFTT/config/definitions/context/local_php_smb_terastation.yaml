@@ -1,5 +1,0 @@
-# runs php.exe from local file system, but runs PHPTs from remote SMB File Share stored on Buffalo Terastation NAS device
-#
-address: 10.200.51.33
-username: test
-password: test

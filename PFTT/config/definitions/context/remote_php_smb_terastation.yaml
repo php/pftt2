@@ -1,5 +1,0 @@
-# run PHPTs and php.exe from remote SMB File Share stored on Buffalo Terastation NAS device
-#
-address: 10.200.51.33
-username: test
-password: test

@@ -1,0 +1,141 @@
+<html>
+<body>
+
+<h1>PFTT</h1>
+
+<p>PFTT has and can mean many different things:</p>
+<p>PHP Function Test Tool</p>
+<p>PHP Filesystem Test Tool</p>
+<p>Practically Formulated Test Tool</p>
+<p>PHP Fast Test Tool</p>
+<p>PHP Full Test Tool</p>
+
+<h1>API Documentation</h1>
+
+<p><a href="apidoc/index.html">All Documentation</a></p>
+
+<h2>Important Classes</h2> 
+<p><a href="apidoc/com/mostc/pftt/runner/CliPhptTestCaseRunner.html">CliPhptTestCaseRunner</a> - Executes a single PHPT Test Case (using the CLI SAPI) and evaluates</p>
+<p><a href="apidoc/com/mostc/pftt/host/Host.html">Host</a> - Abstracts host management so client code doesn't need to care if host is local or remote(ssh)</p>
+<p><a href="apidoc/com/mostc/pftt/scenario/ScenarioSet.html">ScenarioSet</a> - Models 90 sets of different <a href="apidoc/com/mostc/pftt/scenario/Scenario.html">Scenario</a>s to test PHP in</p>
+<p><a href="apidoc/com/mostc/pftt/model/phpt/PhptTestCase.html">PhptTestCase</a> - Models a PHPT Test case</p>
+
+<h1>INSTALL</h1>
+
+<ol>
+<li>Install Java 6 JRE or JDK (JDK if you plan on development work, see below)</li>
+<li>download PFTT ZIP</li>
+<li>decompress ZIP to C:\php-sdk\PFTT\current (Windows) or ~/php-sdk/PFTT/current (Linux)
+<p>Note: should have directories like c:\php-sdk\PFTT\current\bin not c:\php-sdk\PFTT\current\pftt-version\bin</p></li>
+<li>add PFTT to $PATH or %PATH% (optional)
+<ol>
+<li>Windows</li>
+<li>set PATH=c:\php-sdk\PFTT\current\bin;%PATH%</li>
+<li>To make it permanent, open System Properties from Control Panel (can also right-click on Start &gt; Computer and click My Computer)</li>
+<li>Click Advanced then Environment variables</li>
+<li>Find PATH under System variables and add C:\php-sdk\PFTT\current\bin</li>
+</ol>
+<br/>
+<ol>
+<li>Linux (bash)</li>
+<li>Open ~/.bash_profile</li>
+<li>Add export PATH=$PATH:~/php-sdk/PFTT/current/bin</li>
+<li>chmod +x ~/php-sdk/PFTT/current/bin/pftt</li>
+</ol>
+</li>
+</ol>
+
+<h1>USAGE</h1>
+
+<p>Typically, builds and test-packs are stored in C:\Php-sdk (Windows) or ~/php-sdk (Linux)</p>
+<code>C:\php-sdk\php-5.3-nts-windows-vc9-x86-rda541ff</code>
+<code>C:\php-sdk\php-test-pack-5.3-nts-windows-vc9-x86-rda541ff</code>
+
+<p>Run all PHPTs from the test-pack</p>
+<code>pftt phpt_all C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567</code>
+
+<p>Runs PHPTs only from list in SKIP_list_file (can add comments to lists with a ; or #)</p>
+<code>pftt phpt_list C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 SKIP_list_file</code>
+
+<p>Runs PHPTs that contain 021 (name fragment) in their name</p>
+<code>pftt phpt_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 021</code>
+
+<p><b>NOTE:</b> On Windows PFTT will prompt you to elevate it to Administrator privileges for some operations to configure Windows Error Reporting and firewall</p>
+
+<p>Opens a GUI to efficiently review large amounts of tests</p>
+<code>pftt -gui phpt_all C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567</code>
+<code>pftt -gui -config config_file phpt_list C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 </code>
+<code>pftt -gui -config config_file phpt_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567</code>
+
+<p><a href="PhptDebuggerFrame1.png" target="_new"><img src="PhptDebuggerFrame1.png" width="640" border="0"/></a></p>
+
+<p>shows help info</p>
+<code>pftt -help</code>
+<p>downloads newest test-pack and build</p>
+<code>pftt release_get</code>
+
+<h2>Functional Build Comparison(FBC) Reports</h2>
+
+<p>Run one test pass</p>
+<code>
+pftt phpt_all C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567
+<span>Or</span>
+pftt phpt_list C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 SKIP_list_file
+<span>Or</span>
+pftt phpt_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 021
+</code>
+
+<p>Run a second test pass, using a different build and/or test-pack</p>
+<code>
+pftt phpt_all C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234568
+<span>Or</span>
+pftt phpt_list C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234568 SKIP_list_file
+<span>Or</span>
+pftt phpt_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234568 021
+</code>
+
+<p>PFTT will automatically generate an FBC report and display it using system default web browser</p>
+
+<h1>Development</h1>
+
+<ol>
+<li>Install <b>Eclipse IDE</b> 4.2 (Juno), <b>not Eclipse Classic</b> see http://eclipse.org/</li>
+<li>Run Eclipse, the default value for workspace is ok</li>
+<li>Install Groovy Plugin:
+<ol>
+<li>Help &gt; Install New Software</li>
+<li>Add
+<li>Enter 'Groovy' for name and http://dist.springsource.org/release/GRECLIPSE/e4.2/ for location and click ok/add</li>
+<li>Check Groovy-Eclipse and click next through all the screens</li>
+<li>You may get a warning about groovy-eclipse not being signed, ignore and install anyway. Also, Eclipse will need to restart.</li>
+</ol>
+<li>On Windows, find c:\php-sdk\PFTT\Current\.classpath and .project. Look at their Properties in Windows Explorer and make sure the 'Read Only' attribute is not set. Clear it if it is, or Eclipse will get Access Denied errors.</li>
+<li>File &gt; Import &gt; General &gt; Existing project</li>
+<li>Choose C:\php-sdk\PFTT\current</li>
+<br/>
+That should be it (PFTT comes with eclipse .project and .classpath files which already have all the correct settings)
+</li>
+
+<!-- TODO how to create a run configuration -->
+
+</ol>
+
+<h2>Adding Scenarios</h2>
+
+<p><a href="file:///C:/php-sdk/PFTT/current/doc/apidoc/com/mostc/pftt/scenario/Scenario.html">Scenario</a></p>
+
+<h3>Database Scenario</h3>
+
+<p><a href="apidoc/com/mostc/pftt/scenario/AbstractDatabaseScenario.html">AbstractDatabaseScenario</a></p>
+
+<h3>SAPI Scenario</h3> 
+
+<p><a href="apidoc/com/mostc/pftt/scenario/AbstractSAPIScenario.html">AbstractSAPIScenario</a></p>
+
+<p><a href="apidoc/com/mostc/pftt/scenario/AbstractWebServerScenario.html">AbstractWebServerScenario</a></p>
+
+<h2>Adding a PHPUnit Application</h2> 
+file:///C:/php-sdk/PFTT/current/doc/apidoc/com/mostc/pftt/model/app/PhpAppTestPack.html
+file:///C:/php-sdk/PFTT/current/doc/apidoc/com/mostc/pftt/model/app/PhpUnitAppTestPack.html
+</body>
+</html>

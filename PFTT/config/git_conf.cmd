@@ -1,3 +1,0 @@
-REM TODO configure git
-
-

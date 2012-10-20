@@ -1,3 +1,0 @@
-#!/bin/sh
-# TODO gem install bundler 
-bundle exec ruby _pftt_server.rb $*

@@ -1,0 +1,578 @@
+package com.mostc.pftt.main;
+
+import groovy.lang.Binding;
+import groovy.lang.GroovyObject;
+import groovy.ui.Console;
+
+import java.awt.Container;
+import java.awt.Desktop;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+
+import javax.swing.JFrame;
+
+import org.codehaus.groovy.tools.shell.Groovysh;
+import org.codehaus.groovy.tools.shell.IO;
+
+import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.LocalHost;
+import com.mostc.pftt.model.app.PhpUnitAppTestPack;
+import com.mostc.pftt.model.phpt.EBuildBranch;
+import com.mostc.pftt.model.phpt.EBuildType;
+import com.mostc.pftt.model.phpt.PhpBuild;
+import com.mostc.pftt.model.phpt.PhptTestCase;
+import com.mostc.pftt.model.phpt.PhptTestPack;
+import com.mostc.pftt.model.smoke.PhptTestCountsMatchSmokeTest;
+import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
+import com.mostc.pftt.model.smoke.RequiredFeaturesSmokeTest;
+import com.mostc.pftt.report.AUTReportGen;
+import com.mostc.pftt.report.AbstractReportGen;
+import com.mostc.pftt.report.FBCReportGen;
+import com.mostc.pftt.runner.PhpUnitTestPackRunner;
+import com.mostc.pftt.runner.PhptTestPackRunner;
+import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.telemetry.PhptTelemetryReader;
+import com.mostc.pftt.telemetry.PhptTelemetryWriter;
+import com.mostc.pftt.ui.PhptDebuggerFrame;
+import com.mostc.pftt.util.StringUtil;
+import com.mostc.pftt.util.WindowsSnapshotDownloadUtil;
+
+/** main class for PFTT
+ * 
+ * launches PFTT and loads any other classes, etc... needed to execute commands given to PFTT.
+ * 
+ */
+
+public class PfttMain {
+	protected Host host;
+	
+	public PfttMain() {
+		host = new LocalHost();
+	}
+		
+	@SuppressWarnings("unused")
+	protected File telem_dir() {
+		File file;
+		if (Host.DEV > 0) {
+			file = new File(host.getPhpSdkDir(), "Dev-"+Host.DEV);
+		} else {
+			file = new File(host.getPhpSdkDir());
+		}
+		file.mkdirs();
+		return file;
+	}
+	
+	protected PhptTelemetryReader last_telem(PhptTelemetryWriter not) throws FileNotFoundException {
+		File[] files = telem_dir().listFiles();
+		File last_file = null;
+		for (File file : files) {
+			if (PhptTelemetryReader.isTelemDir(file)) {
+				if (not!=null && file.equals(not.telem_dir))
+					// be sure to not find the telemetry that is being written presently
+					continue;
+				if (last_file==null || last_file.lastModified() < file.lastModified())
+					last_file = file;
+			}
+		}
+		return last_file == null ? null : PhptTelemetryReader.open(host, last_file);
+	}
+
+	public void run_all(boolean show_gui, PhpBuild build, PhptTestPack test_pack, ScenarioSet scenario_set) throws Exception {
+		LinkedList<PhptTestCase> test_cases = new LinkedList<PhptTestCase>();
+				
+		PhptTelemetryWriter tmgr = new PhptTelemetryWriter(host, null, telem_dir(), build, test_pack, scenario_set);
+		test_pack.add_test_files(test_cases, tmgr, build);
+		
+		PhptTestPackRunner test_pack_runner = new PhptTestPackRunner(tmgr, test_pack, scenario_set, build, host);
+		
+		if (show_gui) {
+			PhptDebuggerFrame gui = new PhptDebuggerFrame(test_pack_runner);
+			tmgr.gui = gui;
+			show_gui("phpt_all", gui);
+		}
+				
+		test_pack_runner.run_test_list(test_cases);
+		
+		tmgr.close();
+		
+		new PhptTestCountsMatchSmokeTest();
+		
+		phpt_report(tmgr);
+	}
+	
+	protected void phpt_report(PhptTelemetryWriter test_telem) throws FileNotFoundException {	
+		PhptTelemetryReader base_telem = last_telem(test_telem);
+		if (base_telem==null) {
+			// this isn't an error, so don't interrupt the test run or anything
+			System.err.println("User Info: run again (with different build or different test-pack) and PFTT");
+			System.err.println("                  will generate an FBC report comparing the builds");
+			System.err.println();
+		} else {
+			show_report(new FBCReportGen(base_telem, test_telem));
+		}
+	}
+	
+	protected void show_report(AbstractReportGen report) {
+		String html_file = report.createHTMLTempFile(host);
+		
+		try {
+			Desktop.getDesktop().browse(new File(html_file).toURI());
+		} catch ( Exception ex ) {
+			ex.printStackTrace();
+			System.err.println("Error: unable to show HTML file: "+html_file);
+		}
+	}
+
+	public void run_named_tests(boolean show_gui, PhpBuild build, PhptTestPack test_pack, ScenarioSet scenario_set, List<String> names) throws Exception {
+		LinkedList<PhptTestCase> test_cases = new LinkedList<PhptTestCase>();
+		
+		PhptTelemetryWriter tmgr = new PhptTelemetryWriter(host, null, telem_dir(), build, test_pack, scenario_set);
+		test_pack.add_named_tests(test_cases, names, tmgr, build);
+		
+		PhptTestPackRunner test_pack_runner = new PhptTestPackRunner(tmgr, test_pack, scenario_set, build, host);
+		
+		if (show_gui) {
+			PhptDebuggerFrame gui = new PhptDebuggerFrame(test_pack_runner);
+			tmgr.gui = gui;
+			show_gui("phpt_named", gui);
+		}
+			
+		test_pack_runner.run_test_list(test_cases);
+		
+		tmgr.close();
+		
+		new PhptTestCountsMatchSmokeTest();
+		
+		phpt_report(tmgr);
+	}
+	
+	/* -------------------------------------------------- */
+	
+	protected static void cmd_help() {
+		System.out.println("Usage: pftt <optional options> <command>");
+		System.out.println();
+		System.out.println("Commands:");
+		System.out.println("phpt_named <build> <test-pack> <test1> <test2> <test name fragment> - runs named tests or tests matching name pattern");
+		System.out.println("phpt_list <build> <test-pack> <file> - runs list of tests stored in file");
+		System.out.println("phpt_all <build> <test-pack> - runs all tests in given test pack");
+		System.out.println("custom <build> - runs PFTT specific functional tests (bugs that can not be tested using PHP testsT)");
+		System.out.println("aut - runs Application (PHP)Unit Tests");
+		System.out.println("help");
+		System.out.println("perf <build> - performance test of build");
+		System.out.println("smoke <build> - smoke test a build");
+		System.out.println("ui - automated UI (\"app compat\") testing");
+		System.out.println("release_get <branch> <build-type> <revision> - download a build and test-pack snapshot release");
+		System.out.println("release_list <optional branch> <optional build-type> - list snapshot build and test-pack releases");
+		System.out.println("telemetry-pkg - package telemetry into single archive file");
+		System.out.println("shell - interactive execution of custom instructions");
+		System.out.println("shell-ui - gui shell");
+		System.out.println("exec <file> - executes shell script (see shell)");
+		System.out.println();
+		System.out.println("Options:");
+		System.out.println("-gui - show gui for certain commands");
+		System.out.println("-config <file> - configuration file");
+		System.out.println();
+	} // end protected static void cmd_help
+	
+	protected static void cmd_smoke() {
+		System.err.println("Error: Not implemented");
+		new RequiredExtensionsSmokeTest();
+		new RequiredFeaturesSmokeTest();
+	}
+	
+	protected static void cmd_aut(PfttMain rt, Host host, PhpBuild build, Collection<ScenarioSet> scenario_sets) throws IllegalStateException, IOException, Exception {
+		new PhpUnitTestPackRunner(PhpUnitAppTestPack.load("/"), scenario_sets.iterator().next(), build, host);
+		
+		host.upload7ZipAndDecompress(host.getPfttDir()+"/cache/cache.7z", "");
+		host.upload7ZipAndDecompress(host.getPfttDir()+"/cache/joomla-platform.7z", "");
+		String tmp_file = host.mktempname(".xml");
+		host.exec("phpunit --log-junit "+tmp_file, Host.ONE_HOUR * 4);
+		host.getContents(tmp_file);
+		// for now, don't delete tmp_file
+				
+		rt.show_report(new AUTReportGen(new File(tmp_file), host.getOSName())); 
+	}
+	
+	protected static void cmd_shell_ui() {
+		System.err.println("Error: Not implemented");
+	}
+	
+	protected static void cmd_exec() {
+		System.err.println("Error: Not implemented");
+	}
+	
+	protected static void cmd_shell() {
+		IO io = new IO();
+		//
+		System.setProperty("groovysh.prompt", "hello");
+		System.setProperty("jline.terminal", "jline.UnsupportedTerminal"); // WindowsTerminal UnixTerminal
+		// Ansi.enabled = false; // true if WindowsTerminal or UnixTerminal?
+		
+		Binding binding = new Binding();
+		//binding.setVariable("client", client)
+		
+		Groovysh shell = new Groovysh(binding, io);
+		
+		int code = shell.run();
+		
+		Console console = new Console();
+		//console.setVariable("var1", getValueOfVar1());
+		//console.setVariable("var2", getValueOfVar2());
+		console.run();
+	}
+	
+	protected static void cmd_phpt_all(PfttMain rt, boolean show_gui, GroovyObject config_obj, PhpBuild build, PhptTestPack test_pack) throws Exception {
+		rt.run_all(show_gui, build, test_pack, ScenarioSet.getScenarioSets().iterator().next());
+	}
+	
+	protected static void cmd_phpt_list(PfttMain rt, boolean show_gui, GroovyObject config_obj, PhpBuild build, PhptTestPack test_pack, File list_file) throws Exception {
+		BufferedReader fr = new BufferedReader(new FileReader(list_file));
+		LinkedList<String> tests = new LinkedList<String>();
+		String line;
+		while ( ( line = fr.readLine() ) != null ) {
+			if (line.startsWith(";")||line.startsWith("#")||line.startsWith("//"))
+				// line is a comment, ignore it
+				continue;
+			else if (line.length() > 0)
+				tests.add(line);
+		}
+		
+		rt.run_named_tests(show_gui, build, test_pack, ScenarioSet.getScenarioSets().iterator().next(), tests);
+	}
+	
+	protected static void cmd_phpt_named(PfttMain rt, boolean show_gui, GroovyObject config_obj, PhpBuild build, PhptTestPack test_pack, List<String> names) throws Exception {
+		rt.run_named_tests(show_gui, build, test_pack, ScenarioSet.getScenarioSets().iterator().next(), names);
+	}
+
+	protected static void cmd_ui() {
+		System.err.println("Error: Not implemented");
+	}
+
+	protected static void cmd_perf() {
+		System.err.println("Error: Not implemented");		
+	}
+ 
+
+	protected static void cmd_release_get(EBuildBranch branch, EBuildType build_type, String revision) {
+		System.err.println("Error: Not implemented");		
+	}
+
+	protected static void cmd_release_list() {
+		List<URL> snaps_url;
+		for (EBuildBranch branch : EBuildBranch.values()) {
+			snaps_url = WindowsSnapshotDownloadUtil.getSnapshotURLSNewestFirst(WindowsSnapshotDownloadUtil.getDownloadURL(branch));
+			for (URL snap_url : snaps_url) {
+				System.out.print(snap_url);
+				for (EBuildType build_type:EBuildType.values()) {
+					if (!WindowsSnapshotDownloadUtil.hasBuildTypeAndTestPack(snap_url, build_type))
+						continue;
+					
+					System.out.print(' ');
+					System.out.print(build_type);
+				}
+				System.out.println();
+			}
+		}
+	}
+	protected static void cmd_release_list(EBuildType build_type, EBuildBranch branch) {
+		List<URL> snap_urls = WindowsSnapshotDownloadUtil.getSnapshotURLSNewestFirst(WindowsSnapshotDownloadUtil.getDownloadURL(branch));
+		for (URL snap_url:snap_urls) {
+			if (WindowsSnapshotDownloadUtil.hasBuildTypeAndTestPack(snap_url, build_type)) {
+				
+				break;
+			}
+		}
+	}
+	protected static void cmd_release_list(EBuildBranch branch) {
+		List<URL> snaps_url = WindowsSnapshotDownloadUtil.getSnapshotURLSNewestFirst(WindowsSnapshotDownloadUtil.getDownloadURL(branch));
+		for (URL snap_url : snaps_url) {
+			System.out.print(snap_url);
+			for (EBuildType build_type:EBuildType.values()) {
+				if (!WindowsSnapshotDownloadUtil.hasBuildTypeAndTestPack(snap_url, build_type))
+					continue;
+				
+				System.out.print(' ');
+				System.out.print(build_type);
+			}
+			System.out.println();
+		}
+	}
+	protected static void cmd_release_list(EBuildType build_type) {
+		for (EBuildBranch branch : EBuildBranch.values()) {
+			List<URL> snaps_url = WindowsSnapshotDownloadUtil.getSnapshotURLSNewestFirst(WindowsSnapshotDownloadUtil.getDownloadURL(branch));
+			for (URL snap_url : snaps_url) {
+				System.out.print(snap_url);
+				
+				if (WindowsSnapshotDownloadUtil.hasBuildTypeAndTestPack(snap_url, build_type)) {
+					System.out.print(' ');
+					System.out.print(build_type);				
+				}
+				System.out.println();
+			}
+		} // end for
+	}
+
+	protected static void cmd_telemetry_pkg() {
+		System.err.println("Error: Not implemented");				
+	}
+	
+	/* ------------------------------- */
+	
+	protected static void show_gui(String title, Container c) {
+		JFrame jf = new JFrame("PFTT - "+title);
+		jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		jf.setContentPane(c);
+		jf.pack();
+		jf.setExtendedState(JFrame.MAXIMIZED_BOTH);				
+		jf.setVisible(true);
+	}
+
+	public static void main(String[] args) throws Throwable {
+		PfttMain rt = new PfttMain();
+		
+		//
+		int args_i = 0;
+		
+		GroovyObject config_obj = null;
+		boolean show_gui = false;
+		
+		//
+		for ( ; args_i < args.length ; args_i++ ) {
+			if (args[args_i].equals("-gui")) {
+				show_gui = true;
+			} else if (args[args_i].equals("-config")) {
+				File config_file = new File(args[args_i++]);
+				if (!config_file.isFile()) {
+					System.err.println("User Error: config file not found: "+config_file);
+					System.exit(-255);
+					return;
+				}				
+				
+				// load configuration
+				config_obj = ConfigUtil.loadConfigFromFile(config_file);
+			} else if (args[args_i].startsWith("-")) {
+				System.err.println("User Error: unknown option "+args[args_i]);
+				System.exit(-255);
+				return;
+			} else {
+				// not option
+				break;
+			}
+		}
+		String command;
+		try {
+			command = args.length < args_i ? null : args[args_i];
+		} catch ( Exception ex ) {
+			cmd_help();
+			System.exit(-255);
+			return;
+		}
+		//
+		
+		if (command!=null) {
+			if (command.equals("phpt_named")) {
+				if (!(args.length > args_i+3)) {
+					System.err.println("User Error: must specify build, test-pack and name(s) and/or name fragment(s)");
+					System.out.println("usage: pftt phpt_named <path to PHP build> <path to PHPT test-pack> <test case names or name fragments>");
+					System.exit(-255);
+					return;
+				}
+				
+				PhpBuild build = new PhpBuild(args[args_i+1]);
+				if (!build.open(rt.host)) {
+					System.err.println("IO Error: can not open php build: "+build);
+					System.exit(-255);
+					return;
+				}
+				
+				PhptTestPack test_pack = new PhptTestPack(args[args_i+2]);
+				if (!test_pack.open(rt.host)) {
+					System.err.println("IO Error: can not open php test pack: "+test_pack);
+					System.exit(-255);
+					return;
+				}				
+				args_i += 2; // skip over build and test_pack
+				
+				// read name fragments from CLI arguments
+				ArrayList<String> names = new ArrayList<String>(args.length-args_i);
+				for ( ; args_i < args.length ; args_i++) 
+					names.add(args[args_i]);
+				
+				System.out.println("PFTT: build: "+build);
+				System.out.println("PFTT: test-pack: "+test_pack);
+				cmd_phpt_named(rt, show_gui, config_obj, build, test_pack, names);
+				
+				System.out.println("PFTT: finished");
+			} else if (command.equals("phpt_list")) {
+				if (!(args.length > args_i+3)) {
+					System.err.println("User Error: must specify build, test-pack and list file");
+					System.out.println("usage: list file must contain plain-text list names of tests to execute");
+					System.out.println("usage: pftt phpt_list <path to PHP build> <path to PHPT test-pack> <list file>");
+					System.exit(-255);
+					return;
+				}
+				
+				PhpBuild build = new PhpBuild(args[args_i+1]);
+				if (!build.open(rt.host)) {
+					System.err.println("IO Error: can not open php build: "+build);
+					System.exit(-255);
+					return;
+				}
+				
+				PhptTestPack test_pack = new PhptTestPack(args[args_i+2]);
+				if (!test_pack.open(rt.host)) {
+					System.err.println("IO Error: can not open php test pack: "+test_pack);
+					System.exit(-255);
+					return;
+				}
+				
+				File list_file = new File(args[args_i+3]);
+				if (!list_file.isFile()) {
+					System.err.println("IO Error: list file not found: "+list_file);
+					System.exit(-255);
+					return;
+				}
+				
+				System.out.println("PFTT: build: "+build);
+				System.out.println("PFTT: test-pack: "+test_pack);
+				cmd_phpt_list(rt, show_gui, config_obj, build, test_pack, list_file);		
+				
+				System.out.println("PFTT: finished");
+			} else if (command.equals("phpt_all")) {
+				if (!(args.length > args_i+2)) {
+					System.err.println("User Error: must specify build and test-pack");
+					System.out.println("usage: pftt phpt_all <path to PHP build> <path to PHPT test-pack>");
+					System.exit(-255);
+					return;
+				}
+				
+				PhpBuild build = new PhpBuild(args[args_i+1]);
+				if (!build.open(rt.host)) {
+					System.err.println("IO Error: can not open php build: "+build);
+					System.exit(-255);
+					return;
+				}
+				
+				PhptTestPack test_pack = new PhptTestPack(args[args_i+2]);
+				if (!test_pack.open(rt.host)) {
+					System.err.println("IO Error: can not open php test pack: "+test_pack);
+					System.exit(-255);
+					return;
+				}
+				
+				System.out.println("PFTT: build: "+build);
+				System.out.println("PFTT: test-pack: "+test_pack);
+				System.out.println("PFTT: Testing all PHPTs in test pack...");
+				
+				// run all tests
+				cmd_phpt_all(rt, show_gui, config_obj, build, test_pack);
+				
+				System.out.println("PFTT: finished");
+			} else if (command.equals("aut")) {
+				
+				PhpBuild build = new PhpBuild(args[args_i+1]);
+				if (!build.open(rt.host)) {
+					System.err.println("IO Error: can not open php build: "+build);
+					System.exit(-255);
+					return;
+				}
+				
+				cmd_aut(rt, rt.host, build, ScenarioSet.getScenarioSets());
+			} else if (command.equals("shell_ui")||(show_gui && command.equals("shell"))) {
+				cmd_shell_ui();
+			} else if (command.equals("shell")) {
+				cmd_shell();				
+			} else if (command.equals("exec")) {
+				cmd_exec();
+			} else if (command.equals("ui")) {
+				cmd_ui();
+			} else if (command.equals("perf")) {
+				cmd_perf();
+			} else if (command.equals("release_get")) {
+				if (!(args.length > args_i+3)) {
+					System.err.println("User error: must specify branch(PHP_5_3, PHP_5_4, master), build-type (NTS or TS) and revision");
+					System.err.println("Usage: pftt release_get <branch> <build-type> r<revision>");
+					System.exit(-255);
+					return;
+				}
+				
+				EBuildBranch branch = null;
+				EBuildType build_type = null;
+				String revision = null;
+				
+				for ( ; args_i < args.length && branch == null && build_type == null && revision == null; args_i++ ) {
+					if (branch==null)
+						branch = EBuildBranch.guessValueOf(args[args_i]);
+					if (build_type==null)
+						build_type = EBuildType.guessValueOf(args[args_i]);
+					if (args[args_i].startsWith("r"))
+						revision = args[args_i];
+				}
+				
+				if (branch==null||build_type==null) {
+					System.err.println("User error: must specify branch, build-type (NTS or TS) and revision");
+					System.err.println("Usage: pftt release_get <branch> <build-type> r<revision>");
+					System.err.println("Branch can be any of: "+StringUtil.toString(EBuildBranch.values()));
+					System.err.println("Build Type can be any of: "+StringUtil.toString(EBuildType.values()));
+					System.exit(-255);
+					return;
+				} else if (revision==null) {
+					System.err.println("User error: must specify branch, build-type (NTS or TS) and revision");
+					System.err.println("Usage: pftt release_get <branch> <build-type> r<revision>");
+					System.err.println("Revision must start with 'r'");
+					System.exit(-255);
+					return;
+				} else {
+					// input processed, dispatch
+					cmd_release_get(branch, build_type, revision);
+				}
+			} else if (command.equals("release_list")) {
+				EBuildBranch branch = null;
+				EBuildType build_type = null;
+				for ( ; args_i < args.length && branch == null && build_type == null ; args_i++ ) {
+					if (branch==null)
+						branch = EBuildBranch.guessValueOf(args[args_i]);
+					if (build_type==null)
+						build_type = EBuildType.guessValueOf(args[args_i]);
+				}
+
+				// dispatch
+				if (branch==null) {
+					if (build_type==null) {
+						cmd_release_list(build_type);
+					} else {
+						cmd_release_list();
+					}
+				} else {
+					if (build_type==null) {
+						cmd_release_list(branch);
+					} else {
+						cmd_release_list(build_type, branch);
+					}
+				}				
+			} else if (command.equals("telemetry_pkg")) {
+				cmd_telemetry_pkg();
+			} else if (command.equals("smoke")) {
+				cmd_smoke();
+			} else if (command.equals("help")) {
+				cmd_help();
+			} else {
+				cmd_help();
+			}
+		} else {		
+			cmd_help();
+		}
+		if (!show_gui)
+			// ensure all threads end
+			System.exit(0);
+	} // end public static void main
+ 
+} // end class RunTests

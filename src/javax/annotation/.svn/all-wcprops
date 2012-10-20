@@ -1,0 +1,125 @@
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/!svn/ver/50/trunk/ri/src/main/java/javax/annotation
+END
+OverridingMethodsMustInvokeSuper.java
+K 25
+svn:wc:ra_dav:version-url
+V 94
+/svn/!svn/ver/43/trunk/ri/src/main/java/javax/annotation/OverridingMethodsMustInvokeSuper.java
+END
+ParametersAreNonnullByDefault.java
+K 25
+svn:wc:ra_dav:version-url
+V 91
+/svn/!svn/ver/43/trunk/ri/src/main/java/javax/annotation/ParametersAreNonnullByDefault.java
+END
+Detainted.java
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/!svn/ver/43/trunk/ri/src/main/java/javax/annotation/Detainted.java
+END
+Signed.java
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svn/!svn/ver/43/trunk/ri/src/main/java/javax/annotation/Signed.java
+END
+WillCloseWhenClosed.java
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/svn/!svn/ver/43/trunk/ri/src/main/java/javax/annotation/WillCloseWhenClosed.java
+END
+CheckReturnValue.java
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/svn/!svn/ver/43/trunk/ri/src/main/java/javax/annotation/CheckReturnValue.java
+END
+ParametersAreNullableByDefault.java
+K 25
+svn:wc:ra_dav:version-url
+V 92
+/svn/!svn/ver/46/trunk/ri/src/main/java/javax/annotation/ParametersAreNullableByDefault.java
+END
+RegEx.java
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/!svn/ver/43/trunk/ri/src/main/java/javax/annotation/RegEx.java
+END
+Nonnegative.java
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/svn/!svn/ver/43/trunk/ri/src/main/java/javax/annotation/Nonnegative.java
+END
+CheckForSigned.java
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/svn/!svn/ver/44/trunk/ri/src/main/java/javax/annotation/CheckForSigned.java
+END
+WillNotClose.java
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/!svn/ver/43/trunk/ri/src/main/java/javax/annotation/WillNotClose.java
+END
+CheckForNull.java
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/!svn/ver/43/trunk/ri/src/main/java/javax/annotation/CheckForNull.java
+END
+MatchesPattern.java
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/svn/!svn/ver/43/trunk/ri/src/main/java/javax/annotation/MatchesPattern.java
+END
+Nonnull.java
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/!svn/ver/43/trunk/ri/src/main/java/javax/annotation/Nonnull.java
+END
+Syntax.java
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svn/!svn/ver/50/trunk/ri/src/main/java/javax/annotation/Syntax.java
+END
+Tainted.java
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/!svn/ver/43/trunk/ri/src/main/java/javax/annotation/Tainted.java
+END
+Untainted.java
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/!svn/ver/43/trunk/ri/src/main/java/javax/annotation/Untainted.java
+END
+WillClose.java
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/!svn/ver/45/trunk/ri/src/main/java/javax/annotation/WillClose.java
+END
+PropertyKey.java
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/svn/!svn/ver/43/trunk/ri/src/main/java/javax/annotation/PropertyKey.java
+END
+Nullable.java
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/svn/!svn/ver/43/trunk/ri/src/main/java/javax/annotation/Nullable.java
+END

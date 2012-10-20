@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/!svn/ver/43/trunk/ri/src/main/java/javax/annotation/concurrent
+END
+Immutable.java
+K 25
+svn:wc:ra_dav:version-url
+V 82
+/svn/!svn/ver/43/trunk/ri/src/main/java/javax/annotation/concurrent/Immutable.java
+END
+ThreadSafe.java
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/svn/!svn/ver/43/trunk/ri/src/main/java/javax/annotation/concurrent/ThreadSafe.java
+END
+GuardedBy.java
+K 25
+svn:wc:ra_dav:version-url
+V 82
+/svn/!svn/ver/43/trunk/ri/src/main/java/javax/annotation/concurrent/GuardedBy.java
+END
+NotThreadSafe.java
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/svn/!svn/ver/43/trunk/ri/src/main/java/javax/annotation/concurrent/NotThreadSafe.java
+END
