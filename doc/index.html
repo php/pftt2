@@ -99,7 +99,7 @@ pftt phpt_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-
 <h1>Development</h1>
 
 <ol>
-<li>Install <b>Eclipse IDE</b> 4.2 (Juno), <b>not Eclipse Classic</b> see http://eclipse.org/</li>
+<li>Install <b>Eclipse Java IDE</b> 4.2 (Juno), <b>not Eclipse Classic</b> see http://eclipse.org/</li>
 <li>Run Eclipse, the default value for workspace is ok</li>
 <li>Install Groovy Plugin:
 <ol>
@@ -122,20 +122,22 @@ That should be it (PFTT comes with eclipse .project and .classpath files which a
 
 <h2>Adding Scenarios</h2>
 
-<p><a href="file:///C:/php-sdk/PFTT/current/doc/apidoc/com/mostc/pftt/scenario/Scenario.html">Scenario</a></p>
+<p>To add any test Scenario, implement <a href="apidoc/com/mostc/pftt/scenario/Scenario.html">Scenario</a> and instantiate it in Scenario#getAllScenarios.</p>
 
 <h3>Database Scenario</h3>
 
-<p><a href="apidoc/com/mostc/pftt/scenario/AbstractDatabaseScenario.html">AbstractDatabaseScenario</a></p>
+<p>More specifically, to add a database scenario (MySQL, Firebird, etc...) implement <a href="apidoc/com/mostc/pftt/scenario/AbstractDatabaseScenario.html">AbstractDatabaseScenario</a> and add it to Scenario#getAllScenarios.</p>
 
 <h3>SAPI Scenario</h3> 
 
-<p><a href="apidoc/com/mostc/pftt/scenario/AbstractSAPIScenario.html">AbstractSAPIScenario</a></p>
+<p>To add a SAPI Scenario (CLI, web server, etc...), implement <a href="apidoc/com/mostc/pftt/scenario/AbstractSAPIScenario.html">AbstractSAPIScenario</a> and add it to Scenario#getAllScenarios.</p>
 
-<p><a href="apidoc/com/mostc/pftt/scenario/AbstractWebServerScenario.html">AbstractWebServerScenario</a></p>
+<p>If you want to implement a Web Server scenario (IIS, Apache, etc...), implement <a href="apidoc/com/mostc/pftt/scenario/AbstractWebServerScenario.html">AbstractWebServerScenario</a>, a subclass of <a href="apidoc/com/mostc/pftt/scenario/AbstractSAPIScenario.html">AbstractSAPIScenario</a>, which provides additional methods for testing PHPT tests using HTTP against PHP running under web servers.</p>
 
 <h2>Adding a PHPUnit Application</h2> 
-file:///C:/php-sdk/PFTT/current/doc/apidoc/com/mostc/pftt/model/app/PhpAppTestPack.html
-file:///C:/php-sdk/PFTT/current/doc/apidoc/com/mostc/pftt/model/app/PhpUnitAppTestPack.html
+
+<p>If the application uses PHPUnit, implement <a href="apidoc/com/mostc/pftt/model/app/PhpUnitAppTestPack.html">PhpUnitAppTestPack</a>. If it uses something else or something custom (like Wordpress), implement <a href="apidoc/com/mostc/pftt/model/app/PhpAppTestPack.html">PhpAppTestPack</a>.</p>
+
+
 </body>
 </html>

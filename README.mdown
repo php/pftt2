@@ -1,0 +1,114 @@
+# PFTT
+
+PFTT has and can mean many different things:
+ - PHP Function Test Tool
+ - PHP Filesystem Test Tool
+ - Practically Formulated Test Tool
+ - PHP Fast Test Tool
+ - PHP Full Test Tool
+
+
+## API Documentation
+
+ - [All Documentation](doc/apidoc/index.html)
+
+### Important Classes
+
+ - [CliPhptTestCaseRunner](doc/apidoc/com/mostc/pftt/runner/CliPhptTestCaseRunner.html) - Executes a single PHPT Test Case (using the CLI SAPI) and evaluates
+ - [Host](doc/apidoc/com/mostc/pftt/host/Host.html) - Abstracts host management so client code doesn't need to care if host is local or remote(ssh)
+ - [ScenarioSet](doc/apidoc/com/mostc/pftt/scenario/ScenarioSet.html) - Models 90 sets of different [Scenarios](apidoc/com/mostc/pftt/scenario/Scenario.html) to test PHP in
+ - [PhptTestCase](doc/apidoc/com/mostc/pftt/model/phpt/PhptTestCase.html) - Models a PHPT Test case
+
+## INSTALL
+
+ - Install Java 6 JRE or JDK (JDK if you plan on development work, see below)
+ - download PFTT ZIP
+ - decompress ZIP to C:\php-sdk\PFTT\current (Windows) or ~/php-sdk/PFTT/current (Linux)
+ - Note: should have directories like c:\php-sdk\PFTT\current\bin not c:\php-sdk\PFTT\current\pftt-version\bin
+   - add PFTT to $PATH or %PATH% (optional)
+     - Windows
+     - set PATH=c:\php-sdk\PFTT\current\bin;%PATH%
+     - To make it permanent, open System Properties from Control Panel (can also right-click on Start > Computer and click My Computer)
+     - Click Advanced then Environment variables
+     - Find PATH under System variables and add C:\php-sdk\PFTT\current\bin
+     - Linux (bash)
+     - Open ~/.bash_profile
+     - Add export PATH=$PATH:~/php-sdk/PFTT/current/bin
+     - chmod +x ~/php-sdk/PFTT/current/bin/pftt
+
+## USAGE
+
+Typically, builds and test-packs are stored in C:\Php-sdk (Windows) or ~/php-sdk (Linux)
+
+    > C:\php-sdk\php-5.3-nts-windows-vc9-x86-rda541ff C:\php-sdk\php-test-pack-5.3-nts-windows-vc9-x86-rda541ff
+
+Run all PHPTs from the test-pack
+
+    > pftt phpt_all C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567
+
+Runs PHPTs only from list in SKIP_list_file (can add comments to lists with a ; or #)
+
+    > pftt phpt_list C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 SKIP_list_file
+
+Runs PHPTs that contain 021 (name fragment) in their name
+
+    > pftt phpt_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 021
+
+NOTE: On Windows PFTT will prompt you to elevate it to Administrator privileges for some operations to configure Windows Error Reporting and firewall
+
+Opens a GUI to efficiently review large amounts of tests
+
+    > pftt -gui phpt_all C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 pftt -gui -config config_file phpt_list C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 pftt -gui -config config_file phpt_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567
+
+Shows help info
+
+    > pftt -help
+
+downloads newest test-pack and build
+
+    > pftt release_get
+
+### Functional Build Comparison(FBC) Reports
+
+Run one test pass
+
+    > pftt phpt_all C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 Or pftt phpt_list C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 SKIP_list_file Or pftt phpt_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 021
+
+Run a second test pass, using a different build and/or test-pack
+
+    > pftt phpt_all C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234568 Or pftt phpt_list C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234568 SKIP_list_file Or pftt phpt_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234568 021
+
+PFTT will automatically generate an FBC report and display it using system default web browser
+
+## DEVELOPMENT
+
+ - Install Eclipse Java IDE 4.2 (Juno), not Eclipse Classic see http://eclipse.org/
+ - Run Eclipse, the default value for workspace is ok
+ - Install Groovy Plugin:
+   - Help > Install New Software
+   - Add
+   - Enter 'Groovy' for name and http://dist.springsource.org/release/GRECLIPSE/e4.2/ for location and click ok/add
+   - Check Groovy-Eclipse and click next through all the screens
+     -You may get a warning about groovy-eclipse not being signed, ignore and install anyway. Also, Eclipse will need to restart.
+     - On Windows, find c:\php-sdk\PFTT\Current\.classpath and .project. Look at their Properties in Windows Explorer and make sure the 'Read Only' attribute is not set. Clear it if it is, or Eclipse will get Access Denied errors.
+     - File > Import > General > Existing project
+     - Choose C:\php-sdk\PFTT\current
+ - That should be it (PFTT comes with eclipse .project and .classpath files which already have all the correct settings) 
+
+## Adding Scenarios
+
+To add any test [Scenario](doc/apidoc/com/mostc/pftt/scenario/Scenario.html), implement [Scenario](doc/apidoc/com/mostc/pftt/scenario/Scenario.html) and instantiate it in Scenario#getAllScenarios.
+
+### Database Scenario
+
+More specifically, to add a database scenario (MySQL, Firebird, etc...) implement [AbstractDatabaseScenario](doc/apidoc/com/mostc/pftt/scenario/AbstractDatabaseScenario.html) and add it to Scenario#getAllScenarios.
+
+### SAPI Scenario
+
+To add a SAPI Scenario (CLI, web server, etc...), implement [AbstractSAPIScenario](doc/apidoc/com/mostc/pftt/scenario/AbstractSAPIScenario.html) and add it to Scenario#getAllScenarios.
+
+If you want to implement a Web Server scenario (IIS, Apache, etc...), implement [AbstractWebServerScenario](doc/apidoc/com/mostc/pftt/scenario/AbstractWebServerScenario.html), a subclass of [AbstractSAPIScenario](doc/apidoc/com/mostc/pftt/scenario/AbstractSAPIScenario.html), which provides additional methods for testing PHPT tests using HTTP against PHP running under web servers.
+
+### Adding a PHPUnit Application
+
+If the application uses PHPUnit, implement [PhpUnitAppTestPack](doc/apidoc/com/mostc/pftt/model/app/PhpUnitAppTestPack.html). If it uses something else or something custom (like Wordpress), implement [PhpAppTestPack](doc/apidoc/com/mostc/pftt/model/app/PhpAppTestPack.html).
