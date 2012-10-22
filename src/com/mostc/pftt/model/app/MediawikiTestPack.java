@@ -1,6 +1,8 @@
 package com.mostc.pftt.model.app;
 
-/** Pack of Mediawiki's PHPUnit Tests.
+/** Pack of Mediawiki's PHPUnit Tests. (NOT IMPLEMENTED)
+ * 
+ * @author Matt Ficken
  *
  */
 

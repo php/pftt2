@@ -5,6 +5,8 @@ import com.mostc.pftt.util.StringUtil;
 /** All valid sections a PHPT may contain.
  * 
  * Contains all the official documented sections and de-facto undocumented sections used by a few actual PHPTs.
+ * 
+ * @author Matt Ficken
  *
  */
 

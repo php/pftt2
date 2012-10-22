@@ -3,6 +3,8 @@ package com.mostc.pftt.model.app;
 /** Pack of PHPUnit tests provided by a PHP application/framework.
  * 
  * Used against PHP Core to find if a PHP build will cause a regression (new failure) in a PHP application/framework.
+ * 
+ * @author Matt Ficken
  *
  */
 

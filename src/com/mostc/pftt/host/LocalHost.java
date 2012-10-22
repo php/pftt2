@@ -29,6 +29,8 @@ import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
 import com.mostc.pftt.util.StringUtil;
 
 /** Represents the local Host that the program is currently running on.
+ * 
+ * @author Matt Ficken
  *
  */
 

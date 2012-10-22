@@ -7,6 +7,8 @@ package com.mostc.pftt.scenario;
  * According to the MS IIS team, this scenario is commonly used in production IIS deployments (ie they want it tested).
  *  
  * This scenario is functionally similar to the newer Continuous-Availability concept in SMBv3, but presently DFS is more commonly used.
+ * 
+ * @author Matt Ficken
  *
  */
 

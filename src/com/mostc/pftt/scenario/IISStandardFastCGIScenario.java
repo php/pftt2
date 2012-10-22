@@ -2,7 +2,7 @@ package com.mostc.pftt.scenario;
 
 /** Runs PHP under IIS using FastCGI (NOT IMPLEMENTED)
  * 
- * @author matt
+ * @author Matt Ficken
  *
  */
 

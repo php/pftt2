@@ -5,6 +5,7 @@ package com.mostc.pftt.scenario;
  * Access is one of 3 supported databases for the odbc and pdo_odbc extensions (the other 2 are SQL Server and IBM's DB2. We don't support DB2).
  * 
  * @see MSSQLODBCScenario
+ * @author Matt Ficken
  *
  */
 

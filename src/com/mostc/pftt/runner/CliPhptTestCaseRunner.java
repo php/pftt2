@@ -14,6 +14,8 @@ import com.mostc.pftt.util.StringUtil;
  * 
  * Handles all the work and behaviors to prepare, execute and evaluate a single PhptTestCase.
  * 
+ * @author Matt Ficken
+ * 
  */
 
 public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {

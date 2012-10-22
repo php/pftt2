@@ -10,6 +10,8 @@ import com.mostc.pftt.util.apache.regexp.REProgram;
 
 /** String utility functions
  * 
+ * @author Matt Ficken
+ * 
  */
 
 public final class StringUtil {

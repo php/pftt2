@@ -2,7 +2,7 @@ package com.mostc.pftt.scenario;
 
 /** Tests Sqlite3 extension (NOT IMPLEMENTED)
  * 
- * @author matt
+ * @author Matt Ficken
  *
  */
 

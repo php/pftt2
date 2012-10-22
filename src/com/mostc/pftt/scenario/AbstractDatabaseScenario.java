@@ -1,6 +1,8 @@
 package com.mostc.pftt.scenario;
 
 /** A Scenario that sets up a database service for (an) extension(s) to test.
+ * 
+ * @author Matt Ficken
 *
 */
 

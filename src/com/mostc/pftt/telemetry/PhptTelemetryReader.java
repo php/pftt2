@@ -13,6 +13,8 @@ import com.mostc.pftt.model.phpt.EBuildBranch;
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
 
 /** Reads telemetry from a test run completed in the past.
+ * 
+ * @author Matt Ficken
  *
  */
 

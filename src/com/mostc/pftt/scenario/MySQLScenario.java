@@ -1,6 +1,8 @@
 package com.mostc.pftt.scenario;
 
 /** Sets up a MySQL database and tests the mysql, mysqli and pdo_mysql extensions against it. (NOT IMPLEMENTED)
+ * 
+ * @author Matt Ficken
  *
  */
 

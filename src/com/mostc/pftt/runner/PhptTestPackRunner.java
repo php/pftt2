@@ -19,6 +19,8 @@ import com.mostc.pftt.util.HostEnvUtil;
 /** Runs PHPTs from a given PhptTestPack.
  * 
  * Can either run all PHPTs from the test pack, or PHPTs matching a set of names or name fragments.
+ * 
+ * @author Matt Ficken
  *
  */
 

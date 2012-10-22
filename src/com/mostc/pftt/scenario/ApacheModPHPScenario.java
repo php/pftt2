@@ -1,6 +1,8 @@
 package com.mostc.pftt.scenario;
 
 /** Tests PHP running under Apache's mod_php module. (NOT IMPLEMENTED)
+ * 
+ * @author Matt Ficken
  *
  */
 

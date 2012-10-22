@@ -9,6 +9,7 @@ package com.mostc.pftt.scenario;
  * Can be used to setup remote services and configure PHP to use them for testing PHP core or extensions.
  *
  * @see ScenarioSet
+ * @author Matt Ficken
  *
  */
 
@@ -34,6 +35,11 @@ public abstract class Scenario {
 	// 90 ScenarioSets => (APC, WinCache, No) * (CLI, Buitlin-WWW, Apache, IIS-Standard, IIS-Express) * ( local filesystem, the 5 types of SMB )
 	public static Scenario[][] getAllScenarios() {
 		return new Scenario[][] {
+				// sockets
+				new Scenario[] {
+				new PlainSocketScenario(),
+				new SSLSocketScenario()	
+				},
 				// code caches
 				new Scenario[] {
 				new NoCodeCacheScenario(),

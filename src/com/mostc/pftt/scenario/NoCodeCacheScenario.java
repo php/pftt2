@@ -1,6 +1,8 @@
 package com.mostc.pftt.scenario;
 
-/** Placeholder scenario for no code caching being used (APC and WinCache not used) 
+/** Placeholder scenario for no code caching being used (neither APC or WinCache are used)
+ * 
+ *  @author Matt Ficken
  *
  */
 

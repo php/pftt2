@@ -28,6 +28,7 @@ import com.mostc.pftt.util.StringUtil;
  * @see #isWindows
  * @see #join
  * @see #dirSeparator
+ * @author Matt Ficken
  *
  */
 
@@ -41,6 +42,22 @@ public abstract class Host {
 	public static final int NO_TIMEOUT = 0;
 	public static final int ONE_HOUR = 3600;
 	public static final int ONE_MINUTE = 60;
+	
+	/** removes the file extension from file.
+	 * 
+	 * for filenames like A.B returns a
+	 * for all others (if . not found), path
+	 * 
+	 * if path is a relative or absolute path (if path has directory|ies), the
+	 * directories are not removed just .BBB
+	 * 
+	 * @param path
+	 * @return
+	 */
+	public static String removeFileExt(String path) {
+		int i = path.lastIndexOf('.');
+		return i == -1 ? path : path.substring(0, i);
+	}
 	
 	/** returns the directory portion of a file path
 	 * 
@@ -358,17 +375,37 @@ public abstract class Host {
 	 * @return
 	 * @throws Exception
 	 */
-	public ExecOutput execElevated(String cmd, int timeout) throws Exception {
-		if (!isWindows())
-			return exec(cmd, timeout);
-		// execute command with this utility that will elevate the program using Windows UAC
-		cmd = "c:\\php-sdk\\pftt\\current\\bin\\elevate "+cmd;
-		return exec(cmd, timeout);
+	public ExecOutput execElevated(String cmd, int timeout_sec) throws Exception {
+		return execElevated(cmd, timeout_sec, null, null, null, null, null, NO_TIMEOUT);
+	}
+	public ExecOutput execElevated(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset) throws Exception {
+		return execElevated(cmd, timeout_sec, env, stdin_data, charset, null, null, NO_TIMEOUT);
+	}
+	public ExecOutput execElevated(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String chdir) throws Exception {
+		return execElevated(cmd, timeout_sec, env, stdin_data, charset, chdir, null, NO_TIMEOUT);
+	}
+	public ExecOutput execElevated(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread test_thread, int slow_timeout_sec) throws Exception {
+		if (isWindows())
+			// execute command with this utility that will elevate the program using Windows UAC
+			cmd = "c:\\php-sdk\\pftt\\current\\bin\\elevate "+cmd;
+		
+		return exec(cmd, timeout_sec, env, stdin_data, charset, chdir, test_thread, slow_timeout_sec);
+	}
+	public ExecOutput execElevated(String cmd, int timeout_sec, Map<String, String> env, Charset charset) throws Exception {
+		return execElevated(cmd, timeout_sec, env, null, charset, null, null, NO_TIMEOUT);
+	}
+	public ExecOutput execElevated(String cmd, int timeout_sec, Map<String, String> env, Charset charset, String chdir) throws Exception {
+		return execElevated(cmd, timeout_sec, env, null, charset, chdir, null, NO_TIMEOUT);
+	}
+	public ExecOutput execElevated(String cmd, int timeout_sec, String chdir) throws Exception {
+		return execElevated(cmd, timeout_sec, null, null, null, chdir, null, NO_TIMEOUT);
 	}
 	public ExecOutput exec(String cmd, int timeout_sec, Map<String,String> object, byte[] stdin_post, Charset charset) throws IllegalStateException, Exception {
 		return exec(cmd, timeout_sec, object, stdin_post, charset, (String)null);
 	}
 	/** on Windows, certain command line commands aren't actually programs, but rather commands to CMD.exe
+	 * 
+	 * Also, on Windows, if you want to execute a group of programs (ex: "A.exe && B.exe") you must use #cmd
 	 * 
 	 * If this is windows, this will automatically execute the command with CMD.
 	 * If this is linux, it just passes the command to #exec
@@ -485,6 +522,14 @@ public abstract class Host {
 	 */
 	public void download7ZipAndDecompress(String src, String dst) throws IllegalStateException, IOException, Exception {
 		// TODO 
+	}
+	
+	public boolean hasCmd(String cmd) {
+		try {
+			return isWindows() ? cmd("WHERE "+cmd, ONE_MINUTE).isNotEmpty() : exec("WHICH "+cmd, ONE_MINUTE).isNotEmpty();
+		} catch ( Exception ex ) {
+			return false;
+		}
 	}
 
 } // end public abstract class Host

@@ -1,6 +1,8 @@
 package com.mostc.pftt.scenario;
 
 /** Tests running a PHP build and its test pack both stored remotely on a basic SMB file share. (NOT IMPLEMENTED)
+ * 
+ * @author Matt Ficken
  *
  */
 

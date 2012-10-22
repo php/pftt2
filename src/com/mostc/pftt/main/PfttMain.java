@@ -9,8 +9,11 @@ import java.awt.Desktop;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.Socket;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -19,9 +22,33 @@ import java.util.List;
 
 import javax.swing.JFrame;
 
+import org.apache.commons.io.IOUtils;
+import org.apache.http.ConnectionReuseStrategy;
+import org.apache.http.HttpHost;
+import org.apache.http.HttpRequestInterceptor;
+import org.apache.http.HttpResponse;
+import org.apache.http.HttpVersion;
+import org.apache.http.impl.DefaultConnectionReuseStrategy;
+import org.apache.http.impl.DefaultHttpClientConnection;
+import org.apache.http.message.BasicHttpRequest;
+import org.apache.http.params.HttpParams;
+import org.apache.http.params.HttpProtocolParams;
+import org.apache.http.params.SyncBasicHttpParams;
+import org.apache.http.protocol.BasicHttpContext;
+import org.apache.http.protocol.ExecutionContext;
+import org.apache.http.protocol.HttpContext;
+import org.apache.http.protocol.HttpProcessor;
+import org.apache.http.protocol.HttpRequestExecutor;
+import org.apache.http.protocol.ImmutableHttpProcessor;
+import org.apache.http.protocol.RequestConnControl;
+import org.apache.http.protocol.RequestContent;
+import org.apache.http.protocol.RequestExpectContinue;
+import org.apache.http.protocol.RequestTargetHost;
+import org.apache.http.protocol.RequestUserAgent;
 import org.codehaus.groovy.tools.shell.Groovysh;
 import org.codehaus.groovy.tools.shell.IO;
 
+import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.app.PhpUnitAppTestPack;
@@ -44,10 +71,13 @@ import com.mostc.pftt.telemetry.PhptTelemetryWriter;
 import com.mostc.pftt.ui.PhptDebuggerFrame;
 import com.mostc.pftt.util.StringUtil;
 import com.mostc.pftt.util.WindowsSnapshotDownloadUtil;
+import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 
 /** main class for PFTT
  * 
  * launches PFTT and loads any other classes, etc... needed to execute commands given to PFTT.
+ * 
+ * @author Matt Ficken
  * 
  */
 
@@ -170,15 +200,22 @@ public class PfttMain {
 		System.out.println("smoke <build> - smoke test a build");
 		System.out.println("ui - automated UI (\"app compat\") testing");
 		System.out.println("release_get <branch> <build-type> <revision> - download a build and test-pack snapshot release");
+		System.out.println("release_get <build|test-pack URL> - download a build or test-pack from any URL");
 		System.out.println("release_list <optional branch> <optional build-type> - list snapshot build and test-pack releases");
 		System.out.println("telemetry-pkg - package telemetry into single archive file");
 		System.out.println("shell - interactive execution of custom instructions");
 		System.out.println("shell-ui - gui shell");
 		System.out.println("exec <file> - executes shell script (see shell)");
+		// TODO cd - change shell directory to %SYSTEMDRIVE%\php-sdk or ~/php-sdk
+		System.out.println("upgrade - upgrades PFTT to the latest version");
 		System.out.println();
 		System.out.println("Options:");
 		System.out.println("-gui - show gui for certain commands");
 		System.out.println("-config <file> - configuration file");
+		System.out.println("-force - disables confirmation dialogs and forces proceeding anyway");
+		System.out.println("-stress_each <0+> - runs each test-case N times consecutively");
+		System.out.println("-stress_all <0+> - runs all tests N times in loop");
+		System.out.println("(note: stress options not useful against CLI without code caching)");
 		System.out.println();
 	} // end protected static void cmd_help
 	
@@ -194,7 +231,8 @@ public class PfttMain {
 		host.upload7ZipAndDecompress(host.getPfttDir()+"/cache/cache.7z", "");
 		host.upload7ZipAndDecompress(host.getPfttDir()+"/cache/joomla-platform.7z", "");
 		String tmp_file = host.mktempname(".xml");
-		host.exec("phpunit --log-junit "+tmp_file, Host.ONE_HOUR * 4);
+		ExecOutput eo = host.exec("phpunit --log-junit "+tmp_file, Host.ONE_HOUR * 4);
+		eo.printOutputIfCrash();
 		host.getContents(tmp_file);
 		// for now, don't delete tmp_file
 				
@@ -260,17 +298,168 @@ public class PfttMain {
 		System.err.println("Error: Not implemented");		
 	}
  
-
-	protected static void cmd_release_get(EBuildBranch branch, EBuildType build_type, String revision) {
-		System.err.println("Error: Not implemented");		
+	protected static void cmd_release_get(boolean force, Host host, URL url) {
+		download_release_and_decompress(force, true, host, snapshotURLtoLocalFile(host, url), url);
 	}
+	
+	protected static File snapshotURLtoLocalFile(Host host, URL url) {
+		String local_path = null;
+		if (url.getHost().equals("windows.php.net")) {
+			if (url.getPath().contains("release")||url.getPath().contains("qa")||url.getPath().contains("/snaps/php-5.3/")||url.getPath().contains("/snaps/php-5.4/")||url.getPath().contains("/snaps/php-5.5/")||url.getPath().contains("/snaps/master/")) {
+				local_path = Host.basename(url.getPath());
+			} else if (url.getPath().startsWith("/downloads/")) {
+				// some special build being shared on windows.php.net (probably unstable, expiremental, etc...) 
+				local_path = url.getPath().replaceAll("/downloads/", "");
+				if (local_path.startsWith("/snaps/"))
+					local_path = local_path.replaceAll("/snaps/", "");
+			}
+		}
+		if (local_path==null) {
+			// fallback: store in directory named after URL: php-sdk/<url>/<build>
+			local_path = url.getHost()+"_"+url.getPath().replaceAll("/", "_");
+		}
+		return new File(host.getPhpSdkDir()+"/"+local_path);
+	}
+	
+	protected static void cmd_release_get_previous(boolean force, Host host, EBuildBranch branch, EBuildType build_type) {
+		System.out.println("PFTT: release_get: finding previous "+build_type+" build of "+branch+"...");
+		FindBuildTestPackPair find_pair = WindowsSnapshotDownloadUtil.findPreviousPair(build_type, WindowsSnapshotDownloadUtil.getDownloadURL(branch));
+		if (find_pair==null) {
+			System.err.println("PFTT: release_get: unable to find previous build of "+branch+" of type "+build_type);
+			return;
+		}
+		download_release_and_decompress(force, true, host, snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
+		download_release_and_decompress(force, false, host, snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
+	}
+	
+	protected static void cmd_release_get_newest(boolean force, Host host, EBuildBranch branch, EBuildType build_type) {
+		System.out.println("PFTT: release_get: finding newest "+build_type+" build of "+branch+"...");
+		FindBuildTestPackPair find_pair = WindowsSnapshotDownloadUtil.findNewestPair(build_type, WindowsSnapshotDownloadUtil.getDownloadURL(branch));
+		if (find_pair==null) {
+			System.err.println("PFTT: release_get: unable to find newest build of "+branch+" of type "+build_type);
+			return;
+		}
+		download_release_and_decompress(force, true, host, snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
+		download_release_and_decompress(force, false, host, snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
+	}
+
+	protected static void cmd_release_get_revision(boolean force, Host host, EBuildBranch branch, EBuildType build_type, String revision) {
+		System.out.println("PFTT: release_get: finding "+build_type+" build in "+revision+" of "+branch+"...");
+		FindBuildTestPackPair find_pair = WindowsSnapshotDownloadUtil.getDownloadURL(branch, build_type, revision);
+		if (find_pair==null) {
+			System.err.println("PFTT: release_get: no build of type "+build_type+" or test-pack found for revision "+revision+" of "+branch);
+			return;
+		}
+		
+		if (find_pair.getBuild()!=null)
+			download_release_and_decompress(force, true, host, snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
+		if (find_pair.getTest_pack()!=null)
+			download_release_and_decompress(force, false, host, snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
+	}
+	
+	protected static boolean confirm(String msg) {
+		System.out.print("PFTT: "+msg+" [y/N] ");
+		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+		try {
+			return StringUtil.startsWithIC(br.readLine(), "y");
+		} catch ( Exception ex ) {
+			return false;
+		}
+	}
+	
+	protected static void download_release_and_decompress(boolean force, boolean is_build, Host host, File local_file_zip, URL url) {
+		if (!force && local_file_zip.exists()) {
+			if (!confirm("Overwrite existing file "+local_file_zip+"?"))
+				return;
+		}
+		System.out.println("PFTT: release_get: downloading "+url+"...");
+		HttpParams params = new SyncBasicHttpParams();
+		HttpProtocolParams.setVersion(params, HttpVersion.HTTP_1_1);
+		HttpProtocolParams.setContentCharset(params, "UTF-8");
+		HttpProtocolParams.setUserAgent(params, "Mozilla/5.0 (Windows NT 6.1; rv:12.0) Gecko/ 20120405 Firefox/14.0.1");
+		HttpProtocolParams.setUseExpectContinue(params, true);
+		
+		HttpProcessor httpproc = new ImmutableHttpProcessor(new HttpRequestInterceptor[] {// XXX reuse
+		        // Required protocol interceptors
+		        new RequestContent(),
+		        new RequestTargetHost(),
+		        // Recommended protocol interceptors
+		        new RequestConnControl(),
+		        new RequestUserAgent(),
+		        new RequestExpectContinue()});
+		
+		HttpRequestExecutor httpexecutor = new HttpRequestExecutor();
+		
+		HttpContext context = new BasicHttpContext(null);
+		HttpHost http_host = new HttpHost(url.getHost(), url.getPort()==-1?80:url.getPort());
+		
+		DefaultHttpClientConnection conn = new DefaultHttpClientConnection();
+		ConnectionReuseStrategy connStrategy = new DefaultConnectionReuseStrategy();
+		
+		context.setAttribute(ExecutionContext.HTTP_CONNECTION, conn);
+		context.setAttribute(ExecutionContext.HTTP_TARGET_HOST, http_host);
+		
+		HttpResponse response = null;
+		try {
+			Socket socket = new Socket(http_host.getHostName(), http_host.getPort());
+			conn.bind(socket, params);
+			BasicHttpRequest request = new BasicHttpRequest("GET", url.getPath());
+			
+			request.setParams(params);
+			httpexecutor.preProcess(request, httpproc, context);
+			response = httpexecutor.execute(request, conn, context);
+			response.setParams(params);
+			httpexecutor.postProcess(response, httpproc, context);
+			
+			FileOutputStream out_file = new FileOutputStream(local_file_zip);
+			
+			IOUtils.copy(response.getEntity().getContent(), out_file);
+			
+			out_file.close();
+		} catch ( Exception ex ) {
+			ex.printStackTrace();
+			System.err.println("PFTT: release_get: error downloading release!");
+			return;
+		} finally {
+			if ( response == null || !connStrategy.keepAlive(response, context)) {
+				try {
+					conn.close();
+				} catch ( Exception ex ) {
+					ex.printStackTrace();
+				}
+			}
+		}
+		
+		// decompress local_file_zip
+		try {
+			File local_folder = new File(Host.removeFileExt(local_file_zip.toString()));
+			local_folder.mkdirs();
+			
+			System.out.println("PFTT: release_get: decompressing "+local_file_zip+"...");
+			
+			host.exec("\"C:\\Program Files\\7-Zip\\7z\" x "+local_file_zip, Host.NO_TIMEOUT, local_folder.toString()).printOutputIfCrash();
+		
+			if (is_build)
+				System.out.println("PFTT: release_get: build INSTALLED: "+local_folder);
+			else
+				System.out.println("PFTT: release_get: test-pack INSTALLED: "+local_folder);
+		} catch ( Exception ex ) {
+			ex.printStackTrace();
+			if (is_build)
+				System.err.println("PFTT: release_get: unable to decompress build");
+			else
+				System.err.println("PFTT: release_get: unable to decompress test-pack");
+		}
+	} // end protected static void download_release_and_decompress
 
 	protected static void cmd_release_list() {
 		List<URL> snaps_url;
 		for (EBuildBranch branch : EBuildBranch.values()) {
 			snaps_url = WindowsSnapshotDownloadUtil.getSnapshotURLSNewestFirst(WindowsSnapshotDownloadUtil.getDownloadURL(branch));
 			for (URL snap_url : snaps_url) {
-				System.out.print(snap_url);
+				System.out.print(branch);
+				System.out.print(' ');
+				System.out.print(WindowsSnapshotDownloadUtil.getRevision(snap_url));
 				for (EBuildType build_type:EBuildType.values()) {
 					if (!WindowsSnapshotDownloadUtil.hasBuildTypeAndTestPack(snap_url, build_type))
 						continue;
@@ -286,15 +475,20 @@ public class PfttMain {
 		List<URL> snap_urls = WindowsSnapshotDownloadUtil.getSnapshotURLSNewestFirst(WindowsSnapshotDownloadUtil.getDownloadURL(branch));
 		for (URL snap_url:snap_urls) {
 			if (WindowsSnapshotDownloadUtil.hasBuildTypeAndTestPack(snap_url, build_type)) {
-				
-				break;
+				System.out.print(branch);
+				System.out.print(' ');
+				System.out.print(WindowsSnapshotDownloadUtil.getRevision(snap_url));
+				System.out.print(' ');
+				System.out.println(build_type);
 			}
 		}
 	}
 	protected static void cmd_release_list(EBuildBranch branch) {
 		List<URL> snaps_url = WindowsSnapshotDownloadUtil.getSnapshotURLSNewestFirst(WindowsSnapshotDownloadUtil.getDownloadURL(branch));
 		for (URL snap_url : snaps_url) {
-			System.out.print(snap_url);
+			System.out.print(branch);
+			System.out.print(' ');
+			System.out.print(WindowsSnapshotDownloadUtil.getRevision(snap_url));
 			for (EBuildType build_type:EBuildType.values()) {
 				if (!WindowsSnapshotDownloadUtil.hasBuildTypeAndTestPack(snap_url, build_type))
 					continue;
@@ -309,7 +503,9 @@ public class PfttMain {
 		for (EBuildBranch branch : EBuildBranch.values()) {
 			List<URL> snaps_url = WindowsSnapshotDownloadUtil.getSnapshotURLSNewestFirst(WindowsSnapshotDownloadUtil.getDownloadURL(branch));
 			for (URL snap_url : snaps_url) {
-				System.out.print(snap_url);
+				System.out.print(branch);
+				System.out.print(' ');
+				System.out.print(WindowsSnapshotDownloadUtil.getRevision(snap_url));
 				
 				if (WindowsSnapshotDownloadUtil.hasBuildTypeAndTestPack(snap_url, build_type)) {
 					System.out.print(' ');
@@ -324,7 +520,44 @@ public class PfttMain {
 		System.err.println("Error: Not implemented");				
 	}
 	
+	protected static void cmd_upgrade(Host host) {
+		if (!host.hasCmd("git")) {
+			System.err.println("PFTT: upgrade: please install 'git' first");
+			return;
+		}
+		
+		// execute 'git pull' in c:\php-sdk\PFTT\current
+		try {
+			host.execElevated("git pull", Host.NO_TIMEOUT, host.getPfttDir()).printOutputIfCrash();
+		} catch ( Exception ex ) {
+			ex.printStackTrace();
+			System.err.println("PFTT: upgrade: error upgrading PFTT");
+		}
+	}
+	
 	/* ------------------------------- */
+	
+	protected static PhpBuild newBuild(Host host, String path) {
+		PhpBuild build = new PhpBuild(path);
+		if (build.open(host))
+			return build;
+		build = new PhpBuild(host.getPhpSdkDir() + "/" + path);
+		if (build.open(host))
+			return build;
+		else
+			return null; // build not found/readable error
+	}
+	
+	protected static PhptTestPack newTestPack(Host host, String path) {
+		PhptTestPack test_pack = new PhptTestPack(path);
+		if (test_pack.open(host))
+			return test_pack;
+		test_pack = new PhptTestPack(host.getPhpSdkDir() + "/" + path);
+		if (test_pack.open(host))
+			return test_pack;
+		else
+			return null; // test-pack not found/readable error
+	}
 	
 	protected static void show_gui(String title, Container c) {
 		JFrame jf = new JFrame("PFTT - "+title);
@@ -334,6 +567,12 @@ public class PfttMain {
 		jf.setExtendedState(JFrame.MAXIMIZED_BOTH);				
 		jf.setVisible(true);
 	}
+	
+	protected static void no_show_gui(boolean show_gui, String command) {
+		if (show_gui) {
+			System.out.println("PFTT: Note: -gui not supported for "+command+" (ignored)");
+		}
+	}
 
 	public static void main(String[] args) throws Throwable {
 		PfttMain rt = new PfttMain();
@@ -342,12 +581,15 @@ public class PfttMain {
 		int args_i = 0;
 		
 		GroovyObject config_obj = null;
-		boolean show_gui = false;
+		boolean show_gui = false, force = false;
+		int stress_all = 0, stress_each = 0;
 		
 		//
 		for ( ; args_i < args.length ; args_i++ ) {
 			if (args[args_i].equals("-gui")) {
 				show_gui = true;
+			} else if (args[args_i].equals("-force")) {
+				force = true;
 			} else if (args[args_i].equals("-config")) {
 				File config_file = new File(args[args_i++]);
 				if (!config_file.isFile()) {
@@ -358,6 +600,10 @@ public class PfttMain {
 				
 				// load configuration
 				config_obj = ConfigUtil.loadConfigFromFile(config_file);
+			} else if (args[args_i].equals("-stress_each")) {
+				stress_each = Integer.parseInt(args[args_i++]);
+			} else if (args[args_i].equals("-stress_all")) {
+				stress_all = Integer.parseInt(args[args_i++]);
 			} else if (args[args_i].startsWith("-")) {
 				System.err.println("User Error: unknown option "+args[args_i]);
 				System.exit(-255);
@@ -377,8 +623,12 @@ public class PfttMain {
 		}
 		//
 		
+		if (stress_each>0||stress_all>0) {
+			System.err.println("PFTT: not implemented: stress_each="+stress_each+" stress_all="+stress_all+" ignored");
+		}
+		
 		if (command!=null) {
-			if (command.equals("phpt_named")) {
+			if (command.equals("phpt_named")||command.equals("phptnamed")||command.equals("phptn")||command.equals("pn")) {
 				if (!(args.length > args_i+3)) {
 					System.err.println("User Error: must specify build, test-pack and name(s) and/or name fragment(s)");
 					System.out.println("usage: pftt phpt_named <path to PHP build> <path to PHPT test-pack> <test case names or name fragments>");
@@ -386,15 +636,15 @@ public class PfttMain {
 					return;
 				}
 				
-				PhpBuild build = new PhpBuild(args[args_i+1]);
-				if (!build.open(rt.host)) {
+				PhpBuild build = newBuild(rt.host, args[args_i+1]);
+				if (build==null) {
 					System.err.println("IO Error: can not open php build: "+build);
 					System.exit(-255);
 					return;
 				}
 				
-				PhptTestPack test_pack = new PhptTestPack(args[args_i+2]);
-				if (!test_pack.open(rt.host)) {
+				PhptTestPack test_pack = newTestPack(rt.host, args[args_i+2]);
+				if (test_pack==null) {
 					System.err.println("IO Error: can not open php test pack: "+test_pack);
 					System.exit(-255);
 					return;
@@ -411,7 +661,7 @@ public class PfttMain {
 				cmd_phpt_named(rt, show_gui, config_obj, build, test_pack, names);
 				
 				System.out.println("PFTT: finished");
-			} else if (command.equals("phpt_list")) {
+			} else if (command.equals("phpt_list")||command.equals("phptlist")||command.equals("phptl")||command.equals("pl")) {
 				if (!(args.length > args_i+3)) {
 					System.err.println("User Error: must specify build, test-pack and list file");
 					System.out.println("usage: list file must contain plain-text list names of tests to execute");
@@ -420,15 +670,15 @@ public class PfttMain {
 					return;
 				}
 				
-				PhpBuild build = new PhpBuild(args[args_i+1]);
-				if (!build.open(rt.host)) {
+				PhpBuild build = newBuild(rt.host, args[args_i+1]);
+				if (build == null) {
 					System.err.println("IO Error: can not open php build: "+build);
 					System.exit(-255);
 					return;
 				}
 				
-				PhptTestPack test_pack = new PhptTestPack(args[args_i+2]);
-				if (!test_pack.open(rt.host)) {
+				PhptTestPack test_pack = newTestPack(rt.host, args[args_i+2]);
+				if (test_pack == null) {
 					System.err.println("IO Error: can not open php test pack: "+test_pack);
 					System.exit(-255);
 					return;
@@ -446,7 +696,7 @@ public class PfttMain {
 				cmd_phpt_list(rt, show_gui, config_obj, build, test_pack, list_file);		
 				
 				System.out.println("PFTT: finished");
-			} else if (command.equals("phpt_all")) {
+			} else if (command.equals("phpt_all")||command.equals("phptall")||command.equals("phpta")||command.equals("pa")) {
 				if (!(args.length > args_i+2)) {
 					System.err.println("User Error: must specify build and test-pack");
 					System.out.println("usage: pftt phpt_all <path to PHP build> <path to PHPT test-pack>");
@@ -454,15 +704,15 @@ public class PfttMain {
 					return;
 				}
 				
-				PhpBuild build = new PhpBuild(args[args_i+1]);
-				if (!build.open(rt.host)) {
+				PhpBuild build = newBuild(rt.host, args[args_i+1]);
+				if (build == null) {
 					System.err.println("IO Error: can not open php build: "+build);
 					System.exit(-255);
 					return;
 				}
 				
-				PhptTestPack test_pack = new PhptTestPack(args[args_i+2]);
-				if (!test_pack.open(rt.host)) {
+				PhptTestPack test_pack = newTestPack(rt.host, args[args_i+2]);
+				if (test_pack == null) {
 					System.err.println("IO Error: can not open php test pack: "+test_pack);
 					System.exit(-255);
 					return;
@@ -478,93 +728,129 @@ public class PfttMain {
 				System.out.println("PFTT: finished");
 			} else if (command.equals("aut")) {
 				
-				PhpBuild build = new PhpBuild(args[args_i+1]);
-				if (!build.open(rt.host)) {
+				PhpBuild build = newBuild(rt.host, args[args_i+1]);
+				if (build == null) {
 					System.err.println("IO Error: can not open php build: "+build);
 					System.exit(-255);
 					return;
 				}
 				
+				no_show_gui(show_gui, command);
 				cmd_aut(rt, rt.host, build, ScenarioSet.getScenarioSets());
 			} else if (command.equals("shell_ui")||(show_gui && command.equals("shell"))) {
 				cmd_shell_ui();
 			} else if (command.equals("shell")) {
+				no_show_gui(show_gui, command);
 				cmd_shell();				
 			} else if (command.equals("exec")) {
+				no_show_gui(show_gui, command);
 				cmd_exec();
 			} else if (command.equals("ui")) {
+				no_show_gui(show_gui, command);
 				cmd_ui();
 			} else if (command.equals("perf")) {
 				cmd_perf();
-			} else if (command.equals("release_get")) {
-				if (!(args.length > args_i+3)) {
-					System.err.println("User error: must specify branch(PHP_5_3, PHP_5_4, master), build-type (NTS or TS) and revision");
-					System.err.println("Usage: pftt release_get <branch> <build-type> r<revision>");
-					System.exit(-255);
-					return;
-				}
-				
+			} else if (command.equals("release_get")||command.equals("rgn")||command.equals("rgnew")||command.equals("rgnewest")||command.equals("rgp")||command.equals("rgprev")||command.equals("rgprevious")||command.equals("rg")||command.equals("rget")) {
 				EBuildBranch branch = null;
 				EBuildType build_type = null;
 				String revision = null;
+				URL url = null;
+				if (command.equals("rgn")||command.equals("rgnew")||command.equals("rgnewest"))
+					revision = "newest";
+				else if (command.equals("rgp")||command.equals("rgprev")||command.equals("rgprevious"))
+					revision = "previous";
 				
-				for ( ; args_i < args.length && branch == null && build_type == null && revision == null; args_i++ ) {
+				for ( ; args_i < args.length && ( branch == null || build_type == null || revision == null ) ; args_i++ ) {
 					if (branch==null)
 						branch = EBuildBranch.guessValueOf(args[args_i]);
 					if (build_type==null)
 						build_type = EBuildType.guessValueOf(args[args_i]);
-					if (args[args_i].startsWith("r"))
+					if (revision==null&&args[args_i].startsWith("r"))
 						revision = args[args_i];
+					else if (args[args_i].equals("previous")||args[args_i].equals("prev")||args[args_i].equals("p"))
+						revision = "previous";
+					else if (args[args_i].equals("newest")||args[args_i].equals("new")||args[args_i].equals("n"))
+						revision = "newest";
+					else if (args[args_i].startsWith("http://"))
+						url = new URL(args[args_i]);
 				}
 				
-				if (branch==null||build_type==null) {
+				if (url==null&&(branch==null||build_type==null)) {
 					System.err.println("User error: must specify branch, build-type (NTS or TS) and revision");
-					System.err.println("Usage: pftt release_get <branch> <build-type> r<revision>");
+					System.err.println("Usage: pftt release_get <branch> <build-type> [r<revision>|newest|previous]");
+					System.err.println("Usage: pftt release_get <URL>");
 					System.err.println("Branch can be any of: "+StringUtil.toString(EBuildBranch.values()));
 					System.err.println("Build Type can be any of: "+StringUtil.toString(EBuildType.values()));
 					System.exit(-255);
 					return;
-				} else if (revision==null) {
+				} else if (url==null&&revision==null) {
 					System.err.println("User error: must specify branch, build-type (NTS or TS) and revision");
-					System.err.println("Usage: pftt release_get <branch> <build-type> r<revision>");
+					System.err.println("Usage: pftt release_get <branch> <build-type> [r<revision>|newest|previous]");
+					System.err.println("Usage: pftt release_get <URL>");
 					System.err.println("Revision must start with 'r'");
 					System.exit(-255);
 					return;
 				} else {
+					no_show_gui(show_gui, command);
+					
 					// input processed, dispatch
-					cmd_release_get(branch, build_type, revision);
+					if (url!=null)
+						cmd_release_get(force, rt.host, url);
+					else if (revision.equals("newest"))
+						cmd_release_get_newest(force, rt.host, branch, build_type);
+					else if (revision.equals("previous"))
+						cmd_release_get_previous(force, rt.host, branch, build_type);
+					else
+						cmd_release_get_revision(force, rt.host, branch, build_type, revision);
 				}
-			} else if (command.equals("release_list")) {
+			} else if (command.equals("release_list")||command.equals("rl")||command.equals("rlist")) {
 				EBuildBranch branch = null;
 				EBuildType build_type = null;
-				for ( ; args_i < args.length && branch == null && build_type == null ; args_i++ ) {
+				for ( ; args_i < args.length && ( branch == null || build_type == null ) ; args_i++ ) {
 					if (branch==null)
 						branch = EBuildBranch.guessValueOf(args[args_i]);
 					if (build_type==null)
 						build_type = EBuildType.guessValueOf(args[args_i]);
 				}
+				no_show_gui(show_gui, command);
 
 				// dispatch
 				if (branch==null) {
 					if (build_type==null) {
-						cmd_release_list(build_type);
-					} else {
+						System.out.println("PFTT: listing all snapshot releases (newest first)");
 						cmd_release_list();
+					} else {
+						System.out.println("PFTT: listing all snapshot releases of "+build_type+" builds (newest first)");
+						cmd_release_list(build_type);						
 					}
 				} else {
 					if (build_type==null) {
+						System.out.println("PFTT: listing all snapshot releases from "+branch+" (newest first)");
 						cmd_release_list(branch);
 					} else {
+						System.out.println("PFTT: listing all snapshot releases from "+branch+" of "+build_type+" builds  (newest first)");
 						cmd_release_list(build_type, branch);
 					}
-				}				
+				}	
 			} else if (command.equals("telemetry_pkg")) {
+				no_show_gui(show_gui, command);
+				
 				cmd_telemetry_pkg();
 			} else if (command.equals("smoke")) {
+				no_show_gui(show_gui, command);
+				
 				cmd_smoke();
+			} else if (command.equals("upgrade")) {
+				no_show_gui(show_gui, command);
+				
+				cmd_upgrade(rt.host);
 			} else if (command.equals("help")) {
+				no_show_gui(show_gui, command);
+				
 				cmd_help();
 			} else {
+				no_show_gui(show_gui, command);
+				
 				cmd_help();
 			}
 		} else {		

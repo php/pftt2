@@ -3,6 +3,8 @@ package com.mostc.pftt.model.phpt;
 /** A PhpIni that can not be edited.
  * 
  * Attempts to edit (such as calling #putSingle) are silently ignored. No exceptions are thrown.
+ * 
+ * @author Matt Ficken
  *
  */
 

@@ -21,6 +21,7 @@ import com.mostc.pftt.util.ErrorUtil;
 /** Writes the telemetry during a test run.
  * 
  * @see PhptTelemetryReader
+ * @author Matt Ficken
  *
  */
 

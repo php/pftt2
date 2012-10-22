@@ -6,6 +6,8 @@ import java.util.zip.GZIPOutputStream;
 
 /** GZIP support for CliTestCaseRunner (GZIP_POST section, etc...)
  * 
+ * @author Matt Ficken
+ * 
  */
 
 public class GZIPOutputStreamLevel extends GZIPOutputStream {

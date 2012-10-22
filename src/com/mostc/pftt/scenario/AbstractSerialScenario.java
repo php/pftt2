@@ -4,6 +4,8 @@ package com.mostc.pftt.scenario;
  * 
  * For example, you can't test 2 different Code Caching scenarios at the same time.
  * 
+ * @author Matt Ficken
+ * 
  */
 
 public abstract class AbstractSerialScenario extends Scenario {

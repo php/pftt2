@@ -36,6 +36,7 @@ import com.mostc.pftt.util.apache.regexp.REProgram;
  * @see EPhptTestStatus
  * @see EPhptSection
  * @see http://qa.php.net/phpt_details.php
+ * @author Matt Ficken
  *
  */
 
@@ -572,7 +573,7 @@ public class PhptTestCase extends TestCase {
 		
 		code = "<?php function a() {\n"+code+" \n}\n $a = a();\n $a=$a['TESTS'];\n if (is_array($a)) { foreach ($a as $b) { echo $b.\"\\n\";}} elseif (is_string($a)) {echo $a.\"\\n\";} ?>";
 		
-		PHPOutput output = build.eval(host, code);
+		PHPOutput output = build.eval(host, code).printHasFatalError();
 		
 		ArrayList<String> tests = new ArrayList<String>(2);
 		
@@ -621,7 +622,7 @@ public class PhptTestCase extends TestCase {
 				
 				String code = "<?php function a() {\n"+env_str+" \n}\n $a=a(); echo $a.\"\\n\"; ?>";
 				
-				PHPOutput output = build.eval(host, code);
+				PHPOutput output = build.eval(host, code).printHasFatalError();
 				
 				lines = output.hasFatalError() ? null : output.getLines();
 			} else {
@@ -669,7 +670,7 @@ public class PhptTestCase extends TestCase {
 		if (StringUtil.isNotEmpty(rt_str)) {
 			String code = "<?php function a() {\n"+rt_str+" \n}\n $a = a();\n $a=$a['ENV'];\n foreach ($a as $b=>$c) { echo $b.\"\\n\"; echo $c.\"\\n\"; } ?>";
 			
-			PHPOutput output = build.eval(host, code);
+			PHPOutput output = build.eval(host, code).printHasFatalError();
 			if (!output.hasFatalError()) {
 				String[] lines = output.getLines();
 				for ( int i=0 ; i < lines.length ; i+=2) {

@@ -1,6 +1,8 @@
 package com.mostc.pftt.scenario;
 
 /** Scenario that sets up a remote HTTP service and has the curl extension tested against it. (NOT IMPLEMENTED)
+ * 
+ * @author Matt Ficken
 *
 */
 

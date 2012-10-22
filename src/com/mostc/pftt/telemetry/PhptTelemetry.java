@@ -9,6 +9,8 @@ import com.mostc.pftt.model.phpt.EPhptTestStatus;
 import com.mostc.pftt.util.StringUtil;
 
 /** Manages PHPT test results and telemetry
+ * 
+ * @author Matt Ficken
  *
  */
 

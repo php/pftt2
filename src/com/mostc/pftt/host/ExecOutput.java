@@ -1,5 +1,6 @@
 package com.mostc.pftt.host;
 
+import java.io.PrintStream;
 import java.nio.charset.Charset;
 
 import com.mostc.pftt.util.StringUtil;
@@ -20,5 +21,23 @@ public class ExecOutput {
 	 */
 	public String[] getLines() {
 		return StringUtil.splitLines(output);
+	}
+
+	public boolean isNotEmpty() {
+		return StringUtil.isNotEmpty(output);
+	}
+	public boolean isEmpty() {
+		return StringUtil.isEmpty(output);
+	}
+	public boolean isCrash() {
+		return exit_code != 0;
+	}
+	public ExecOutput printOutputIfCrash() {
+		return printOutputIfCrash(System.err);
+	}
+	public ExecOutput printOutputIfCrash(PrintStream ps) {
+		if (isCrash())
+			ps.println(output);
+		return this;
 	}
 }

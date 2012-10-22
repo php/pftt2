@@ -3,12 +3,22 @@
 
 <h1>PFTT</h1>
 
+<p>PFTT is a cross-platform and multi-platform high-speed PHP Test tool which supports unit tests, PHPTs for PHP-Core and
+PHPUnit tests for PHP Applications, along with comparison, debugging, performance, UI Automation, smoke and multi-scenario support.</p>
+
+<h1>Meaning</h1>
+
 <p>PFTT has and can mean many different things:</p>
 <p>PHP Function Test Tool</p>
 <p>PHP Filesystem Test Tool</p>
 <p>Practically Formulated Test Tool</p>
 <p>PHP Fast Test Tool</p>
 <p>PHP Full Test Tool</p>
+<p>Pftt is a Fun Test Tool</p>
+
+<h1>License</h1>
+
+<p>BSD</p>
 
 <h1>API Documentation</h1>
 
@@ -23,7 +33,13 @@
 <h1>INSTALL</h1>
 
 <ol>
-<li>Install Java 6 JRE or JDK (JDK if you plan on development work, see below)</li>
+<li>Install Java SE 6 or 7 (JRE or JDK)
+<ol>
+<li>Must install JDK if you plan on development work. For normal use, JRE is sufficient.</li>
+<li>Sun/Oracle Java JDK: <a href="http://www.oracle.com/technetwork/java/javase/downloads/jdk6u37-downloads-1859587.html" target="_new">http://www.oracle.com/technetwork/java/javase/downloads/jdk6u37-downloads-1859587.html</a></li>
+<li>Sun/Oracle Java JRE: <a href="http://www.oracle.com/technetwork/java/javase/downloads/jre6u37-downloads-1859589.html" target="_new">http://www.oracle.com/technetwork/java/javase/downloads/jre6u37-downloads-1859589.html</a></li>
+</ol>
+</li>
 <li>download PFTT ZIP</li>
 <li>decompress ZIP to C:\php-sdk\PFTT\current (Windows) or ~/php-sdk/PFTT/current (Linux)
 <p>Note: should have directories like c:\php-sdk\PFTT\current\bin not c:\php-sdk\PFTT\current\pftt-version\bin</p></li>
@@ -45,11 +61,39 @@
 </li>
 </ol>
 
+<h1>Upgrading</h1>
+
+<p>PFTT has a builtin upgrade command. Just do:</p>
+
+<code>pftt upgrade</code>
+	
+<p>and you'll have the latest version.</p>
+
 <h1>USAGE</h1>
 
-<p>Typically, builds and test-packs are stored in C:\Php-sdk (Windows) or ~/php-sdk (Linux)</p>
-<code>C:\php-sdk\php-5.3-nts-windows-vc9-x86-rda541ff</code>
-<code>C:\php-sdk\php-test-pack-5.3-nts-windows-vc9-x86-rda541ff</code>
+<p>Find and download newest 5.3 snapshot build that provides an NTS build</p>
+
+<code>pftt release_get 5.3 NTS newest</code>
+
+<p>Find and download second-newest(previous before newest) 5.4 snapshot build that provides an NTS build</p>
+
+<code>pftt rget 5.4 NTS previous</code>
+
+<p>Stores builds and test-packs in C:\Php-sdk (Windows) or ~/php-sdk (Linux).
+For convenience can do</p>
+
+<code>pftt rgn 5.3 nts</code>
+	
+<p>List releases (by build, branch, both, or all)</p>
+
+<code>pftt release_list 5.3</code>
+<code>pftt release_list NTS</code>
+<code>pftt rl nts 5.3</code>
+<code>pftt rl</code>
+	
+<p>Download specific release (test-pack and build)</p>
+
+<code>pftt rg MASTER TS rc165a0b</code>
 
 <p>Run all PHPTs from the test-pack</p>
 <code>pftt phpt_all C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567</code>
@@ -62,6 +106,10 @@
 
 <p><b>NOTE:</b> On Windows PFTT will prompt you to elevate it to Administrator privileges for some operations to configure Windows Error Reporting and firewall</p>
 
+<p>If build or test-pack not in current directory, automatically checks php-sdk (so you can ommit c:\php-sdk, etc...)</p>
+
+<code>pftt phpt_all php-5.4.7-win32-vc9-x86 php-test-pack-5.4-r1234567</code>
+
 <p>Opens a GUI to efficiently review large amounts of tests</p>
 <code>pftt -gui phpt_all C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567</code>
 <code>pftt -gui -config config_file phpt_list C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 </code>
@@ -69,10 +117,8 @@
 
 <p><a href="PhptDebuggerFrame1.png" target="_new"><img src="PhptDebuggerFrame1.png" width="640" border="0"/></a></p>
 
-<p>shows help info</p>
+<p>Shows help info (additional commands, etc...)</p>
 <code>pftt -help</code>
-<p>downloads newest test-pack and build</p>
-<code>pftt release_get</code>
 
 <h2>Functional Build Comparison(FBC) Reports</h2>
 
@@ -87,7 +133,7 @@ pftt phpt_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-
 
 <p>Run a second test pass, using a different build and/or test-pack</p>
 <code>
-pftt phpt_all C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234568
+pftt pa C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234568
 <span>Or</span>
 pftt phpt_list C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234568 SKIP_list_file
 <span>Or</span>
@@ -99,8 +145,15 @@ pftt phpt_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-
 <h1>Development</h1>
 
 <ol>
-<li>Install <b>Eclipse Java IDE</b> 4.2 (Juno), <b>not Eclipse Classic</b> see http://eclipse.org/</li>
-<li>Run Eclipse, the default value for workspace is ok</li>
+<li>Install <b>Eclipse Java IDE</b> 4.2 (Juno), <b>not Eclipse Classic</b> see http://eclipse.org/
+<ol>
+<li>download and decompress .zip file<li> 
+</ol>
+<li>Run Eclipse, the default value for workspace is ok
+<ol>
+<li>from decompressed eclipse folder, run eclipse.exe (Windows) or eclipse (linux)</li>
+</ol>
+</li>
 <li>Install Groovy Plugin:
 <ol>
 <li>Help &gt; Install New Software</li>
@@ -109,12 +162,13 @@ pftt phpt_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-
 <li>Check Groovy-Eclipse and click next through all the screens</li>
 <li>You may get a warning about groovy-eclipse not being signed, ignore and install anyway. Also, Eclipse will need to restart.</li>
 </ol>
-<li>On Windows, find c:\php-sdk\PFTT\Current\.classpath and .project. Look at their Properties in Windows Explorer and make sure the 'Read Only' attribute is not set. Clear it if it is, or Eclipse will get Access Denied errors.</li>
+<li>On Windows, find c:\php-sdk\PFTT\Current\.classpath and .project. Look at their Properties in Windows Explorer and make sure the 'Read Only' and 'Hidden' attributes are not set. Clear it if it is, or Eclipse will get Access Denied errors.</li>
 <li>File &gt; Import &gt; General &gt; Existing project</li>
 <li>Choose C:\php-sdk\PFTT\current</li>
 <br/>
 That should be it (PFTT comes with eclipse .project and .classpath files which already have all the correct settings)
 </li>
+<li>By setting Host#Dev &gt; 0, you can have PFTT use php-sdk\PFTT\Dev-N and php-sdk\Dev-N instead of php-sdk\PFTT\current, to run stable and multiple development versions of PFTT side-by-side.</li>
 
 <!-- TODO how to create a run configuration -->
 

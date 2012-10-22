@@ -44,6 +44,8 @@ import groovy.lang.GroovyObject;
  * 		// specify ftp server and credentials
  * }
  * 
+ * @author Matt Ficken
+ * 
  */
 
 public final class ConfigUtil {

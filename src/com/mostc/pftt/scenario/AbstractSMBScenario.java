@@ -4,6 +4,8 @@ package com.mostc.pftt.scenario;
  *
  * This testing is important even on recent PHP versions, as proven by php bug #63241.
  * 
+ * @author Matt Ficken
+ * 
  */
 
 public abstract class AbstractSMBScenario extends AbstractFileSystemScenario {

@@ -4,6 +4,8 @@ package com.mostc.pftt.model.smoke;
  * tests loaded from the test pack.
  * 
  * all the counts should match or a test got dropped somewhere!
+ * 
+ * @author Matt Ficken
  *
  */
 

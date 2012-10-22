@@ -1,5 +1,12 @@
 package com.mostc.pftt.util
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+
+import org.htmlcleaner.HtmlCleaner;
+import org.htmlcleaner.SimpleXmlSerializer;
+
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.EBuildType;
 import com.mostc.pftt.model.phpt.EBuildBranch;
@@ -12,6 +19,7 @@ import com.mostc.pftt.model.phpt.EBuildBranch;
  * 
  * @see #findNewestPair
  * @see #downloadPair
+ * @author Matt Ficken
  * 
  */
 
@@ -35,21 +43,48 @@ final class WindowsSnapshotDownloadUtil {
 		return null;
 	}
 	
-	static class DownloadBuildTestPackPair {
-		String build_path, test_pack_path;
-		FindBuildTestPackPair found_pair;
+	static URL toSnapURL(EBuildBranch branch, String revision) {
+		return new URL(getDownloadURL(branch).toString()+"/"+revision);
+	}
+		
+	static FindBuildTestPackPair getDownloadURL(EBuildBranch branch, EBuildType build_type, String revision) {
+		URL snap_url = toSnapURL(branch, revision);
+		FindBuildTestPackPair pair = findPair(build_type, snap_url);
+		pair.branch = branch;
+		return pair;
 	}
 	
-	/** downloads a found build and test-pack pair to the host and returns the file paths where both are stored
-	 * 
-	 * @param host
-	 * @param found_pair
-	 * @return
-	 */
-	static DownloadBuildTestPackPair downloadPair(Host host, FindBuildTestPackPair found_pair) {
-		return new DownloadBuildTestPackPair();
+	static FindBuildTestPackPair findPair(EBuildType build_type, URL snap_url) {
+		HtmlCleaner cleaner = new HtmlCleaner();
+		def node = cleaner.clean(snap_url);
+		String xml_str = new SimpleXmlSerializer(cleaner.getProperties()).getXmlAsString(node);
+		
+		def root = new XmlSlurper(false, false).parseText(xml_str);
+		def build_url = null, test_pack_url = null;
+		root.depthFirst().findAll { 
+				if (it.name() == 'a') {
+					if (it.text().endsWith(".zip")&&it.text().toLowerCase().contains("-test-")) {
+						test_pack_url = it['@href']
+					} else if (it.text().toLowerCase().contains("-devel-")) {
+						// ignore
+					} else if (it.text().toLowerCase().contains("-debug-")) {
+						// ignore
+					} else if (it.text().endsWith(".zip")&&it.text().toLowerCase().contains("-"+build_type.toString().toLowerCase()+"-")) {
+						build_url = it['@href'];
+					}
+				}
+			} // end findAll
+		if (build_url==null&&test_pack_url==null)
+			return null;
+		FindBuildTestPackPair pair = new FindBuildTestPackPair();
+		pair.build_type = build_type;
+		if (build_url!=null)
+			pair.build = new URL("http://"+snap_url.getHost()+"/"+build_url);
+		if (test_pack_url!=null)
+			pair.test_pack = new URL("http://"+snap_url.getHost()+"/"+test_pack_url);
+		return pair;
 	}
-	
+		
 	static class FindBuildTestPackPair {
 		URL build, test_pack;
 		EBuildType build_type;
@@ -65,17 +100,15 @@ final class WindowsSnapshotDownloadUtil {
 	 * @param build_type
 	 * @return
 	 */
-	static boolean hasBuildTypeAndTestPack(URL url, EBuildType build_type) {
-		return false;
-	}
-	
-	static FindBuildTestPackPair findPair(EBuildType build_type, URL snap_url) {
-		def root = new XmlSlurper().parse(snap_url);
-		def testcases = root.depthFirst().findAll { it.name() == 'testcase' }
+	static boolean hasBuildTypeAndTestPack(URL snap_url, EBuildType build_type) {
+		HtmlCleaner cleaner = new HtmlCleaner();
+		def node = cleaner.clean(snap_url);
+		String xml_str = new SimpleXmlSerializer(cleaner.getProperties()).getXmlAsString(node);
 		
-		return null;
+		def root = new XmlSlurper(false, false).parseText(xml_str);
+		return root.depthFirst().findAll { it.name() == 'a' && it.text().toLowerCase().contains("-"+build_type.toString().toLowerCase()+"-") }.size() > 0;
 	}
-	
+		
 	/** finds the newest snapshot build and test-pack pair for the specific build type
 	 * 
 	 * some snapshot releases may have some build types but not all.
@@ -99,6 +132,32 @@ final class WindowsSnapshotDownloadUtil {
 		
 		return null;
 	}
+	
+	/** 
+	 * 
+	 * @param build_type
+	 * @param download_url
+	 * @return
+	 */
+	static FindBuildTestPackPair findPreviousPair(EBuildType build_type, URL download_url) {
+		FindBuildTestPackPair pair;
+		
+		// keep searching until specific build type is found. some build types might be missing from a release,
+		// while others are there. also, some releases may just be empty.
+		boolean first = true;
+		for ( URL snap_url : getSnapshotURLSNewestFirst(download_url) ) {
+			pair = findPair(build_type, snap_url)
+			if (pair != null) {
+				if (first) {
+					first = false; // skip first pair
+					continue; // find next pair
+				}
+				return pair;
+			}
+		}
+		
+		return null;
+	}
 
 	/** parses windows.php.net's index page to find all the snapshot build revisions and sorts them
 	 * with the newest snapshot URL (by creation time) first
@@ -107,9 +166,33 @@ final class WindowsSnapshotDownloadUtil {
 	 * @return
 	 */
 	static List<URL> getSnapshotURLSNewestFirst(URL download_url) {
-		def root = new XmlSlurper().parse(download_url);
-		def testcases = root.depthFirst().findAll { it.name() == 'testcase' }
-		// TODO
+		HtmlCleaner cleaner = new HtmlCleaner();
+		def node;
+		try {
+			// ignore IO Errors here, PHP_5_5 branch doesn't exist currently
+			node = cleaner.clean(download_url);
+		} catch ( Exception ex ) {
+			return new ArrayList<URL>(0);
+		}
+		String xml_str = new SimpleXmlSerializer(cleaner.getProperties()).getXmlAsString(node);
+		
+		def root = new XmlSlurper(false, false).parseText(xml_str);
+		def links = root.depthFirst().findAll { it.name() == 'a' && it.text().startsWith('r') };
+		ArrayList<String> revisions = new ArrayList<String>(links.size());		
+		
+		for ( def link : links )
+			revisions.add(link.text());
+					
+		ArrayList<URL> urls = new ArrayList<URL>(revisions.size());
+		for ( def revision : revisions )
+			urls.add(new URL(download_url.toString()+"/"+revision));
+		
+		return urls;
+	}
+	static String getRevision(URL url) {
+		String path = url.getPath();
+		int i = path.lastIndexOf('/');
+		return i == -1 ? path : path.substring(i+1);
 	}
 	
 	private WindowsSnapshotDownloadUtil() {}

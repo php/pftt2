@@ -20,6 +20,8 @@ import com.mostc.pftt.util.StringUtil;
  * -INCLUDE_PATH - directories to use when looking for a php file to include (module, etc...)
  * -EXTENSION_DIR - directory to look for extensions
  * -EXTENSION - specifies the DLLs or SOs (by name) to load as dynamic extensions from EXTENSION_DIR
+ * 
+ * @author Matt Ficken
  *
  */
 

@@ -24,6 +24,7 @@ import org.columba.ristretto.smtp.SMTPProtocol;
  * @see #sendTextMessage
  * @see #connect
  * @see #ensureAuthenticated
+ * @author Matt Ficken
  *
  */
 

@@ -1,6 +1,7 @@
 package com.mostc.pftt.model.phpt;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,6 +17,8 @@ import com.mostc.pftt.util.StringUtil;
 /** represents a single build of PHP.
  * 
  * To be clear, NTS and TS builds that were built together, even from the same configuration and source, are still considered two separate builds.
+ * 
+ * @author Matt Ficken
  * 
  */
 
@@ -222,7 +225,9 @@ public class PhpBuild extends Build {
 				return php_info;
 		}
 		
-		php_info = eval(host, "phpinfo();").output;
+		ExecOutput eo = eval(host, "phpinfo();");
+		eo.printOutputIfCrash();
+		php_info = eo.output;
 		this.php_info = new WeakReference<String>(php_info);
 		return php_info;
 	}
@@ -298,10 +303,26 @@ public class PhpBuild extends Build {
 			return output.contains("Fatal") || output.contains("fatal");
 		}
 		
+		public PHPOutput printHasFatalError() {
+			return printHasFatalError(System.err);
+		}
+		public PHPOutput printHasFatalError(PrintStream ps) {
+			if (hasFatalError())
+				ps.println(output);
+			return printOutputIfCrash(ps);
+		}
+		
 		public void cleanup(Host host) {
 			try {
 				host.delete(php_filename);
 			} catch ( Exception ex ) {}
+		}
+		@Override
+		public PHPOutput printOutputIfCrash() {
+			return (PHPOutput) super.printOutputIfCrash();
+		}
+		public PHPOutput printOutputIfCrash(PrintStream ps) {
+			return (PHPOutput) super.printOutputIfCrash(ps);
 		}
 	}
 	
@@ -328,6 +349,7 @@ public class PhpBuild extends Build {
 		String ini_settings = ini==null?null:ini.toCliArgString(host);
 		
 		ExecOutput output = host.exec(php_exe+(ini_settings==null?"":" "+ini_settings)+" -m", Host.NO_TIMEOUT);
+		output.printOutputIfCrash();
 		
 		ArrayList<String> list = new ArrayList<String>();
 		

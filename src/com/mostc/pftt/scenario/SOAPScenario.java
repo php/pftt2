@@ -1,6 +1,8 @@
 package com.mostc.pftt.scenario;
 
 /** Scenario that sets up a remote SOAP service and has the soap extension tested. (NOT IMPLEMENTED)
+ * 
+ * @author Matt Ficken
 *
 */
 

@@ -5,6 +5,8 @@ import com.mostc.pftt.host.Host;
 
 /** Utilities for setting up the test environment and convenience settings on Hosts
  * 
+ * @author Matt Ficken
+ * 
  */
 
 public final class HostEnvUtil {
@@ -59,6 +61,7 @@ public final class HostEnvUtil {
 	public static boolean regQueryAdd(Host host, String key, String name, String value, String type) throws Exception {
 		// check the registry first, to not edit the registry if we don't have too		
 		ExecOutput output = host.exec("REG QUERY \""+key+"\" /f "+name, Host.ONE_MINUTE);
+		output.printOutputIfCrash();
 		for ( String line : output.getLines() ) {
 			if (line.contains(name) && line.contains(type) && line.contains(value))
 				return false;

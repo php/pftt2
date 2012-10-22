@@ -12,13 +12,13 @@ import com.mostc.pftt.host.Host;
  * 
  * Some sets will not be executable on some hosts.
  * 
- *                              Windows(17)  Azure-Windows(3) Linux(5)+FreeBSD(1)  => 26
- * CLI                       17                     3                               6
- * Builtin-WWW    17                     1 VM                       6
- * IIS-Express          1                       0                               0
- * IIS-Standard        1                      1 WinCache or No  0
- * mod_php             1                       0                               6
- *                              37                      5                              18     => 60
+ *                Windows(17)  Azure-Windows(3) Linux(5)+FreeBSD(1)  => 26
+ * CLI            17           3                 6
+ * Builtin-WWW    17           1 VM              6
+ * IIS-Express    1            0                 0
+ * IIS-Standard   1            1 WinCache or No  0
+ * mod_php        1            0                 6
+ *                37           5                 18     => 60
  *
  * There are 5 different SAPIs PHP can be run with. There are 90 different valid scenario sets (though some won't run on some OSes).
  * There are 26 different OSes. 17 versions of Windows from Vista SP1 to Windows 8. Azure has 3 versions: web, worker, vm. 
@@ -33,6 +33,7 @@ import com.mostc.pftt.host.Host;
  *
  * @see #isSupported
  * @see ScenarioSet#getScenarioSets()
+ * @author Matt Ficken
  *
  */
 

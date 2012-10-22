@@ -14,6 +14,8 @@ import com.mostc.pftt.model.TestPack;
 import com.mostc.pftt.telemetry.PhptTelemetryWriter;
 
 /** manages a test-pack of PHPT tests
+ * 
+ * @author Matt Ficken
  *
  */
 
