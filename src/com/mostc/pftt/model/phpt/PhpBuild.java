@@ -109,9 +109,24 @@ public class PhpBuild extends Build {
 			if (ini!=null)
 				return ini;
 		}
-		ini = new PhpIni(host.getContents(build_path+host.dirSeparator()+"php.ini"), build_path);
+		String path = getDefaultPhpIniPath(host);
+		if (host.exists(path))
+			ini = new PhpIni(host.getContents(path), build_path);
+		else
+			ini = new PhpIni();
+		
 		this.php_ini = new WeakReference<PhpIni>(ini);
 		return ini;
+	}
+	
+	/** calculates path on Host to php.ini used for this build
+	 * 
+	 * @param host
+	 * @return
+	 */
+	public String getDefaultPhpIniPath(Host host) {
+		// XXX /etc/cli/php.ini for linux??
+		return build_path+host.dirSeparator()+"php.ini";
 	}
 	
 	/** gets the version string for this build
@@ -166,15 +181,16 @@ public class PhpBuild extends Build {
 	 *  #isExtensionEnabled checks to see if its enabled. PhpIni#hasExtension will miss builtin/static extensions.
 	 *   
 	 * @param host
-	 * @param ini
 	 * @param ext_name
 	 * @return
 	 * @throws Exception
 	 */
-	public boolean isExtensionEnabled(Host host, PhpIni ini, String ext_name) throws Exception {
+	public boolean isExtensionEnabled(Host host, String ext_name) throws Exception {
 		if (ext_name.equals("spl")||ext_name.equals("standard")||ext_name.equals("core"))
 			// these extensions are always there/always builtin
 			return true;
+		
+		PhpIni ini = getDefaultPhpIni(host);
 		
 		// key by only extensions, so cache will be reused even if additional directives are added
 		if (ini!=null)
@@ -241,7 +257,7 @@ public class PhpBuild extends Build {
 	public void setDefaultPhpIni(Host host, PhpIni ini) throws IOException {
 		this.php_ini = new WeakReference<PhpIni>(ini);
 		
-		host.saveText(build_path+"/php.ini", ini.toString());
+		host.saveText(getDefaultPhpIniPath(host), ini.toString());
 		
 		if (!host.isWindows()) {
 			host.saveText("/etc/php/cli/php.ini", ini.toString());

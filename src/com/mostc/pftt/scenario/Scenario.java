@@ -1,5 +1,8 @@
 package com.mostc.pftt.scenario;
 
+import com.mostc.pftt.host.Host;
+import com.mostc.pftt.model.phpt.PhpBuild;
+
 /** Scenario to test PHP under.
  * 
  * Often a whole set of Scenarios (@see ScenarioSet) are used together.
@@ -23,6 +26,10 @@ public abstract class Scenario {
 	public abstract boolean rejectOther(Scenario o);
 	public abstract String getName();
 	public abstract boolean isImplemented();
+	
+	public boolean isSupported(Host host, PhpBuild build) {
+		return true;
+	}
 	
 	@Override
 	public String toString() {
@@ -48,8 +55,8 @@ public abstract class Scenario {
 				},
 				// SAPIs
 				new Scenario[]{
-				new CLIScenario(),
-				new BuiltinWWWScenario(),
+				// TODO new CLIScenario(),
+				new BuiltinWebServerScenario(),
 				new ApacheModPHPScenario(),
 				new IISExpressFastCGIScenario(),
 				new IISStandardFastCGIScenario()
@@ -83,4 +90,4 @@ public abstract class Scenario {
 			};
 	}
 	
-}
+} // end public abstract class Scenario

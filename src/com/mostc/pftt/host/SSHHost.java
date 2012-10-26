@@ -189,4 +189,17 @@ public class SSHHost extends RemoteHost {
 		return null;
 	}
 
+	@Override
+	public ExecHandle execThread(String commandline, Map<String, String> env,
+			String chdir, byte[] stdin_data) throws Exception {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public String getAddress() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 }

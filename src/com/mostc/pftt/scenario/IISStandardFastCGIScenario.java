@@ -18,4 +18,9 @@ public class IISStandardFastCGIScenario extends AbstractIISFastCGIScenario {
 		return false;
 	}
 
+	@Override
+	public boolean isExpress() {
+		return false;
+	}
+
 }

@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.model.phpt.PhpBuild;
 
 /** A Set of Scenarios to test PHP under.
  * 
@@ -58,11 +59,15 @@ public class ScenarioSet extends ArrayList<Scenario> {
 	/** determines if this set of scenarios can be executed on the given host
 	 * 
 	 * @param host
+	 * @param build
 	 * @return
 	 */
-	public boolean isSupported(Host host) {
-		// TODO
-		return false;
+	public boolean isSupported(Host host, PhpBuild build) {
+		for (Scenario s :this) {
+			if (!s.isSupported(host, build))
+				return false;
+		}
+		return true;
 	}
 	
 	@Override

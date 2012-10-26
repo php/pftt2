@@ -129,7 +129,7 @@ public class PfttMain {
 			show_gui("phpt_all", gui);
 		}
 				
-		test_pack_runner.run_test_list(test_cases);
+		test_pack_runner.runTestList(test_cases);
 		
 		tmgr.close();
 		
@@ -146,7 +146,7 @@ public class PfttMain {
 			System.err.println("                  will generate an FBC report comparing the builds");
 			System.err.println();
 		} else {
-			show_report(new FBCReportGen(base_telem, test_telem));
+			// TODO temp show_report(new FBCReportGen(base_telem, test_telem));
 		}
 	}
 	
@@ -175,7 +175,7 @@ public class PfttMain {
 			show_gui("phpt_named", gui);
 		}
 			
-		test_pack_runner.run_test_list(test_cases);
+		test_pack_runner.runTestList(test_cases);
 		
 		tmgr.close();
 		

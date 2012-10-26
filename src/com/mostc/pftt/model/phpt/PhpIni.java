@@ -10,6 +10,7 @@ import javax.annotation.Nullable;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.LocalHost;
+import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.util.StringUtil;
 
 /** A PHP INI is the configuration for PHP.
@@ -25,7 +26,7 @@ import com.mostc.pftt.util.StringUtil;
  *
  */
 
-public class PhpIni {
+public class PhpIni extends TestCaseGroupKey {
 	// directives
 	public static final String INCLUDE_PATH = "include_path";
 	public static final String EXTENSION = "extension";
@@ -136,7 +137,7 @@ public class PhpIni {
 	//
 	private HashMap<String, ArrayList<String>> ini_map;
 	private WeakReference<PhpIni> ext_ini;
-	private WeakReference<String> ini_str;
+	private WeakReference<String> ini_str, cli_arg;
 	
 	public PhpIni() {
 		ini_map = new HashMap<String, ArrayList<String>>();
@@ -241,7 +242,7 @@ public class PhpIni {
 	public void replaceAll(PhpIni ini) {
 		this.ini_map.putAll(ini.ini_map);
 		if (ini.countDirectives() > 0)
-			this.ini_str = null;
+			this.cli_arg = this.ini_str = null;
 	}
 	
 	/** appends all values from all directives from the given PhpIni to this PhpIni
@@ -291,7 +292,7 @@ public class PhpIni {
 		ArrayList<String> values = new ArrayList<String>(1);
 		values.add(value);
 		ini_map.put(directive, values);
-		ini_str = null;
+		cli_arg = ini_str = null;
 	}
 
 	public void putMulti(String directive, int value) {
@@ -320,7 +321,7 @@ public class PhpIni {
 	
 	public void remove(String directive) {
 		ini_map.remove(directive);
-		ini_str = null;
+		cli_arg = ini_str = null;
 	}
 	
 	@Nullable
@@ -511,12 +512,19 @@ public class PhpIni {
 		return ext_ini;
 	}
 
-	/**
+	/** generates -d command line arguments to pass these INI directives to php.exe or php-cgi.exe
 	 * 
 	 * @param host
 	 * @return
 	 */
 	public String toCliArgString(Host host) {
+		//
+		if (cli_arg!=null) {
+			String cli_arg_str = cli_arg.get();
+			if (cli_arg_str!=null)
+				return cli_arg_str;
+		}
+		//
 		StringBuilder sb = new StringBuilder(256);
 		for ( String directive : getDirectives()) {
 			String value = get(directive);
@@ -537,8 +545,10 @@ public class PhpIni {
 			sb.append(value);
 			sb.append("\"");
 		}
-		return sb.toString();
-	}
+		String cli_arg_str = sb.toString();
+		cli_arg = new WeakReference<String>(cli_arg_str);
+		return cli_arg_str;
+	} // end public String toCliArgString
 	static final Pattern PAT_bs = Pattern.compile("\"");
 	static final Pattern PAT_amp = Pattern.compile("\\&");
 	static final Pattern PAT_pipe = Pattern.compile("\\|");

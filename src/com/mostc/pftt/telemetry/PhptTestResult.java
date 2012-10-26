@@ -17,6 +17,17 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 
+/** result of running a PhptTestCase
+ * 
+ * the status of PhptTestCase is determined by:
+ * -executing SKIPIF section(optional)
+ * -comparing the actual and EXPECT, EXPECTF or EXPECTREGEX sections
+ * -certain sections(ENV, STDIN) if present, are skipped for HTTP testing
+ * 
+ * @author Matt Ficken
+ *
+ */
+
 public class PhptTestResult {
 	public final Host host;
 	/** the result of the test case */
@@ -45,9 +56,17 @@ public class PhptTestResult {
 	/** the difference (as string) between the actual and expected output */
 	@Nullable
 	public final String diff_str;
+	protected final String sapi_output;
 	
 	public PhptTestResult(Host host, EPhptTestStatus status, PhptTestCase test_case, String actual, String[] actual_lines, String[] expected_lines, Charset actual_cs, Map<String,String> env, String[] cmd_array, byte[] stdin_data, String shell_script, Diff<String> diff, String expectf_output, String preoverride_actual) {
+		this(host, status, test_case, actual, actual_lines, expected_lines, actual_cs, env, cmd_array, stdin_data, shell_script, diff, expectf_output, preoverride_actual, null);
+	}
+	
+	public PhptTestResult(Host host, EPhptTestStatus status, PhptTestCase test_case, String actual, String[] actual_lines, String[] expected_lines, Charset actual_cs, Map<String,String> env, String[] cmd_array, byte[] stdin_data, String shell_script, Diff<String> diff, String expectf_output, String preoverride_actual, String sapi_output) {
 		actual = (""+actual_cs)+"\n"+actual; // TODO
+		
+		this.sapi_output = sapi_output;
+		
 		this.host = host;
 		this.status = status;
 		this.test_case = test_case;
@@ -64,7 +83,12 @@ public class PhptTestResult {
 			this.diff_str = toString(actual_lines, diff, expected_lines);
 		else
 			this.diff_str = null;
-	}	
+	}
+	
+	public String getSAPIOutput() {
+		// TODO should store this once for all test cases run under the same instance of a SAPI
+		return sapi_output;
+	}
 	
 	public void write(File telem_dir) throws IOException {
 		if (status==EPhptTestStatus.FAIL) {

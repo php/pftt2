@@ -32,26 +32,28 @@ import com.mostc.pftt.runner.PhptTestPackRunner;
 import com.mostc.pftt.runner.AbstractTestPackRunner.ETestPackRunnerState;
 import com.mostc.pftt.telemetry.PhptTelemetry;
 import com.mostc.pftt.telemetry.PhptTestResult;
+import com.mostc.pftt.util.StringUtil;
 
 import se.datadosen.component.RiverLayout;
 
+@SuppressWarnings("serial")
 public class PhptHostTab extends JSplitPane {
-	JPanel panel, button_panel;
-	JProgressBar progress_bar, pass_bar;
-	JButton stop_button, prev_file_button, prev_button, next_file_button, next_button, to_actual_button, to_expect_button, ignore_button, skip_button, pass_button;
-	JLabel pass_label, total_label, fail_label, xfail_label, xfail_works_label, skip_label, xskip_label, bork_label, unsupported_label, exceptions_label;
-	JMenuBar jmb;
-	JMenu options_menu, status_list_menu;
-	JRadioButtonMenuItem list_fail_rb;
-	ExpectedActualDiffPHPTDisplay eat_display;
-	JCheckBoxMenuItem host_console_cb;
-	JSplitPane jsp;
-	DefaultListModel fail_list_model,  xfail_list_model, xfail_works_list_model, xskip_list_model, skip_list_model, pass_list_model, bork_list_model, unsupported_list_model, exceptions_list_model;
-	JList test_list;
-	JScrollPane test_list_jsp;
-	ConsoleTextEditor host_console;
-	Host host;
-	JRadioButtonMenuItem list_xfail_rb, list_xfail_works_rb, list_skip_rb, list_xskip_rb, list_pass_rb, list_bork_rb, list_unsupported_rb, list_exceptions_rb;
+	protected JPanel panel, button_panel;
+	protected JProgressBar progress_bar, pass_bar;
+	protected JButton stop_button, prev_file_button, prev_button, next_file_button, next_button, to_actual_button, to_expect_button, ignore_button, skip_button, pass_button;
+	protected JLabel pass_label, total_label, fail_label, crash_label, xfail_label, xfail_works_label, skip_label, xskip_label, bork_label, unsupported_label, exceptions_label;
+	protected JMenuBar jmb;
+	protected JMenu options_menu, status_list_menu;
+	protected JRadioButtonMenuItem list_fail_rb;
+	protected ExpectedActualDiffPHPTDisplay eat_display;
+	protected JCheckBoxMenuItem host_console_cb;
+	protected JSplitPane jsp;
+	protected DefaultListModel fail_list_model, crash_list_model, xfail_list_model, xfail_works_list_model, xskip_list_model, skip_list_model, pass_list_model, bork_list_model, unsupported_list_model, exceptions_list_model;
+	protected JList test_list;
+	protected JScrollPane test_list_jsp;
+	protected ConsoleTextEditor host_console;
+	protected Host host;
+	protected JRadioButtonMenuItem list_xfail_rb, list_crash_rb, list_xfail_works_rb, list_skip_rb, list_xskip_rb, list_pass_rb, list_bork_rb, list_unsupported_rb, list_exceptions_rb;
 	
 	public PhptHostTab(Host host, final PhptTestPackRunner phpt_test_pack_runner) {
 		super(JSplitPane.VERTICAL_SPLIT);
@@ -63,6 +65,7 @@ public class PhptHostTab extends JSplitPane {
 		host_console.setVisible(false);
 		
 		fail_list_model = new DefaultListModel();
+		crash_list_model = new DefaultListModel();
 		xfail_list_model  = new DefaultListModel();
 		xfail_works_list_model = new DefaultListModel();
 		xskip_list_model = new DefaultListModel();
@@ -108,6 +111,8 @@ public class PhptHostTab extends JSplitPane {
 		panel.add(unsupported_label = new JLabel("0"));
 		panel.add(new JLabel("Exceptions:"));
 		panel.add(exceptions_label = new JLabel("0"));
+		panel.add(new JLabel("Crashes:"));
+		panel.add(crash_label = new JLabel("0"));
   
 		///////////////
 		
@@ -203,12 +208,18 @@ public class PhptHostTab extends JSplitPane {
 					showList(unsupported_list_model); 
 			} });
 		list_button_group.add(list_unsupported_rb);
-		status_list_menu.add(list_exceptions_rb = new JRadioButtonMenuItem("Exceptions"));
+		status_list_menu.add(list_exceptions_rb = new JRadioButtonMenuItem("Internal Exceptions"));
 		list_exceptions_rb.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent e) { 
 				if (list_exceptions_rb.isSelected())
 					showList(exceptions_list_model); 
 			} });
 		list_button_group.add(list_exceptions_rb);
+		status_list_menu.add(list_crash_rb = new JRadioButtonMenuItem("Crash"));
+		list_crash_rb.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent e) { 
+				if (list_crash_rb.isSelected())
+					showList(crash_list_model); 
+			} });
+		list_button_group.add(list_crash_rb);
 		
 		options_menu.add(host_console_cb = new JCheckBoxMenuItem("Host Console"));
 		host_console_cb.addActionListener(new ActionListener() {
@@ -279,12 +290,20 @@ public class PhptHostTab extends JSplitPane {
 		jsp.setDividerLocation(0.75d);
 	}
 	
-	protected int pass, fail, xfail, xfail_works, skip, xskip, bork, unsupported, exceptions; // XXX duplicates functionality from PhptTelemetry
+	protected int crash, pass, fail, xfail, xfail_works, skip, xskip, bork, unsupported, exceptions; // XXX duplicates functionality from PhptTelemetry
 	
 	public void showResult(final int total, final int completed, final PhptTestResult result) {
 		SwingUtilities.invokeLater(new Runnable() {
 				public void run() {
 					progress_bar.setMaximum(total);
+					
+					//
+					if (StringUtil.isNotEmpty(result.getSAPIOutput())) {
+						crash++;
+						crash_label.setText(Integer.toString(crash));
+						crash_list_model.addElement(result);
+					}
+					//
 					
 					switch(result.status) {
 					case FAIL:

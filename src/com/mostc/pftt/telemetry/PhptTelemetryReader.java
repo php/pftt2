@@ -98,7 +98,7 @@ public class PhptTelemetryReader extends PhptTelemetry {
 			return tally.unsupported;
 		case BORK:
 			return tally.bork;
-		case EXCEPTION:
+		case INTERNAL_EXCEPTION:
 			return tally.exception;
 		}
 		return 0;

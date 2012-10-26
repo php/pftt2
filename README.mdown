@@ -23,6 +23,7 @@ BSD
 ### Important Classes
 
  - [CliPhptTestCaseRunner](doc/apidoc/com/mostc/pftt/runner/CliPhptTestCaseRunner.html) - Executes a single PHPT Test Case (using the CLI SAPI) and evaluates
+ - [HttpTestCaseRunner](doc/apidoc/com/mostc/pftt/runner/HttpTestCaseRunner.html) - Executes a single PHPT Test Case against a PHP build running under a Web Server (Builtin, IIS, Apache)
  - [Host](doc/apidoc/com/mostc/pftt/host/Host.html) - Abstracts host management so client code doesn't need to care if host is local or remote(ssh)
  - [ScenarioSet](doc/apidoc/com/mostc/pftt/scenario/ScenarioSet.html) - Models 90 sets of different [Scenarios](apidoc/com/mostc/pftt/scenario/Scenario.html) to test PHP in
  - [PhptTestCase](doc/apidoc/com/mostc/pftt/model/phpt/PhptTestCase.html) - Models a PHPT Test case

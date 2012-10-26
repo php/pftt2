@@ -518,8 +518,11 @@ public class PhptTestCase extends TestCase {
 	/** returns if the string matches the name of this test
 	 * 
 	 * the name should use / only not \\
+	 * 
+	 * test case names are normalized to only use / not \\
 	 *  
 	 * @param o
+	 * @see #getName
 	 * @return
 	 */
 	public boolean isNamed(String o) {

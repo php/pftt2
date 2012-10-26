@@ -182,6 +182,9 @@ final class WindowsSnapshotDownloadUtil {
 		
 		for ( def link : links )
 			revisions.add(link.text());
+			
+		// critical to getting the newest revision first
+		Collections.reverse(revisions);
 					
 		ArrayList<URL> urls = new ArrayList<URL>(revisions.size());
 		for ( def revision : revisions )

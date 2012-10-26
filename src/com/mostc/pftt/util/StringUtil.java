@@ -204,6 +204,10 @@ public final class StringUtil {
 		
 		return out;
 	}
+	
+	public static int hashCode(String a) {
+		return a == null ? 0 : a.hashCode();
+	}
 
 	private StringUtil() {}
 	

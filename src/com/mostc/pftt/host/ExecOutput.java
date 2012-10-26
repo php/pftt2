@@ -29,14 +29,14 @@ public class ExecOutput {
 	public boolean isEmpty() {
 		return StringUtil.isEmpty(output);
 	}
-	public boolean isCrash() {
+	public boolean isCrashed() {
 		return exit_code != 0;
 	}
 	public ExecOutput printOutputIfCrash() {
 		return printOutputIfCrash(System.err);
 	}
 	public ExecOutput printOutputIfCrash(PrintStream ps) {
-		if (isCrash())
+		if (isCrashed())
 			ps.println(output);
 		return this;
 	}

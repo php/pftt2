@@ -8,8 +8,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.charset.Charset;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -111,32 +114,28 @@ public class LocalHost extends Host {
 		return exec(commandline, timeout, env, stdin, charset, chdir, null, NO_TIMEOUT);
 	}
 	@Override
-	public ExecOutput exec(String commandline, int timeout, Map<String,String> env, byte[] stdin, Charset charset, String chdir, TestPackRunnerThread thread, int thread_slow_sec) throws Exception {
-		HashMap<String,String> bin_env = new HashMap<String,String>();
-		if (env!=null) {
-			for(String key : env.keySet()) {
-				String value = env.get(key);
-				bin_env.put(key, ""+value);
-			}
-		}
-		
+	public LocalExecHandle execThread(String commandline, Map<String,String> env, String chdir, byte[] stdin_data) throws Exception {
+		return exec_impl(splitCmdString(commandline), env, chdir, NO_TIMEOUT, stdin_data);
+	}
+	@Override
+	public ExecOutput exec(String commandline, int timeout, Map<String,String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread thread, int thread_slow_sec) throws Exception {
 		ThreadSlowTask task = null;
 		if (thread!=null && thread_slow_sec>NO_TIMEOUT) {
 			task = new ThreadSlowTask(thread);
 			timer.schedule(task, thread_slow_sec * 1000);
 		}
 
-		LocalExecHandle eh = exec_impl(splitCmdString(commandline), bin_env, chdir, timeout, stdin); 
+		LocalExecHandle eh = exec_impl(splitCmdString(commandline), env, chdir, timeout, stdin_data); 
 			
-		Object[] ret = eh.run_read_streams(charset);
+		eh.run(charset);
 		
 		if (task!=null)
 			task.cancel();
 		
 		ExecOutput out = new ExecOutput();
-		out.output = (String) ret[0];
+		out.output = eh.getOutput();
 		out.charset = eh.charset;
-		out.exit_code = eh.process.exitValue();
+		out.exit_code = eh.getExitCode();
 		
 		return out;	
 	}
@@ -186,13 +185,14 @@ public class LocalHost extends Host {
 		return System.getProperty("user.name");
 	}
 	
-	public static class LocalExecHandle {
+	public static class LocalExecHandle extends ExecHandle {
 		protected Process process;
 		protected OutputStream stdin;
 		protected InputStream stdout, stderr;
 		protected ExitMonitorTask task;
 		protected String cmdline;
 		protected Charset charset;
+		protected StringBuilder output_sb;
 		
 		public LocalExecHandle(Process process, OutputStream stdin, InputStream stdout, InputStream stderr, ExitMonitorTask task, String cmdline) {
 			this.process = process;
@@ -202,7 +202,18 @@ public class LocalHost extends Host {
 			this.task = task;
 			this.cmdline = cmdline;
 		}
+		
+		@Override
+		public boolean isRunning() {
+			try {
+				process.exitValue();
+				return false;
+			} catch ( Exception ex ) {
+				return true;
+			}
+		}
 
+		@Override
 		public void close() {
 			for ( int i=0 ; i < 10 ; i++ ) {
 				try {
@@ -213,26 +224,25 @@ public class LocalHost extends Host {
 			}
 		}
 		
-		public Object[] run_read_streams(Charset charset) throws IOException, InterruptedException {
-			String o = exec_copy_lines(stdout, charset);
-		    String e = exec_copy_lines(stderr, null);
-		    
-		    int w = process.waitFor();
-		    
-		    try {
-		    	process.destroy();
-		    } catch ( Exception ex ) {
-		    	
-		    }
-		    if (task!=null)
-		    	task.cancel();
-		    
-		    return new Object[]{o, e, w};
+		protected void run(Charset charset) throws IOException, InterruptedException {
+			output_sb = new StringBuilder(1024);
+			exec_copy_lines(output_sb, stdout, charset);
+			//
+			// ignores STDERR
+			//exec_copy_lines(stderr, null);
+			
+			int w = process.waitFor();
+			
+			try {
+				process.destroy();
+			} catch ( Exception ex ) {
+			
+			}
+			if (task!=null)
+				task.cancel();
 		}
 				
-		protected String exec_copy_lines(InputStream in, Charset charset) throws IOException {
-			StringBuilder sb = new StringBuilder(4096);
-			
+		protected void exec_copy_lines(StringBuilder sb, InputStream in, Charset charset) throws IOException {
 			DefaultCharsetDeciderDecoder d = charset == null ? null : PhptTestCase.newCharsetDeciderDecoder();
 			ByLineReader reader = charset == null ? new NoCharsetByLineReader(in) : new MultiCharsetByLineReader(in, d);
 			String line;
@@ -252,8 +262,26 @@ public class LocalHost extends Host {
 			
 			if (reader instanceof AbstractDetectingCharsetReader)
 				this.charset = ((AbstractDetectingCharsetReader)reader).cs;// TODO d.getCommonCharset();
-			
-			return sb.toString();
+		}
+
+		@Override
+		public boolean isCrashed() {
+			return getExitCode() != 0;
+		}
+
+		@Override
+		public String getOutput() {
+			StringBuilder sb = output_sb;
+			return sb == null ? "" : sb.toString();
+		}
+
+		@Override
+		public int getExitCode() {
+			try {
+				return process.exitValue();
+			} catch ( Exception ex ) {
+				return 0;
+			}
 		}
 	} // end public static class LocalExecHandle
 	
@@ -309,8 +337,8 @@ public class LocalHost extends Host {
 		try {
 			process = builder.start();
 		} catch ( IOException ex ) {
-			// randomly sometimes on Linux, get this problem ... try again
 			if (ex.getMessage().contains("file busy")) {
+				// randomly sometimes on Linux, get this problem ... wait and try again
 				Thread.sleep(100);
 				process = builder.start();
 			} else {
@@ -473,5 +501,33 @@ public class LocalHost extends Host {
 	public String getOSNameLong() {
 		return System.getProperty("os.name");
 	}
+
+	@Override
+	public String getAddress() {
+		try {
+			Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+			Enumeration<InetAddress> addrs;
+			NetworkInterface ni;
+			InetAddress addr;
+			String addr_str;
+			while (interfaces.hasMoreElements()) {
+				ni = interfaces.nextElement();
+				addrs = ni.getInetAddresses();
+				while (addrs.hasMoreElements()) {
+					addr = addrs.nextElement();
+					addr_str = addr.getHostAddress();
+					if (addr_str.equals("127.0.0.1"))
+						continue;
+					if (addr_str.split("\\.").length==4)
+						// IPv4 address
+						return addr_str;
+				}
+			}
+		} catch (SocketException ex) {
+			ex.printStackTrace();
+		}
+		// no network interfaces
+		return null;
+	} // end public String getAddress
 	
 } // end public class Host

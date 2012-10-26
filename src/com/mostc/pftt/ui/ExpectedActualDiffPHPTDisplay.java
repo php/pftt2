@@ -36,6 +36,7 @@ import com.mostc.pftt.util.StringUtil;
 
 import se.datadosen.component.RiverLayout;
 
+@SuppressWarnings("serial")
 public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 	protected JScrollPane horizontal_jsp, vertical_jsp;
 	protected JPanel horizontal_panel, horizontal_button_panel, vertical_panel;
@@ -44,7 +45,7 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 	protected JTable env_table;
 	protected DefaultListModel cmd_array_list_model;
 	protected JList cmd_array_list;
-	protected JTextArea stdin_data_textarea, shell_script_textarea, expectf_textarea, pre_override_textarea;
+	protected JTextArea stdin_data_textarea, shell_script_textarea, expectf_textarea, pre_override_textarea, sapi_output_textarea;
 	protected PhptTestResult test;
 			
 	public ExpectedActualDiffPHPTDisplay() {
@@ -74,6 +75,8 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 		expectf_textarea.setToolTipText("EXPECTF section after regular expression patterns are added");
 		pre_override_textarea = new JTextArea();
 		pre_override_textarea.setToolTipText("Actual test output before any OS specific overrides applied");
+		sapi_output_textarea = new JTextArea();
+		sapi_output_textarea.setToolTipText("Output from SAPI - did web server crash? etc...");
 		
 		horizontal_button_panel.add(actual_display.button_panel);
 		horizontal_button_panel.add(expected_display.button_panel);
@@ -89,7 +92,9 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 		vertical_panel.add(expectf_textarea);
 		vertical_panel.add(pre_override_textarea);
 		
-		JPanel prepared_panel = new JPanel(new GridLayout(4, 1, 2, 2));
+		
+		JPanel prepared_panel = new JPanel(new GridLayout(5, 1, 2, 2));
+		vertical_panel.add(new JScrollPane(sapi_output_textarea));
 		prepared_panel.add(new JScrollPane(stdin_data_textarea = new JTextArea()));
 		stdin_data_textarea.setLineWrap(true);
 		prepared_panel.add(new JScrollPane(shell_script_textarea = new JTextArea()));
@@ -141,6 +146,10 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 		diff_display.showFile(test.test_case, test.diff_str==null?"":test.diff_str);
 		expectf_textarea.setText(test.expectf_output==null?"":test.expectf_output);
 		pre_override_textarea.setText(test.preoverride_actual==null?"":test.preoverride_actual);
+		//
+		String sapi_output = test.getSAPIOutput();
+		sapi_output_textarea.setText(sapi_output==null?"":sapi_output);
+		//
 		
 		SwingUtilities.invokeLater(new Runnable() {
 				public void run() {

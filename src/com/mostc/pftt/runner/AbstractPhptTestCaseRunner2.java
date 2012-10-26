@@ -2,11 +2,8 @@ package com.mostc.pftt.runner;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.regex.Pattern;
 import java.util.zip.Deflater;
@@ -14,9 +11,7 @@ import java.util.zip.DeflaterOutputStream;
 
 import org.incava.util.diff.Diff;
 
-import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.Host;
-import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.phpt.EPhptSection;
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
 import com.mostc.pftt.model.phpt.PhpBuild;
@@ -36,7 +31,8 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	protected final Host host;
 	protected final PhpBuild build;
 	protected final PhptTestPack test_pack;
-	protected final PhptTestCase test_case;	
+	protected final PhptTestCase test_case;
+	// TODO shift all ENV handling to CliPhptTestCaseRunner
 	protected HashMap<String,String> env;
 	protected final ScenarioSet scenario_set;
 	
@@ -52,53 +48,46 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	protected String temp_dir, test_dir;
 	protected String main_file_name;
 	protected String skip_cmd;
-	protected ExecOutput output;
 	protected String test_file;
 	protected String test_skipif;
 	protected String test_clean;
-	protected String tmp_post;
-	protected PhpIni ini;
+	protected String tmp_post, content_type;
+	protected final PhpIni ini;
 	
+	/** runs the test case and reports the results to the PhptTelemetryManager
+	 * 
+	 * @see #willSkip - called by PhptTestPackRunner before #runTest is called
+	 * 
+	 */
 	@Override
 	public void runTest() throws IOException, Exception, Throwable {
-		
 		// Default ini settings
-		ini = PhpIni.createDefaultIniCopy(host);
+//		ini = PhpIni.createDefaultIniCopy(host);
 		if (!prepare())
 			return;
-
-		if (!host.isWindows() && test_case.getName().contains("-win32")) {
-			// skip windows specific tests if host is not windows
-			
-			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "OS not supported", null, null, null, null, null, null, null, null, null, null));
-			
-			return;
-		} else if (test_case.isNamed("ext/standard/tests/php_ini_loaded_file.phpt")||test_case.isNamed("tests/run-test/test010.phpt")||test_case.isNamed("ext/standard/tests/misc/time_sleep_until_basic.phpt") || test_case.getName().contains("session") || test_case.isNamed("ext/standard/tests/misc/time_nanosleep_basic.phpt")) {
-			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null));
-			
-			return;
-		}
 		
-		// #prepare() loads --INI-- section from PHPT
-		if (test_case.isExtensionTest() && !build.isExtensionEnabled(host, ini, test_case.getExtensionName())) {
-			// if extension-under-test is not loaded, don't bother running test since it'll just be skipped (or false fail)
-			
-			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.SKIP, test_case, "Extension not loaded", null, null, null, null, null, null, null, null, null, null));
-			
-			return;
-		}
-		
-		this.executeSkipIf();
 		// XXX check if prepare() has borked the test -> don't bother running SKIPIF leads to test_skipif=null -> exception
-		if (!evalSkipIf()) {
-			this.prepareTest();
-			this.executeTest();
-			this.evalTest();
-			this.executeClean();
+		
+		notifyStart();
+		
+		try {
+			if (!evalSkipIf(executeSkipIf())) {
+				prepareTest();
+				String test_output = executeTest();
+				notifyEnd(); // do ASAP
+				evalTest(test_output, null); // TODO null
+				executeClean();
+			}
+		} finally {
+			// ok to call twice
+			notifyEnd();
 		}
 	}
+	protected void notifyStart() {}
+	protected void notifyEnd() {}
 	
-	public AbstractPhptTestCaseRunner2(PhptThread thread, PhptTestCase test_case, PhptTelemetryWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptTestPack test_pack) {
+	public AbstractPhptTestCaseRunner2(PhpIni ini, PhptThread thread, PhptTestCase test_case, PhptTelemetryWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptTestPack test_pack) {
+		this.ini = ini;
 		this.thread = thread;
 		this.test_case = test_case;
 		this.twriter = twriter;
@@ -110,9 +99,14 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		env = new HashMap<String,String>();
 	}
 	
-	public boolean prepare() throws IOException, Exception {
-		//tested_file = test_case.name;
-	
+	/** prepares to execute the test case up to executing the SKIPIF section
+	 * 
+	 * @see #prepareTest
+	 * @return FALSE - if preparation fails so test can't be executed
+	 * @throws IOException
+	 * @throws Exception
+	 */
+	protected boolean prepare() throws IOException, Exception {
 		if (test_case.hasBorkInfo()) {
 			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.BORK, test_case, test_case.getBorkInfo(), null, null, null, null, null, null, null, null, null, null));
 			
@@ -125,11 +119,10 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			return false;
 		}
 	
-		//tested = test_case.getTrim(EPHPTSection.TEST);
-		
 		selected_php_exe = build.getPhpExe();
 		
 		/* For GET/POST tests, check if cgi sapi is available and if it is, use it. */
+		// TODO php-cgi not required for testing with web server - can't xskip
 		if (test_case.containsAnySection(EPhptSection.REQUEST, EPhptSection.GET, EPhptSection.POST, EPhptSection.PUT, EPhptSection.POST_RAW, EPhptSection.COOKIE, EPhptSection.EXPECTHEADERS)) {
 			if (build.hasPhpCgiExe()) {
 				selected_php_exe = build.getPhpCgiExe() + " -C ";
@@ -185,13 +178,11 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		
 		// Any special ini settings
 		// these may overwrite the test defaults...
-		if (test_case.containsSection(EPhptSection.INI)) {
-			ini.replaceAll(test_case.getINI(test_pack, host));
-		}
-	
-		// ask the scenario to prepare for the test (configure for database, file server, etc...)
+//		if (test_case.containsSection(EPhptSection.INI)) {
+//			ini.replaceAll(test_case.getINI(test_pack, host));
+//		}
+		
 		// TODO scenario.prepare(null, test_file, env, ini_map);
-		// TODO scenario_set.prepare();
 		
 		// read ENV vars from test, from its parent (if a test redirected to this test), and merge from scenario
 		env = test_case.getENV(env, host, build);
@@ -201,11 +192,6 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		if (build.hasPhpCgiExe())
 			env.put(ENV_TEST_PHP_CGI_EXECUTABLE, build.getPhpCgiExe());
 		
-	
-		// setup the include path in the INI Configuration
-		ini.addToIncludePath(host, Host.dirname(test_case.getName()));
-		ini.addToIncludePath(host, test_pack.getTestPack()); // TODO ?
-		 
 		//
 		ini_settings = ini.toCliArgString(host);
 				
@@ -213,14 +199,26 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	} // end boolean prepare
 	static final Pattern PAT_bs = Pattern.compile("\"");
 	
-	public abstract void executeSkipIf() throws Exception;
+	/** executes SKIPIF section and returns output
+	 * 
+	 * @return
+	 * @throws Exception
+	 */
+	protected abstract String executeSkipIf() throws Exception;
 	
-	public boolean evalSkipIf() throws IOException {
+	/** evaluates the execution output of the SKIPIF section to decide if test should be
+	 * skipped. reports result to PhptTelemetryManager.
+	 *  
+	 * @param output
+	 * @return FALSE - skip test
+	 * @throws IOException
+	 */
+	public boolean evalSkipIf(String output) throws IOException {
 		if (skip_cmd==null)
 			// execute this test, don't skip it
 			return false;
 			
-		String lc_output = output.output.toLowerCase();
+		String lc_output = output.toLowerCase();
 		if (lc_output.contains("skip")) {
 			// test is to be skipped
 						
@@ -228,15 +226,15 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			if (host.isWindows()) {
 				if ( (lc_output.contains("only")&&lc_output.contains("linux"))||(lc_output.contains("not")&&lc_output.contains("windows")))
 					// can"t run this test on this OS
-					twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, output.output, null, null, null, null, null, null, null, null, null, null));
+					twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, output, null, null, null, null, null, null, null, null, null, null));
 				else
-					twriter.addResult(new PhptTestResult(host, EPhptTestStatus.SKIP, test_case, output.output, null, null, null, null, null, null, null, null, null, null));
+					twriter.addResult(new PhptTestResult(host, EPhptTestStatus.SKIP, test_case, output, null, null, null, null, null, null, null, null, null, null));
 			} else {
 				if ( (lc_output.contains("only")&&lc_output.contains("windows"))||(lc_output.contains("not")&&lc_output.contains("linux")))
 					// can"t run this test on this OS
-					twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, output.output, null, null, null, null, null, null, null, null, null, null));
+					twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, output, null, null, null, null, null, null, null, null, null, null));
 				else
-					twriter.addResult(new PhptTestResult(host, EPhptTestStatus.SKIP, test_case, output.output, null, null, null, null, null, null, null, null, null, null));
+					twriter.addResult(new PhptTestResult(host, EPhptTestStatus.SKIP, test_case, output, null, null, null, null, null, null, null, null, null, null));
 			}
 			
 			// skip this test
@@ -248,7 +246,13 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	} // end void evalSkipIf
 	
 	static final Pattern PATTERN_CONTENT_TYPE = Pattern.compile("Content-Type:(.*)");
-	public void prepareTest() throws Exception {		
+	/** prepares to execute the test after the SKIPIF section is executed (if any)
+	 * #prepare prepares only up to that, this does the rest.
+	 * to avoid doing a full preparation for tests that will just be skipped.
+	 * 
+	 * @throws Exception
+	 */
+	protected void prepareTest() throws Exception {		
 		if (test_case.containsSection(EPhptSection.FILE_EXTERNAL)) {
 			// open external file and copy to test_file (binary, no char conversion - which could break it - often this is a PHAR file - which will be broken if charset coversion is done)
 			host.copyFile(test_pack.getTestPack()+host.dirSeparator()+Host.dirname(test_case.getName()) + "/" + test_case.get(EPhptSection.FILE_EXTERNAL), test_file);
@@ -297,16 +301,16 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 						//
 						// content type should look like this (boundary may differ):
 						// "multipart/form-data; boundary=---------------------------20896060251896012921717172737"
-						String ct = line.substring("Content-Type: ".length());
+						content_type = line.substring("Content-Type: ".length());
 
-						env.put(ENV_CONTENT_TYPE, ct);
+						env.put(ENV_CONTENT_TYPE, content_type);
 						first_ct = false;
 					} else if (first_ct) {
 						// content type may look like this:
 						// "multipart/form-data" or "application/x-www-urlencoded"
-						String ct = line.substring("Content-Type: ".length());
+						content_type = line.substring("Content-Type: ".length());
 
-						env.put(ENV_CONTENT_TYPE, ct);
+						env.put(ENV_CONTENT_TYPE, content_type);
 						first_ct = false;
 					} else {
 						request_sb.append(line);
@@ -349,7 +353,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 				if (StringUtil.isEmpty(env.get(ENV_CONTENT_TYPE))) {
 					String[] res = StringUtil.getMatches(PATTERN_CONTENT_TYPE, line, twriter);
 					if (StringUtil.isNotEmpty(res)) {
-						env.put(ENV_CONTENT_TYPE, res[1].trim());
+						env.put(ENV_CONTENT_TYPE, content_type = res[1].trim());
 						continue;
 					}
 				}
@@ -404,7 +408,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			
 			env.put(ENV_REQUEST_METHOD, "POST");
 			if (!env.containsKey(ENV_CONTENT_TYPE))
-				env.put(ENV_CONTENT_TYPE, "application/x-www-form-urlencoded");
+				env.put(ENV_CONTENT_TYPE, content_type = "application/x-www-form-urlencoded");
 			// critical: php-cgi won"t read more bytes than this (thus some input can go missing)
 			env.put(ENV_CONTENT_LENGTH, ""+content_length);
 	
@@ -424,65 +428,9 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		env.put(ENV_USE_ZEND_ALLOC, "1");
 
 		// prepare STDIN
-		String stdin_file = test_file + ".stdin";
-		if (stdin_file.startsWith(test_pack.getTestPack())) {
-			stdin_file = stdin_file.substring(test_pack.getTestPack().length());
-			if (stdin_file.startsWith("/")||stdin_file.startsWith("\\"))
-				stdin_file = stdin_file.substring(1);
-			stdin_file = twriter.telem_dir+"/"+stdin_file;
-		}
-		new File(stdin_file).getParentFile().mkdirs();
-		if (stdin_post!=null) {
-			FileOutputStream fw = new FileOutputStream(stdin_file);
-			fw.write(stdin_post);
-			fw.close();
-		}
+		prepareSTDIN();
 		
-		// useful: rm -rf `find ./ -name "*.sh"`
-		//
-		// create a .cmd (Windows batch script) or .sh (shell script) that will actually execute PHP
-		// this enables PHP to be executed like what PFTT does, but using a shell|batch script
-		shell_file = test_file + (host.isWindows() ? ".cmd" : ".sh" );
-		if (shell_file.startsWith(test_pack.getTestPack())) {
-			shell_file = shell_file.substring(test_pack.getTestPack().length());
-			if (shell_file.startsWith("/")||shell_file.startsWith("\\"))
-				shell_file = shell_file.substring(1);
-			shell_file = twriter.telem_dir+"/"+shell_file;
-		}
-		StringWriter sw = new StringWriter();
-		PrintWriter fw = new PrintWriter(sw);
-		if (host.isWindows()) {
-			fw.println("@echo off"); // critical: or output will include these commands and fail test
-		} else {
-			fw.println("#!/bin/sh");
-		}
-		fw.println("cd "+host.fixPath(test_dir));
-		for ( String name : env.keySet()) {
-			String value = env.get(name);
-			if (value==null)
-				value = "";
-			else
-				value = StringUtil.replaceAll(PAT_bs, "\\\\\"", StringUtil.replaceAll(PAT_dollar, "\\\\\\$", value));
-			
-			if (host.isWindows()) {
-				if (value.contains(" "))
-					// important: on Windows, don't use " " for script variables unless you have to
-					//            the " " get passed into PHP so variables won't be read correctly
-					fw.println("set "+name+"=\""+value+"\"");
-				else
-					fw.println("set "+name+"="+value+"");
-			} else
-				fw.println("export "+name+"=\""+value+"\"");
-		}
-		fw.println(cmd);
-		fw.close();
-		shell_script = sw.toString();
-		FileWriter w = new FileWriter(shell_file);
-		fw = new PrintWriter(w);
-		fw.print(shell_script);
-		fw.flush();
-		fw.close();
-		w.close();
+		createShellScript();
 		Thread.yield();
 		
 		if (!host.isWindows()) {
@@ -494,21 +442,48 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	} // end void prepareTest
 	static final Pattern PAT_dollar = Pattern.compile("\\$");
 	
-	public abstract void executeTest() throws Exception;
+	protected abstract void createShellScript() throws IOException;
+	protected abstract void prepareSTDIN() throws IOException;
 	
-	public abstract void executeClean() throws Exception;
+	/** executes the test (the TEST section of PhptTestCase) and returns the actual output
+	 * 
+	 * @return
+	 * @throws Exception
+	 */
+	protected abstract String executeTest() throws Exception;
+	
+	/** executes CLEAN section of test to cleanup after execution
+	 * 
+	 * @throws Exception
+	 */
+	protected abstract void executeClean() throws Exception;
+	
+	/** returns output from SAPI (ex: Web Server) used to run the test,
+	 * if it crashed. if SAPI did not crash, returns null.
+	 * 
+	 * used to record crash output of a web server along with test result for
+	 * later analysis.
+	 * 
+	 * @see WebserverInstance#getSAPIOutput
+	 * @return
+	 */
+	protected abstract String getCrashedSAPIOutput();
 	
 	private boolean check() {
 		return !test_case.isNamed("ext/phar/tests/tar/phar_setsignaturealgo2.phpt");
 	}
 	
-	public void evalTest() throws Throwable {
-		if (output.exit_code!=0 && output.output.trim().length()==0) {
-			output.output = "PFTT: error: maybe crash?: php.exe exited with non-zero code: " + output.exit_code;
-		}
+	/** evaluates the output of the executed test and reports the result
+	 * 
+	 * @param output
+	 * @param charset
+	 * @throws Throwable
+	 */
+	public void evalTest(String output, Charset charset) throws Throwable {
+		String output_trim = output.trim();
 	
 		// line endings are already made consistent by Host#exec
-		String expected, output_trim, preoverride_actual = null;
+		String expected, preoverride_actual = null;
 	
 		if (test_case.containsSection(EPhptSection.EXPECTF) || test_case.containsSection(EPhptSection.EXPECTREGEX)) {
 	
@@ -520,8 +495,8 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 					
 			boolean expected_re_match;
 			
-			output.output = remove_header_from_output(output.output);
-			output_trim = output.output.trim();
+			output = remove_header_from_output(output);
+			output_trim = output.trim();
 			
 			try {
 				expected_re_match = test_case.getExpectedCompiled(host, twriter).match(output_trim); 
@@ -531,19 +506,19 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			}
 			if (expected_re_match||check()) {
 
-				twriter.addResult(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output.output, null, null, output.charset, env, LocalHost.splitCmdString(cmd), stdin_post, shell_script, null, null, null));
+				twriter.addResult(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, env, splitCmdString(), stdin_post, shell_script, null, null, null));
 						
 				return;
 			} 
 		} else if (test_case.containsSection(EPhptSection.EXPECT)) {	
 			expected = test_case.getTrim(EPhptSection.EXPECT);
 						
-			output.output = remove_header_from_output(output.output);
-			output_trim = output.output.trim();
+			output = remove_header_from_output(output);
+			output_trim = output.trim();
 	
 			if (output_trim.equals(expected)||output_trim.contains(expected)||expected.contains(output_trim)||check()) {
 				
-				twriter.addResult(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output.output, null, null, output.charset, env, LocalHost.splitCmdString(cmd), stdin_post, shell_script, null, null, null));
+				twriter.addResult(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, env, splitCmdString(), stdin_post, shell_script, null, null, null));
 						
 				return;
 			}
@@ -555,17 +530,17 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 				// compare again
 				if (output_trim.equals(expected)||output_trim.contains(expected)||expected.contains(output_trim)||(output_trim.length()>20&&expected.length()>20&&output_trim.substring(10, 20).equals(expected.substring(10, 20)))) {
 					
-					twriter.addResult(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output.output, null, null, output.charset, env, LocalHost.splitCmdString(cmd), stdin_post, shell_script, null, null, null));
+					twriter.addResult(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, env, splitCmdString(), stdin_post, shell_script, null, null, null));
 					
 					return;
 				} // end if
 			}
 		} else if (test_case.containsSection(EPhptSection.EXPECTHEADERS)) {
-			output.output = remove_header_from_output(output.output);
-			output_trim = output.output.trim();
+			output = remove_header_from_output(output);
+			output_trim = output.trim();
 			
 			if (StringUtil.isEmpty(output_trim)) {
-				twriter.addResult(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output.output, null, null, output.charset, env, LocalHost.splitCmdString(cmd), stdin_post, shell_script, null, null, null));
+				twriter.addResult(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, env, splitCmdString(), stdin_post, shell_script, null, null, null));
 				
 				return;
 			}
@@ -574,12 +549,12 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		// if here, test failed!
 
 		if (test_case.isXFail()) {
-			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XFAIL, test_case, output.output, null, null, output.charset, env, LocalHost.splitCmdString(cmd), stdin_post, shell_script, null, null, preoverride_actual));
+			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XFAIL, test_case, output, null, null, charset, env, splitCmdString(), stdin_post, shell_script, null, null, preoverride_actual));
 		} else {
 			// test is FAIL
 			
 			// generate a diff
-			String[] actual_lines = StringUtil.splitLines(output.output.trim());
+			String[] actual_lines = StringUtil.splitLines(output_trim);
 			String[] expected_lines = StringUtil.splitEqualsSign(test_case.getExpected());
 			Diff<String> diff = new Diff<String>(actual_lines, expected_lines);
 	
@@ -591,10 +566,12 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 				expectf = null;
 			}
 			
-			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.FAIL, test_case, output.output, actual_lines, expected_lines, output.charset, env, LocalHost.splitCmdString(cmd), stdin_post, shell_script, diff, expectf, preoverride_actual));
+			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.FAIL, test_case, output, actual_lines, expected_lines, charset, env, splitCmdString(), stdin_post, shell_script, diff, expectf, preoverride_actual, getCrashedSAPIOutput()));
 		}
 	} // end void evalTest
 
+	protected abstract String[] splitCmdString();
+	
 	protected static String remove_header_from_output(String output) {
 		if (!output.contains("X-Power"))
 			return output;

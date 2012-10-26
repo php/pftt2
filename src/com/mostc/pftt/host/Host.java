@@ -400,6 +400,42 @@ public abstract class Host {
 	public ExecOutput execElevated(String cmd, int timeout_sec, String chdir) throws Exception {
 		return execElevated(cmd, timeout_sec, null, null, null, chdir, null, NO_TIMEOUT);
 	}
+	public static abstract class ExecHandle {
+		public abstract void close();
+		public abstract boolean isRunning();
+		public abstract boolean isCrashed();
+		public abstract String getOutput();
+		public abstract int getExitCode();
+	}
+	public ExecHandle execThread(String commandline) throws Exception {
+		return execThread(commandline, null, null, null);
+	}
+	public ExecHandle execThread(String commandline, byte[] stdin_data) throws Exception {
+		return execThread(commandline, null, null, stdin_data);
+	}
+	public ExecHandle execThread(String commandline, String chdir) throws Exception {
+		return execThread(commandline, null, chdir, null);
+	}
+	public ExecHandle execThread(String commandline, String chdir, byte[] stdin_data) throws Exception {
+		return execThread(commandline, null, chdir, stdin_data);
+	}
+	public ExecHandle execThread(String commandline, Map<String,String> env, byte[] stdin_data) throws Exception {
+		return execThread(commandline, env, null, stdin_data);
+	}
+	public ExecHandle execThread(String commandline, Map<String,String> env, String chdir) throws Exception {
+		return execThread(commandline, env, chdir, null);
+	}
+	/** executes command, returning immediately before it ends, returning a handle to asynchronously monitor
+	 * the process.
+	 * 
+	 * @param commandline
+	 * @param env
+	 * @param chdir
+	 * @param stdin_data
+	 * @return
+	 * @throws Exception
+	 */
+	public abstract ExecHandle execThread(String commandline, Map<String,String> env, String chdir, byte[] stdin_data) throws Exception;
 	public ExecOutput exec(String cmd, int timeout_sec, Map<String,String> object, byte[] stdin_post, Charset charset) throws IllegalStateException, Exception {
 		return exec(cmd, timeout_sec, object, stdin_post, charset, (String)null);
 	}
@@ -524,12 +560,60 @@ public abstract class Host {
 		// TODO 
 	}
 	
+	/** gets a string of info about the host
+	 * 
+	 * @return
+	 * @throws Exception
+	 */
+	public String getSystemInfo() throws Exception {
+		if (isWindows())
+			return exec("systeminfo", ONE_MINUTE).output;
+		else
+			return exec("uname -a", ONE_MINUTE).output;
+	}
+	
+	/** finds path to program on host
+	 * 
+	 * @param cmd
+	 * @return
+	 * @throws Exception
+	 */
+	public String where(String cmd) throws Exception {
+		return isWindows() ? cmd("WHERE "+cmd, ONE_MINUTE).output : exec("WHICH "+cmd, ONE_MINUTE).output;
+	}
+	
+	/** returns true if command or program is found
+	 * 
+	 * if false, passing this command to #exec will result in error because program can't be found
+	 * 
+	 * @param cmd
+	 * @return
+	 */
 	public boolean hasCmd(String cmd) {
 		try {
-			return isWindows() ? cmd("WHERE "+cmd, ONE_MINUTE).isNotEmpty() : exec("WHICH "+cmd, ONE_MINUTE).isNotEmpty();
+			return StringUtil.isNotEmpty(where(cmd));
 		} catch ( Exception ex ) {
 			return false;
 		}
+	}
+	
+	/** returns an address representing this host on one of the networks its on
+	 * 
+	 * returns null if host is not on any network at all
+	 * 
+	 * @return
+	 */
+	@Nullable
+	public abstract String getAddress();
+
+	/** servers running on Windows won't accept sockets from localhost to 127.0.0.1|localhost.
+	 * 
+	 * instead have to use the ip address of one of its network interfaces (Windows doesn't have a Loopback(LO) network device)
+	 * 
+	 * @return
+	 */
+	public String getLocalhostServableAddress() {
+		return isWindows() ? getAddress() : "127.0.0.1";
 	}
 
 } // end public abstract class Host

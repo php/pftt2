@@ -4,8 +4,8 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.model.phpt.PhptTestPack;
+import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
-import com.mostc.pftt.runner.CliPhptTestCaseRunner;
 import com.mostc.pftt.runner.PhptTestPackRunner.PhptThread;
 import com.mostc.pftt.telemetry.PhptTelemetryWriter;
 
@@ -26,6 +26,7 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 	/** creates a runner to run a single PhptTestCase under this SAPI scenario
 	 * 
 	 * @param thread
+	 * @param ini
 	 * @param test_case
 	 * @param twriter
 	 * @param host
@@ -34,8 +35,13 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 	 * @param test_pack
 	 * @return
 	 */
-	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, PhptTestCase test_case, PhptTelemetryWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptTestPack test_pack) {
-		return new CliPhptTestCaseRunner(thread, test_case, twriter, host, scenario_set, build, test_pack);
+	// TODO rename ini
+	public abstract AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey ini, PhptTestCase test_case, PhptTelemetryWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptTestPack test_pack);
+
+	public abstract TestCaseGroupKey createTestGroupKey(Host host, PhpBuild build, PhptTestPack test_pack, PhptTestCase test_case);
+
+	public boolean willSkip(PhptTelemetryWriter twriter, Host host, PhpBuild build, PhptTestCase test_case) throws Exception {
+		return AbstractPhptTestCaseRunner.willSkip(twriter, host, build, test_case);
 	}
 
 }
