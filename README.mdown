@@ -108,6 +108,10 @@ Shows help info (additional commands, etc...)
 
     > pftt -help
 
+Run all PHPTs from the test-pack, running each PHPT 3 times 
+
+    > pftt -stress_each 3 phpt_all C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567
+
 ### Functional Build Comparison(FBC) Reports
 
 Run one test pass
