@@ -615,5 +615,35 @@ public abstract class Host {
 	public String getLocalhostServableAddress() {
 		return isWindows() ? getAddress() : "127.0.0.1";
 	}
+	
+	/** returns number of CPUs on this host
+	 * 
+	 * if exception, returns 1, always returns at least 1
+	 * 
+	 * @return
+	 */
+	public int getCPUCount() {
+		try {
+			if (isWindows())
+				return Integer.parseInt(getEnvValue("NUMBER_OF_PROCESSORS"));
+		
+			int proc = 0;
+			ByLineReader r = readFile("/proc/cpuinfo");
+			String line;
+			while (r.hasMoreLines()) {
+				line = r.readLine();
+				if (line==null)
+					break;
+				
+				if (line.startsWith("processor"))
+					proc++;
+			}
+			return Math.max(1, proc);
+		} catch ( Exception ex ) {
+			ex.printStackTrace();
+			
+			return 1;
+		}
+	}
 
 } // end public abstract class Host

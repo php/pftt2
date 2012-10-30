@@ -37,9 +37,6 @@ public class CLIScenario extends AbstractSAPIScenario {
 		return new CliPhptTestCaseRunner((PhpIni)ini, thread, test_case, twriter, host, scenario_set, build, test_pack);
 	}
 
-	@Override
-	public TestCaseGroupKey createTestGroupKey(Host host, PhpBuild build, PhptTestPack test_pack, PhptTestCase test_case) {
-		return AbstractPhptTestCaseRunner.createIniForTest(host, build, test_pack, test_case);
-	}
+	
 
 }

@@ -96,31 +96,55 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	 * @throws Exception
 	 */
 	protected String http_execute(String path, boolean is_test) throws Exception {
-		// "PFTT: server failed to respond at all after ONE_MINUTE. server was restarted and failed to respond at all a second time after ONE_MINUTE";
-		// "PFTT: server failed to send all of its response after ONE_MINUTE. server was restarted and failed to send all of its response a second time after ONE_MINUTE";
 		try {
-			return do_http_execute(path, is_test);
-		} catch ( IOException ex1 ) { // SocketTimeoutException or ConnectException
-			web.close();
-			// stop web server, try again
-			web = smgr.getWebServerInstance(host, build, ini, test_pack.getTestPack(), web);
+			// "PFTT: server failed to respond at all after ONE_MINUTE. server was restarted and failed to respond at all a second time after ONE_MINUTE";
+			// "PFTT: server failed to send all of its response after ONE_MINUTE. server was restarted and failed to send all of its response a second time after ONE_MINUTE";
 			try {
 				return do_http_execute(path, is_test);
-			} catch ( IOException ex2 ) { // SocketTimeoutException or ConnectException
+			} catch ( IOException ex1 ) { // SocketTimeoutException or ConnectException
 				web.close();
 				// stop web server, try again
 				web = smgr.getWebServerInstance(host, build, ini, test_pack.getTestPack(), web);
 				try {
 					return do_http_execute(path, is_test);
-				} catch ( IOException ex3 ) { // SocketTimeoutException or ConnectException
+				} catch ( IOException ex2 ) { // SocketTimeoutException or ConnectException
 					web.close();
 					// stop web server, try again
 					web = smgr.getWebServerInstance(host, build, ini, test_pack.getTestPack(), web);
-					return do_http_execute(path, is_test);
+					try {
+						return do_http_execute(path, is_test);
+					} catch ( IOException ex3 ) { // SocketTimeoutException or ConnectException
+						web.close();
+						// stop web server, try again
+						// TODO temp null
+						web = smgr.getWebServerInstance(host, build, ini, test_pack.getTestPack(), web);
+						try {
+							return do_http_execute(path, is_test);
+						} finally {
+							web.close();
+						}
+					}
 				}
 			}
+		} catch ( IOException ioe ) {
+			// wrap IOException with list of tests that are running against this web server
+			// so we can tell what test(s) may be causing server to not respond
+			
+			// TODO comment
+			
+			web.notifyCrash("", 0);
+			
+			String ex_str = "PFTT: couldn't connect to server after 4 tries (and 3 restarts), assuming crashed.\nPFTT: was trying to test (TEST section of): "+test_case.getName()+"\n"+web.getActiveTestListString();
+			
+			if (is_test) {
+				this.twriter.addResult(new PhptTestResult(host, EPhptTestStatus.EXCEPTION, test_case, ex_str, null, null, null, null, null, null, null, null, null, null, ex_str));
+				
+				return ex_str;
+			}
+			
+			throw new IOException(ex_str, ioe);
 		}
-	}
+	} // end protected String http_execute
 	
 	protected String do_http_execute(String path, boolean is_test) throws Exception {
 		// make sure a web server is running
@@ -165,8 +189,7 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		Socket socket = new Socket(http_host.getHostName(), http_host.getPort());
 		//socket.setSoTimeout(6*1000); 
 		conn.bind(socket, params);
-		conn.setSocketTimeout(2*1000);
-		// TODO support POST for some tests that do that
+		conn.setSocketTimeout(60*1000);
 		
 		//
 		path = Host.toUnixPath(path);
@@ -221,7 +244,7 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		Socket socket = new Socket(http_host.getHostName(), http_host.getPort());
 		//socket.setSoTimeout(6*1000); 
 		conn.bind(socket, params);
-		conn.setSocketTimeout(2*1000);
+		conn.setSocketTimeout(60*1000);
 		
 		//
 		path = Host.toUnixPath(path);

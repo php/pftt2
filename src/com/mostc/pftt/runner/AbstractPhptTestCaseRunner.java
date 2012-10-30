@@ -27,11 +27,14 @@ public abstract class AbstractPhptTestCaseRunner {
 	
 	public abstract void runTest() throws IOException, Exception, Throwable;
 	
+	static PhpIni _ini;
 	public static PhpIni createIniForTest(Host host, PhpBuild build, PhptTestPack test_pack, PhptTestCase test_case) {
-		PhpIni ini = PhpIni.createDefaultIniCopy(host);
-		ini.replaceAll(test_case.getINI(test_pack, host));
-		ini.addToIncludePath(host, test_pack.getTestPack());
-		return ini;
+		if (_ini!=null)
+			return _ini; // TODO
+		_ini = PhpIni.createDefaultIniCopy(host);
+		_ini.replaceAll(test_case.getINI(test_pack, host));
+		_ini.addToIncludePath(host, test_pack.getTestPack());
+		return _ini;
 	}
 	
 	/** TODO

@@ -82,14 +82,7 @@ public abstract class WebServerInstance extends SAPIInstance {
 			StringBuilder sb = new StringBuilder(1024);
 			
 			sb.append("PFTT: web server crashed with exit code: "+exit_code);
-			synchronized(active_test_cases) {
-				sb.append("PFTT: while running these tests("+active_test_cases.size()+"):\n");
-				for (PhptTestCase test_case : active_test_cases ) {
-					sb.append("PFTT: ");
-					sb.append(test_case.getName());
-					sb.append('\n');
-				}
-			}
+			getActiveTestListString(sb);
 			if (StringUtil.isEmpty(output)) {
 				sb.append("PFTT: web server returned no output when it exited.\n");
 			} else {
@@ -100,6 +93,23 @@ public abstract class WebServerInstance extends SAPIInstance {
 			sapi_output = sb.toString();
 		} // end sync
 	} // end protected void notifyCrash
+	
+	protected void getActiveTestListString(StringBuilder sb) {
+		synchronized(active_test_cases) {
+			sb.append("PFTT: while running these tests("+active_test_cases.size()+"):\n");
+			for (PhptTestCase test_case : active_test_cases ) {
+				sb.append("PFTT: ");
+				sb.append(test_case.getName());
+				sb.append('\n');
+			}
+		}
+	}
+	
+	public String getActiveTestListString() {
+		StringBuilder sb = new StringBuilder(512);
+		getActiveTestListString(sb);
+		return sb.toString();
+	}
 	
 	/** called before HTTP request made to server for given test_case
 	 * 

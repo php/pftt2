@@ -38,10 +38,20 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 	// TODO rename ini
 	public abstract AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey ini, PhptTestCase test_case, PhptTelemetryWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptTestPack test_pack);
 
-	public abstract TestCaseGroupKey createTestGroupKey(Host host, PhpBuild build, PhptTestPack test_pack, PhptTestCase test_case);
-
 	public boolean willSkip(PhptTelemetryWriter twriter, Host host, PhpBuild build, PhptTestCase test_case) throws Exception {
 		return AbstractPhptTestCaseRunner.willSkip(twriter, host, build, test_case);
+	}
+	
+	public TestCaseGroupKey createTestGroupKey(Host host, PhpBuild build, PhptTestPack test_pack, PhptTestCase test_case) {
+		return AbstractPhptTestCaseRunner.createIniForTest(host, build, test_pack, test_case);
+	}
+	
+	public void close() {
+		
+	}
+
+	public int getTestThreadCount(Host host) {
+		return 8;
 	}
 
 }

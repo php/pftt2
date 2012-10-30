@@ -43,5 +43,11 @@ public class BuiltinWebServerScenario extends AbstractWebServerScenario {
 	public boolean isImplemented() {
 		return true;
 	}
+	
+	@Override
+	public int getTestThreadCount(Host host) {
+		// XXX update this calculation from time to time as this web server's performance improves
+		return 8 * (Math.max(2, host.getCPUCount())/2);
+	}
 
 }

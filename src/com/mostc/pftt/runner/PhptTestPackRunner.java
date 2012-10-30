@@ -9,11 +9,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
+import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.model.phpt.PhptTestPack;
 import com.mostc.pftt.model.sapi.SAPIInstance;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
+import com.mostc.pftt.model.sapi.WebServerInstance;
 import com.mostc.pftt.scenario.AbstractSAPIScenario;
+import com.mostc.pftt.scenario.AbstractWebServerScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.telemetry.PhptTelemetryWriter;
 import com.mostc.pftt.util.HostEnvUtil;
@@ -28,8 +31,7 @@ import com.mostc.pftt.util.HostEnvUtil;
  */
 
 public class PhptTestPackRunner extends AbstractTestPackRunner {
-	protected static final int INIT_THREAD_COUNT = 8; // TODO 16;
-	protected static final int MAX_THREAD_COUNT = 32;
+	protected static final int MAX_THREAD_COUNT = 48;
 	protected final PhptTestPack test_pack;
 	protected final PhptTelemetryWriter twriter;
 	protected ETestPackRunnerState runner_state;
@@ -67,10 +69,8 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 	}
 	
 	public void close() {
-		for ( TestCaseGroupKey group_key : group_keys ) {
-			if (group_key instanceof SAPIInstance)
-				((SAPIInstance)group_key).close();
-		}
+		((AbstractWebServerScenario)sapi_scenario).smgr.close();
+		sapi_scenario.close();
 	}
 	
 	protected void groupTestCases(List<PhptTestCase> test_cases) throws InterruptedException {
@@ -137,17 +137,22 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 	} // end protected void groupTestCases
 	
 	protected void parallelSAPIInstance_executeTestCases() throws InterruptedException {
-		int thread_count = INIT_THREAD_COUNT;
+		int thread_count = Math.min(MAX_THREAD_COUNT, sapi_scenario.getTestThreadCount(host));
 		test_count = new AtomicInteger(0);
 		active_thread_count = new AtomicInteger(thread_count);
 		
-		thread_count = INIT_THREAD_COUNT;
+		long start_time = System.currentTimeMillis();
+		
 		for ( int i=0 ; i < thread_count ; i++ ) { 
 			start_thread();
 		}
 		
 		// wait until done
 		int c ; while ( ( c = active_thread_count.get() ) > 0 ) { Thread.sleep(c>3?1000:50); }
+		
+		long run_time = Math.abs(System.currentTimeMillis() - start_time);
+		
+		System.out.println((run_time/1000)+" seconds");
 	} // end protected void parallelSAPIInstance_executeTestCases
 		
 	/*protected void serialSAPIInstance_executeTestCases() throws InterruptedException {
@@ -225,8 +230,15 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 					if (jobs.isEmpty())
 						group_it.remove();
 				}
-				if (group_key!=null)
+				if (group_key!=null && !jobs.isEmpty()) {
+					// TODO temp
+					group_key = ((AbstractWebServerScenario)sapi_scenario).smgr.getWebServerInstance(host, build, (PhpIni)group_key, test_pack.getTestPack(), null);
+					
 					exec_jobs(group_key, jobs, test_count);
+					
+					// TODO temp
+					((WebServerInstance)group_key).close();
+				}
 			}
 		} // end protected void runThreadSafe
 		
@@ -267,6 +279,7 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 		
 		protected void exec_jobs(TestCaseGroupKey ini, LinkedBlockingQueue<PhptTestCase> jobs, AtomicInteger test_count) {
 			PhptTestCase test_case;
+			int counter = 0;
 			while ( ( 
 					test_case = jobs.poll() 
 					) != null && 
@@ -279,6 +292,19 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 				} catch ( Throwable ex ) {
 					twriter.show_exception(test_case, ex);
 				} 
+				
+				if (counter>10) {
+					// TODO temp
+					((WebServerInstance)ini).close();
+					
+					// critical: provide existing WebServerInstance to #getWebServerInstance
+					//           or will get multiple zombie php.exe web servers, etc...
+					ini = ((AbstractWebServerScenario)sapi_scenario).smgr.getWebServerInstance(host, build, ((WebServerInstance)ini).getPhpIni(), test_pack.getTestPack(), ((WebServerInstance)ini));
+					
+					counter = 0;
+				}
+				
+				counter++;
 				
 				test_count.incrementAndGet();
 				
@@ -316,4 +342,4 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 		return runner_state;
 	}
 	
-} // end class TestPackRunner
+} // end public class PhptTestPackRunner

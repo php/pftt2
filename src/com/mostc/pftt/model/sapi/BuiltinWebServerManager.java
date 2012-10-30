@@ -9,6 +9,7 @@ import javax.annotation.concurrent.ThreadSafe;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.LocalHost;
+import com.mostc.pftt.host.Host.ExecHandle;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.util.ErrorUtil;
@@ -34,6 +35,16 @@ public class BuiltinWebServerManager extends WebServerManager {
 	
 	public BuiltinWebServerManager() {
 		timer = new Timer();
+		
+		if (LocalHost.isLocalhostWindows()) {
+			Runtime.getRuntime().addShutdownHook(new Thread() {
+				@Override
+				public void run() {
+					// Windows BN: may leave `php.exe -S` running if they aren't terminated here
+					close();
+				}
+			});
+		}
 	}
 	
 	@Override
@@ -76,8 +87,7 @@ public class BuiltinWebServerManager extends WebServerManager {
 				handle = host.execThread(cmd, docroot);
 				
 				final Host.ExecHandle handlef = handle;
-				new Exception().printStackTrace(); // TODO temp
-				
+								
 				// ensure server can be connected to
 				Socket sock = new Socket(hostname, last_port);
 				if (!sock.isConnected())
@@ -125,7 +135,47 @@ public class BuiltinWebServerManager extends WebServerManager {
 		// return this failure message to client code
 		return new CrashedWebServerInstance(ini, sapi_output);
 	} // end protected synchronized WebServerInstance createWebServerInstance
+	
+	public class BuiltinWebServerInstance extends WebServerInstance {
+		protected final int port;
+		protected final String hostname;
+		protected final ExecHandle process;
+		
+		public BuiltinWebServerInstance(String[] cmd_array, PhpIni ini, ExecHandle process, String hostname, int port) {
+			super(cmd_array, ini);
+			this.process = process;
+			this.hostname = hostname;
+			this.port = port;
+		}
 
+		@Override
+		public String hostname() {
+			return hostname;
+		}
+
+		@Override
+		public int port() {
+			return port;
+		}
+
+		@Override
+		public void close() {
+			try {
+				process.close();
+			} finally {
+				synchronized(BuiltinWebServerManager.this.instances) {
+					BuiltinWebServerManager.this.instances.remove(this);
+				}
+			}
+		}
+
+		@Override
+		public boolean isRunning() {
+			return process.isRunning();
+		}
+		
+	} // end public class BuiltinWebServerInstance
+	
 	@Override
 	public boolean allowConcurrentWebServerSAPIInstances() {
 		return true;

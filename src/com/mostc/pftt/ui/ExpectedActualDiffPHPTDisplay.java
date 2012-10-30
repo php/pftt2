@@ -53,8 +53,8 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 					
 		horizontal_panel = new JPanel(new BorderLayout());
 		horizontal_jsp.getViewport().setView(horizontal_panel);
-		horizontal_button_panel  = new JPanel(new GridLayout(1, 5, 2, 2));		
-		vertical_panel = new JPanel(new GridLayout(1, 5, 2, 2));
+		horizontal_button_panel  = new JPanel(new GridLayout(1, 7, 2, 2));		
+		vertical_panel = new JPanel(new GridLayout(1, 7, 2, 2));
 			
 		horizontal_panel.add(vertical_jsp = new JScrollPane(vertical_panel), BorderLayout.CENTER);
 		vertical_jsp = this;
@@ -94,7 +94,7 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 		
 		
 		JPanel prepared_panel = new JPanel(new GridLayout(5, 1, 2, 2));
-		vertical_panel.add(new JScrollPane(sapi_output_textarea));
+		prepared_panel.add(new JScrollPane(sapi_output_textarea));
 		prepared_panel.add(new JScrollPane(stdin_data_textarea = new JTextArea()));
 		stdin_data_textarea.setLineWrap(true);
 		prepared_panel.add(new JScrollPane(shell_script_textarea = new JTextArea()));
@@ -125,8 +125,10 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 			} 
 		}
 		cmd_array_list_model.clear();
-		for (String cmd : test.cmd_array ) {
-			cmd_array_list_model.addElement(cmd);
+		if (test.cmd_array!=null) {
+			for (String cmd : test.cmd_array ) {
+				cmd_array_list_model.addElement(cmd);
+			}
 		}
 		if (test.stdin_data!=null)
 			stdin_data_textarea.setText(new String(test.stdin_data));

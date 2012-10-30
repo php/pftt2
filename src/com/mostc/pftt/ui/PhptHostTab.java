@@ -298,6 +298,7 @@ public class PhptHostTab extends JSplitPane {
 					progress_bar.setMaximum(total);
 					
 					//
+					// count crashes - crash != test status though (crashed test will be counted as fail, pass, xfail, etc...)
 					if (StringUtil.isNotEmpty(result.getSAPIOutput())) {
 						crash++;
 						crash_label.setText(Integer.toString(crash));
@@ -346,6 +347,12 @@ public class PhptHostTab extends JSplitPane {
 						bork_label.setText(Integer.toString(bork));
 						
 						bork_list_model.addElement(result);
+						break;
+					case EXCEPTION:
+						exceptions++;
+						exceptions_label.setText(Integer.toString(exceptions));
+						
+						exceptions_list_model.addElement(result);
 						break;
 					case PASS:
 						pass++;

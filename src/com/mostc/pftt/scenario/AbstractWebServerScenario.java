@@ -20,7 +20,7 @@ import com.mostc.pftt.telemetry.PhptTelemetryWriter;
  */
 
 public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
-	protected final WebServerManager smgr;
+	public final WebServerManager smgr;
 	
 	protected AbstractWebServerScenario(WebServerManager smgr) {
 		this.smgr = smgr;
@@ -31,14 +31,19 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 		return new HttpTestCaseRunner(smgr, (WebServerInstance)ini, thread, test_case, twriter, host, scenario_set, build, test_pack);
 	}
 	
-	WebServerInstance web; // TODO temp
+	@Override
+	public void close() {
+		smgr.close();
+	}
+
+	/*WebServerInstance web; // TODO temp
 	@Override
 	public synchronized TestCaseGroupKey createTestGroupKey(Host host, PhpBuild build, PhptTestPack test_pack, PhptTestCase test_case) {
 		// TODO use HttpTestCaseRunner to get docroot from test_pack
 		if (web!=null)
 			return web;
 		return web = smgr.getWebServerInstance(host, build, AbstractPhptTestCaseRunner.createIniForTest(host, build, test_pack, test_case), test_pack.getTestPack(), null);
-	}
+	}*/
 	
 	public boolean willSkip(PhptTelemetryWriter twriter, Host host, PhpBuild build, PhptTestCase test_case) throws Exception {
 		return HttpTestCaseRunner.willSkip(twriter, host, build, test_case);

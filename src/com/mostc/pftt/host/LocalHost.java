@@ -20,6 +20,8 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.regex.Pattern;
 
+import org.jvnet.winp.WinProcess;
+
 import com.github.mattficken.io.AbstractDetectingCharsetReader;
 import com.github.mattficken.io.ByLineReader;
 import com.github.mattficken.io.CharsetDeciderDecoder;
@@ -30,6 +32,9 @@ import com.github.mattficken.io.NoCharsetByLineReader;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
 import com.mostc.pftt.util.StringUtil;
+import com.sun.jna.Pointer;
+import com.sun.jna.platform.win32.Kernel32;
+import com.sun.jna.platform.win32.WinNT.HANDLE;
 
 /** Represents the local Host that the program is currently running on.
  * 
@@ -194,12 +199,11 @@ public class LocalHost extends Host {
 		protected Charset charset;
 		protected StringBuilder output_sb;
 		
-		public LocalExecHandle(Process process, OutputStream stdin, InputStream stdout, InputStream stderr, ExitMonitorTask task, String cmdline) {
+		public LocalExecHandle(Process process, OutputStream stdin, InputStream stdout, InputStream stderr, String cmdline) {
 			this.process = process;
 			this.stdin = stdin;
 			this.stdout = stdout;
 			this.stderr = stderr;
-			this.task = task;
 			this.cmdline = cmdline;
 		}
 		
@@ -213,16 +217,97 @@ public class LocalHost extends Host {
 			}
 		}
 
+		boolean run = true;
 		@Override
 		public void close() {
-			for ( int i=0 ; i < 10 ; i++ ) {
+			run = false;
+			
+			// may take multiple tries to make it exit (lots of processes, certain OSes, etc...)
+			for ( int tries = 0 ; tries < 10 ; tries++ ) {
 				try {
-					process.destroy();
-				} catch ( Throwable ex ) {
-					ex.printStackTrace();
-				}
-			}
-		}
+					process.exitValue();
+				} catch ( Throwable t ) {
+					// hasn't exited yet
+					if (tries==0) {
+						// try closing streams to encourage it to exit
+						try {
+							stdin.close();
+						} catch ( Throwable t2 ) {
+							t2.printStackTrace();
+						}
+						try {
+							stdout.close();
+						} catch ( Throwable t2 ) {
+							t2.printStackTrace();
+						}
+						try {
+							stderr.close();
+						} catch ( Throwable t2 ) {
+							t2.printStackTrace();
+						}
+					}
+				
+					// kill it
+					if (isLocalhostWindows()) {
+						
+						try {
+							WinProcess wproc = new WinProcess(process);
+							wproc.killRecursively();
+						} catch ( Throwable wt ) {
+							// WinProcess native code couldn't be loaded
+							// (maybe it wasn't included or maybe somebody didn't compile it)
+							//
+							// fallback on some old code using reflection, etc...
+							//
+							// process.destroy doesn't always work on windows, but TASKKILL does
+							try {
+								// process.getClass() != Process.class
+								//
+								// kind of a hack to get the process id:
+								//      look through hidden fields to find a field like java.lang.ProcessImpl#handle (long)
+								for (java.lang.reflect.Field f : process.getClass().getDeclaredFields() ) {
+									if (f.getType()==long.class) { // ProcessImpl#handle
+										// this is a private field. without this, #getLong will throw an IllegalAccessException
+										f.setAccessible(true); 
+										
+										long handle = f.getLong(process);
+										
+										HANDLE h = new HANDLE();
+										h.setPointer(Pointer.createConstant(handle));
+										long process_id = Kernel32.INSTANCE.GetProcessId(h);
+										
+										
+										// TASKKILL!=TSKILL, TASKKILL is better than TSKILL
+										//
+										// /F => forcefully terminate ('kill')
+										// /T => terminate all child processes (process is cmd.exe and PHP is a child)
+										//      process.destory might not do this, so thats why its CRITICAL that TASKKILL
+										//      be tried before process.destroy
+										Runtime.getRuntime().exec("TASKKILL /PID:"+process_id+" /F /T");
+										
+										break;
+									}
+								} // end for
+							} catch ( Throwable t2 ) {
+								t2.printStackTrace();
+							} // end try
+						} // end try
+					} // end if
+					//
+					
+					
+					// terminate through java Process API
+					// this is works on Linux and is a fallback on Windows
+					try {
+						process.destroy();
+					} catch ( Throwable t2 ) {
+						t2.printStackTrace();
+					}
+					//
+					
+				} // end try
+			} // end for
+		} // end public void close
 		
 		protected void run(Charset charset) throws IOException, InterruptedException {
 			output_sb = new StringBuilder(1024);
@@ -247,7 +332,7 @@ public class LocalHost extends Host {
 			ByLineReader reader = charset == null ? new NoCharsetByLineReader(in) : new MultiCharsetByLineReader(in, d);
 			String line;
 			try {
-				while (reader.hasMoreLines()) {
+				while (reader.hasMoreLines()&&run) {
 					line = reader.readLine();
 					if (line==null)
 						break;
@@ -356,95 +441,27 @@ public class LocalHost extends Host {
 	    InputStream stdout = process.getInputStream();
 	    InputStream stderr = process.getErrorStream();
 
-	    ExitMonitorTask task = null;
+	    LocalExecHandle h = new LocalExecHandle(process, stdin, stdout, stderr, StringUtil.toString(cmd_array));
+	    
 	    if (timeout>NO_TIMEOUT) {
-	    	task = new ExitMonitorTask(process,stdin, stdout, stderr);
-			timer.schedule(task, 5*1000);
+	    	h.task = new ExitMonitorTask(h);
+			timer.schedule(h.task, 5*1000);
 	    }
 	    
-	    return new LocalExecHandle(process, stdin, stdout, stderr, task, StringUtil.toString(cmd_array));
+	    return h;
 	} // end protected static LocalExecHandle exec_impl
 		
 	protected static class ExitMonitorTask extends TimerTask {
-		protected Process process;
-		protected OutputStream stdin;
-		protected InputStream stdout, stderr;
+		protected final LocalExecHandle h;
 		
-		protected ExitMonitorTask(Process process, OutputStream stdin, InputStream stdout, InputStream stderr) {
-			this.process = process;
-			this.stdin = stdin;
-			this.stdout = stdout;
-			this.stderr = stderr;
+		protected ExitMonitorTask(LocalExecHandle h) {
+			this.h = h;
 		}
 		
 		@Override
 		public void run() {
-			// may take multiple tries to make it exit (lots of processes, certain OSes, etc...)
-			for ( int tries = 0 ; tries < 10 ; tries++ ) {
-				try {
-					process.exitValue();
-				} catch ( Throwable t ) {
-					// hasn't exited yet
-					if (tries==0) {
-						// try closing streams to encourage it to exit
-						try {
-							stdin.close();
-						} catch ( Throwable t2 ) {
-							t2.printStackTrace();
-						}
-						try {
-							stdout.close();
-						} catch ( Throwable t2 ) {
-							t2.printStackTrace();
-						}
-						try {
-							stderr.close();
-						} catch ( Throwable t2 ) {
-							t2.printStackTrace();
-						}
-					}
-				
-					// kill it
-					if (isLocalhostWindows()) {
-						// process.destory doesn't always work on windows, but TASKKILL does
-						try {
-							// process.getClass() != Process.class
-							//
-							// kind of a hack to get the process id:
-							//      look through hidden fields to find a field like java.lang.ProcessImpl#handle (long)
-							for (java.lang.reflect.Field f : process.getClass().getDeclaredFields() ) {
-								if (f.getType()==long.class) {
-									// this is a private field. without this, #getLong will throw an IllegalAccessException
-									f.setAccessible(true); 
-									
-									long process_id = f.getLong(process);
-									
-									// TASKKILL!=TSKILL, TASKKILL is better than TSKILL
-									//
-									// /F => forcefully terminate ('kill')
-									// /T => terminate all child processes (process is cmd.exe and PHP is a child)
-									//      process.destory might not do this, so thats why its CRITICAL that TASKKILL
-									//      be tried before process.destroy
-									Runtime.getRuntime().exec("TASKKILL /PID:"+process_id+" /F /T");
-									
-									break;
-								}
-							}
-						} catch ( Throwable t2 ) {
-							t2.printStackTrace();
-						}
-					}					
-					try {
-						process.destroy();
-					} catch ( Throwable t2 ) {
-						t2.printStackTrace();
-					}
-					
-					
-					
-				} // end try
-			}
-		} // end public void run
+			h.close();
+		}
 		
 	} // end protected static class ExitMonitorTask	
 

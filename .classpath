@@ -24,5 +24,6 @@
 	<classpathentry kind="lib" path="lib/asm-tree-3.2.jar"/>
 	<classpathentry kind="lib" path="lib/asm-util-3.2.jar"/>
 	<classpathentry kind="lib" path="lib/j2ssh-core-0.2.9.jar"/>
+	<classpathentry kind="lib" path="lib/winp-1.14.jar"/>
 	<classpathentry kind="output" path="build"/>
 </classpath>

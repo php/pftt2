@@ -93,7 +93,7 @@ public class PhptTelemetryWriter extends PhptTelemetry {
 			tally.xfail_works = counts.get(EPhptTestStatus.XFAIL_WORKS).get();
 			tally.unsupported = counts.get(EPhptTestStatus.UNSUPPORTED).get();
 			tally.bork = counts.get(EPhptTestStatus.BORK).get();
-			tally.exception = counts.get(EPhptTestStatus.INTERNAL_EXCEPTION).get();		
+			tally.exception = counts.get(EPhptTestStatus.EXCEPTION).get();		
 			FileWriter fw = new FileWriter(new File(telem_dir, "tally.xml"));
 			PhptTallyFile.write(tally, fw);
 			fw.close();
@@ -160,7 +160,7 @@ public class PhptTelemetryWriter extends PhptTelemetry {
 		String ex_str = ErrorUtil.toString(ex);
 		
 		// count exceptions as a result (the worst kind of failure, a pftt failure)
-		addResult(new PhptTestResult(host, EPhptTestStatus.INTERNAL_EXCEPTION, test_case, ex_str, null, null, null, null, null, null, null, null, null, null));
+		addResult(new PhptTestResult(host, EPhptTestStatus.EXCEPTION, test_case, ex_str, null, null, null, null, null, null, null, null, null, null));
 		// TODO show count of exceptions in gui
 	}
 	int completed = 0; // XXX

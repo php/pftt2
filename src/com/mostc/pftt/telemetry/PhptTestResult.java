@@ -101,9 +101,15 @@ public class PhptTestResult {
 	}
 	
 	protected void write(File file, String text) throws IOException {
-		FileWriter fw = new FileWriter(file);
-		fw.write(text, 0, text.length());
-		fw.close();
+		try {
+			file.mkdirs();
+			
+			FileWriter fw = new FileWriter(file);
+			fw.write(text, 0, text.length());
+			fw.close();
+		} catch ( Exception ex ) {
+			ex.printStackTrace();
+		}
 	}
 	
 	protected void writeDiffFile(File telem_dir) throws IOException {

@@ -118,6 +118,18 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			
 			return false;
 		}
+		
+		//
+		if (host.isWindows() && test_case.containsSection(EPhptSection.SKIPIF)) {
+			// do an early quick check
+			// fixes problem with Sapi/cli/tests/021.phpt
+			if (test_case.get(EPhptSection.SKIPIF).contains("skip not for Windows")) {
+				twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "skip not for Windows", null, null, null, null, null, null, null, null, null, null));
+				
+				return false;
+			}
+		}
+		//
 	
 		selected_php_exe = build.getPhpExe();
 		
@@ -469,10 +481,6 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	 */
 	protected abstract String getCrashedSAPIOutput();
 	
-	private boolean check() {
-		return !test_case.isNamed("ext/phar/tests/tar/phar_setsignaturealgo2.phpt");
-	}
-	
 	/** evaluates the output of the executed test and reports the result
 	 * 
 	 * @param output
@@ -504,7 +512,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 				twriter.show_exception(test_case, ex, expected);
 				throw ex;
 			}
-			if (expected_re_match||check()) {
+			if (expected_re_match) {
 
 				twriter.addResult(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, env, splitCmdString(), stdin_post, shell_script, null, null, null));
 						
@@ -516,7 +524,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			output = remove_header_from_output(output);
 			output_trim = output.trim();
 	
-			if (output_trim.equals(expected)||output_trim.contains(expected)||expected.contains(output_trim)||check()) {
+			if (output_trim.equals(expected)||output_trim.contains(expected)||expected.contains(output_trim)) {
 				
 				twriter.addResult(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, env, splitCmdString(), stdin_post, shell_script, null, null, null));
 						

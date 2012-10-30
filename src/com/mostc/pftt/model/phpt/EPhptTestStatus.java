@@ -18,5 +18,5 @@ public enum EPhptTestStatus {
 	/** test is malformed */
 	BORK,
 	/** an internal PFTT error */
-	INTERNAL_EXCEPTION
+	EXCEPTION
 }
