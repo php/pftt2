@@ -46,6 +46,18 @@ public class PhptTestPack extends TestPack {
 		return test_pack;
 	}
 	
+	/** cleans up this test-pack from previous runs of PFTT or run-test.php that were interrupted
+	 * 
+	 */
+	public void cleanup() {
+		// these are symlinks(junctions) which may cause an infinite loop
+		//
+		// normally, they are deleted, but if certain tests were interrupted, they may still be there
+		host.deleteIfExists("ext/standard/tests/file/windows_links/mklink_junction");
+		host.deleteIfExists("ext/standard/tests/file/windows_links/directory");
+		host.deleteIfExists("ext/standard/tests/file/windows_links/mounted_volume");
+	}
+	
 	public void add_named_tests(List<PhptTestCase> test_files, List<String> names, PhptTelemetryWriter twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {
 		add_named_tests(test_files, names, twriter, build, false);
 	}
@@ -114,10 +126,6 @@ public class PhptTestPack extends TestPack {
 		main_loop:
 		for ( File f : files ) {
 			if (f.getName().toLowerCase().endsWith(PhptTestCase.PHPT_FILE_EXTENSION)) {
-				// TODO test tests cause a blocking winpopup msg (syntax error line 31 in unknown) - skip them for now
-//				if (f.getPath().contains("session")&&f.getName().contains("0"))
-//					continue;
-				
 				if (names!=null) {
 					for(String name: names) {
 						if (f.getName().toLowerCase().contains(name))
@@ -134,7 +142,7 @@ public class PhptTestPack extends TestPack {
 				if (test_name.contains("a_dir"))
 					continue; // TODO
 				
-				PhptTestCase test_case = PhptTestCase.load(host, this, test_name, twriter);
+				PhptTestCase test_case = PhptTestCase.load(host, this, false, test_name, twriter, redirect_parent);
 				
 				add_test_case(test_case, test_files, names, twriter, build, redirect_parent, redirect_targets);
 			}
@@ -157,8 +165,12 @@ public class PhptTestPack extends TestPack {
 						add_test_files(dir.listFiles(), test_files, names, twriter, build, redirect_parent, redirect_targets);
 						
 					} else {
-						// test refers to a specific test, try to load it 
-						test_case = PhptTestCase.load(host, this, false, target_test_name, twriter, redirect_parent);
+						// test refers to a specific test, try to load it
+						try {
+							test_case = PhptTestCase.load(host, this, false, target_test_name, twriter, redirect_parent);
+						} catch ( Exception ex ) {
+							ex.printStackTrace(); // TODO temp
+						}
 						
 						if (redirect_targets.contains(test_case))
 							// can only have 1 level of redirection

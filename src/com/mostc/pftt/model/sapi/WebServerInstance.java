@@ -66,7 +66,6 @@ public abstract class WebServerInstance extends SAPIInstance {
 	 */
 	public void notifyCrash(String output, int exit_code) {
 		// make sure it gets closed!!
-		// TODO temp vs close();
 		synchronized(sync_lock) {
 			//
 			if (crashed) {
@@ -77,6 +76,7 @@ public abstract class WebServerInstance extends SAPIInstance {
 						sb.append(sapi_output);
 					sb.append("\nPFTT: later web server returned exit code("+exit_code+") and output:\n");
 					sb.append(output);
+					sb.append("\nPFTT: end output.\n");
 					sapi_output = sb.toString();
 				}
 				return;
@@ -96,6 +96,7 @@ public abstract class WebServerInstance extends SAPIInstance {
 			} else {
 				sb.append("PFTT: before crashing/exiting web server returned("+output.length()+"):\n");
 				sb.append(output);
+				sb.append("\nPFTT: end output.\n");
 			}
 			
 			sapi_output = sb.toString();

@@ -151,6 +151,13 @@ public abstract class Host {
 	public abstract void saveText(String filename, String text) throws IllegalStateException, IOException;
 	public abstract void saveText(String filename, String text, Charset charset) throws IllegalStateException, IOException;
 	public abstract void delete(String path) throws IllegalStateException, IOException;
+	public void deleteIfExists(String path) {
+		try {
+			delete(path);
+		} catch ( Exception ex ) {
+			
+		}
+	}
 	public abstract boolean exists(String string);
 	public abstract void mkdirs(String path) throws IllegalStateException, IOException;
 	/** copies file/directory from source to destination on host
@@ -524,7 +531,7 @@ public abstract class Host {
 	 * @return
 	 */
 	public String fixPath(String path) {
-		return isWindows() ? StringUtil.replaceAll(PAT_fs, "\\", path) : toUnixPath(path);
+		return isWindows() ? StringUtil.replaceAll(PAT_fs, "\\\\", path) : toUnixPath(path);
 	}
 	
 	public String join(String... path_parts) {

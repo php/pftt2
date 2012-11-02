@@ -228,4 +228,4 @@ public final class StringUtil {
 
 	private StringUtil() {}
 	
-}
+} // end public class StringUtil

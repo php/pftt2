@@ -67,6 +67,7 @@ public abstract class WebServerManager extends SAPIManager {
 					}
 				}
 			}
+			
 			assigned.replacement = sapi = createWebServerInstance(host, build, ini, docroot);
 			synchronized(assigned.active_test_cases) {
 				sapi.active_test_cases.addAll(assigned.active_test_cases);

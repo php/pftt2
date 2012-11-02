@@ -297,7 +297,8 @@ public class PhpBuild extends Build {
 		host.saveText(php_filename, code);
 		
 		PHPOutput output = new PHPOutput(php_filename, host.exec(php_exe+" "+php_filename, timeout_seconds, new HashMap<String,String>(), null, Host.dirname(php_filename)));
-		if (auto_cleanup)
+		if (auto_cleanup && !output.hasFatalError())
+			// if fatal error, don't clean up so user can check it
 			output.cleanup(host);
 		return output;
 	}

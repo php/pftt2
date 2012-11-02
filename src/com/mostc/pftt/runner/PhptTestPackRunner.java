@@ -12,14 +12,12 @@ import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.model.phpt.PhptTestPack;
-import com.mostc.pftt.model.sapi.SAPIInstance;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.model.sapi.WebServerInstance;
 import com.mostc.pftt.scenario.AbstractSAPIScenario;
 import com.mostc.pftt.scenario.AbstractWebServerScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.telemetry.PhptTelemetryWriter;
-import com.mostc.pftt.util.HostEnvUtil;
 
 /** Runs PHPTs from a given PhptTestPack.
  * 
@@ -50,8 +48,6 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 	public void runTestList(List<PhptTestCase> test_cases) throws Exception {
 		runner_state = ETestPackRunnerState.RUNNING;
 		sapi_scenario = ScenarioSet.getSAPIScenario(scenario_set);
-		
-		HostEnvUtil.prepareHostEnv(host);
 		
 		System.out.println("PFTT: loaded tests: "+test_cases.size());
 		
@@ -239,7 +235,13 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 					exec_jobs(group_key, jobs, test_count);
 					
 					// TODO temp
-					((WebServerInstance)group_key).close();
+					if ( twriter.getConsoleManager().isDisableDebugPrompt() || !((WebServerInstance)group_key).isCrashed() || !host.isWindows() ) {
+						// don't close this server if it crashed because user will get prompted
+						// to debug it on Windows and may still be debugging it (Visual Studio or WinDbg)
+						//
+						// it will get closed when user clicks close in WER popup dialog so its not like it would be running forever
+						((WebServerInstance)group_key).close();
+					}
 				}
 			}
 		} // end protected void runThreadSafe

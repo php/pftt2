@@ -5,8 +5,6 @@ import groovy.ui.ConsoleTextEditor;
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.nio.charset.Charset;
-import java.util.Map;
 
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
@@ -25,12 +23,11 @@ import javax.swing.border.LineBorder;
 import se.datadosen.component.RiverLayout;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.LocalHost;
-import com.mostc.pftt.model.phpt.EPhptTestStatus;
-import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.runner.PhptTestPackRunner;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.telemetry.PhptTestResult;
 
+@SuppressWarnings("serial")
 public class PhptDebuggerFrame extends JPanel {
 	protected JTabbedPane tabs;
 	protected PhptHostTab localhost_tab;

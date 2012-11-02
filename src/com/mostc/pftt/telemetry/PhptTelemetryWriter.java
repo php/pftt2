@@ -15,7 +15,6 @@ import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.model.phpt.PhptTestPack;
 import com.mostc.pftt.scenario.ScenarioSet;
-import com.mostc.pftt.ui.PhptDebuggerFrame;
 import com.mostc.pftt.util.ErrorUtil;
 
 /** Writes the telemetry during a test run.
@@ -31,16 +30,16 @@ public class PhptTelemetryWriter extends PhptTelemetry {
 	protected Host host;
 	protected PrintWriter exception_writer;
 	protected int total_count = 0;
-	public PhptDebuggerFrame gui; // XXX
+	protected ConsoleManager cm;
 	protected HashMap<EPhptTestStatus,AtomicInteger> counts;
 	protected PhpBuild build;
 	protected PhptTestPack test_pack;
 	protected ScenarioSet scenario_set;
 	
-	public PhptTelemetryWriter(Host host, PhptDebuggerFrame gui, File telem_base_dir, PhpBuild build, PhptTestPack test_pack, ScenarioSet scenario_set) throws IOException {
+	public PhptTelemetryWriter(Host host, ConsoleManager cm, File telem_base_dir, PhpBuild build, PhptTestPack test_pack, ScenarioSet scenario_set) throws IOException {
 		super(host);
 		this.host = host;
-		this.gui = gui;
+		this.cm = cm;
 		this.scenario_set = scenario_set;
 		this.build = build;
 		this.test_pack = test_pack;
@@ -66,6 +65,10 @@ public class PhptTelemetryWriter extends PhptTelemetry {
 			}
 			status_list_map.put(status, pw);
 		}
+	}
+	
+	public ConsoleManager getConsoleManager() {
+		return cm;
 	}
 	
 	@Override
@@ -163,7 +166,7 @@ public class PhptTelemetryWriter extends PhptTelemetry {
 		addResult(new PhptTestResult(host, EPhptTestStatus.EXCEPTION, test_case, ex_str, null, null, null, null, null, null, null, null, null, null));
 		// TODO show count of exceptions in gui
 	}
-	int completed = 0; // XXX
+	int completed = 0; // XXX 
 	public void addResult(PhptTestResult result) {
 		// FUTURE enqueue in writer thread to avoid slowing down PhptThreads
 		// also, on Windows, enqueue printing to console here
@@ -172,9 +175,9 @@ public class PhptTelemetryWriter extends PhptTelemetry {
 		
 		counts.get(result.status).incrementAndGet();
 		
-		if (gui!=null) {
+		if (cm!=null) {
 			// show in gui (if open)
-			gui.showResult(host, getTotalCount(), completed, result);	
+			cm.showResult(host, getTotalCount(), completed, result);	
 		}		
 		
 		// record in list files

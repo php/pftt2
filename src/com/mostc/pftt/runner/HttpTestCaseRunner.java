@@ -82,9 +82,11 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			} catch ( IOException ex1 ) { // SocketTimeoutException or ConnectException
 				// notify of crash so it gets reported everywhere
 				web.notifyCrash("PFTT: timeout during test("+section+" SECTION): "+test_case.getName()+"\n"+ErrorUtil.toString(ex1), 0);
-				// TODO temp VS
+				// ok to close this here, since its not an Access Violation(AV) and so won't prompt
+				// the user to enter Visual Studio, WinDbg or GDB
 				web.close();
 				
+				// TODO 
 				System.out.println("RESTART_AND_RETRY "+test_case.getName());
 				
 				// get #do_http_execute to make a new server
@@ -132,6 +134,13 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				_web.notifyTestPreRequest(test_case);
 			}
 		}
+		
+		path = Host.toUnixPath(path);
+		if (path.startsWith(Host.toUnixPath(test_pack.getTestPack())))
+			path = path.substring(test_pack.getTestPack().length());
+		if (!path.startsWith("/"))
+			path = "/" + path;
+		
 		try {
 			if (web.isCrashed())
 				// test will fail (because this(`PFTT: server...`) is the actual output which won't match the expected output)
@@ -146,52 +155,30 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				// only do POST for TEST sections where stdin_post!=null
 				return do_http_post(path);
 		} finally {
-			if (is_replacement)
+			if (is_replacement && (twriter.getConsoleManager().isDisableDebugPrompt()||!web.isCrashed()||!host.isWindows())) {
 				// CRITICAL: if this WebServerInstance is a replacement, then it exists only within this specific HttpTestCaseRunner
 				// instance. if it is not terminated here, it will keep running forever!
+				//
+				// don't close crashed servers on windows unless WER popup is disabled because user may want to
+				// debug them. if user doesn't, they'll click close in WER popup
 				web.close();
+			}
 		}
 	}
 		
 	protected String do_http_get(String path) throws Exception {
-		/*HttpParams params = new SyncBasicHttpParams();
-		HttpProtocolParams.setVersion(params, HttpVersion.HTTP_1_1);
-		HttpProtocolParams.setContentCharset(params, "UTF-8");
-		HttpProtocolParams.setUserAgent(params, "Mozilla/5.0 (Windows NT 6.1; rv:12.0) Gecko/ 20120405 Firefox/14.0.1");
-		HttpProtocolParams.setUseExpectContinue(params, true);
-		
-		HttpProcessor httpproc = new ImmutableHttpProcessor(new HttpRequestInterceptor[] {// XXX reuse
-		        // Required protocol interceptors
-		        new RequestContent(),
-		        new RequestTargetHost(),
-		        // Recommended protocol interceptors
-		        new RequestConnControl(),
-		        new RequestUserAgent(),
-		        new RequestExpectContinue()});
-		
-		HttpRequestExecutor httpexecutor = new HttpRequestExecutor();*/
-		
 		HttpContext context = new BasicHttpContext(null);
 		HttpHost http_host = new HttpHost(web.hostname(), web.port());
 		
 		DefaultHttpClientConnection conn = new DefaultHttpClientConnection();
-		//ConnectionReuseStrategy connStrategy = new DefaultConnectionReuseStrategy();
+		// TODO ConnectionReuseStrategy connStrategy = new DefaultConnectionReuseStrategy();
 		
 		context.setAttribute(ExecutionContext.HTTP_CONNECTION, conn);
 		context.setAttribute(ExecutionContext.HTTP_TARGET_HOST, http_host);
 		
 		Socket socket = new Socket(http_host.getHostName(), http_host.getPort());
-		//socket.setSoTimeout(6*1000); 
 		conn.bind(socket, params);
 		conn.setSocketTimeout(60*1000);
-		
-		//
-		path = Host.toUnixPath(path);
-		if (path.startsWith(Host.toUnixPath(test_pack.getTestPack())))
-			path = path.substring(test_pack.getTestPack().length());
-		if (!path.startsWith("/"))
-			path = "/" + path;
-		//
 		
 		BasicHttpRequest request = new BasicHttpRequest("GET", path);
 		
@@ -207,46 +194,21 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	} // end protected String do_http_get
 	
 	protected String do_http_post(String path) throws Exception {
-		/*HttpParams params = new SyncBasicHttpParams();
-		HttpProtocolParams.setVersion(params, HttpVersion.HTTP_1_1);
-		HttpProtocolParams.setContentCharset(params, "UTF-8");
-		HttpProtocolParams.setUserAgent(params, "Mozilla/5.0 (Windows NT 6.1; rv:12.0) Gecko/ 20120405 Firefox/14.0.1");
-		HttpProtocolParams.setUseExpectContinue(params, true);
 		// TODO if (content_type!=null)
 		//	params.setParameter("Content-Type", content_type);
-				
-		HttpProcessor httpproc = new ImmutableHttpProcessor(new HttpRequestInterceptor[] {// XXX reuse
-		        // Required protocol interceptors
-		        new RequestContent(),
-		        new RequestTargetHost(),
-		        // Recommended protocol interceptors
-		        new RequestConnControl(),
-		        new RequestUserAgent(),
-		        new RequestExpectContinue()});
-		
-		HttpRequestExecutor httpexecutor = new HttpRequestExecutor();*/
 		
 		HttpContext context = new BasicHttpContext(null);
 		HttpHost http_host = new HttpHost(web.hostname(), web.port());
 		
 		DefaultHttpClientConnection conn = new DefaultHttpClientConnection();
-		//ConnectionReuseStrategy connStrategy = new DefaultConnectionReuseStrategy();
+		// TODO ConnectionReuseStrategy connStrategy = new DefaultConnectionReuseStrategy();
 		
 		context.setAttribute(ExecutionContext.HTTP_CONNECTION, conn);
 		context.setAttribute(ExecutionContext.HTTP_TARGET_HOST, http_host);
 		
 		Socket socket = new Socket(http_host.getHostName(), http_host.getPort());
-		//socket.setSoTimeout(6*1000); 
 		conn.bind(socket, params);
 		conn.setSocketTimeout(60*1000);
-		
-		//
-		path = Host.toUnixPath(path);
-		if (path.startsWith(Host.toUnixPath(test_pack.getTestPack())))
-			path = path.substring(test_pack.getTestPack().length());
-		if (!path.startsWith("/"))
-			path = "/" + path;
-		//
 		
 		BasicHttpEntityEnclosingRequest request = new BasicHttpEntityEnclosingRequest("POST", path);
 		request.setParams(params);
