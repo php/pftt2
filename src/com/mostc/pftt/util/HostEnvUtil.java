@@ -33,8 +33,10 @@ public final class HostEnvUtil {
 		// have to fix Windows Error Reporting from popping up and blocking execution:
 		// silence reporting
 		System.out.println("PFTT: HostEnvUtil: disabling Windows Error Reporting...");
-		boolean a = regQueryAdd(host, "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting", "DontShowUI", "0x1", REG_DWORD);
-		boolean b = regQueryAdd(host, "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting", "Disable", "0x1", REG_DWORD);
+		// TODO temp boolean a = regQueryAdd(host, "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting", "DontShowUI", "0x1", REG_DWORD);
+		boolean a = regQueryAdd(host, "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting", "DontShowUI", "0x0", REG_DWORD);
+		// TODO temp boolean b = regQueryAdd(host, "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting", "Disable", "0x1", REG_DWORD);
+		boolean b = regQueryAdd(host, "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting", "Disable", "0x0", REG_DWORD);
 		// then, disable reporting
 		if ( a || b ) {			
 			// assume if registry had to be edited, that firewall has to be disabled (avoid doing this if possible because it requires user to approve elevation)

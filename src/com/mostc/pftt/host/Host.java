@@ -9,6 +9,7 @@ import java.util.Random;
 import java.util.regex.Pattern;
 
 import javax.annotation.Nullable;
+import javax.annotation.concurrent.ThreadSafe;
 
 
 import com.github.mattficken.io.ByLineReader;
@@ -309,6 +310,14 @@ public abstract class Host {
 	public boolean isLonghornExact() {
 		return false; // TODO
 	}
+	/** returns TRUE if host is Windows
+	 * 
+	 * this is a fast method which caches its values, so you don't have to do that in your code
+	 * 
+	 * generally if !isWindows == isPosix
+	 * 
+	 * @return
+	 */
 	public abstract boolean isWindows();
 	public String getTempDir() {
 		if (tmp_dir!=null)
@@ -400,6 +409,7 @@ public abstract class Host {
 	public ExecOutput execElevated(String cmd, int timeout_sec, String chdir) throws Exception {
 		return execElevated(cmd, timeout_sec, null, null, null, chdir, null, NO_TIMEOUT);
 	}
+	@ThreadSafe
 	public static abstract class ExecHandle {
 		public abstract void close();
 		public abstract boolean isRunning();
@@ -645,5 +655,17 @@ public abstract class Host {
 			return 1;
 		}
 	}
+	
+	/* TODO
+	public long getTotalPhysicalMemory() {
+		if (isWindows()) {
+			// could use `wmic` but that won't work on winxp, 2003, 2003r2
+			this.getSystemInfo();
+			// look for line like: `Total Physical Memory:     4,096 MB`
+		} else {
+			this.exec("free", NO_TIMEOUT);
+		}
+	}
+	*/
 
 } // end public abstract class Host

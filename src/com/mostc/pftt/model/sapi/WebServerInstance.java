@@ -1,6 +1,8 @@
 package com.mostc.pftt.model.sapi;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 
 import javax.annotation.concurrent.ThreadSafe;
 
@@ -17,18 +19,21 @@ import com.mostc.pftt.util.StringUtil;
 
 @ThreadSafe
 public abstract class WebServerInstance extends SAPIInstance {
-	protected LinkedList<PhptTestCase> active_test_cases;
+	protected final List<PhptTestCase> active_test_cases, all_test_cases;
 	private boolean crashed = false;
 	private String sapi_output = "";
 	private Object sync_lock = new Object();
 	protected final PhpIni ini;
 	protected final String[] cmd_array;
+	protected final WebServerManager ws_mgr;
 	WebServerInstance replacement; // @see WebServerManager#getWebServerInstance
 	
-	public WebServerInstance(String[] cmd_array, PhpIni ini) {
+	public WebServerInstance(WebServerManager ws_mgr, String[] cmd_array, PhpIni ini) {
+		this.ws_mgr = ws_mgr;
 		this.cmd_array = cmd_array;
 		this.ini = ini;
 		active_test_cases = new LinkedList<PhptTestCase>();
+		all_test_cases = new ArrayList<PhptTestCase>(256);
 	}
 	
 	@Override
@@ -60,6 +65,8 @@ public abstract class WebServerInstance extends SAPIInstance {
 	 * @param exit_code - exit code that was returned
 	 */
 	public void notifyCrash(String output, int exit_code) {
+		// make sure it gets closed!!
+		// TODO temp vs close();
 		synchronized(sync_lock) {
 			//
 			if (crashed) {
@@ -68,7 +75,7 @@ public abstract class WebServerInstance extends SAPIInstance {
 					StringBuilder sb = new StringBuilder();
 					if (sapi_output!=null)
 						sb.append(sapi_output);
-					sb.append("PFTT: later web server returned exit code("+exit_code+") and output:\n");
+					sb.append("\nPFTT: later web server returned exit code("+exit_code+") and output:\n");
 					sb.append(output);
 					sapi_output = sb.toString();
 				}
@@ -81,8 +88,9 @@ public abstract class WebServerInstance extends SAPIInstance {
 			
 			StringBuilder sb = new StringBuilder(1024);
 			
-			sb.append("PFTT: web server crashed with exit code: "+exit_code);
+			sb.append("PFTT: web server crashed with exit code: "+exit_code+"\n");
 			getActiveTestListString(sb);
+			getAllTestListString(sb);
 			if (StringUtil.isEmpty(output)) {
 				sb.append("PFTT: web server returned no output when it exited.\n");
 			} else {
@@ -94,7 +102,7 @@ public abstract class WebServerInstance extends SAPIInstance {
 		} // end sync
 	} // end protected void notifyCrash
 	
-	protected void getActiveTestListString(StringBuilder sb) {
+	public void getActiveTestListString(StringBuilder sb) {
 		synchronized(active_test_cases) {
 			sb.append("PFTT: while running these tests("+active_test_cases.size()+"):\n");
 			for (PhptTestCase test_case : active_test_cases ) {
@@ -111,11 +119,31 @@ public abstract class WebServerInstance extends SAPIInstance {
 		return sb.toString();
 	}
 	
+	public void getAllTestListString(StringBuilder sb) {
+		synchronized(all_test_cases) {
+			sb.append("PFTT: these tests were run against this web server instance during its lifetime("+all_test_cases.size()+"):\n");
+			for (PhptTestCase test_case : all_test_cases ) {
+				sb.append("PFTT: ");
+				sb.append(test_case.getName());
+				sb.append('\n');
+			}
+		}
+	}
+	
+	public String getAllTestListString() {
+		StringBuilder sb = new StringBuilder(512);
+		getAllTestListString(sb);
+		return sb.toString();
+	}
+	
 	/** called before HTTP request made to server for given test_case
 	 * 
 	 * @param test_case
 	 */
 	public void notifyTestPreRequest(PhptTestCase test_case) {
+		synchronized(all_test_cases) {
+			all_test_cases.add(test_case);
+		}
 		synchronized(active_test_cases) {
 			active_test_cases.add(test_case);
 		}
@@ -160,5 +188,21 @@ public abstract class WebServerInstance extends SAPIInstance {
 	public String[] getCmdString() {
 		return cmd_array;
 	}
+	
+	@Override
+	public void close() {
+		try {
+			do_close();
+		} finally {
+			synchronized(ws_mgr.instances) {
+				ws_mgr.instances.remove(this);
+			}
+		}
+		// TODO temp
+		for ( WebServerInstance c=replacement ; c != null ; c = c.replacement )
+			c.close();
+	}
+	
+	protected abstract void do_close();
 	
 } // end public abstract class WebServerInstance

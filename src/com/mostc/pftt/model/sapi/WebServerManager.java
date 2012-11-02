@@ -2,7 +2,6 @@ package com.mostc.pftt.model.sapi;
 
 import java.io.IOException;
 import java.net.Socket;
-import java.util.Iterator;
 import java.util.LinkedList;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -32,11 +31,9 @@ public abstract class WebServerManager extends SAPIManager {
 	 */
 	public void close() {
 		synchronized(instances) {
-			Iterator<WebServerInstance> it = instances.iterator();
-			while (it.hasNext()) {
-				it.next().close();
-				it.remove(); 
-			}
+			for ( WebServerInstance wsi : instances )
+				wsi.do_close();
+			instances.clear();
 		}
 	}
 	
@@ -60,12 +57,12 @@ public abstract class WebServerManager extends SAPIManager {
 	public WebServerInstance getWebServerInstance(Host host, PhpBuild build, PhpIni ini, String docroot, WebServerInstance assigned) {
 		WebServerInstance sapi;
 		if (assigned!=null) {
-			if (!assigned.isCrashed())
+			if (assigned.isRunning())
 				return assigned;
 			synchronized(assigned) {
 				for (WebServerInstance c=assigned.replacement ; c != null ; c = c.replacement) {
 					synchronized(c) {
-						if (!c.isCrashed())
+						if (assigned.isRunning())
 							return c;
 					}
 				}
@@ -77,7 +74,7 @@ public abstract class WebServerManager extends SAPIManager {
 		} else {
 			sapi = createWebServerInstance(host, build, ini, docroot);
 		}
-		if (!sapi.isCrashed()) {
+		if (sapi.isRunning()) {
 			synchronized(instances) {
 				instances.add(sapi);
 			}

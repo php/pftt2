@@ -46,6 +46,15 @@ import com.sun.jna.platform.win32.WinNT.HANDLE;
 public class LocalHost extends Host {
 	private static final Timer timer = new Timer();
 	private static final boolean is_windows = System.getProperty("os.name").toLowerCase().contains("windows");
+	private static int self_process_id;
+	static {
+		try {
+			// this works only on Windows
+			self_process_id = Kernel32.INSTANCE.GetCurrentProcessId();
+		} catch ( Throwable t ) {
+			t.printStackTrace(); // XXX fix this on Linux
+		}
+	}
 	
 	public static boolean isLocalhostWindows() {
 		return is_windows;
@@ -195,16 +204,16 @@ public class LocalHost extends Host {
 		protected OutputStream stdin;
 		protected InputStream stdout, stderr;
 		protected ExitMonitorTask task;
-		protected String cmdline;
+		protected String image_name;
 		protected Charset charset;
 		protected StringBuilder output_sb;
 		
-		public LocalExecHandle(Process process, OutputStream stdin, InputStream stdout, InputStream stderr, String cmdline) {
+		public LocalExecHandle(Process process, OutputStream stdin, InputStream stdout, InputStream stderr, String[] cmd_array) {
 			this.process = process;
 			this.stdin = stdin;
 			this.stdout = stdout;
 			this.stderr = stderr;
-			this.cmdline = cmdline;
+			this.image_name = StringUtil.unquote(basename(cmd_array[0]));
 		}
 		
 		@Override
@@ -212,20 +221,22 @@ public class LocalHost extends Host {
 			try {
 				process.exitValue();
 				return false;
-			} catch ( Exception ex ) {
+			} catch ( IllegalThreadStateException ex ) {
 				return true;
 			}
 		}
 
 		boolean run = true;
 		@Override
-		public void close() {
+		public synchronized void close() {
 			run = false;
 			
 			// may take multiple tries to make it exit (lots of processes, certain OSes, etc...)
 			for ( int tries = 0 ; tries < 10 ; tries++ ) {
 				try {
 					process.exitValue();
+					break; 
+					// process terminated, stop trying (or may terminate new process reusing the same id)
 				} catch ( Throwable t ) {
 					// hasn't exited yet
 					if (tries==0) {
@@ -249,17 +260,21 @@ public class LocalHost extends Host {
 				
 					// kill it
 					if (isLocalhostWindows()) {
+						// Windows BN: process trees on Windows won't get terminated correctly by calling Process#destroy
+						//
+						// have to do some ugly hacks on Windows to kill process trees
+						int process_id = 0;
 						
+						// first: find the process id
 						try {
+							// clean way
 							WinProcess wproc = new WinProcess(process);
-							wproc.killRecursively();
+							process_id = wproc.getPid();
 						} catch ( Throwable wt ) {
 							// WinProcess native code couldn't be loaded
 							// (maybe it wasn't included or maybe somebody didn't compile it)
 							//
 							// fallback on some old code using reflection, etc...
-							//
-							// process.destroy doesn't always work on windows, but TASKKILL does
 							try {
 								// process.getClass() != Process.class
 								//
@@ -274,16 +289,7 @@ public class LocalHost extends Host {
 										
 										HANDLE h = new HANDLE();
 										h.setPointer(Pointer.createConstant(handle));
-										long process_id = Kernel32.INSTANCE.GetProcessId(h);
-										
-										
-										// TASKKILL!=TSKILL, TASKKILL is better than TSKILL
-										//
-										// /F => forcefully terminate ('kill')
-										// /T => terminate all child processes (process is cmd.exe and PHP is a child)
-										//      process.destory might not do this, so thats why its CRITICAL that TASKKILL
-										//      be tried before process.destroy
-										Runtime.getRuntime().exec("TASKKILL /PID:"+process_id+" /F /T");
+										process_id = Kernel32.INSTANCE.GetProcessId(h);
 										
 										break;
 									}
@@ -292,6 +298,25 @@ public class LocalHost extends Host {
 								t2.printStackTrace();
 							} // end try
 						} // end try
+						
+						// second: make sure we found a process id (safety check: make sure its not our process id)
+						if (process_id != 0 && process_id!=self_process_id) {
+							// also, WinProcess#killRecursively only checks by process id (not image/program name)
+							// while that should be enough, experience on Windows has shown that it isn't and somehow gets PFTT killed eventually
+							//
+							// third:instead, run TASKKILL and provide it both the process id and image/program name
+							//
+							// image name: ex: `php.exe` 
+							// /F => forcefully terminate ('kill')
+							// /T => terminate all child processes (process is cmd.exe and PHP is a child)
+							//      process.destory might not do this, so thats why its CRITICAL that TASKKILL
+							//      be tried before process.destroy
+							try {
+								Runtime.getRuntime().exec("TASKKIll /FI \"IMAGENAME eq "+image_name+"\" /FI \"PID eq "+process_id+"\" /F /T");
+							} catch (Throwable t3) {
+								t3.printStackTrace();
+							}
+						}
 					} // end if
 					//
 					
@@ -441,7 +466,7 @@ public class LocalHost extends Host {
 	    InputStream stdout = process.getInputStream();
 	    InputStream stderr = process.getErrorStream();
 
-	    LocalExecHandle h = new LocalExecHandle(process, stdin, stdout, stderr, StringUtil.toString(cmd_array));
+	    LocalExecHandle h = new LocalExecHandle(process, stdin, stdout, stderr, cmd_array);
 	    
 	    if (timeout>NO_TIMEOUT) {
 	    	h.task = new ExitMonitorTask(h);

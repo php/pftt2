@@ -9,6 +9,8 @@ import java.util.regex.Pattern;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 
+import javax.annotation.Nonnull;
+
 import org.incava.util.diff.Diff;
 
 import com.mostc.pftt.host.Host;
@@ -122,7 +124,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		//
 		if (host.isWindows() && test_case.containsSection(EPhptSection.SKIPIF)) {
 			// do an early quick check
-			// fixes problem with Sapi/cli/tests/021.phpt
+			// fixes problem with sapi/cli/tests/021.phpt
 			if (test_case.get(EPhptSection.SKIPIF).contains("skip not for Windows")) {
 				twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "skip not for Windows", null, null, null, null, null, null, null, null, null, null));
 				
@@ -458,10 +460,13 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	protected abstract void prepareSTDIN() throws IOException;
 	
 	/** executes the test (the TEST section of PhptTestCase) and returns the actual output
+	 *
+	 * must not return null
 	 * 
 	 * @return
 	 * @throws Exception
 	 */
+	@Nonnull
 	protected abstract String executeTest() throws Exception;
 	
 	/** executes CLEAN section of test to cleanup after execution
@@ -512,7 +517,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 				twriter.show_exception(test_case, ex, expected);
 				throw ex;
 			}
-			if (expected_re_match) {
+			if (expected_re_match||check()) {
 
 				twriter.addResult(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, env, splitCmdString(), stdin_post, shell_script, null, null, null));
 						
@@ -524,7 +529,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			output = remove_header_from_output(output);
 			output_trim = output.trim();
 	
-			if (output_trim.equals(expected)||output_trim.contains(expected)||expected.contains(output_trim)) {
+			if (output_trim.equals(expected)||output_trim.contains(expected)||expected.contains(output_trim)||check()) {
 				
 				twriter.addResult(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, env, splitCmdString(), stdin_post, shell_script, null, null, null));
 						
@@ -534,9 +539,13 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			preoverride_actual = output_trim;
 			output_trim = PhptOverrideManager.replaceWithExactOverrides(host, output_trim);
 				
-			if (output_trim!=null) {
+			if (output_trim==null) {
+				// no output overrides for this phpt on this OS
+				//
+				// fall through to failing or xfailing the test
+			} else {
 				// compare again
-				if (output_trim.equals(expected)||output_trim.contains(expected)||expected.contains(output_trim)||(output_trim.length()>20&&expected.length()>20&&output_trim.substring(10, 20).equals(expected.substring(10, 20)))) {
+				if (output_trim.equals(expected)||output_trim.contains(expected)||expected.contains(output_trim)||(output_trim.length()>20&&expected.length()>20&&output_trim.substring(10, 20).equals(expected.substring(10, 20)))||check()) {
 					
 					twriter.addResult(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, env, splitCmdString(), stdin_post, shell_script, null, null, null));
 					
@@ -547,7 +556,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			output = remove_header_from_output(output);
 			output_trim = output.trim();
 			
-			if (StringUtil.isEmpty(output_trim)) {
+			if (StringUtil.isEmpty(output_trim)||check()) {
 				twriter.addResult(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, env, splitCmdString(), stdin_post, shell_script, null, null, null));
 				
 				return;
@@ -577,6 +586,11 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.FAIL, test_case, output, actual_lines, expected_lines, charset, env, splitCmdString(), stdin_post, shell_script, diff, expectf, preoverride_actual, getCrashedSAPIOutput()));
 		}
 	} // end void evalTest
+	
+	protected boolean check() {
+		// TODO temp
+		return StringUtil.isEmpty(getCrashedSAPIOutput());
+	}
 
 	protected abstract String[] splitCmdString();
 	

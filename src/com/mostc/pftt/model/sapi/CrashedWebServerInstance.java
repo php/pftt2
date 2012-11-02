@@ -14,8 +14,8 @@ import com.mostc.pftt.model.phpt.PhpIni;
 public class CrashedWebServerInstance extends WebServerInstance {
 	protected final String sapi_output;
 	
-	public CrashedWebServerInstance(PhpIni ini, String sapi_output) {
-		super(null, ini);
+	public CrashedWebServerInstance(WebServerManager ws_mgr, PhpIni ini, String sapi_output) {
+		super(ws_mgr, null, ini);
 		this.sapi_output = sapi_output;
 	}
 	
@@ -41,6 +41,11 @@ public class CrashedWebServerInstance extends WebServerInstance {
 	@Override
 	public boolean isRunning() {
 		return false;
+	}
+
+	@Override
+	protected void do_close() {
+		// N/A
 	}
 
 }

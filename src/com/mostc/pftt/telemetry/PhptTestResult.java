@@ -102,7 +102,7 @@ public class PhptTestResult {
 	
 	protected void write(File file, String text) throws IOException {
 		try {
-			file.mkdirs();
+			file.getParentFile().mkdirs();
 			
 			FileWriter fw = new FileWriter(file);
 			fw.write(text, 0, text.length());

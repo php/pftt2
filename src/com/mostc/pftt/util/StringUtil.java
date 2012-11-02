@@ -15,6 +15,17 @@ import com.mostc.pftt.util.apache.regexp.REProgram;
  */
 
 public final class StringUtil {
+	public static final String EMPTY = "";
+	
+	public static String unquote(String in) {
+		if (isEmpty(in))
+			return in;
+		while (in.startsWith("\"") || in.startsWith("'"))
+			in = in.substring(1);
+		while (in.endsWith("\"") || in.endsWith("'"))
+			in = in.substring(0, in.length()-1);
+		return in;
+	}
 	
 	public static boolean startsWithCS(String a, String b) {
 		return a==null||b==null? false : a.startsWith(b);
@@ -56,12 +67,18 @@ public final class StringUtil {
 		return sb.toString();
 	}
 	
+	public static final String[] EMPTY_ARRAY = new String[]{};
 	public static String[] splitLines(String str) {
+		if (str==null)
+			return EMPTY_ARRAY;
 		str = replaceAll(PATTERN_R, "", str);
 		return PATTERN_N.split(str);  
 	}
 	
 	public static String[] splitEqualsSign(String str) {
+		if (str==null)
+			return EMPTY_ARRAY;
+		
 		return PATTERN_EQ.split(str);
 	}
 	

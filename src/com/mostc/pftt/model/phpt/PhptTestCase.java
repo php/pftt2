@@ -9,6 +9,9 @@ import java.util.HashMap;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import com.github.mattficken.io.AbstractDetectingCharsetReader;
 import com.github.mattficken.io.ByLineReader;
 import com.github.mattficken.io.CharsetDeciderDecoder;
@@ -451,16 +454,20 @@ public class PhptTestCase extends TestCase {
 	 * @return
 	 * @see #get
 	 */
+	@Nonnull
 	public String getTrim(EPhptSection section) {
 		String t = get(section);
-		return StringUtil.isEmpty(t) ? t : t.trim();
+		return StringUtil.isEmpty(t) ? StringUtil.EMPTY : t.trim();
 	}
 
 	/** returns the text of the section unmodified
 	 * 
+	 * returns null if section not found
+	 * 
 	 * @param section
 	 * @return
 	 */
+	@Nullable
 	public String get(EPhptSection section) {
 		return section_text.get(section);
 	}

@@ -58,9 +58,6 @@ public class PhpIni extends TestCaseGroupKey {
 	public static final String UNICODE_OUTPUT_ENCODING = "unicode.output_encoding";
 	public static final String UNICODE_FROM_ERROR_MODE = "unicode.from_error_mode";
 	public static final String SESSION_AUTO_START = "session.auto_start";
-	//
-	// values
-	public static final String EMPTY = "";
 	public static final String ON = "On";
 	public static final String OFF = "Off";
 	public static final String UTF_8 = "UTF-8";
@@ -101,10 +98,10 @@ public class PhpIni extends TestCaseGroupKey {
 	public static final String EXT_XSL = dllName("xsl");
 	public static PhpIni createDefaultIniCopy(Host host) {
 		PhpIni ini = new PhpIni();
-		ini.putMulti(OUTPUT_HANDLER, EMPTY);
-		ini.putMulti(OPEN_BASEDIR, EMPTY);
+		ini.putMulti(OUTPUT_HANDLER, StringUtil.EMPTY);
+		ini.putMulti(OPEN_BASEDIR, StringUtil.EMPTY);
 		ini.putMulti(SAFE_MODE, 0);
-		ini.putMulti(DISABLE_DEFS, EMPTY);
+		ini.putMulti(DISABLE_DEFS, StringUtil.EMPTY);
 		ini.putMulti(OUTPUT_BUFFERING, OFF);
 		ini.putMulti(ERROR_REPORTING, E_ALL_OR_E_STRICT);
 		// IMPORTANT: display_errors=0. doesn't affect test output. run-tests.php sets display_errors=1
@@ -116,12 +113,12 @@ public class PhpIni extends TestCaseGroupKey {
 		ini.putMulti(TRACK_ERRORS, 1);
 		ini.putMulti(REPORT_MEMLEAKS, 1);
 		ini.putMulti(REPORT_ZEND_DEBUG, 0);
-		ini.putMulti(DOCREF_ROOT, EMPTY);
+		ini.putMulti(DOCREF_ROOT, StringUtil.EMPTY);
 		ini.putMulti(DOCREF_EXT, DOT_HTML);
-		ini.putMulti(ERROR_PREPEND_STRING, EMPTY);
-		ini.putMulti(ERROR_APPEND_STRING, EMPTY);
-		ini.putMulti(AUTO_PREPEND_FILE, EMPTY);
-		ini.putMulti(AUTO_APPEND_FILE, EMPTY);
+		ini.putMulti(ERROR_PREPEND_STRING, StringUtil.EMPTY);
+		ini.putMulti(ERROR_APPEND_STRING, StringUtil.EMPTY);
+		ini.putMulti(AUTO_PREPEND_FILE, StringUtil.EMPTY);
+		ini.putMulti(AUTO_APPEND_FILE, StringUtil.EMPTY);
 		ini.putMulti(MAGIC_QUOTES_RUNTIME, 0);
 		ini.putMulti(IGNORE_REPEATED_ERRORS, 0);
 		ini.putMulti(PRECISION, 14);
@@ -167,7 +164,7 @@ public class PhpIni extends TestCaseGroupKey {
 			int ini_i = line.indexOf("=");
 			if (ini_i!=-1) {
 				String ini_name = line.substring(0, ini_i).trim();
-				String ini_value = ini_i+1>=line.length() ? EMPTY : line.substring(ini_i+1).trim();
+				String ini_value = ini_i+1>=line.length() ? StringUtil.EMPTY : line.substring(ini_i+1).trim();
 				putMulti(ini_name, ini_value);
 			}
 		}

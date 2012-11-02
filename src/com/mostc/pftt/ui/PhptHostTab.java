@@ -111,7 +111,7 @@ public class PhptHostTab extends JSplitPane {
 		panel.add(unsupported_label = new JLabel("0"));
 		panel.add(new JLabel("Exceptions:"));
 		panel.add(exceptions_label = new JLabel("0"));
-		panel.add(new JLabel("Crashes:"));
+		panel.add(new JLabel("Failed Retries:"));
 		panel.add(crash_label = new JLabel("0"));
   
 		///////////////
@@ -214,7 +214,7 @@ public class PhptHostTab extends JSplitPane {
 					showList(exceptions_list_model); 
 			} });
 		list_button_group.add(list_exceptions_rb);
-		status_list_menu.add(list_crash_rb = new JRadioButtonMenuItem("Crash"));
+		status_list_menu.add(list_crash_rb = new JRadioButtonMenuItem("Failed Retries"));
 		list_crash_rb.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent e) { 
 				if (list_crash_rb.isSelected())
 					showList(crash_list_model); 

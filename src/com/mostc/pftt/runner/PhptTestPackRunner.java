@@ -31,7 +31,7 @@ import com.mostc.pftt.util.HostEnvUtil;
  */
 
 public class PhptTestPackRunner extends AbstractTestPackRunner {
-	protected static final int MAX_THREAD_COUNT = 48;
+	protected static final int MAX_THREAD_COUNT = 64; // TODO 32
 	protected final PhptTestPack test_pack;
 	protected final PhptTelemetryWriter twriter;
 	protected ETestPackRunnerState runner_state;
@@ -208,6 +208,8 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 				// execute any remaining thread safe jobs
 				runThreadSafe();
 				
+			} catch ( Exception ex ) {
+				ex.printStackTrace();
 			} finally {
 				if (run_thread.get())
 					// if #stopThisThread not called
@@ -293,16 +295,10 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 					twriter.show_exception(test_case, ex);
 				} 
 				
-				if (counter>10) {
-					// TODO temp
-					((WebServerInstance)ini).close();
-					
-					// critical: provide existing WebServerInstance to #getWebServerInstance
-					//           or will get multiple zombie php.exe web servers, etc...
-					ini = ((AbstractWebServerScenario)sapi_scenario).smgr.getWebServerInstance(host, build, ((WebServerInstance)ini).getPhpIni(), test_pack.getTestPack(), ((WebServerInstance)ini));
-					
-					counter = 0;
-				}
+				// @see HttpTestCaseRunner#http_execute which calls #notifyCrash
+				// make sure a WebServerInstance is still running here, so it will be shared with each
+				// test runner instance (otherwise each test runner will create its own instance, which is slow)
+				ini = ((AbstractWebServerScenario)sapi_scenario).smgr.getWebServerInstance(host, build, ((WebServerInstance)ini).getPhpIni(), test_pack.getTestPack(), ((WebServerInstance)ini));
 				
 				counter++;
 				

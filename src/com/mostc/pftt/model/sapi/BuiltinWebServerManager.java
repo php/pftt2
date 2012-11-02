@@ -40,7 +40,11 @@ public class BuiltinWebServerManager extends WebServerManager {
 			Runtime.getRuntime().addShutdownHook(new Thread() {
 				@Override
 				public void run() {
+					System.out.println("PFTT: terminating builtin web server instances...");
 					// Windows BN: may leave `php.exe -S` running if they aren't terminated here
+					// NOTE: if you click stop in Eclipse, you won't get here
+					// on Windows, that means that `php.exe -S` instances will still be running
+					// you'll need to do: taskkill /im:php.exe /f /t
 					close();
 				}
 			});
@@ -52,7 +56,8 @@ public class BuiltinWebServerManager extends WebServerManager {
 		String sapi_output = "";
 		int port_attempts;
 		boolean found_port;
-		for (int total_attempts = 0 ; total_attempts < 3 ; total_attempts++) {
+		int total_attempts = 0;
+		for ( ; total_attempts < 3 ; total_attempts++) {
 			
 			// find port number not currently in use
 			port_attempts = 0;
@@ -97,7 +102,7 @@ public class BuiltinWebServerManager extends WebServerManager {
 				//
 			
 				// provide a BuiltinWebServerInstance to handle the running web server instance
-				final BuiltinWebServerInstance web = new BuiltinWebServerInstance(LocalHost.splitCmdString(cmd), ini, handle, hostname, last_port);
+				final BuiltinWebServerInstance web = new BuiltinWebServerInstance(this, LocalHost.splitCmdString(cmd), ini, handle, hostname, last_port);
 				
 				// check web server periodically to see if it has crashed
 				timer.scheduleAtFixedRate(new TimerTask() {
@@ -130,19 +135,19 @@ public class BuiltinWebServerManager extends WebServerManager {
 		} // end for
 		
 		// fallback
-		sapi_output += "PFTT: wasn't able to start web server instance (after many attempts)... giving up.\n";
+		sapi_output += "PFTT: wasn't able to start web server instance (after "+total_attempts+" attempts)... giving up.\n";
 		
 		// return this failure message to client code
-		return new CrashedWebServerInstance(ini, sapi_output);
+		return new CrashedWebServerInstance(this, ini, sapi_output);
 	} // end protected synchronized WebServerInstance createWebServerInstance
 	
-	public class BuiltinWebServerInstance extends WebServerInstance {
+	public static class BuiltinWebServerInstance extends WebServerInstance {
 		protected final int port;
 		protected final String hostname;
 		protected final ExecHandle process;
 		
-		public BuiltinWebServerInstance(String[] cmd_array, PhpIni ini, ExecHandle process, String hostname, int port) {
-			super(cmd_array, ini);
+		public BuiltinWebServerInstance(BuiltinWebServerManager ws_mgr, String[] cmd_array, PhpIni ini, ExecHandle process, String hostname, int port) {
+			super(ws_mgr, cmd_array, ini);
 			this.process = process;
 			this.hostname = hostname;
 			this.port = port;
@@ -159,19 +164,13 @@ public class BuiltinWebServerManager extends WebServerManager {
 		}
 
 		@Override
-		public void close() {
-			try {
-				process.close();
-			} finally {
-				synchronized(BuiltinWebServerManager.this.instances) {
-					BuiltinWebServerManager.this.instances.remove(this);
-				}
-			}
+		protected void do_close() {
+			process.close();
 		}
 
 		@Override
 		public boolean isRunning() {
-			return process.isRunning();
+			return process.isRunning() && !isCrashed();
 		}
 		
 	} // end public class BuiltinWebServerInstance

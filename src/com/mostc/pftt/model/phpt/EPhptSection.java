@@ -20,48 +20,48 @@ public enum EPhptSection {
 	DESCRIPTION {
 		@Override
 		public String prepareSection(boolean keep_all, String text) {
-			return keep_all?text:PhpIni.EMPTY;
+			return keep_all?text:StringUtil.EMPTY;
 		}
 	},
 	CREDITS {
 		@Override
 		public String prepareSection(boolean keep_all, String text) {
-			return keep_all?text:PhpIni.EMPTY;
+			return keep_all?text:StringUtil.EMPTY;
 		}
 	},
 	/** not in documentation, de-facto */
 	FAIL {
 		@Override
 		public String prepareSection(boolean keep_all, String text) {
-			return keep_all?text:PhpIni.EMPTY;
+			return keep_all?text:StringUtil.EMPTY;
 		}
 	},
 	/** not in documentation, de-facto */
 	CREDIT {
 		@Override
 		public String prepareSection(boolean keep_all, String text) {
-			return keep_all?text:PhpIni.EMPTY;
+			return keep_all?text:StringUtil.EMPTY;
 		}
 	},
 	/** not in documentation, de-facto */
 	UEXPECTF {
 		@Override
 		public String prepareSection(boolean keep_all, String text) {
-			return keep_all?text:PhpIni.EMPTY;
+			return keep_all?text:StringUtil.EMPTY;
 		}
 	},
 	/** not in documentation, de-facto */
 	DONE {
 		@Override
 		public String prepareSection(boolean keep_all, String text) {
-			return keep_all?text:PhpIni.EMPTY;
+			return keep_all?text:StringUtil.EMPTY;
 		}
 	},
 	/** not in documentation, de-facto */
 	COMMENT {
 		@Override
 		public String prepareSection(boolean keep_all, String text) {
-			return keep_all?text:PhpIni.EMPTY;
+			return keep_all?text:StringUtil.EMPTY;
 		}
 	},
 	SKIPIF,
@@ -130,13 +130,13 @@ public enum EPhptSection {
 	CGI {
 		@Override
 		public String prepareSection(boolean keep_all, String text) {
-			return keep_all?text:PhpIni.EMPTY;
+			return keep_all?text:StringUtil.EMPTY;
 		}
 	},
 	XFAIL {
 		@Override
 		public String prepareSection(boolean keep_all, String text) {
-			return keep_all?text:PhpIni.EMPTY;
+			return keep_all?text:StringUtil.EMPTY;
 		}
 	},
 	EXPECTHEADERS,
