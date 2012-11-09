@@ -11,9 +11,11 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.model.phpt.PhptTestCase;
-import com.mostc.pftt.model.phpt.PhptTestPack;
+import com.mostc.pftt.model.phpt.PhptSourceTestPack;
+import com.mostc.pftt.model.phpt.PhptActiveTestPack;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.model.sapi.WebServerInstance;
+import com.mostc.pftt.scenario.AbstractFileSystemScenario;
 import com.mostc.pftt.scenario.AbstractSAPIScenario;
 import com.mostc.pftt.scenario.AbstractWebServerScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
@@ -23,15 +25,15 @@ import com.mostc.pftt.telemetry.PhptTelemetryWriter;
  * 
  * Can either run all PHPTs from the test pack, or PHPTs matching a set of names or name fragments.
  * 
- * TODO add @see for SAPIInstanceOrIni and concurrent or non-concurrent|serial SAPIInstanceOrInis
  * @author Matt Ficken
  *
  */
 
 public class PhptTestPackRunner extends AbstractTestPackRunner {
-	protected static final int MAX_THREAD_COUNT = 64; // TODO 32
-	protected final PhptTestPack test_pack;
+	protected static final int MAX_THREAD_COUNT = 64;
+	protected final PhptSourceTestPack src_test_pack;
 	protected final PhptTelemetryWriter twriter;
+	protected PhptActiveTestPack active_test_pack;
 	protected ETestPackRunnerState runner_state;
 	protected AtomicInteger test_count, active_thread_count;
 	protected HashMap<TestCaseGroupKey,LinkedBlockingQueue<PhptTestCase>> thread_safe_tests;
@@ -39,17 +41,79 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 	protected AbstractSAPIScenario sapi_scenario;
 	protected LinkedBlockingQueue<TestCaseGroupKey> group_keys;
 	
-	public PhptTestPackRunner(PhptTelemetryWriter twriter, PhptTestPack test_pack, ScenarioSet scenario_set, PhpBuild build, Host host) {
+	public PhptTestPackRunner(PhptTelemetryWriter twriter, PhptSourceTestPack test_pack, ScenarioSet scenario_set, PhpBuild build, Host host) {
 		super(scenario_set, build, host);
 		this.twriter = twriter;
-		this.test_pack = test_pack;
+		this.src_test_pack = test_pack;
 	}	
 	
 	public void runTestList(List<PhptTestCase> test_cases) throws Exception {
+		// XXX if already running, wait
 		runner_state = ETestPackRunnerState.RUNNING;
 		sapi_scenario = ScenarioSet.getSAPIScenario(scenario_set);
+		AbstractFileSystemScenario file_scenario = ScenarioSet.getFileSystemScenario(scenario_set);
 		
-		System.out.println("PFTT: loaded tests: "+test_cases.size());
+		////////////////// install test-pack onto the storage it will be run from
+		// for local file system, this is just a file copy. for other scenarios, its more complicated (let the filesystem scenario deal with it)
+		
+		twriter.getConsoleManager().println("PhptTestPackRunner", "loaded tests: "+test_cases.size());
+		twriter.getConsoleManager().println("PhptTestpackRunner", "preparing storage for test-pack...");
+		
+		// prepare storage
+		if (!file_scenario.notifyPrepareStorageDir(twriter.getConsoleManager(), host)) {
+			twriter.getConsoleManager().println("PhptTestPackRunner", "unable to prepare storage for test-pack, giving up!");
+			close();
+			return;
+		}
+		//
+
+		String storage_dir = file_scenario.getTestPackStorageDir(host);
+		// generate name of directory on that storage to store the copy of the test-pack
+		String test_pack_dir;
+		long millis = System.currentTimeMillis();
+		for ( int i=0 ; ; i++ ) {
+			// try to include version, branch info etc... from name of test-pack
+			test_pack_dir = storage_dir + "/PFTT-" + Host.basename(src_test_pack.getSourceDirectory()) + "-" + millis;
+			if (!host.exists(test_pack_dir))
+				break;
+			millis++;
+			if (i%100==0)
+				millis = System.currentTimeMillis();
+		}
+		//
+		
+		
+		twriter.getConsoleManager().println("PhptTestPackRunner", "installing... test-pack onto storage: "+test_pack_dir);
+		
+		// copy
+		active_test_pack = null;
+		try {
+			// TODO console option (local filesystem scenario only) to use PhptSourceTestPack as PhptActiveTestPack
+			//      -phpt-in-place
+			//      if not -auto and local file system, do in-place by default
+			//      if -auto, don't do in-place 
+			active_test_pack = src_test_pack.install(host, test_pack_dir);
+		} catch (Exception ex ) {
+			twriter.getConsoleManager().printStackTrace(ex);
+		}
+		if (active_test_pack==null) {
+			twriter.getConsoleManager().println("PhptTestPackRunner", "unable to install test-pack, giving up!");
+			close();
+			return;
+		}
+		//
+		
+		// notify storage
+		if (!file_scenario.notifyTestPackInstalled(twriter.getConsoleManager(), host)) {
+			twriter.getConsoleManager().println("PhptTestPackRunner", "unable to prepare storage for test-pack, giving up!(2)");
+			close();
+			return;
+		}
+		
+		twriter.getConsoleManager().println("PhptTestPackRunner", "installed tests("+test_cases.size()+") from test-pack onto storage: "+test_pack_dir);
+		twriter.getConsoleManager().println("PhptTestPackRunner", "ready to go!");
+		
+		/////////////////// installed test-pack, ready to go
 		
 		try {
 			groupTestCases(test_cases);
@@ -57,15 +121,20 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 			// TODO serialSAPIInstance_executeTestCases();
 			parallelSAPIInstance_executeTestCases();
 	
+			// delete if successful (otherwise leave it behind for user to analyze the internal exception(s))
+			// TODO console option to not cleanup
+			twriter.getConsoleManager().println("PhptTestPackRunner", "deleting up active test-pack: "+active_test_pack);
+			host.delete(active_test_pack.getDirectory());
 		} finally {
 			// be sure all running WebServerInstances, or other SAPIInstances are
 			// closed by end of testing (otherwise php.exe -S will keep on running)
 			close();
 		}
-	}
+	} // end public void runTestList
 	
 	public void close() {
-		((AbstractWebServerScenario)sapi_scenario).smgr.close();
+		if (sapi_scenario instanceof AbstractWebServerScenario) // TODO temp
+			((AbstractWebServerScenario)sapi_scenario).smgr.close();
 		sapi_scenario.close();
 	}
 	
@@ -91,14 +160,14 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 					continue;
 				}
 			} catch ( Exception ex ) {
-				ex.printStackTrace();
+				twriter.getConsoleManager().printStackTrace(ex);
 			}
 			//
 			
 			//
 			// TODO for cli, don't create anything just a static key
 			// TODO what about web servers that only allow 1 running instance ???
-			group_key = sapi_scenario.createTestGroupKey(host, build, test_pack, test_case);
+			group_key = sapi_scenario.createTestGroupKey(host, build, active_test_pack, test_case);
 			if (!group_keys.contains(group_key))
 				group_keys.put(group_key);
 			//
@@ -205,7 +274,7 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 				runThreadSafe();
 				
 			} catch ( Exception ex ) {
-				ex.printStackTrace();
+				twriter.getConsoleManager().printStackTrace(ex);
 			} finally {
 				if (run_thread.get())
 					// if #stopThisThread not called
@@ -230,17 +299,20 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 				}
 				if (group_key!=null && !jobs.isEmpty()) {
 					// TODO temp
-					group_key = ((AbstractWebServerScenario)sapi_scenario).smgr.getWebServerInstance(host, build, (PhpIni)group_key, test_pack.getTestPack(), null);
+					if (sapi_scenario instanceof AbstractWebServerScenario)
+						group_key = ((AbstractWebServerScenario)sapi_scenario).smgr.getWebServerInstance(host, build, (PhpIni)group_key, active_test_pack.getDirectory(), null);
 					
 					exec_jobs(group_key, jobs, test_count);
 					
 					// TODO temp
-					if ( twriter.getConsoleManager().isDisableDebugPrompt() || !((WebServerInstance)group_key).isCrashed() || !host.isWindows() ) {
-						// don't close this server if it crashed because user will get prompted
-						// to debug it on Windows and may still be debugging it (Visual Studio or WinDbg)
-						//
-						// it will get closed when user clicks close in WER popup dialog so its not like it would be running forever
-						((WebServerInstance)group_key).close();
+					if (group_key instanceof WebServerInstance) {
+						if ( twriter.getConsoleManager().isDisableDebugPrompt() || !((WebServerInstance)group_key).isCrashed() || !host.isWindows() ) {
+							// don't close this server if it crashed because user will get prompted
+							// to debug it on Windows and may still be debugging it (Visual Studio or WinDbg)
+							//
+							// it will get closed when user clicks close in WER popup dialog so its not like it would be running forever
+							((WebServerInstance)group_key).close();
+						}
 					}
 				}
 			}
@@ -292,7 +364,7 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 					) { 
 				// CRITICAL: catch exception so thread will always end normally
 				try {
-					sapi_scenario.createPhptTestCaseRunner(this, ini, test_case, twriter, host, scenario_set, build, test_pack).runTest();
+					sapi_scenario.createPhptTestCaseRunner(this, ini, test_case, twriter, host, scenario_set, build, src_test_pack, active_test_pack).runTest();
 				} catch ( Throwable ex ) {
 					twriter.show_exception(test_case, ex);
 				} 
@@ -300,7 +372,8 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 				// @see HttpTestCaseRunner#http_execute which calls #notifyCrash
 				// make sure a WebServerInstance is still running here, so it will be shared with each
 				// test runner instance (otherwise each test runner will create its own instance, which is slow)
-				ini = ((AbstractWebServerScenario)sapi_scenario).smgr.getWebServerInstance(host, build, ((WebServerInstance)ini).getPhpIni(), test_pack.getTestPack(), ((WebServerInstance)ini));
+				if (sapi_scenario instanceof AbstractWebServerScenario) // TODO temp
+					ini = ((AbstractWebServerScenario)sapi_scenario).smgr.getWebServerInstance(host, build, ((WebServerInstance)ini).getPhpIni(), active_test_pack.getDirectory(), ((WebServerInstance)ini));
 				
 				counter++;
 				

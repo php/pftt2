@@ -10,7 +10,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 import com.mostc.pftt.host.Host;
-import com.mostc.pftt.model.TestPack;
+import com.mostc.pftt.host.LocalHost;
+import com.mostc.pftt.model.SourceTestPack;
 import com.mostc.pftt.telemetry.PhptTelemetryWriter;
 
 /** manages a test-pack of PHPT tests
@@ -19,21 +20,20 @@ import com.mostc.pftt.telemetry.PhptTelemetryWriter;
  *
  */
 
-// TODO - copy all files to temporary directory, execute from there - can execute test-pack multiple times simultaneously
-public class PhptTestPack extends TestPack {
+public class PhptSourceTestPack extends SourceTestPack {
 	// CRITICAL: on Windows, must use \\ not /
 	//    -some tests fail b/c the path to php will have / in it, which it can't execute via `shell_exec`
 	protected String test_pack;
 	protected File test_pack_file;
 	protected Host host;
 	
-	public PhptTestPack(String test_pack) {
+	public PhptSourceTestPack(String test_pack) {
 		this.test_pack = test_pack;
 	}
 	
 	@Override
 	public String toString() {
-		return test_pack;
+		return getSourceDirectory();
 	}
 	
 	public boolean open(Host host) {
@@ -42,7 +42,7 @@ public class PhptTestPack extends TestPack {
 		return host.exists(this.test_pack);
 	}
 	
-	public String getTestPack() {
+	public String getSourceDirectory() {
 		return test_pack;
 	}
 	
@@ -56,6 +56,7 @@ public class PhptTestPack extends TestPack {
 		host.deleteIfExists("ext/standard/tests/file/windows_links/mklink_junction");
 		host.deleteIfExists("ext/standard/tests/file/windows_links/directory");
 		host.deleteIfExists("ext/standard/tests/file/windows_links/mounted_volume");
+		host.deleteIfExists("ext/standard/tests/file/windows_links/mnt");
 	}
 	
 	public void add_named_tests(List<PhptTestCase> test_files, List<String> names, PhptTelemetryWriter twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {
@@ -139,8 +140,8 @@ public class PhptTestPack extends TestPack {
 				if (test_name.startsWith("/") || test_name.startsWith("\\"))
 					test_name = test_name.substring(1);
 				
-				if (test_name.contains("a_dir"))
-					continue; // TODO
+//				if (test_name.contains("a_dir"))
+//					continue; // TODO
 				
 				PhptTestCase test_case = PhptTestCase.load(host, this, false, test_name, twriter, redirect_parent);
 				
@@ -156,7 +157,7 @@ public class PhptTestPack extends TestPack {
 				// ignore the test
 			} else {
 				// execute php code in the REDIRECTTEST section to get the test(s) to load
-				for ( String target_test_name : test_case.readRedirectTestNames(host, build) ) {
+				for ( String target_test_name : test_case.readRedirectTestNames(twriter.getConsoleManager(), host, build) ) {
 					
 					// test may actually be a directory => load all the PHPT tests from that directory
 					File dir = new File(test_pack+host.dirSeparator()+target_test_name);
@@ -166,11 +167,11 @@ public class PhptTestPack extends TestPack {
 						
 					} else {
 						// test refers to a specific test, try to load it
-						try {
+						//try {
 							test_case = PhptTestCase.load(host, this, false, target_test_name, twriter, redirect_parent);
-						} catch ( Exception ex ) {
+						/*} catch ( Exception ex ) {
 							ex.printStackTrace(); // TODO temp
-						}
+						}*/
 						
 						if (redirect_targets.contains(test_case))
 							// can only have 1 level of redirection
@@ -192,9 +193,27 @@ public class PhptTestPack extends TestPack {
 			test_files.add(test_case);
 		}
 	}
-
+	
 	public String getContents(Host host, String name) throws IOException {
 		return host.getContentsDetectCharset(new File(test_pack_file, name).getAbsolutePath(), PhptTestCase.newCharsetDeciderDecoder());
 	}
+
+	public PhptActiveTestPack install(Host host, String test_pack_dir) throws IllegalStateException, IOException, Exception {
+		if (!this.host.isRemote() || this.host.equals(host)) {
+			// installing from local host to remote host OR from remote host to itself
+			host.upload(test_pack, test_pack_dir);
+		} else if (!host.isRemote()) {
+			// installing from remote host to local host
+			host.download(test_pack, test_pack_dir);
+		} else {
+			// installing from 1 remote host to a different remote host
+			LocalHost local_host = new LocalHost();
+			String local_dir = local_host.mktempname("PhptTestPack");
+			this.host.download(test_pack, local_dir);
+			host.upload(local_dir, test_pack_dir);
+			local_host.delete(local_dir);
+		}
+		return new PhptActiveTestPack(test_pack_dir);
+	}
 	
-} // end public class PhptTestPack
+} // end public class PhptSourceTestPack

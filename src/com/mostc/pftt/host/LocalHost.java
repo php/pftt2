@@ -97,21 +97,41 @@ public class LocalHost extends Host {
 
 	@Override
 	public void delete(String path) {
-		new File(path).delete();
-	}
+		if (isDirectory(path)) {
+			// ensure empty
+			try {
+				if (isWindows()) {
+					path = toWindowsPath(path);
+					cmd("RMDIR /Q /S \""+path+"\"", NO_TIMEOUT);
+				} else {
+					path = toUnixPath(path);
+					exec("rm -rf \""+path+"\"", NO_TIMEOUT);
+				}
+			} catch ( Exception ex ) {
+				ex.printStackTrace();
+			}
+		} else {
+			new File(path).delete();
+		}
+	} // end public void delete
 
 	@Override
 	public boolean exists(String path) {
 		return new File(path).exists();
 	}
-
+	
 	@Override
-	public void saveText(String filename, String text) throws IOException {
-		saveText(filename, text, null);
+	public boolean isDirectory(String path) {
+		return new File(path).isDirectory();
 	}
 
 	@Override
-	public void saveText(String filename, String text, Charset charset) throws IOException {
+	public void saveFile(String filename, String text) throws IOException {
+		saveFile(filename, text, null);
+	}
+
+	@Override
+	public void saveFile(String filename, String text, Charset charset) throws IOException {
 		if (text==null)
 			text = "";
 		FileOutputStream fos = new FileOutputStream(filename);
@@ -163,7 +183,7 @@ public class LocalHost extends Host {
 		
 		@Override
 		public void run() {
-			thread.slowTest();
+			thread.notifySlowTest();
 		}
 		
 	}
@@ -185,13 +205,19 @@ public class LocalHost extends Host {
 	}
 	
 	@Override
-	public void copyFile(String src, String dst) throws Exception {
+	public void copy(String src, String dst) throws Exception {
 		if (isWindows()) {
-			src = src.replace('/', '\\');
-			dst = dst.replace('/', '\\');
-			this.exec("cmd /C copy /Y "+src+" "+dst, 0);
-		} else
-			this.exec("cp "+src+" "+dst, 0);
+			src = toWindowsPath(src);
+			dst = toWindowsPath(dst);
+			if (isDirectory(src))
+				// ensure xcopy sees destination is supposed to be a directory, or xcopy will ask/block forever
+				dst += "\\"; 
+			exec("xcopy /Q /Y /S /E \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
+		} else {
+			src = toUnixPath(src);
+			dst = toUnixPath(dst);
+			exec("cp \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
+		}
 	}
 
 	@Override
@@ -312,7 +338,7 @@ public class LocalHost extends Host {
 							//      process.destory might not do this, so thats why its CRITICAL that TASKKILL
 							//      be tried before process.destroy
 							try {
-								Runtime.getRuntime().exec("TASKKIll /FI \"IMAGENAME eq "+image_name+"\" /FI \"PID eq "+process_id+"\" /F /T");
+								Runtime.getRuntime().exec("TASKKILL /FI \"IMAGENAME eq "+image_name+"\" /FI \"PID eq "+process_id+"\" /F /T");
 							} catch (Throwable t3) {
 								t3.printStackTrace();
 							}
@@ -372,11 +398,6 @@ public class LocalHost extends Host {
 			
 			if (reader instanceof AbstractDetectingCharsetReader)
 				this.charset = ((AbstractDetectingCharsetReader)reader).cs;// TODO d.getCommonCharset();
-		}
-
-		@Override
-		public boolean isCrashed() {
-			return getExitCode() != 0;
 		}
 
 		@Override
@@ -521,7 +542,7 @@ public class LocalHost extends Host {
 
 	@Override
 	public void download(String src, String dst) throws IllegalStateException, IOException, Exception {
-		copyFile(src, dst);
+		copy(src, dst);
 	}
 
 	@Override
@@ -531,7 +552,7 @@ public class LocalHost extends Host {
 
 	@Override
 	public void upload(String src, String dst) throws IllegalStateException, IOException, Exception {
-		copyFile(src, dst);
+		copy(src, dst);
 	}
 
 	@Override
@@ -571,5 +592,15 @@ public class LocalHost extends Host {
 		// no network interfaces
 		return null;
 	} // end public String getAddress
+
+	@Override
+	public boolean isOpen() {
+		return true;
+	}
+
+	@Override
+	protected String getOSNameOnWindows() {
+		return getOSNameLong();
+	}
 	
 } // end public class Host

@@ -199,7 +199,7 @@ public abstract class WebServerInstance extends SAPIInstance {
 				ws_mgr.instances.remove(this);
 			}
 		}
-		// TODO temp
+		// be sure all replacements get closed too
 		for ( WebServerInstance c=replacement ; c != null ; c = c.replacement )
 			c.close();
 	}

@@ -6,6 +6,7 @@ import java.util.List;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
+import com.mostc.pftt.telemetry.ConsoleManager;
 
 /** A Set of Scenarios to test PHP under.
  * 
@@ -55,16 +56,26 @@ public class ScenarioSet extends ArrayList<Scenario> {
 		}
 		return Scenario.DEFAULT_SAPI_SCENARIO;
 	}
+	
+	public static AbstractFileSystemScenario getFileSystemScenario(ScenarioSet set) {
+		for (Scenario s:set) {
+			if (s instanceof AbstractFileSystemScenario) {
+				return (AbstractFileSystemScenario) s;
+			}
+		}
+		return Scenario.DEFAULT_FILESYSTEM_SCENARIO;
+	}
 
 	/** determines if this set of scenarios can be executed on the given host
 	 * 
+	 * @param cm
 	 * @param host
 	 * @param build
 	 * @return
 	 */
-	public boolean isSupported(Host host, PhpBuild build) {
+	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build) {
 		for (Scenario s :this) {
-			if (!s.isSupported(host, build))
+			if (!s.isSupported(cm, host, build))
 				return false;
 		}
 		return true;

@@ -9,6 +9,7 @@ import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
 import com.mostc.pftt.runner.PhptTestPackRunner;
 import com.mostc.pftt.ui.PhptDebuggerFrame;
+import com.mostc.pftt.util.ErrorUtil;
 
 public class ConsoleManager {
 	protected final boolean results_only, show_gui, disable_debug_prompt;
@@ -63,4 +64,17 @@ public class ConsoleManager {
 		
 		System.out.println("PFTT: "+ctx_str+": "+string);
 	}
-}
+
+	public void printStackTrace(Exception ex) {
+		if (results_only)
+			return;
+		
+		String ex_str = ErrorUtil.toString(ex);
+		System.err.println(ex_str);
+	}
+
+	public boolean isResultsOnly() {
+		return results_only;
+	}
+	
+} // end public class ConsoleManager

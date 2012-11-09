@@ -11,7 +11,6 @@ import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 
-
 import com.github.mattficken.io.ByLineReader;
 import com.github.mattficken.io.CharsetDeciderDecoder;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
@@ -79,11 +78,33 @@ public abstract class Host {
 		return new File(path).getName();
 	}
 	
+	/** takes string in form C:\\ and returns `C`. anything else, and null is returned
+	 * 
+	 * @param path
+	 * @return
+	 */
+	public static String drive(String path) {
+		if (path.length() >= 2) {
+			if (path.charAt(1)==':') {
+				if (Character.isLetter(path.charAt(0)))
+					return path.substring(0, 1);
+			}
+		}
+		return null;
+	}
+	
+	//////////////////////
+	protected String sys_info, os_name, tmp_dir, system_drive, home_dir, php_sdk_dir;
+	
 	/** closes any connections to Host and frees up resources
 	 * 
 	 */
 	public void close() {
 		
+	}
+	
+	public boolean isClosed() {
+		return false;
 	}
 	
 	/** returns the name of the Host operating system.
@@ -94,7 +115,10 @@ public abstract class Host {
 	 * @return
 	 */
 	public String getOSName() {
-		String os_name = getOSNameLong();
+		if (os_name!=null)
+			return os_name;
+		
+		os_name = getOSNameLong();
 		
 		os_name.replaceAll("Windows", "Win");
 		
@@ -121,9 +145,7 @@ public abstract class Host {
 	 * 
 	 * @return
 	 */
-	public boolean isOpen() {
-		return true;
-	}
+	public abstract boolean isOpen();
 	
 	@Override
 	public String toString() {
@@ -148,8 +170,8 @@ public abstract class Host {
 	 * @throws IllegalStateException
 	 * @throws IOException
 	 */
-	public abstract void saveText(String filename, String text) throws IllegalStateException, IOException;
-	public abstract void saveText(String filename, String text, Charset charset) throws IllegalStateException, IOException;
+	public abstract void saveFile(String filename, String text) throws IllegalStateException, IOException;
+	public abstract void saveFile(String filename, String text, Charset charset) throws IllegalStateException, IOException;
 	public abstract void delete(String path) throws IllegalStateException, IOException;
 	public void deleteIfExists(String path) {
 		try {
@@ -158,6 +180,7 @@ public abstract class Host {
 			
 		}
 	}
+	public abstract boolean isDirectory(String string);
 	public abstract boolean exists(String string);
 	public abstract void mkdirs(String path) throws IllegalStateException, IOException;
 	/** copies file/directory from source to destination on host
@@ -168,7 +191,7 @@ public abstract class Host {
 	 * @throws IllegalStateException
 	 * @throws Exception
 	 */
-	public abstract void copyFile(String src, String dst) throws IllegalStateException, Exception ;
+	public abstract void copy(String src, String dst) throws IllegalStateException, Exception ;
 	/** returns the character to separate several different paths on Host
 	 * 
 	 * On Windows this is ; 
@@ -309,20 +332,15 @@ public abstract class Host {
 	 */
 	public abstract void upload(String src, String dst) throws IllegalStateException, IOException, Exception;
 
-	protected String tmp_dir, system_drive, home_dir, php_sdk_dir;
-	/** returns if this is Windows Vista or 2008, but not 7, 2008r2, 8, 2012
-	 * 
-	 * @return
-	 */
-	public boolean isLonghornExact() {
-		return false; // TODO
-	}
 	/** returns TRUE if host is Windows
 	 * 
 	 * this is a fast method which caches its values, so you don't have to do that in your code
 	 * 
 	 * generally if !isWindows == isPosix
-	 * 
+	 *
+	 * @see #isVistaOrBefore
+	 * @see #isVistaExact
+	 * @see #isWin8OrLater
 	 * @return
 	 */
 	public abstract boolean isWindows();
@@ -371,12 +389,16 @@ public abstract class Host {
 			return php_sdk_dir = getHomeDir() + "/php-sdk/";
 	}
 	public String getHomeDir() {
-		if (home_dir!=null)
+		if (home_dir!=null) {
 			return home_dir;
-		else if (isWindows())
-			return home_dir = getEnvValue("USERPROFILE");
-		else
-			return home_dir = getEnvValue("HOME");
+		} else if (isWindows()) {
+			home_dir = getEnvValue("USERPROFILE"); // Windows
+			if (StringUtil.isEmpty(home_dir))
+				home_dir = getSystemDrive() + "\\Users\\" + getUsername(); // fallback ; this shouldn't happen
+			return home_dir;
+		} else {
+			return home_dir = getEnvValue("HOME"); // Linux
+		}
 	}
 	public ExecOutput exec(String cmd, int timeout_sec, Map<String, String> env, Charset charset) throws IllegalStateException, Exception {
 		return exec(cmd, timeout_sec, env, charset, null);
@@ -403,7 +425,7 @@ public abstract class Host {
 	public ExecOutput execElevated(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread test_thread, int slow_timeout_sec) throws Exception {
 		if (isWindows())
 			// execute command with this utility that will elevate the program using Windows UAC
-			cmd = "c:\\php-sdk\\pftt\\current\\bin\\elevate "+cmd;
+			cmd = getPfttDir() + "\\bin\\elevate "+cmd;
 		
 		return exec(cmd, timeout_sec, env, stdin_data, charset, chdir, test_thread, slow_timeout_sec);
 	}
@@ -420,7 +442,9 @@ public abstract class Host {
 	public static abstract class ExecHandle {
 		public abstract void close();
 		public abstract boolean isRunning();
-		public abstract boolean isCrashed();
+		public boolean isCrashed() {
+			return getExitCode() != 0;
+		}
 		public abstract String getOutput();
 		public abstract int getExitCode();
 	}
@@ -495,23 +519,29 @@ public abstract class Host {
 		return isWindows() ? "cmd /C "+cmd : cmd;
 	}
 		
-	public String mktempname() {
-		return mktempname(null);
+	public String mktempname(String ctx_str) {
+		return mktempname(ctx_str, null);
 	}
 	static final Random rand = new Random();
 	/** generates the name of a temporary file that is not in use
 	 * 
+	 * @param ctx_str - part of PFTT that needs this temporary filename
 	 * @param suffix - string that is appended to end of file name (ex: .php file extension)
 	 * @return
 	 */
-	public String mktempname(String suffix) {
-		StringBuilder sb = new StringBuilder(20);
+	public String mktempname(String ctx_str, String suffix) {
+		StringBuilder sb = new StringBuilder(30);
 		String str;
 		
 		// generate random filename until one found that isn't in use
 		do {
 			sb.append(getTempDir());
 			sb.append(dirSeparator());
+			sb.append("PFTT-");
+			if (StringUtil.isNotEmpty(ctx_str)) {
+				sb.append(ctx_str);
+				sb.append('-');
+			}
 			for (int i=0 ; i < 5 ; i++ )
 				sb.append((char)( rand.nextInt(26) + 65 ));
 			if (StringUtil.isNotEmpty(suffix))
@@ -522,31 +552,29 @@ public abstract class Host {
 		return str;
 	}
 	
-	static final Pattern PAT_fs = Pattern.compile("/");
-	static final Pattern PAT_bs = Pattern.compile("\\\\");
-	static final Pattern PAT_double_fs = Pattern.compile("[/]+");
+	static final Pattern PAT_fs = Pattern.compile("[/]+");
+	static final Pattern PAT_bs = Pattern.compile("[\\\\]+");
 	/** fixes path so it uses the appropriate / or \\ for the Host
 	 * 
 	 * @param test_dir
 	 * @return
 	 */
 	public String fixPath(String path) {
-		return isWindows() ? StringUtil.replaceAll(PAT_fs, "\\\\", path) : toUnixPath(path);
+		return isWindows() ? toWindowsPath(path) : toUnixPath(path);
 	}
 	
-	public String join(String... path_parts) {
-		return StringUtil.join(dirSeparator(), path_parts);
+	public static String toWindowsPath(String path) {
+		return StringUtil.replaceAll(PAT_fs, "\\\\", path);
 	}
 	
-	/** converts file path to Unix format (using / instead of Windows \\)
+	/** converts file path to Unix format (using / instead of Windows \)
 	 * 
 	 * @param name
 	 * @return
 	 */
 	public static String toUnixPath(String name) {
-		// TODO temp return StringUtil.replaceAll(PAT_double_fs, "/", StringUtil.replaceAll(PAT_bs, "\\", name));
-		//return name.replaceAll("\\", "\\");//StringUtil.replaceAll(PAT_bs, "\\", name);
-		return name.replace('\\', '/');
+		// \ is a legal file char on unix so it must get removed or it'll be part of file/dir name
+		return StringUtil.replaceAll(PAT_bs, "/", name);
 	}
 	
 	/** uploads a 7zip file from local source to remote destination and decompresses it.
@@ -583,10 +611,12 @@ public abstract class Host {
 	 * @throws Exception
 	 */
 	public String getSystemInfo() throws Exception {
-		if (isWindows())
-			return exec("systeminfo", ONE_MINUTE).output;
+		if (sys_info!=null)
+			return sys_info;
+		else if (isWindows())
+			return sys_info = exec("systeminfo", ONE_MINUTE).output;
 		else
-			return exec("uname -a", ONE_MINUTE).output;
+			return sys_info = exec("uname -a", ONE_MINUTE).output;
 	}
 	
 	/** finds path to program on host
@@ -662,17 +692,65 @@ public abstract class Host {
 			return 1;
 		}
 	}
-	
-	/* TODO
-	public long getTotalPhysicalMemory() {
-		if (isWindows()) {
-			// could use `wmic` but that won't work on winxp, 2003, 2003r2
-			this.getSystemInfo();
-			// look for line like: `Total Physical Memory:     4,096 MB`
-		} else {
-			this.exec("free", NO_TIMEOUT);
-		}
-	}
-	*/
 
+	protected abstract String getOSNameOnWindows();
+	
+	public boolean isVistaOrBefore() {
+		if (!isWindows())
+			return false;
+		String os_name = getOSNameOnWindows();
+		return os_name.contains("Windows Vista") || os_name.contains("Windows 2008 ") || os_name.contains("Windows 2003") || os_name.contains("Windows XP");
+	}
+	public boolean isVistaExact() {
+		if (!isWindows())
+			return false;
+		String os_name = getOSNameOnWindows();
+		// technically Vista SP0 != 2008 RTM but Vista SP1 == 2008 RTM and Vista SP2 == 2008sp2 
+		// thats why 2008 RTM is often referred to as 2008sp1 (1 service pack for 2008 after RTM, which is 
+		//      2008sp2, so there are 2 versions of Windows 2008, 2008sp1 and 2008sp2)
+		return os_name.contains("Windows Vista") || os_name.contains("Windows 2008 ");
+	}
+	public boolean isWin8Exact() {
+		if (!isWindows())
+			return false;
+		String os_name = getOSNameOnWindows();
+		return os_name.contains("Windows 8") || os_name.contains("Windows 2012");
+	}
+	public boolean isWin8OrLater() {
+		if (!isWindows())
+			return false;
+		String os_name = getOSNameOnWindows();
+		return os_name.contains("Windows 8") || os_name.contains("Windows 2012") || os_name.contains("Windows 9") || os_name.contains("Windows 2014");
+	}
+	
+	protected String[] getSystemInfoLines() throws Exception {
+		return StringUtil.splitLines(getSystemInfo());
+	}
+	
+	public long getTotalPhysicalMemoryK() {
+		try {
+			if (isWindows()) {
+				// could use `wmic` but that won't work on winxp, 2003, 2003r2
+				for ( String line : getSystemInfoLines() ) {
+					// look for line like: `Total Physical Memory:     4,096 MB`
+					if (line.startsWith("Total Physical Memory:")) {
+						String[] parts = StringUtil.splitWhitespace(line);
+						if (parts.length > 2) // should be 3
+							return Long.parseLong(parts[1]) * 1024;
+					}
+				}
+			} else {
+				String[] lines = exec("free", ONE_MINUTE).getLines();
+				if (lines.length > 2) { // should be 3
+					String[] parts = StringUtil.splitWhitespace(lines[1]);
+					if (parts.length > 2) // should be 3
+						return Long.parseLong(parts[2]);
+				}
+			}
+		} catch ( Exception ex ) {
+			ex.printStackTrace();
+		}
+		return 0L;
+	} // end public long getTotalPhysicalMemoryK
+	
 } // end public abstract class Host

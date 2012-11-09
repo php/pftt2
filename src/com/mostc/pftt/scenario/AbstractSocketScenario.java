@@ -1,5 +1,5 @@
 package com.mostc.pftt.scenario;
 
-public abstract class AbstractSocketScenario extends AbstractSerialScenario {
+public abstract class AbstractSocketScenario extends AbstractOptionScenario {
 
 }

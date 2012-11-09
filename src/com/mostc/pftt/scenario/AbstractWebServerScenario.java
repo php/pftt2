@@ -17,7 +17,8 @@ import org.apache.http.protocol.RequestUserAgent;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhptTestCase;
-import com.mostc.pftt.model.phpt.PhptTestPack;
+import com.mostc.pftt.model.phpt.PhptSourceTestPack;
+import com.mostc.pftt.model.phpt.PhptActiveTestPack;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.model.sapi.WebServerInstance;
 import com.mostc.pftt.model.sapi.WebServerManager;
@@ -45,10 +46,10 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 		params = new SyncBasicHttpParams();
 		HttpProtocolParams.setVersion(params, HttpVersion.HTTP_1_1);
 		HttpProtocolParams.setContentCharset(params, "UTF-8");
-		HttpProtocolParams.setUserAgent(params, "Mozilla/5.0 (Windows NT 6.1; rv:12.0) Gecko/ 20120405 Firefox/14.0.1");
+		HttpProtocolParams.setUserAgent(params, "Mozilla/5.0 (Windows NT 6.1; rv:12.0) Gecko/20120405 Firefox/14.0.1");
 		HttpProtocolParams.setUseExpectContinue(params, true);
 		
-		httpproc = new ImmutableHttpProcessor(new HttpRequestInterceptor[] {// XXX reuse
+		httpproc = new ImmutableHttpProcessor(new HttpRequestInterceptor[] {
 		        // Required protocol interceptors
 		        new RequestContent(),
 		        new RequestTargetHost(),
@@ -61,8 +62,8 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 	}
 	
 	@Override
-	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey ini, PhptTestCase test_case, PhptTelemetryWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptTestPack test_pack) {
-		return new HttpTestCaseRunner(params, httpproc, httpexecutor, smgr, (WebServerInstance)ini, thread, test_case, twriter, host, scenario_set, build, test_pack);
+	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey ini, PhptTestCase test_case, PhptTelemetryWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+		return new HttpTestCaseRunner(params, httpproc, httpexecutor, smgr, (WebServerInstance)ini, thread, test_case, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 	}
 	
 	@Override
@@ -70,6 +71,7 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 		smgr.close();
 	}
 	
+	@Override
 	public boolean willSkip(PhptTelemetryWriter twriter, Host host, PhpBuild build, PhptTestCase test_case) throws Exception {
 		return HttpTestCaseRunner.willSkip(twriter, host, build, test_case);
 	}

@@ -2,6 +2,7 @@ package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
+import com.mostc.pftt.telemetry.ConsoleManager;
 
 /** Scenario to test PHP under.
  * 
@@ -17,17 +18,12 @@ import com.mostc.pftt.model.phpt.PhpBuild;
  */
 
 public abstract class Scenario {
-	void start(Object host) {}
-	void stop(Object host) {}
-	void docroot(Object host, Object middleware) {}
-	void prepare(Object host, Object test, Object env, Object ini) {} // test start
-	void evalOutput() {} // test end
 	
 	public abstract boolean rejectOther(Scenario o);
 	public abstract String getName();
 	public abstract boolean isImplemented();
 	
-	public boolean isSupported(Host host, PhpBuild build) {
+	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build) {
 		return true;
 	}
 	
@@ -36,8 +32,10 @@ public abstract class Scenario {
 		return getName();
 	}
 	
-	public static final CLIScenario CLI_SCENARIO = new CLIScenario();
+	public static final CliScenario CLI_SCENARIO = new CliScenario();
+	public static final LocalFileSystemScenario LOCALFILESYSTEM_SCENARIO = new LocalFileSystemScenario();
 	public static final AbstractSAPIScenario DEFAULT_SAPI_SCENARIO = CLI_SCENARIO;
+	public static final AbstractFileSystemScenario DEFAULT_FILESYSTEM_SCENARIO = LOCALFILESYSTEM_SCENARIO;
 	
 	// 90 ScenarioSets => (APC, WinCache, No) * (CLI, Buitlin-WWW, Apache, IIS-Standard, IIS-Express) * ( local filesystem, the 5 types of SMB )
 	public static Scenario[][] getAllScenarios() {
@@ -55,22 +53,27 @@ public abstract class Scenario {
 				},
 				// SAPIs
 				new Scenario[]{
-				// TODO new CLIScenario(),
-				new BuiltinWebServerScenario(),
-				new ApacheModPHPScenario(),
+				new CliScenario(),
+				// TODO new BuiltinWebServerScenario(),
+				/* TODO new ApacheModPHPScenario(),
 				new IISExpressFastCGIScenario(),
-				new IISStandardFastCGIScenario()
+				new IISStandardFastCGIScenario() */
 				},
 				// filesystems
 				new Scenario[] {
-				new LocalFileSystemScenario(),
-				new SMBBasicScenario(),
-				new SMBDeduplicationScenario(),
-				new SMBDFSScenario(),
-				new SMBCSCScenario(),
+				LOCALFILESYSTEM_SCENARIO,
+//				new SMBBasicScenario(),
+//				new SMBDeduplicationScenario(),
+				/* XXX new SMBDFSScenario(),
 				new SMBCAScenario(),
 				// probably don't need to test branch cache, but including it for completeness
-				new SMBBranchCacheScenario()
+				new SMBBranchCacheScenario()*/
+				},
+				// options for smb - can be applied to any type of smb
+				new Scenario[] {
+						// default is CSC enabled
+						new CSCEnableScenario(),
+						new CSCDisableScenario(),
 				},
 				// databases
 				new Scenario[]{

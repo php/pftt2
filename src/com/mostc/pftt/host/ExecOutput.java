@@ -3,6 +3,7 @@ package com.mostc.pftt.host;
 import java.io.PrintStream;
 import java.nio.charset.Charset;
 
+import com.mostc.pftt.telemetry.ConsoleManager;
 import com.mostc.pftt.util.StringUtil;
 
 public class ExecOutput {
@@ -29,10 +30,15 @@ public class ExecOutput {
 	public boolean isEmpty() {
 		return StringUtil.isEmpty(output);
 	}
+	public boolean isSuccess() {
+		return exit_code == 0;
+	}
 	public boolean isCrashed() {
 		return exit_code != 0;
 	}
-	public ExecOutput printOutputIfCrash() {
+	public ExecOutput printOutputIfCrash(ConsoleManager cm) {
+		if (cm==null||cm.isResultsOnly())
+			return this;
 		return printOutputIfCrash(System.err);
 	}
 	public ExecOutput printOutputIfCrash(PrintStream ps) {
@@ -40,4 +46,4 @@ public class ExecOutput {
 			ps.println(output);
 		return this;
 	}
-}
+} // end public class ExecOutput

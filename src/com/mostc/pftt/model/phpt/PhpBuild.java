@@ -12,6 +12,7 @@ import javax.annotation.Nullable;
 import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.Build;
+import com.mostc.pftt.telemetry.ConsoleManager;
 import com.mostc.pftt.util.StringUtil;
 
 /** represents a single build of PHP.
@@ -42,7 +43,7 @@ public class PhpBuild extends Build {
 		return build_path;
 	}
 	
-	public boolean open(Host host) {
+	public boolean open(ConsoleManager cm, Host host) {
 		try {
 			php_exe = host.isWindows() ? build_path + "\\php.exe" : build_path + "/sapi/cli/php";
 			php_cgi_exe = host.isWindows() ? build_path + "\\php-cgi.exe" : build_path + "/sapi/cgi/php-cgi";
@@ -50,7 +51,7 @@ public class PhpBuild extends Build {
 				php_cgi_exe = null; // mark as not found
 			return true;
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			cm.printStackTrace(ex);
 		}
 		return false;
 	} // end public boolean open
@@ -131,15 +132,16 @@ public class PhpBuild extends Build {
 	
 	/** gets the version string for this build
 	 * 
+	 * @param cm
 	 * @param host
 	 * @return
 	 * @throws Exception
 	 */
-	public String getVersionString(Host host) throws Exception {
+	public String getVersionString(ConsoleManager cm, Host host) throws Exception {
 		if (version_str!=null) {
 			return version_str;
 		}
-		for (String line : StringUtil.splitLines(getPhpInfo(host))) {
+		for (String line : StringUtil.splitLines(getPhpInfo(cm, host))) {
 			if (line.startsWith("PHP Version =>")) {
 				version_str = line.substring("PHP Version => ".length());
 				
@@ -155,23 +157,23 @@ public class PhpBuild extends Build {
 		return null; // shouldn't happen
 	}
 	
-	public int getVersionMajor(Host host) throws Exception {
-		getVersionString(host);
+	public int getVersionMajor(ConsoleManager cm, Host host) throws Exception {
+		getVersionString(cm, host);
 		return major;
 	}
 	
-	public int getVersionMinor(Host host) throws Exception {
-		getVersionString(host);
+	public int getVersionMinor(ConsoleManager cm, Host host) throws Exception {
+		getVersionString(cm, host);
 		return minor;
 	}
 	
-	public int getVersionRelease(Host host) throws Exception {
-		getVersionString(host);
+	public int getVersionRelease(ConsoleManager cm, Host host) throws Exception {
+		getVersionString(cm, host);
 		return release;
 	}
 	
-	public EBuildBranch getVersionBranch(Host host) throws Exception {
-		getVersionString(host);
+	public EBuildBranch getVersionBranch(ConsoleManager cm, Host host) throws Exception {
+		getVersionString(cm, host);
 		return branch;
 	}
 	
@@ -180,12 +182,13 @@ public class PhpBuild extends Build {
 	 *  Note that PhpIni#hasExtension only checks to see if the extension is enabled in a PhpIni whereas
 	 *  #isExtensionEnabled checks to see if its enabled. PhpIni#hasExtension will miss builtin/static extensions.
 	 *   
+	 * @param cm
 	 * @param host
 	 * @param ext_name
 	 * @return
 	 * @throws Exception
 	 */
-	public boolean isExtensionEnabled(Host host, String ext_name) throws Exception {
+	public boolean isExtensionEnabled(ConsoleManager cm, Host host, String ext_name) throws Exception {
 		if (ext_name.equals("spl")||ext_name.equals("standard")||ext_name.equals("core"))
 			// these extensions are always there/always builtin
 			return true;
@@ -216,7 +219,7 @@ public class PhpBuild extends Build {
 			}
 		}
 		
-		for (String module:getExtensionList(host, ini)) {
+		for (String module:getExtensionList(cm, host, ini)) {
 			if (module.contains(ext_name)) {
 				map.put(ext_name, true);
 				return true;
@@ -229,11 +232,12 @@ public class PhpBuild extends Build {
 	
 	/** gets the PhpInfo string for this build
 	 * 
+	 * @param cm
 	 * @param host
 	 * @return
 	 * @throws Exception
 	 */
-	public String getPhpInfo(Host host) throws Exception {
+	public String getPhpInfo(ConsoleManager cm, Host host) throws Exception {
 		String php_info;
 		if (this.php_info != null) {
 			php_info = this.php_info.get();
@@ -242,7 +246,7 @@ public class PhpBuild extends Build {
 		}
 		
 		ExecOutput eo = eval(host, "phpinfo();");
-		eo.printOutputIfCrash();
+		eo.printOutputIfCrash(cm);
 		php_info = eo.output;
 		this.php_info = new WeakReference<String>(php_info);
 		return php_info;
@@ -257,11 +261,11 @@ public class PhpBuild extends Build {
 	public void setDefaultPhpIni(Host host, PhpIni ini) throws IOException {
 		this.php_ini = new WeakReference<PhpIni>(ini);
 		
-		host.saveText(getDefaultPhpIniPath(host), ini.toString());
+		host.saveFile(getDefaultPhpIniPath(host), ini.toString());
 		
 		if (!host.isWindows()) {
-			host.saveText("/etc/php/cli/php.ini", ini.toString());
-			host.saveText("/etc/php/cgi/php.ini", ini.toString());
+			host.saveFile("/etc/php/cli/php.ini", ini.toString());
+			host.saveFile("/etc/php/cgi/php.ini", ini.toString());
 		}
 	}
 		
@@ -272,7 +276,7 @@ public class PhpBuild extends Build {
 	 * @return
 	 * @throws Exception
 	 */
-	public PHPOutput eval (Host host, String code) throws Exception {
+	public PHPOutput eval(Host host, String code) throws Exception {
 		return eval(host, code, true);
 	}
 	
@@ -285,16 +289,16 @@ public class PhpBuild extends Build {
 	 * @throws Exception
 	 * @see PHPOutput#cleanup
 	 */
-	public PHPOutput eval (Host host, String code, boolean auto_cleanup) throws Exception {
+	public PHPOutput eval(Host host, String code, boolean auto_cleanup) throws Exception {
 		return eval(host, code, Host.NO_TIMEOUT, auto_cleanup);
 	}
 		
-	public PHPOutput eval (Host host, String code, int timeout_seconds, boolean auto_cleanup) throws Exception {
+	public PHPOutput eval(Host host, String code, int timeout_seconds, boolean auto_cleanup) throws Exception {
 		code = StringUtil.ensurePhpTags(code);
 				
-		String php_filename = host.mktempname(".php");
+		String php_filename = host.mktempname("Build", ".php");
 		
-		host.saveText(php_filename, code);
+		host.saveFile(php_filename, code);
 		
 		PHPOutput output = new PHPOutput(php_filename, host.exec(php_exe+" "+php_filename, timeout_seconds, new HashMap<String,String>(), null, Host.dirname(php_filename)));
 		if (auto_cleanup && !output.hasFatalError())
@@ -320,7 +324,9 @@ public class PhpBuild extends Build {
 			return output.contains("Fatal") || output.contains("fatal");
 		}
 		
-		public PHPOutput printHasFatalError() {
+		public PHPOutput printHasFatalError(ConsoleManager cm) {
+			if (cm==null||cm.isResultsOnly())
+				return this;
 			return printHasFatalError(System.err);
 		}
 		public PHPOutput printHasFatalError(PrintStream ps) {
@@ -335,27 +341,28 @@ public class PhpBuild extends Build {
 			} catch ( Exception ex ) {}
 		}
 		@Override
-		public PHPOutput printOutputIfCrash() {
-			return (PHPOutput) super.printOutputIfCrash();
+		public PHPOutput printOutputIfCrash(ConsoleManager cm) {
+			return (PHPOutput) super.printOutputIfCrash(cm);
 		}
 		public PHPOutput printOutputIfCrash(PrintStream ps) {
 			return (PHPOutput) super.printOutputIfCrash(ps);
 		}
-	}
+	} // end public static class PHPOutput
 	
-	public String[] getExtensionList(Host host) throws Exception {
-		return getExtensionList(host, getDefaultPhpIni(host));
+	public String[] getExtensionList(ConsoleManager cm, Host host) throws Exception {
+		return getExtensionList(cm, host, getDefaultPhpIni(host));
 	}
 	
 	/** gets the static builtin extensions for this build build and the dynamic extensions the
 	 * PhpIni loads (minus any extensions that can't actually be loaded)
 	 * 
+	 * @param cm
 	 * @param host
 	 * @param ini
 	 * @return
 	 * @throws Exception
 	 */
-	public String[] getExtensionList(Host host, PhpIni ini) throws Exception {
+	public String[] getExtensionList(ConsoleManager cm, Host host, PhpIni ini) throws Exception {
 		String[] module_list;
 		if (this.module_list!=null) {
 			module_list = this.module_list.get();
@@ -366,7 +373,7 @@ public class PhpBuild extends Build {
 		String ini_settings = ini==null?null:ini.toCliArgString(host);
 		
 		ExecOutput output = host.exec(php_exe+(ini_settings==null?"":" "+ini_settings)+" -m", Host.NO_TIMEOUT);
-		output.printOutputIfCrash();
+		output.printOutputIfCrash(cm);
 		
 		ArrayList<String> list = new ArrayList<String>();
 		

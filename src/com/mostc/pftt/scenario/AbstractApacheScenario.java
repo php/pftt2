@@ -8,7 +8,7 @@ import com.mostc.pftt.model.sapi.ApacheManager;
  *
  */
 
-public abstract class AbstractApacheScenario extends AbstractWebServerScenario {
+public abstract class AbstractApacheScenario extends AbstractProductionWebServerScenario {
 
 	public AbstractApacheScenario() {
 		super(new ApacheManager());

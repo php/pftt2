@@ -53,7 +53,7 @@ import com.mostc.pftt.model.phpt.EBuildBranch;
 import com.mostc.pftt.model.phpt.EBuildType;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhptTestCase;
-import com.mostc.pftt.model.phpt.PhptTestPack;
+import com.mostc.pftt.model.phpt.PhptSourceTestPack;
 import com.mostc.pftt.model.smoke.PhptTestCountsMatchSmokeTest;
 import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.model.smoke.RequiredFeaturesSmokeTest;
@@ -113,12 +113,14 @@ public class PfttMain {
 		return last_file == null ? null : PhptTelemetryReader.open(host, last_file);
 	}
 
-	public void run_all(ConsoleManager cm, PhpBuild build, PhptTestPack test_pack, ScenarioSet scenario_set) throws Exception {
+	public void run_all(ConsoleManager cm, PhpBuild build, PhptSourceTestPack test_pack, ScenarioSet scenario_set) throws Exception {
 		LinkedList<PhptTestCase> test_cases = new LinkedList<PhptTestCase>();
 		
 		PhptTelemetryWriter tmgr = new PhptTelemetryWriter(host, cm, telem_dir(), build, test_pack, scenario_set);
 		test_pack.cleanup();
+		cm.println("PhptTestPack", "enumerating test cases from test-pack...");
 		test_pack.add_test_files(test_cases, tmgr, build);
+		cm.println("PhptTestPack", "enumerated test cases.");
 		
 		PhptTestPackRunner test_pack_runner = new PhptTestPackRunner(tmgr, test_pack, scenario_set, build, host);
 		cm.showGUI(test_pack_runner);
@@ -144,23 +146,25 @@ public class PfttMain {
 		}
 	}
 	
-	protected void show_report(AbstractReportGen report) {
+	protected void show_report(ConsoleManager cm, AbstractReportGen report) {
 		String html_file = report.createHTMLTempFile(host);
 		
 		try {
 			Desktop.getDesktop().browse(new File(html_file).toURI());
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
-			System.err.println("Error: unable to show HTML file: "+html_file);
+			cm.printStackTrace(ex);
+			cm.println("Report", "unable to show HTML file: "+html_file);
 		}
 	}
 
-	public void run_named_tests(ConsoleManager cm, PhpBuild build, PhptTestPack test_pack, ScenarioSet scenario_set, List<String> names) throws Exception {
+	public void run_named_tests(ConsoleManager cm, PhpBuild build, PhptSourceTestPack test_pack, ScenarioSet scenario_set, List<String> names) throws Exception {
 		LinkedList<PhptTestCase> test_cases = new LinkedList<PhptTestCase>();
 		
 		PhptTelemetryWriter tmgr = new PhptTelemetryWriter(host, cm, telem_dir(), build, test_pack, scenario_set);
 		test_pack.cleanup();
+		cm.println("PhptTestPack", "enumerating test cases from test-pack...");
 		test_pack.add_named_tests(test_cases, names, tmgr, build);
+		cm.println("PhptTestPack", "enumerated test cases.");
 		
 		PhptTestPackRunner test_pack_runner = new PhptTestPackRunner(tmgr, test_pack, scenario_set, build, host);
 		cm.showGUI(test_pack_runner);
@@ -217,18 +221,18 @@ public class PfttMain {
 		new RequiredFeaturesSmokeTest();
 	}
 	
-	protected static void cmd_aut(PfttMain rt, Host host, PhpBuild build, Collection<ScenarioSet> scenario_sets) throws IllegalStateException, IOException, Exception {
+	protected static void cmd_aut(ConsoleManager cm, PfttMain rt, Host host, PhpBuild build, Collection<ScenarioSet> scenario_sets) throws IllegalStateException, IOException, Exception {
 		new PhpUnitTestPackRunner(PhpUnitAppTestPack.load("/"), scenario_sets.iterator().next(), build, host);
 		
 		host.upload7ZipAndDecompress(host.getPfttDir()+"/cache/cache.7z", "");
 		host.upload7ZipAndDecompress(host.getPfttDir()+"/cache/joomla-platform.7z", "");
-		String tmp_file = host.mktempname(".xml");
+		String tmp_file = host.mktempname("Main", ".xml");
 		ExecOutput eo = host.exec("phpunit --log-junit "+tmp_file, Host.ONE_HOUR * 4);
-		eo.printOutputIfCrash();
+		eo.printOutputIfCrash(cm);
 		host.getContents(tmp_file);
 		// for now, don't delete tmp_file
 				
-		rt.show_report(new AUTReportGen(new File(tmp_file), host.getOSName())); 
+		rt.show_report(cm, new AUTReportGen(new File(tmp_file), host.getOSName())); 
 	}
 	
 	protected static void cmd_shell_ui() {
@@ -259,11 +263,11 @@ public class PfttMain {
 		console.run();
 	}
 	
-	protected static void cmd_phpt_all(PfttMain rt, ConsoleManager cm, GroovyObject config_obj, PhpBuild build, PhptTestPack test_pack) throws Exception {
+	protected static void cmd_phpt_all(PfttMain rt, ConsoleManager cm, GroovyObject config_obj, PhpBuild build, PhptSourceTestPack test_pack) throws Exception {
 		rt.run_all(cm, build, test_pack, ScenarioSet.getScenarioSets().iterator().next());
 	}
 	
-	protected static void cmd_phpt_list(PfttMain rt, ConsoleManager cm, GroovyObject config_obj, PhpBuild build, PhptTestPack test_pack, File list_file) throws Exception {
+	protected static void cmd_phpt_list(PfttMain rt, ConsoleManager cm, GroovyObject config_obj, PhpBuild build, PhptSourceTestPack test_pack, File list_file) throws Exception {
 		BufferedReader fr = new BufferedReader(new FileReader(list_file));
 		LinkedList<String> tests = new LinkedList<String>();
 		String line;
@@ -278,7 +282,7 @@ public class PfttMain {
 		rt.run_named_tests(cm, build, test_pack, ScenarioSet.getScenarioSets().iterator().next(), tests);
 	}
 	
-	protected static void cmd_phpt_named(PfttMain rt, ConsoleManager cm, GroovyObject config_obj, PhpBuild build, PhptTestPack test_pack, List<String> names) throws Exception {
+	protected static void cmd_phpt_named(PfttMain rt, ConsoleManager cm, GroovyObject config_obj, PhpBuild build, PhptSourceTestPack test_pack, List<String> names) throws Exception {
 		rt.run_named_tests(cm, build, test_pack, ScenarioSet.getScenarioSets().iterator().next(), names);
 	}
 
@@ -290,8 +294,8 @@ public class PfttMain {
 		System.err.println("Error: Not implemented");		
 	}
  
-	protected static void cmd_release_get(boolean force, Host host, URL url) {
-		download_release_and_decompress(force, true, host, snapshotURLtoLocalFile(host, url), url);
+	protected static void cmd_release_get(ConsoleManager cm, boolean force, Host host, URL url) {
+		download_release_and_decompress(cm, force, true, host, snapshotURLtoLocalFile(host, url), url);
 	}
 	
 	protected static File snapshotURLtoLocalFile(Host host, URL url) {
@@ -313,29 +317,29 @@ public class PfttMain {
 		return new File(host.getPhpSdkDir()+"/"+local_path);
 	}
 	
-	protected static void cmd_release_get_previous(boolean force, Host host, EBuildBranch branch, EBuildType build_type) {
+	protected static void cmd_release_get_previous(ConsoleManager cm, boolean force, Host host, EBuildBranch branch, EBuildType build_type) {
 		System.out.println("PFTT: release_get: finding previous "+build_type+" build of "+branch+"...");
 		FindBuildTestPackPair find_pair = WindowsSnapshotDownloadUtil.findPreviousPair(build_type, WindowsSnapshotDownloadUtil.getDownloadURL(branch));
 		if (find_pair==null) {
 			System.err.println("PFTT: release_get: unable to find previous build of "+branch+" of type "+build_type);
 			return;
 		}
-		download_release_and_decompress(force, true, host, snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
-		download_release_and_decompress(force, false, host, snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
+		download_release_and_decompress(cm, force, true, host, snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
+		download_release_and_decompress(cm, force, false, host, snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
 	}
 	
-	protected static void cmd_release_get_newest(boolean force, Host host, EBuildBranch branch, EBuildType build_type) {
+	protected static void cmd_release_get_newest(ConsoleManager cm, boolean force, Host host, EBuildBranch branch, EBuildType build_type) {
 		System.out.println("PFTT: release_get: finding newest "+build_type+" build of "+branch+"...");
 		FindBuildTestPackPair find_pair = WindowsSnapshotDownloadUtil.findNewestPair(build_type, WindowsSnapshotDownloadUtil.getDownloadURL(branch));
 		if (find_pair==null) {
 			System.err.println("PFTT: release_get: unable to find newest build of "+branch+" of type "+build_type);
 			return;
 		}
-		download_release_and_decompress(force, true, host, snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
-		download_release_and_decompress(force, false, host, snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
+		download_release_and_decompress(cm, force, true, host, snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
+		download_release_and_decompress(cm, force, false, host, snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
 	}
 
-	protected static void cmd_release_get_revision(boolean force, Host host, EBuildBranch branch, EBuildType build_type, String revision) {
+	protected static void cmd_release_get_revision(ConsoleManager cm, boolean force, Host host, EBuildBranch branch, EBuildType build_type, String revision) {
 		System.out.println("PFTT: release_get: finding "+build_type+" build in "+revision+" of "+branch+"...");
 		FindBuildTestPackPair find_pair = WindowsSnapshotDownloadUtil.getDownloadURL(branch, build_type, revision);
 		if (find_pair==null) {
@@ -344,9 +348,9 @@ public class PfttMain {
 		}
 		
 		if (find_pair.getBuild()!=null)
-			download_release_and_decompress(force, true, host, snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
+			download_release_and_decompress(cm, force, true, host, snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
 		if (find_pair.getTest_pack()!=null)
-			download_release_and_decompress(force, false, host, snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
+			download_release_and_decompress(cm, force, false, host, snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
 	}
 	
 	protected static boolean confirm(String msg) {
@@ -359,7 +363,7 @@ public class PfttMain {
 		}
 	}
 	
-	protected static void download_release_and_decompress(boolean force, boolean is_build, Host host, File local_file_zip, URL url) {
+	protected static void download_release_and_decompress(ConsoleManager cm, boolean force, boolean is_build, Host host, File local_file_zip, URL url) {
 		if (!force && local_file_zip.exists()) {
 			if (!confirm("Overwrite existing file "+local_file_zip+"?"))
 				return;
@@ -409,15 +413,15 @@ public class PfttMain {
 			
 			out_file.close();
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
-			System.err.println("PFTT: release_get: error downloading release!");
+			cm.printStackTrace(ex);
+			cm.println("release_get", "error downloading release!");
 			return;
 		} finally {
 			if ( response == null || !connStrategy.keepAlive(response, context)) {
 				try {
 					conn.close();
 				} catch ( Exception ex ) {
-					ex.printStackTrace();
+					cm.printStackTrace(ex);
 				}
 			}
 		}
@@ -430,18 +434,18 @@ public class PfttMain {
 			System.out.println("PFTT: release_get: decompressing "+local_file_zip+"...");
 			
 			// TODO c:\program files
-			host.exec("\"C:\\Program Files\\7-Zip\\7z\" x "+local_file_zip, Host.NO_TIMEOUT, local_folder.toString()).printOutputIfCrash();
+			host.exec("\"C:\\Program Files\\7-Zip\\7z\" x "+local_file_zip, Host.NO_TIMEOUT, local_folder.toString()).printOutputIfCrash(cm);
 		
 			if (is_build)
-				System.out.println("PFTT: release_get: build INSTALLED: "+local_folder);
+				cm.println("release_get", "build INSTALLED: "+local_folder);
 			else
-				System.out.println("PFTT: release_get: test-pack INSTALLED: "+local_folder);
+				cm.println("release_get", "test-pack INSTALLED: "+local_folder);
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			cm.printStackTrace(ex);
 			if (is_build)
-				System.err.println("PFTT: release_get: unable to decompress build");
+				cm.println("release_get", "unable to decompress build");
 			else
-				System.err.println("PFTT: release_get: unable to decompress test-pack");
+				cm.println("release_get", "unable to decompress test-pack");
 		}
 	} // end protected static void download_release_and_decompress
 
@@ -513,39 +517,39 @@ public class PfttMain {
 		System.err.println("Error: Not implemented");				
 	}
 	
-	protected static void cmd_upgrade(Host host) {
+	protected static void cmd_upgrade(ConsoleManager cm, Host host) {
 		if (!host.hasCmd("git")) {
-			System.err.println("PFTT: upgrade: please install 'git' first");
+			cm.println("upgrade", "please install 'git' first");
 			return;
 		}
 		
 		// execute 'git pull' in c:\php-sdk\PFTT\current
 		try {
-			host.execElevated("git pull", Host.NO_TIMEOUT, host.getPfttDir()).printOutputIfCrash();
+			host.execElevated("git pull", Host.NO_TIMEOUT, host.getPfttDir()).printOutputIfCrash(cm);
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
-			System.err.println("PFTT: upgrade: error upgrading PFTT");
+			cm.printStackTrace(ex);
+			cm.println("upgrade", "error upgrading PFTT");
 		}
 	}
 	
 	/* ------------------------------- */
 	
-	protected static PhpBuild newBuild(Host host, String path) {
+	protected static PhpBuild newBuild(ConsoleManager cm, Host host, String path) {
 		PhpBuild build = new PhpBuild(path);
-		if (build.open(host))
+		if (build.open(cm, host))
 			return build;
 		build = new PhpBuild(host.getPhpSdkDir() + "/" + path);
-		if (build.open(host))
+		if (build.open(cm, host))
 			return build;
 		else
 			return null; // build not found/readable error
 	}
 	
-	protected static PhptTestPack newTestPack(Host host, String path) {
-		PhptTestPack test_pack = new PhptTestPack(path);
+	protected static PhptSourceTestPack newTestPack(Host host, String path) {
+		PhptSourceTestPack test_pack = new PhptSourceTestPack(path);
 		if (test_pack.open(host))
 			return test_pack;
-		test_pack = new PhptTestPack(host.getPhpSdkDir() + "/" + path);
+		test_pack = new PhptSourceTestPack(host.getPhpSdkDir() + "/" + path);
 		if (test_pack.open(host))
 			return test_pack;
 		else
@@ -617,8 +621,6 @@ public class PfttMain {
 		
 		ConsoleManager cm = new ConsoleManager(results_only, show_gui, disable_debug_prompt);
 		
-		HostEnvUtil.prepareHostEnv(rt.host, cm, !disable_debug_prompt);
-		
 		if (command!=null) {
 			if (command.equals("phpt_named")||command.equals("phptnamed")||command.equals("phptn")||command.equals("pn")) {
 				if (!(args.length > args_i+3)) {
@@ -628,14 +630,14 @@ public class PfttMain {
 					return;
 				}
 				
-				PhpBuild build = newBuild(rt.host, args[args_i+1]);
+				PhpBuild build = newBuild(cm, rt.host, args[args_i+1]);
 				if (build==null) {
 					System.err.println("IO Error: can not open php build: "+build);
 					System.exit(-255);
 					return;
 				}
 				
-				PhptTestPack test_pack = newTestPack(rt.host, args[args_i+2]);
+				PhptSourceTestPack test_pack = newTestPack(rt.host, args[args_i+2]);
 				if (test_pack==null) {
 					System.err.println("IO Error: can not open php test pack: "+test_pack);
 					System.exit(-255);
@@ -648,11 +650,10 @@ public class PfttMain {
 				for ( ; args_i < args.length ; args_i++) 
 					names.add(args[args_i]);
 				
-				if (!results_only) {
-					System.out.println("PFTT: build: "+build);
-					System.out.println("PFTT: test-pack: "+test_pack);
-				}
+				cm.println("Build", build.toString());
+				cm.println("Test-Pack", test_pack.toString());
 				
+				HostEnvUtil.prepareHostEnv(rt.host, cm, !disable_debug_prompt);
 				cmd_phpt_named(rt, cm, config_obj, build, test_pack, names);
 				
 				System.out.println("PFTT: finished");
@@ -665,14 +666,14 @@ public class PfttMain {
 					return;
 				}
 				
-				PhpBuild build = newBuild(rt.host, args[args_i+1]);
+				PhpBuild build = newBuild(cm, rt.host, args[args_i+1]);
 				if (build == null) {
 					System.err.println("IO Error: can not open php build: "+build);
 					System.exit(-255);
 					return;
 				}
 				
-				PhptTestPack test_pack = newTestPack(rt.host, args[args_i+2]);
+				PhptSourceTestPack test_pack = newTestPack(rt.host, args[args_i+2]);
 				if (test_pack == null) {
 					System.err.println("IO Error: can not open php test pack: "+test_pack);
 					System.exit(-255);
@@ -686,10 +687,10 @@ public class PfttMain {
 					return;
 				}
 				
-				if (!results_only) {
-					System.out.println("PFTT: build: "+build);
-					System.out.println("PFTT: test-pack: "+test_pack);
-				}
+				cm.println("Build", build.toString());
+				cm.println("Test-Pack", test_pack.toString());
+				
+				HostEnvUtil.prepareHostEnv(rt.host, cm, !disable_debug_prompt);
 				cmd_phpt_list(rt, cm, config_obj, build, test_pack, list_file);		
 				
 				System.out.println("PFTT: finished");
@@ -701,33 +702,32 @@ public class PfttMain {
 					return;
 				}
 				
-				PhpBuild build = newBuild(rt.host, args[args_i+1]);
+				PhpBuild build = newBuild(cm, rt.host, args[args_i+1]);
 				if (build == null) {
 					System.err.println("IO Error: can not open php build: "+build);
 					System.exit(-255);
 					return;
 				}
 				
-				PhptTestPack test_pack = newTestPack(rt.host, args[args_i+2]);
+				PhptSourceTestPack test_pack = newTestPack(rt.host, args[args_i+2]);
 				if (test_pack == null) {
 					System.err.println("IO Error: can not open php test pack: "+test_pack);
 					System.exit(-255);
 					return;
 				}
 				
-				if (!results_only) {
-					System.out.println("PFTT: build: "+build);
-					System.out.println("PFTT: test-pack: "+test_pack);
-					System.out.println("PFTT: Testing all PHPTs in test pack...");
-				}
+				cm.println("Main", "Testing all PHPTs in test pack...");
+				cm.println("Build", build.toString());
+				cm.println("Test-Pack", test_pack.toString());
 				
 				// run all tests
+				HostEnvUtil.prepareHostEnv(rt.host, cm, !disable_debug_prompt);
 				cmd_phpt_all(rt, cm, config_obj, build, test_pack);
 				
 				System.out.println("PFTT: finished");
 			} else if (command.equals("aut")) {
 				
-				PhpBuild build = newBuild(rt.host, args[args_i+1]);
+				PhpBuild build = newBuild(cm, rt.host, args[args_i+1]);
 				if (build == null) {
 					System.err.println("IO Error: can not open php build: "+build);
 					System.exit(-255);
@@ -735,7 +735,7 @@ public class PfttMain {
 				}
 				
 				no_show_gui(show_gui, command);
-				cmd_aut(rt, rt.host, build, ScenarioSet.getScenarioSets());
+				cmd_aut(cm, rt, rt.host, build, ScenarioSet.getScenarioSets());
 			} else if (command.equals("shell_ui")||(show_gui && command.equals("shell"))) {
 				cmd_shell_ui();
 			} else if (command.equals("shell")) {
@@ -794,13 +794,13 @@ public class PfttMain {
 					
 					// input processed, dispatch
 					if (url!=null)
-						cmd_release_get(force, rt.host, url);
+						cmd_release_get(cm, force, rt.host, url);
 					else if (revision.equals("newest"))
-						cmd_release_get_newest(force, rt.host, branch, build_type);
+						cmd_release_get_newest(cm, force, rt.host, branch, build_type);
 					else if (revision.equals("previous"))
-						cmd_release_get_previous(force, rt.host, branch, build_type);
+						cmd_release_get_previous(cm, force, rt.host, branch, build_type);
 					else
-						cmd_release_get_revision(force, rt.host, branch, build_type, revision);
+						cmd_release_get_revision(cm, force, rt.host, branch, build_type, revision);
 				}
 			} else if (command.equals("release_list")||command.equals("rl")||command.equals("rlist")) {
 				EBuildBranch branch = null;
@@ -842,7 +842,7 @@ public class PfttMain {
 			} else if (command.equals("upgrade")) {
 				no_show_gui(show_gui, command);
 				
-				cmd_upgrade(rt.host);
+				cmd_upgrade(cm, rt.host);
 			} else if (command.equals("help")) {
 				no_show_gui(show_gui, command);
 				

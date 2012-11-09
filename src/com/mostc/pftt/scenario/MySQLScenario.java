@@ -28,7 +28,6 @@ public class MySQLScenario extends AbstractDatabaseScenario {
 	public boolean isImplemented() {
 		return false;
 	}
-	@Override
 	void stop(Object host) {
 		// already stopped?
 		if (static_db_name!=null)
@@ -36,7 +35,6 @@ public class MySQLScenario extends AbstractDatabaseScenario {
 			return;
 		// TODO mysql.exec("DROP DATABASE $db_name");
 	}
-	@Override
 	void start(Object host) {
 		// already started?
 		// TODO host.exec_pw("/etc/init.d/mysql start", "net start mysql");

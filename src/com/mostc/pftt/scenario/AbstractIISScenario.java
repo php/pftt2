@@ -8,7 +8,7 @@ import com.mostc.pftt.model.sapi.IISManager;
  *
  */
 
-public abstract class AbstractIISScenario extends AbstractWebServerScenario {
+public abstract class AbstractIISScenario extends AbstractProductionWebServerScenario {
 	
 	public AbstractIISScenario() {
 		super(new IISManager());

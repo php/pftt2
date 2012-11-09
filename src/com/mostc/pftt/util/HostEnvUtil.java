@@ -21,7 +21,10 @@ public final class HostEnvUtil {
 	}
 	
 	/** for Windows hosts, does the following:
-	 * -disables Windows Error Reporting popup messages
+	 * -if enable_debug_prompt is true, enables Windows Error Reporting popup messages, if enable_debug_prompt
+	 *   is false then disables Windows Error Reporting
+	 *    -typically, for manual use enable_debug_prompt should be true and for automated use enable_debug_prompt
+	 *     should be false. Windows Error Reporting popups will interfere with automated testing
 	 * -disables firewall, for network services like SOAP, HTTP, etc...
 	 * -creates a php-sdk share pointing to %SYSTEMDRIVE%\\php-sdk
 	 * -installs VC9 runtime if its not Windows 7/2008r2 or Windows 8/2012 (which don't need it to run PHP)
@@ -32,7 +35,7 @@ public final class HostEnvUtil {
 	 * @throws Exception
 	 */
 	public static void prepareWindows(Host host, ConsoleManager cm, boolean enable_debug_prompt) throws Exception {
-		System.out.println("PFTT: preparing Windows host to run PHP...");
+		cm.println("HostEnvUtil", "preparing Windows host to run PHP...");
 		// have to fix Windows Error Reporting from popping up and blocking execution:
 		
 		String value;
@@ -44,8 +47,8 @@ public final class HostEnvUtil {
 			value = "0x1";
 		}
 		
-		boolean a = regQueryAdd(host, "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting", "DontShowUI", value, REG_DWORD);
-		boolean b = regQueryAdd(host, "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting", "Disable", value, REG_DWORD);
+		boolean a = regQueryAdd(cm, host, "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting", "DontShowUI", value, REG_DWORD);
+		boolean b = regQueryAdd(cm, host, "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting", "Disable", value, REG_DWORD);
 		if ( a || b ) {			
 			// assume if registry had to be edited, that firewall has to be disabled (avoid doing this if possible because it requires user to approve elevation)
 			cm.println("HostEnvUtil", "disabling Windows Firewall...");
@@ -60,7 +63,7 @@ public final class HostEnvUtil {
 		}
 		
         
-        if (host.isLonghornExact()) {
+        if (host.isVistaOrBefore()) {
 			// install VC9 runtime (win7+ don't need this)
 			// TODO
         }
@@ -68,10 +71,10 @@ public final class HostEnvUtil {
 	} // end public static void prepareWindows
 	
 	public static final String REG_DWORD = "REG_DWORD";
-	public static boolean regQueryAdd(Host host, String key, String name, String value, String type) throws Exception {
+	public static boolean regQueryAdd(ConsoleManager cm, Host host, String key, String name, String value, String type) throws Exception {
 		// check the registry first, to not edit the registry if we don't have too		
 		ExecOutput output = host.exec("REG QUERY \""+key+"\" /f "+name, Host.ONE_MINUTE);
-		output.printOutputIfCrash();
+		output.printOutputIfCrash(cm);
 		for ( String line : output.getLines() ) {
 			if (line.contains(name) && line.contains(type) && line.contains(value))
 				return false;

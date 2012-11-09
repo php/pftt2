@@ -29,7 +29,7 @@ public abstract class AbstractTestPackRunner {
 	
 	public abstract class TestPackRunnerThread extends Thread {
 		
-		public abstract void slowTest();
+		public abstract void notifySlowTest();
 	}
 	
 	public abstract class SlowReplacementTestPackRunnerThread extends TestPackRunnerThread {
@@ -39,7 +39,7 @@ public abstract class AbstractTestPackRunner {
 		protected abstract void stopThisThread();
 		
 		@Override
-		public void slowTest() {
+		public void notifySlowTest() {
 			if (slowCreateNewThread()) {
 				createNewThread();
 				stopThisThread();

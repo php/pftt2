@@ -82,6 +82,14 @@ public final class StringUtil {
 		return PATTERN_EQ.split(str);
 	}
 	
+	public static String[] splitWhitespace(String str) {
+		if (str==null)
+			return EMPTY_ARRAY;
+		
+		return PATTERN_WS.split(str);
+	}
+	
+	static final Pattern PATTERN_WS = Pattern.compile("[\\w]+");
 	static final Pattern PATTERN_R_N = Pattern.compile("\\r\\n");
 	static final Pattern PATTERN_R = Pattern.compile("\\r");
 	static final Pattern PATTERN_N = Pattern.compile("\\n");
@@ -174,13 +182,6 @@ public final class StringUtil {
 		return sb.toString();
 	}
 
-	public static String join(String string, String[] diff) {
-		String out = "";
-		for ( String d : diff ) 
-			out += d + string;
-		return out;
-	}
-
 	public static String ensurePhpTags(String code) {
 		if (code.startsWith("<?php") || code.startsWith("<?")) {
 			if(code.endsWith("?>")) {
@@ -226,6 +227,28 @@ public final class StringUtil {
 		return a == null ? 0 : a.hashCode();
 	}
 
+	public static String join(String[] parts, String delim) {
+		return join(parts, 0, parts.length, delim);
+	}
+	public static String join(String[] parts, int off, String delim) {
+		return join(parts, off, parts.length-off, delim);
+	}
+	public static String join(String[] parts, int off, int len, String delim) {
+		if (len<=0)
+			return EMPTY;
+		else if (len==1)
+			return parts[off];
+		
+		StringBuilder sb = new StringBuilder(256);
+		sb.append(parts[off]);
+		off++;
+		for ( int i=0 ; i < len ; i++, off++ ) {
+			sb.append(delim);
+			sb.append(parts[off]);
+		}
+		return sb.toString();
+	}
+	
 	private StringUtil() {}
 	
 } // end public class StringUtil

@@ -13,7 +13,7 @@ import com.mostc.pftt.model.phpt.EBuildBranch;
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhptTestCase;
-import com.mostc.pftt.model.phpt.PhptTestPack;
+import com.mostc.pftt.model.phpt.PhptSourceTestPack;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.ErrorUtil;
 
@@ -33,17 +33,17 @@ public class PhptTelemetryWriter extends PhptTelemetry {
 	protected ConsoleManager cm;
 	protected HashMap<EPhptTestStatus,AtomicInteger> counts;
 	protected PhpBuild build;
-	protected PhptTestPack test_pack;
+	protected PhptSourceTestPack test_pack;
 	protected ScenarioSet scenario_set;
 	
-	public PhptTelemetryWriter(Host host, ConsoleManager cm, File telem_base_dir, PhpBuild build, PhptTestPack test_pack, ScenarioSet scenario_set) throws IOException {
+	public PhptTelemetryWriter(Host host, ConsoleManager cm, File telem_base_dir, PhpBuild build, PhptSourceTestPack test_pack, ScenarioSet scenario_set) throws IOException {
 		super(host);
 		this.host = host;
 		this.cm = cm;
 		this.scenario_set = scenario_set;
 		this.build = build;
 		this.test_pack = test_pack;
-		this.telem_dir = new File(telem_base_dir + "/PHP-telemetry-"+System.currentTimeMillis());
+		this.telem_dir = new File(telem_base_dir + "/PFTT-telemetry-"+System.currentTimeMillis());
 		this.telem_dir.mkdirs();
 		this.telem_dir = new File(this.telem_dir.getAbsolutePath());
 		
@@ -78,14 +78,16 @@ public class PhptTelemetryWriter extends PhptTelemetry {
 			pw.close();
 		}
 		
+		// TODO store systeminfo
+		
 		// write tally file with 
 		try {
 			PhptTallyFile tally = new PhptTallyFile();
 			tally.sapi_scenario_name = ScenarioSet.getSAPIScenario(scenario_set).getName();
-			tally.build_branch = build.getVersionBranch(host)+"";
-			tally.test_pack_branch = build.getVersionBranch(host)+""; // TODO test_pack.getBranch
-			tally.build_revision = build.getVersionString(host);//
-			tally.test_pack_revision = build.getVersionString(host); // TODO get test_pack version
+			tally.build_branch = build.getVersionBranch(cm, host)+"";
+			tally.test_pack_branch = build.getVersionBranch(cm, host)+""; // TODO test_pack.getBranch
+			tally.build_revision = build.getVersionString(cm, host);//
+			tally.test_pack_revision = build.getVersionString(cm, host); // TODO get test_pack version
 			tally.os_name = host.getOSName();
 			tally.os_name_long = host.getOSNameLong();
 			tally.pass = counts.get(EPhptTestStatus.PASS).get();

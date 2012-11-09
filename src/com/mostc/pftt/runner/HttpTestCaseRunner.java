@@ -22,7 +22,8 @@ import com.mostc.pftt.model.phpt.EPhptSection;
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhptTestCase;
-import com.mostc.pftt.model.phpt.PhptTestPack;
+import com.mostc.pftt.model.phpt.PhptSourceTestPack;
+import com.mostc.pftt.model.phpt.PhptActiveTestPack;
 import com.mostc.pftt.model.sapi.WebServerInstance;
 import com.mostc.pftt.model.sapi.WebServerManager;
 import com.mostc.pftt.runner.PhptTestPackRunner.PhptThread;
@@ -44,8 +45,8 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected final HttpRequestExecutor httpexecutor;
 	protected WebServerInstance web = null;
 
-	public HttpTestCaseRunner(HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web, PhptThread thread, PhptTestCase test_case, PhptTelemetryWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptTestPack test_pack) {
-		super(web.getPhpIni(), thread, test_case, twriter, host, scenario_set, build, test_pack);
+	public HttpTestCaseRunner(HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web, PhptThread thread, PhptTestCase test_case, PhptTelemetryWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+		super(web.getPhpIni(), thread, test_case, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 		this.params = params;
 		this.httpproc = httpproc;
 		this.httpexecutor = httpexecutor;
@@ -53,6 +54,15 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		this.web = web;
 	}
 	
+	/** @see AbstractSAPIScenario#willSkip
+	 * 
+	 * @param twriter
+	 * @param host
+	 * @param build
+	 * @param test_case
+	 * @return
+	 * @throws Exception
+	 */
 	public static boolean willSkip(PhptTelemetryWriter twriter, Host host, PhpBuild build, PhptTestCase test_case) throws Exception {
 		if (AbstractPhptTestCaseRunner.willSkip(twriter, host, build, test_case))
 			return true;
@@ -86,8 +96,7 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				// the user to enter Visual Studio, WinDbg or GDB
 				web.close();
 				
-				// TODO 
-				System.out.println("RESTART_AND_RETRY "+test_case.getName());
+				twriter.getConsoleManager().restartingAndRetryingTest(test_case);
 				
 				// get #do_http_execute to make a new server
 				// this will make a new WebServerInstance that will only be used to run this 1 test
@@ -126,7 +135,7 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	
 	protected String do_http_execute(String path, EPhptSection section, boolean is_replacement) throws Exception {
 		{
-			WebServerInstance _web = smgr.getWebServerInstance(host, build, ini, test_pack.getTestPack(), web);
+			WebServerInstance _web = smgr.getWebServerInstance(host, build, ini, active_test_pack.getDirectory(), web);
 			if (_web!=web) {
 				this.web = _web;
 				is_replacement = true;
@@ -136,8 +145,8 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		}
 		
 		path = Host.toUnixPath(path);
-		if (path.startsWith(Host.toUnixPath(test_pack.getTestPack())))
-			path = path.substring(test_pack.getTestPack().length());
+		if (path.startsWith(Host.toUnixPath(active_test_pack.getDirectory())))
+			path = path.substring(active_test_pack.getDirectory().length());
 		if (!path.startsWith("/"))
 			path = "/" + path;
 		
@@ -171,56 +180,60 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		HttpHost http_host = new HttpHost(web.hostname(), web.port());
 		
 		DefaultHttpClientConnection conn = new DefaultHttpClientConnection();
-		// TODO ConnectionReuseStrategy connStrategy = new DefaultConnectionReuseStrategy();
-		
-		context.setAttribute(ExecutionContext.HTTP_CONNECTION, conn);
-		context.setAttribute(ExecutionContext.HTTP_TARGET_HOST, http_host);
-		
-		Socket socket = new Socket(http_host.getHostName(), http_host.getPort());
-		conn.bind(socket, params);
-		conn.setSocketTimeout(60*1000);
-		
-		BasicHttpRequest request = new BasicHttpRequest("GET", path);
-		
-		request.setParams(params);
-		httpexecutor.preProcess(request, httpproc, context);
-		
-		HttpResponse response = httpexecutor.execute(request, conn, context);
-		
-		response.setParams(params);
-		httpexecutor.postProcess(response, httpproc, context);
-		
-		return IOUtil.toString(response.getEntity().getContent());
+		try {
+			context.setAttribute(ExecutionContext.HTTP_CONNECTION, conn);
+			context.setAttribute(ExecutionContext.HTTP_TARGET_HOST, http_host);
+			
+			Socket socket = new Socket(http_host.getHostName(), http_host.getPort());
+			conn.bind(socket, params);
+			conn.setSocketTimeout(60*1000);
+			
+			BasicHttpRequest request = new BasicHttpRequest("GET", path);
+			
+			request.setParams(params);
+			httpexecutor.preProcess(request, httpproc, context);
+			
+			HttpResponse response = httpexecutor.execute(request, conn, context);
+			
+			response.setParams(params);
+			httpexecutor.postProcess(response, httpproc, context);
+			
+			return IOUtil.toString(response.getEntity().getContent());
+		} finally {
+			conn.close();
+		}
 	} // end protected String do_http_get
 	
 	protected String do_http_post(String path) throws Exception {
-		// TODO if (content_type!=null)
-		//	params.setParameter("Content-Type", content_type);
+		if (content_type!=null)
+			params.setParameter("Content-Type", content_type);
 		
 		HttpContext context = new BasicHttpContext(null);
 		HttpHost http_host = new HttpHost(web.hostname(), web.port());
 		
 		DefaultHttpClientConnection conn = new DefaultHttpClientConnection();
-		// TODO ConnectionReuseStrategy connStrategy = new DefaultConnectionReuseStrategy();
-		
-		context.setAttribute(ExecutionContext.HTTP_CONNECTION, conn);
-		context.setAttribute(ExecutionContext.HTTP_TARGET_HOST, http_host);
-		
-		Socket socket = new Socket(http_host.getHostName(), http_host.getPort());
-		conn.bind(socket, params);
-		conn.setSocketTimeout(60*1000);
-		
-		BasicHttpEntityEnclosingRequest request = new BasicHttpEntityEnclosingRequest("POST", path);
-		request.setParams(params);
-		httpexecutor.preProcess(request, httpproc, context);		
-		request.setEntity(new ByteArrayEntity(stdin_post));
-		conn.sendRequestEntity(request);
-		HttpResponse response = httpexecutor.execute(request, conn, context);
-		
-		response.setParams(params);
-		httpexecutor.postProcess(response, httpproc, context);
-		
-		return IOUtil.toString(response.getEntity().getContent());
+		try {
+			context.setAttribute(ExecutionContext.HTTP_CONNECTION, conn);
+			context.setAttribute(ExecutionContext.HTTP_TARGET_HOST, http_host);
+			
+			Socket socket = new Socket(http_host.getHostName(), http_host.getPort());
+			conn.bind(socket, params);
+			conn.setSocketTimeout(60*1000);
+			
+			BasicHttpEntityEnclosingRequest request = new BasicHttpEntityEnclosingRequest("POST", path);
+			request.setParams(params);
+			httpexecutor.preProcess(request, httpproc, context);		
+			request.setEntity(new ByteArrayEntity(stdin_post));
+			conn.sendRequestEntity(request);
+			HttpResponse response = httpexecutor.execute(request, conn, context);
+			
+			response.setParams(params);
+			httpexecutor.postProcess(response, httpproc, context);
+			
+			return IOUtil.toString(response.getEntity().getContent());
+		} finally {
+			conn.close();
+		}
 	} // end protected String do_http_post
 
 	@Override
@@ -236,7 +249,7 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	
 	@Override
 	protected String executeSkipIf() throws Exception {
-		return http_execute(test_skipif, EPhptSection.SKIPIF);
+		return http_execute(skipif_file, EPhptSection.SKIPIF);
 	}
 
 	@Override
@@ -252,16 +265,6 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	@Override
 	protected String getCrashedSAPIOutput() {
 		return web.isCrashed() ? web.getSAPIOutput() : null;
-	}
-
-	@Override
-	protected void createShellScript() throws IOException {
-		// N/A
-	}
-
-	@Override
-	protected void prepareSTDIN() throws IOException {
-		// N/A
 	}
 
 	@Override

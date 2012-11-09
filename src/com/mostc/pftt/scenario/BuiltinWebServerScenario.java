@@ -4,6 +4,7 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.EBuildBranch;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.sapi.BuiltinWebServerManager;
+import com.mostc.pftt.telemetry.ConsoleManager;
 
 /** Tests PHP using PHP's builtin web server.
  * 
@@ -25,9 +26,9 @@ public class BuiltinWebServerScenario extends AbstractWebServerScenario {
 	 * 
 	 */
 	@Override
-	public boolean isSupported(Host host, PhpBuild build) {
+	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build) {
 		try {
-			return build.getVersionBranch(host) != EBuildBranch.PHP_5_3;
+			return build.getVersionBranch(cm, host) != EBuildBranch.PHP_5_3;
 		} catch (Exception e) {
 			e.printStackTrace();
 			return true;
@@ -47,7 +48,7 @@ public class BuiltinWebServerScenario extends AbstractWebServerScenario {
 	@Override
 	public int getTestThreadCount(Host host) {
 		// XXX update this calculation from time to time as this web server's performance improves
-		return 64; // TODO 8 * (Math.max(2, host.getCPUCount())/2);
+		return 8 * host.getCPUCount();
 	}
 
-}
+} // end public class BuiltinWebServerScenario

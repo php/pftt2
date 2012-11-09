@@ -20,6 +20,7 @@ import com.ibm.icu.charset.CharsetICU;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.TestCase;
 import com.mostc.pftt.model.phpt.PhpBuild.PHPOutput;
+import com.mostc.pftt.telemetry.ConsoleManager;
 import com.mostc.pftt.telemetry.PhptTelemetryWriter;
 import com.mostc.pftt.util.StringUtil;
 import com.mostc.pftt.util.apache.regexp.RE;
@@ -57,7 +58,7 @@ public class PhptTestCase extends TestCase {
 	private WeakReference<PhpIni> ini;
 	private WeakReference<String> ini_pwd, contents;
 	private WeakReference<RE> expected_re;
-	private PhptTestPack test_pack;
+	private PhptSourceTestPack test_pack;
 	private CharsetICU common_charset;
 	
 	/** loads the named PHPT test from the given PhptTestPack
@@ -70,7 +71,7 @@ public class PhptTestCase extends TestCase {
 	 * @throws FileNotFoundException
 	 * @throws IOException
 	 */
-	public static PhptTestCase load(Host host, PhptTestPack test_pack, String test_name, PhptTelemetryWriter twriter) throws FileNotFoundException, IOException {
+	public static PhptTestCase load(Host host, PhptSourceTestPack test_pack, String test_name, PhptTelemetryWriter twriter) throws FileNotFoundException, IOException {
 		return load(host, test_pack, false, test_name, twriter);
 	}
 	
@@ -89,13 +90,13 @@ public class PhptTestCase extends TestCase {
 	 * @throws FileNotFoundException
 	 * @throws IOException
 	 */
-	public static PhptTestCase load(Host host, PhptTestPack test_pack, boolean keep_all, String test_name, PhptTelemetryWriter twriter) throws FileNotFoundException, IOException {
+	public static PhptTestCase load(Host host, PhptSourceTestPack test_pack, boolean keep_all, String test_name, PhptTelemetryWriter twriter) throws FileNotFoundException, IOException {
 		return load(host, test_pack, keep_all, test_name, twriter, null);
 	}
 		
 	static final Pattern PATTERN_AZ = Pattern.compile("^--([_A-Z]+)--");
-	public static PhptTestCase load(Host host, PhptTestPack test_pack, boolean keep_all, String test_name, PhptTelemetryWriter twriter, PhptTestCase parent) throws FileNotFoundException, IOException {
-		String file = host.fixPath(test_pack.test_pack+host.dirSeparator()+test_name); 
+	public static PhptTestCase load(Host host, PhptSourceTestPack test_pack, boolean keep_all, String test_name, PhptTelemetryWriter twriter, PhptTestCase parent) throws FileNotFoundException, IOException {
+		String file = host.fixPath(test_pack.getSourceDirectory()+host.dirSeparator()+test_name); 
 		
 		PhptTestCase test_case = new PhptTestCase(test_pack, test_name);
 		test_case.parent = parent;
@@ -185,14 +186,14 @@ public class PhptTestCase extends TestCase {
 	} // end public static PhptTestCase load
 	static final Pattern RE_EOF = Pattern.compile("[\r\n]+\\\\$");
 	
-	public PhptTestCase(PhptTestPack test_pack, String name) {
+	public PhptTestCase(PhptSourceTestPack test_pack, String name) {
 		this.test_pack = test_pack;
 		this.name = Host.toUnixPath(name);
 		
 		section_text = new HashMap<EPhptSection,String>();
 	}
 	
-	public PhptTestPack getTestPack() {
+	public PhptSourceTestPack getTestPack() {
 		return test_pack;
 	}
 	
@@ -218,14 +219,14 @@ public class PhptTestCase extends TestCase {
 	 * 
 	 * these must override any default PhpIni from the PhpBuild when this test is executed.
 	 * 
-	 * @param test_pack
+	 * @param active_test_pack
 	 * @param host
 	 * @return
 	 */
-	public PhpIni getINI(PhptTestPack test_pack, Host host) {
+	public PhpIni getINI(PhptActiveTestPack active_test_pack, Host host) {
 		PhpIni this_ini;
 		String this_ini_pwd;
-		String ini_pwd = test_pack.test_pack+host.dirSeparator()+Host.dirname(name);
+		String ini_pwd = active_test_pack.getDirectory()+host.dirSeparator()+Host.dirname(name);
 		if (this.ini_pwd!=null) {
 			this_ini_pwd = this.ini_pwd.get();
 			if (this_ini_pwd != null && this_ini_pwd.equals(ini_pwd)) {
@@ -383,7 +384,7 @@ public class PhptTestCase extends TestCase {
 		expected_str = StringUtil.replaceAll(PAT_ub, "", expected_str);
 		expected_str = StringUtil.replaceAll(PAT_bu, "", expected_str);
 		try {
-			expected_str = StringUtil.replaceAll(PAT_e, "\\\\/", expected_str); // TODO support for \\ too
+			expected_str = StringUtil.replaceAll(PAT_e, "[\\\\|/]", expected_str);
 		} catch ( Exception ex ) {
 		}
 		expected_str = StringUtil.replaceAll(PAT_s, "[^\\\\r\\\\n]+", expected_str);
@@ -546,6 +547,10 @@ public class PhptTestCase extends TestCase {
 		return name;
 	}
 	
+	public boolean isWin32Test() {
+		return name.lastIndexOf("-win32") != -1;
+	}
+	
 	@Override
 	public String toString() {
 		return getName();
@@ -571,19 +576,20 @@ public class PhptTestCase extends TestCase {
 	 * 
 	 * Note: target of a redirect must itself not be a redirect(no loops are allowed)
 	 * 
+	 * @param cm
 	 * @param host
 	 * @param build
 	 * @return
 	 * @see #readRedirectTestEnvironment
 	 * @throws Exception
 	 */
-	public String[] readRedirectTestNames(Host host, PhpBuild build) throws Exception {
+	public String[] readRedirectTestNames(ConsoleManager cm, Host host, PhpBuild build) throws Exception {
 		// don't need to cache this, this is called only once per PHPTTestPack instance
 		String code = get(EPhptSection.REDIRECTTEST);
 		
 		code = "<?php function a() {\n"+code+" \n}\n $a = a();\n $a=$a['TESTS'];\n if (is_array($a)) { foreach ($a as $b) { echo $b.\"\\n\";}} elseif (is_string($a)) {echo $a.\"\\n\";} ?>";
 		
-		PHPOutput output = build.eval(host, code).printHasFatalError();
+		PHPOutput output = build.eval(host, code).printHasFatalError(cm);
 		
 		ArrayList<String> tests = new ArrayList<String>(2);
 		
@@ -615,7 +621,7 @@ public class PhptTestCase extends TestCase {
 	 * @return
 	 * @throws Exception
 	 */
-	public HashMap<String,String> getENV(HashMap<String,String> scenario_provided_env_vars, Host host, PhpBuild build) throws Exception {
+	public HashMap<String,String> getENV(HashMap<String,String> scenario_provided_env_vars, ConsoleManager cm, Host host, PhpBuild build) throws Exception {
 		HashMap<String,String> env = new HashMap<String,String>();
 		
 		
@@ -632,7 +638,7 @@ public class PhptTestCase extends TestCase {
 				
 				String code = "<?php function a() {\n"+env_str+" \n}\n $a=a(); echo $a.\"\\n\"; ?>";
 				
-				PHPOutput output = build.eval(host, code).printHasFatalError();
+				PHPOutput output = build.eval(host, code).printHasFatalError(cm);
 				
 				lines = output.hasFatalError() ? null : output.getLines();
 			} else {
@@ -650,10 +656,8 @@ public class PhptTestCase extends TestCase {
 				}
 			}
 		}
-		if (!env.containsKey("PATH_INFO"))
-			env.put("PATH_INFO", "/path/info"); // TODO temp 
 		if (parent!=null)
-			env.putAll(parent.readRedirectTestEnvironment(host, build));
+			env.putAll(parent.readRedirectTestEnvironment(cm, host, build));
 		
 		env.putAll(scenario_provided_env_vars);
 		
@@ -673,14 +677,14 @@ public class PhptTestCase extends TestCase {
 	 * @return
 	 * @throws Exception
 	 */
-	public HashMap<String,String> readRedirectTestEnvironment(Host host, PhpBuild build) throws Exception {
+	public HashMap<String,String> readRedirectTestEnvironment(ConsoleManager cm, Host host, PhpBuild build) throws Exception {
 		HashMap<String,String> env = new HashMap<String,String>();
 		
 		String rt_str = get(EPhptSection.REDIRECTTEST);
 		if (StringUtil.isNotEmpty(rt_str)) {
 			String code = "<?php function a() {\n"+rt_str+" \n}\n $a = a();\n $a=$a['ENV'];\n foreach ($a as $b=>$c) { echo $b.\"\\n\"; echo $c.\"\\n\"; } ?>";
 			
-			PHPOutput output = build.eval(host, code).printHasFatalError();
+			PHPOutput output = build.eval(host, code).printHasFatalError(cm);
 			if (!output.hasFatalError()) {
 				String[] lines = output.getLines();
 				for ( int i=0 ; i < lines.length ; i+=2) {
@@ -789,6 +793,57 @@ public class PhptTestCase extends TestCase {
 		// TODO
 		return false;
 	}
+	/* ext/date/tests/date_diff.phpt
+ext/oci8/tests/bug42496_1.phpt
+ext/oci8/tests/bug42496_2.phpt
+ext/oci8/tests/bug43497.phpt
+ext/oci8/tests/bug43497_92.phpt
+ext/oci8/tests/bug44113.phpt
+ext/oci8/tests/conn_attr_4.phpt
+ext/oci8/tests/error2.phpt
+ext/oci8/tests/extauth_01.phpt
+ext/oci8/tests/extauth_02.phpt
+ext/oci8/tests/extauth_03.phpt
+ext/oci8/tests/lob_043.phpt
+ext/oci8/tests/pecl_bug10194.phpt
+ext/oci8/tests/pecl_bug10194_blob.phpt
+ext/oci8/tests/pecl_bug10194_blob_64.phpt
+ext/phar/tests/bug13727.phpt
+ext/phar/tests/bug45218_SLOWTEST.phpt
+ext/phar/tests/bug45218_SLOWTESTU.phpt
+ext/phar/tests/bug46032.phpt
+ext/phar/tests/bug46060.phpt
+ext/standard/tests/file/001.phpt
+ext/standard/tests/file/005_variation.phpt
+ext/standard/tests/file/file_get_contents_error001.phpt
+ext/standard/tests/file/lstat_stat_basic.phpt
+ext/standard/tests/file/lstat_stat_variation10.phpt
+ext/standard/tests/file/lstat_stat_variation11.phpt
+ext/standard/tests/file/lstat_stat_variation12.phpt
+ext/standard/tests/file/lstat_stat_variation13.phpt
+ext/standard/tests/file/lstat_stat_variation15.phpt
+ext/standard/tests/file/lstat_stat_variation16.phpt
+ext/standard/tests/file/lstat_stat_variation17.phpt
+ext/standard/tests/file/lstat_stat_variation21.phpt
+ext/standard/tests/file/lstat_stat_variation4.phpt
+ext/standard/tests/file/lstat_stat_variation5.phpt
+ext/standard/tests/file/lstat_stat_variation6.phpt
+ext/standard/tests/file/lstat_stat_variation8.phpt
+ext/standard/tests/file/touch_basic.phpt
+ext/standard/tests/general_functions/bug39322.phpt
+ext/standard/tests/general_functions/proc_open02.phpt
+ext/standard/tests/general_functions/sleep_basic.phpt
+ext/standard/tests/general_functions/usleep_basic.phpt
+ext/standard/tests/misc/time_nanosleep_basic.phpt
+ext/standard/tests/misc/time_sleep_until_basic.phpt
+ext/standard/tests/network/gethostbyname_basic001.phpt
+ext/standard/tests/network/gethostbyname_error004.phpt
+ext/standard/tests/network/getmxrr.phpt
+ext/standard/tests/network/http-stream.phpt
+tests/func/005a.phpt
+tests/func/010.phpt
+tests/lang/045.phpt
+Zend/tests/bug55509.phpt */
 
 	public static DefaultCharsetDeciderDecoder newCharsetDeciderDecoder() {
 		return new DefaultCharsetDeciderDecoder(CharsetDeciderDecoder.EXPRESS_RECOGNIZERS);

@@ -9,7 +9,7 @@ import com.mostc.pftt.host.Host;
 public final class PhptOverrideManager {
 		
 	public static boolean hasOverrides(Host host) {
-		if (host.isLonghornExact()) {
+		if (host.isVistaExact()) {
 			return true;
 		} else {
 			return false;
@@ -17,7 +17,7 @@ public final class PhptOverrideManager {
 	}
 	
 	public static String replaceWithExactOverrides(Host host, String str) {
-		if (host.isLonghornExact()) {
+		if (host.isVistaExact()) {
 			if (vista==null)
 				vista = new WindowsLonghorn();
 			return vista.replaceWithExactOverrides(str);
@@ -27,7 +27,7 @@ public final class PhptOverrideManager {
 	}
 	
 	public static String replaceWithRegexOverrides(Host host, String str) {
-		if (host.isLonghornExact()) {
+		if (host.isVistaExact()) {
 			if (vista==null)
 				vista = new WindowsLonghorn();
 			return vista.replaceWithRegexOverrides(str);

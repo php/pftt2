@@ -1,5 +1,6 @@
 package com.mostc.pftt.runner;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
@@ -7,18 +8,22 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.HashMap;
+import java.util.Map;
 
 import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.phpt.EPhptSection;
+import com.mostc.pftt.model.phpt.EPhptTestStatus;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.model.phpt.PhptTestCase;
-import com.mostc.pftt.model.phpt.PhptTestPack;
+import com.mostc.pftt.model.phpt.PhptSourceTestPack;
+import com.mostc.pftt.model.phpt.PhptActiveTestPack;
 import com.mostc.pftt.runner.PhptTestPackRunner.PhptThread;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.telemetry.PhptTelemetryWriter;
+import com.mostc.pftt.telemetry.PhptTestResult;
 import com.mostc.pftt.util.StringUtil;
 
 /** one of the core classes. runs a PhptTestCase.
@@ -32,28 +37,133 @@ import com.mostc.pftt.util.StringUtil;
 public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected ExecOutput output;
 	protected HashMap<String,String> env;
+	protected String skip_cmd;
 	
-	public CliPhptTestCaseRunner(PhpIni ini, PhptThread thread, PhptTestCase test_case, PhptTelemetryWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptTestPack test_pack) {
-		super(ini, thread, test_case, twriter, host, scenario_set, build, test_pack);
+	public CliPhptTestCaseRunner(PhpIni ini, PhptThread thread, PhptTestCase test_case, PhptTelemetryWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+		super(ini, thread, test_case, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
+		
+		env = new HashMap<String,String>();
+	}
+	
+	@Override
+	protected boolean prepare() throws IOException, Exception {
+		if (super.prepare()) {
+			// read ENV vars from test, from its parent (if a test redirected to this test), and merge from scenario
+			env = test_case.getENV(env, twriter.getConsoleManager(), host, build);
+			
+			selected_php_exe = build.getPhpExe();
+			
+			/* For GET/POST tests, check if cgi sapi is available and if it is, use it. */
+			if (test_case.containsAnySection(EPhptSection.REQUEST, EPhptSection.GET, EPhptSection.POST, EPhptSection.PUT, EPhptSection.POST_RAW, EPhptSection.COOKIE, EPhptSection.EXPECTHEADERS)) {
+				if (build.hasPhpCgiExe()) {
+					selected_php_exe = build.getPhpCgiExe() + " -C ";
+				} else {
+					twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "CGI not available", null, null, null, null, null, null, null, null, null, null));
+					
+					return false;
+				}
+			}
+			
+			// important: some tests need these to work
+			env.put(ENV_TEST_PHP_EXECUTABLE, build.getPhpExe());
+			if (build.hasPhpCgiExe())
+				env.put(ENV_TEST_PHP_CGI_EXECUTABLE, build.getPhpCgiExe());
+			return true;
+		}
+		return false;
+	}
+	
+	@Override
+	protected void prepareTest() throws Exception {
+		super.prepareTest();
+		
+		if (test_case.containsSection(EPhptSection.STDIN)) {
+			if (host.isWindows()) {
+				// @see Zend/tests/multibyte*
+				ByteArrayOutputStream baos = new ByteArrayOutputStream();
+				baos.write(test_case.get(EPhptSection.STDIN).getBytes());
+				stdin_post = baos.toByteArray();
+			} else {
+				stdin_post = test_case.get(EPhptSection.STDIN).getBytes();
+			}
+		}
+		
+		String query_string;
+		if (test_case.containsSection(EPhptSection.GET)) {
+			query_string = test_case.getTrim(EPhptSection.GET);
+		} else {
+			query_string = "";
+		}
+	
+		// critical to avoid security warning: see http://php.net/security.cgi-bin
+		env.put(ENV_REDIRECT_STATUS, "1");
+		if (!env.containsKey(ENV_QUERY_STRING))
+			env.put(ENV_QUERY_STRING, query_string);
+		if (!env.containsKey(ENV_PATH_TRANSLATED))
+			env.put(ENV_PATH_TRANSLATED, test_file);
+		// critical: this is actually how php-cgi gets the script filename (not with -f switch. not sure why run-test uses -f too)
+		if (!env.containsKey(ENV_SCRIPT_FILENAME))
+			env.put(ENV_SCRIPT_FILENAME, test_file);
+	
+		if (test_case.containsSection(EPhptSection.COOKIE)) {
+			env.put(ENV_HTTP_COOKIE, test_case.getTrim(EPhptSection.COOKIE));
+		} else if (!env.containsKey(ENV_HTTP_COOKIE)) {
+			env.put(ENV_HTTP_COOKIE, "");
+		}
+		
+		// 0 => for memory debugging
+		env.put(ENV_USE_ZEND_ALLOC, "1");
+		
+		prepareSTDIN();
+		createShellScript();
+	}
+	
+	@Override
+	protected boolean hasContentType() {
+		return StringUtil.isEmpty(env.get(ENV_CONTENT_TYPE));
+	}
+	
+	@Override
+	protected void setContentEncoding(String encoding) {
+		env.put(ENV_HTTP_CONTENT_ENCODING, encoding);
+	}
+	
+	@Override
+	protected void setContentType(String content_type) {
+		super.setContentType(content_type);
+		env.put(ENV_CONTENT_TYPE, content_type);
+	}
+	
+	@Override
+	protected void setContentLength(int content_length) {
+		env.put(ENV_CONTENT_LENGTH, Integer.toString(content_length));
+	}
+	
+	@Override
+	protected void setRequestMethod(String request_method) {
+		env.put(ENV_REQUEST_METHOD, request_method);
+	}
+	
+	@Override
+	protected Map<String, String> getEnv() {
+		return this.env;
 	}
 	
 	@Override
 	protected String executeSkipIf() throws Exception {
 		// Check if test should be skipped.
-		if (test_skipif != null && test_case.containsSection(EPhptSection.SKIPIF)) {
-			host.saveText(test_skipif, test_case.get(EPhptSection.SKIPIF));
-	
+		if (skipif_file != null) {
 			env.put(ENV_USE_ZEND_ALLOC, "1");
 				
-			skip_cmd = selected_php_exe+" "+(StringUtil.isEmpty(pass_options)?"":" "+pass_options+" ")+ini_settings+" -f \""+test_skipif+"\"";
+			skip_cmd = selected_php_exe+" "+ini_settings+" -f \""+skipif_file+"\"";
 
 			if (!env.containsKey(ENV_PATH_TRANSLATED))
-				env.put(ENV_PATH_TRANSLATED, test_skipif);
+				env.put(ENV_PATH_TRANSLATED, skipif_file);
 			if (!env.containsKey(ENV_SCRIPT_FILENAME))
-				env.put(ENV_SCRIPT_FILENAME, test_skipif);
+				env.put(ENV_SCRIPT_FILENAME, skipif_file);
 			
 			// execute SKIPIF (60 second timeout)
-			output = host.exec(skip_cmd, Host.ONE_MINUTE, env, null, test_pack.getTestPack());
+			output = host.exec(skip_cmd, Host.ONE_MINUTE, env, null, active_test_pack.getDirectory());
 			
 			return output.output;
 		}
@@ -64,7 +174,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected String executeTest() throws Exception { 
 		// execute PHP to execute the TEST code ... allow up to 60 seconds for execution
 		//      if test is taking longer than 40 seconds to run, spin up an additional thread to compensate (so other non-slow tests can be executed)
-		output = host.exec(shell_file, Host.ONE_MINUTE, null, stdin_post, test_case.isNon8BitCharset()?test_case.getCommonCharset():null, test_pack.getTestPack(), thread, 40);
+		output = host.exec(shell_file, Host.ONE_MINUTE, null, stdin_post, test_case.isNon8BitCharset()?test_case.getCommonCharset():null, active_test_pack.getDirectory(), thread, 40);
 		
 		return output.output;
 	} // end String executeTest
@@ -72,7 +182,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	@Override
 	protected void executeClean() throws Exception {
 		if (test_case.containsSection(EPhptSection.CLEAN)) {
-			host.saveText(test_clean, test_case.getTrim(EPhptSection.CLEAN), null);
+			host.saveFile(test_clean, test_case.getTrim(EPhptSection.CLEAN), null);
 		
 			env.remove(ENV_REQUEST_METHOD);
 			env.remove(ENV_QUERY_STRING);
@@ -82,7 +192,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			
 			// execute cleanup script
 			// FUTURE should cleanup script be ignored??
-			host.exec(selected_php_exe+" "+test_clean, Host.ONE_MINUTE, env, null, test_pack.getTestPack());
+			host.exec(selected_php_exe+" "+test_clean, Host.ONE_MINUTE, env, null, active_test_pack.getDirectory());
 
 			host.delete(test_clean);
 		}
@@ -98,15 +208,14 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			return null; // no crash at all
 	}
 
-	@Override
-	protected void createShellScript() throws IOException {
+	protected void createShellScript() throws IOException, Exception {
 		// useful: rm -rf `find ./ -name "*.sh"`
 		//
 		// create a .cmd (Windows batch script) or .sh (shell script) that will actually execute PHP
 		// this enables PHP to be executed like what PFTT does, but using a shell|batch script
 		shell_file = test_file + (host.isWindows() ? ".cmd" : ".sh" );
-		if (shell_file.startsWith(test_pack.getTestPack())) {
-			shell_file = shell_file.substring(test_pack.getTestPack().length());
+		if (shell_file.startsWith(active_test_pack.getDirectory())) {
+			shell_file = shell_file.substring(active_test_pack.getDirectory().length());
 			if (shell_file.startsWith("/")||shell_file.startsWith("\\"))
 				shell_file = shell_file.substring(1);
 			shell_file = twriter.telem_dir+"/"+shell_file;
@@ -145,13 +254,17 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		fw.flush();
 		fw.close();
 		w.close();		
+		
+		if (!host.isWindows()) {
+			// make shell script executable on linux
+			host.exec("chmod +x \""+shell_file+"\"", Host.NO_TIMEOUT, null, null, active_test_pack.getDirectory());
+		}
 	} // end protected void createShellScript
 
-	@Override
 	protected void prepareSTDIN() throws IOException {
 		String stdin_file = test_file + ".stdin";
-		if (stdin_file.startsWith(test_pack.getTestPack())) {
-			stdin_file = stdin_file.substring(test_pack.getTestPack().length());
+		if (stdin_file.startsWith(active_test_pack.getDirectory())) {
+			stdin_file = stdin_file.substring(active_test_pack.getDirectory().length());
 			if (stdin_file.startsWith("/")||stdin_file.startsWith("\\"))
 				stdin_file = stdin_file.substring(1);
 			stdin_file = twriter.telem_dir+"/"+stdin_file;
