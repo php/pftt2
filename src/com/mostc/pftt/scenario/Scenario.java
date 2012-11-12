@@ -19,7 +19,10 @@ import com.mostc.pftt.telemetry.ConsoleManager;
 
 public abstract class Scenario {
 	
-	public abstract boolean rejectOther(Scenario o);
+	public Class<?> getSerialKey() {
+		return getClass();
+	}
+	
 	public abstract String getName();
 	public abstract boolean isImplemented();
 	
@@ -38,59 +41,29 @@ public abstract class Scenario {
 	public static final AbstractFileSystemScenario DEFAULT_FILESYSTEM_SCENARIO = LOCALFILESYSTEM_SCENARIO;
 	
 	// 90 ScenarioSets => (APC, WinCache, No) * (CLI, Buitlin-WWW, Apache, IIS-Standard, IIS-Express) * ( local filesystem, the 5 types of SMB )
-	public static Scenario[][] getAllScenarios() {
-		return new Scenario[][] {
+	public static Scenario[] getAllDefaultScenarios() {
+		return new Scenario[]{
 				// sockets
-				new Scenario[] {
 				new PlainSocketScenario(),
-				new SSLSocketScenario()	
-				},
+				new SSLSocketScenario(),
 				// code caches
-				new Scenario[] {
 				new NoCodeCacheScenario(),
 				new APCScenario(),
-				new WinCacheScenario()
-				},
+				new WinCacheScenario(),
 				// SAPIs
-				new Scenario[]{
-				new CliScenario(),
-				// TODO new BuiltinWebServerScenario(),
-				/* TODO new ApacheModPHPScenario(),
+				CLI_SCENARIO,
+				new BuiltinWebServerScenario(),
+				// if Apache or IIS not installed, will skip these scenarios
+				new ApacheModPHPScenario(),
 				new IISExpressFastCGIScenario(),
-				new IISStandardFastCGIScenario() */
-				},
+				new IISStandardFastCGIScenario(),
 				// filesystems
-				new Scenario[] {
 				LOCALFILESYSTEM_SCENARIO,
-//				new SMBBasicScenario(),
-//				new SMBDeduplicationScenario(),
-				/* XXX new SMBDFSScenario(),
-				new SMBCAScenario(),
-				// probably don't need to test branch cache, but including it for completeness
-				new SMBBranchCacheScenario()*/
-				},
 				// options for smb - can be applied to any type of smb
-				new Scenario[] {
-						// default is CSC enabled
-						new CSCEnableScenario(),
-						new CSCDisableScenario(),
-				},
-				// databases
-				new Scenario[]{
-				new MSAccessScenario(),
-				new MSSQLODBCScenario(),
-				new MSSQLScenario(),
-				new MySQLScenario(),
-				new PostgresSQLScenario(),
-				new SQLite3Scenario(),
-				// streams
-				new FTPScenario(),
-				new HTTPScenario(),
-				// web services
-				new SOAPScenario(),
-				new XMLRPCScenario()
-				}
+				// default is CSC enabled
+				new CSCEnableScenario(),
+				new CSCDisableScenario(),
 			};
-	}
+	} // end public static Scenario[] getAllDefaultScenarios
 	
 } // end public abstract class Scenario

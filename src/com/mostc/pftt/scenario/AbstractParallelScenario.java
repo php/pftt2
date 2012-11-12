@@ -7,8 +7,5 @@ package com.mostc.pftt.scenario;
  */
 
 public abstract class AbstractParallelScenario extends Scenario {
-	@Override
-	public boolean rejectOther(Scenario o) {
-		return o instanceof AbstractParallelScenario && !o.getClass().isInstance(this); 
-	}
+	
 }

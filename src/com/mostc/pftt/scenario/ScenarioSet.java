@@ -2,6 +2,9 @@ package com.mostc.pftt.scenario;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 
 import com.mostc.pftt.host.Host;
@@ -34,13 +37,66 @@ import com.mostc.pftt.telemetry.ConsoleManager;
  *  Even so, being able to have fast test runs is critical. PHP builds couldn't be tested across all that otherwise.
  *
  * @see #isSupported
- * @see ScenarioSet#getScenarioSets()
+ * @see ScenarioSet#getDefaultScenarioSets()
  * @author Matt Ficken
  *
  */
 
 @SuppressWarnings("serial")
 public class ScenarioSet extends ArrayList<Scenario> {
+	
+	private boolean sorted = false, sorting = false;
+	private static Comparator<Scenario> COMPARATOR = new Comparator<Scenario>() {
+			@Override
+			public int compare(Scenario a, Scenario b) {
+				return a.getSerialKey().getName().compareTo(b.getSerialKey().getName());
+			}
+		};
+	private synchronized void sort() {
+		if (sorting)
+			return;
+		sorting = true;
+		Collections.sort(this, COMPARATOR);
+		sorting = false;
+		sorted = true;
+	}
+	
+	protected void forceSort() {
+		if (sorting)
+			return;
+		sort();
+	}
+	
+	protected void ensureSorted() {
+		if (sorted)
+			return;
+		sort();
+	}
+	
+	@Override
+	public String toString() {
+		ensureSorted();
+		return super.toString();
+	}
+	
+	@Override
+	public boolean add(Scenario s) {
+		super.add(s);
+		forceSort();
+		return true;
+	}
+	
+	@Override
+	public boolean equals(Object o) {
+		ensureSorted();
+		return super.equals(o);
+	}
+	
+	@Override
+	public int hashCode() {
+		ensureSorted();
+		return super.hashCode();
+	}
 	
 	/** finds the SAPI Scenario in the ScenarioSet or returns the default SAPI scenario (CLI) in case the ScenarioSet doesn't specify one.
 	 * 
@@ -86,59 +142,69 @@ public class ScenarioSet extends ArrayList<Scenario> {
 		return (ScenarioSet) super.clone();
 	}
 	
-	/** returns all possible valid ScenarioSets for all Scenarios
+	
+	/** calculates all permutations/combinations of given Scenarios and returns them as ScenarioSets 
+	 * 
+	 * @param scenarios
+	 * @return
+	 */
+	public static List<ScenarioSet> permuteScenarioSets(List<Scenario> scenarios) {
+		HashMap<Class<?>,List<Scenario>> map = new HashMap<Class<?>,List<Scenario>>();
+		for ( Scenario scenario : scenarios ) {
+			Class<?> clazz = scenario.getSerialKey();
+			//
+			List<Scenario> list = map.get(clazz);
+			if (list==null) {
+				list = new ArrayList<Scenario>(2);
+				map.put(clazz, list);
+			}
+			list.add(scenario);
+		}
+		List<List<Scenario>> remap = new ArrayList<List<Scenario>>();
+		for ( List<Scenario> list : map.values() )
+			remap.add(list);
+		return permute(remap);
+	}
+	protected static ArrayList<ScenarioSet> permute(List<List<Scenario>> input) {
+		ArrayList<ScenarioSet> output = new ArrayList<ScenarioSet>();
+		if (input.isEmpty()) {
+			output.add(new ScenarioSet());
+			return output;
+		}
+		List<List<Scenario>> list = new ArrayList<List<Scenario>>(input);
+		List<Scenario> head = list.get(0);
+		List<List<Scenario>> rest = list.subList(1, list.size());
+		for (List<Scenario> permutations : permute(rest)) {
+			List<ScenarioSet> subLists = new ArrayList<ScenarioSet>();
+			for (int i = 0; i <= permutations.size(); i++) {
+				for (int j=0 ; j < head.size(); j++) {
+					if (!head.get(j).isImplemented())
+						continue; // skip it
+					ScenarioSet subList = new ScenarioSet();
+					subList.addAll(permutations);
+					subList.add(i, head.get(j));
+					if (!subList.contains(subList))
+						subLists.add(subList);
+				}
+			}
+			for ( ScenarioSet a : subLists ) {
+				if (!output.contains(a))
+					output.add(a);
+			}
+		}
+		return output;
+	} // end protected static ArrayList<ScenarioSet> permute
+	
+	private static List<ScenarioSet> scenario_sets;
+	/** returns all builtin ScenarioSets (ScenarioSets that don't require special configuration (ex: SMB scenarios require a remote SMB host))
 	 * 
 	 * @return
 	 */
-	public static List<ScenarioSet> getScenarioSets() {
-		return getScenarioSets(Scenario.getAllScenarios());
+	public static List<ScenarioSet> getDefaultScenarioSets() {
+		return scenario_sets;
 	}
-	
-	public static List<ScenarioSet> getScenarioSets(Scenario[][] scenarios) {
-		ArrayList<Scenario[]> s = new ArrayList<Scenario[]>(3);
-		s.add(scenarios[0]);
-		s.add(scenarios[1]);
-		s.add(scenarios[2]);
-		List<Scenario> b = Arrays.asList(scenarios[3]);
-		ArrayList<ScenarioSet> sets = permute(s);
-		for (ScenarioSet set:sets) {
-			for (Scenario c: b) {
-				if (c.isImplemented())
-					set.add(c);
-			}
-		}
-		return sets.subList(0, 1);// TODO 2); // XXX
-	}
-	protected static ArrayList<ScenarioSet> permute(List<Scenario[]> input) {
-		ArrayList<ScenarioSet> output = new ArrayList<ScenarioSet>();
-        if (input.isEmpty()) {
-            output.add(new ScenarioSet());
-            return output;
-        }
-        List<Scenario[]> list = new ArrayList<Scenario[]>(input);
-        Scenario[] head = list.get(0);
-        List<Scenario[]> rest = list.subList(1, list.size());
-        for (List<Scenario> permutations : permute(rest)) {
-            List<ScenarioSet> subLists = new ArrayList<ScenarioSet>();
-            for (int i = 0; i <= permutations.size(); i++) {
-            	for (int j=0 ; j < head.length; j++) {
-            		if (!head[j].isImplemented())
-            			continue; // skip it
-	            	ScenarioSet subList = new ScenarioSet();
-	                subList.addAll(permutations);
-	                subList.add(i, head[j]);
-	                subLists.add(subList);
-            	}
-            }
-            output.addAll(subLists);
-        }
-        return output;
-    }
-	
-	public static List<ScenarioSet> toList(ScenarioSet set) {
-		ArrayList<ScenarioSet> list = new ArrayList<ScenarioSet>(1);
-		list.add(set);
-		return list;
+	static {
+		scenario_sets = permuteScenarioSets(Arrays.asList(Scenario.getAllDefaultScenarios()));
 	}
 	
 } // end public class ScenarioSet

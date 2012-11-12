@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
@@ -34,24 +35,32 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 	protected final PhptSourceTestPack src_test_pack;
 	protected final PhptTelemetryWriter twriter;
 	protected PhptActiveTestPack active_test_pack;
-	protected ETestPackRunnerState runner_state;
+	protected AtomicReference<ETestPackRunnerState> runner_state;
 	protected AtomicInteger test_count, active_thread_count;
 	protected HashMap<TestCaseGroupKey,LinkedBlockingQueue<PhptTestCase>> thread_safe_tests;
 	protected HashMap<String,HashMap<TestCaseGroupKey,LinkedBlockingQueue<PhptTestCase>>> non_thread_safe_tests;
 	protected AbstractSAPIScenario sapi_scenario;
+	protected AbstractFileSystemScenario file_scenario;
 	protected LinkedBlockingQueue<TestCaseGroupKey> group_keys;
 	
 	public PhptTestPackRunner(PhptTelemetryWriter twriter, PhptSourceTestPack test_pack, ScenarioSet scenario_set, PhpBuild build, Host host) {
 		super(scenario_set, build, host);
 		this.twriter = twriter;
 		this.src_test_pack = test_pack;
+		
+		runner_state = new AtomicReference<ETestPackRunnerState>();
 	}	
 	
 	public void runTestList(List<PhptTestCase> test_cases) throws Exception {
-		// XXX if already running, wait
-		runner_state = ETestPackRunnerState.RUNNING;
+		// if already running, wait
+		while (runner_state.get()==ETestPackRunnerState.RUNNING) {
+			Thread.sleep(100);
+		}
+		//
+		
+		runner_state.set(ETestPackRunnerState.RUNNING);
 		sapi_scenario = ScenarioSet.getSAPIScenario(scenario_set);
-		AbstractFileSystemScenario file_scenario = ScenarioSet.getFileSystemScenario(scenario_set);
+		file_scenario = ScenarioSet.getFileSystemScenario(scenario_set);
 		
 		////////////////// install test-pack onto the storage it will be run from
 		// for local file system, this is just a file copy. for other scenarios, its more complicated (let the filesystem scenario deal with it)
@@ -89,10 +98,10 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 		active_test_pack = null;
 		try {
 			// TODO console option (local filesystem scenario only) to use PhptSourceTestPack as PhptActiveTestPack
-			//      -phpt-in-place
-			//      if not -auto and local file system, do in-place by default
-			//      if -auto, don't do in-place 
-			active_test_pack = src_test_pack.install(host, test_pack_dir);
+			if (twriter.getConsoleManager().isPhptNotInPlace() || !file_scenario.allowPhptInPlace())
+				active_test_pack = src_test_pack.install(host, test_pack_dir);
+			else
+				active_test_pack = src_test_pack.installInPlace();
 		} catch (Exception ex ) {
 			twriter.getConsoleManager().printStackTrace(ex);
 		}
@@ -121,20 +130,23 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 			// TODO serialSAPIInstance_executeTestCases();
 			parallelSAPIInstance_executeTestCases();
 	
-			// delete if successful (otherwise leave it behind for user to analyze the internal exception(s))
-			// TODO console option to not cleanup
-			twriter.getConsoleManager().println("PhptTestPackRunner", "deleting up active test-pack: "+active_test_pack);
-			host.delete(active_test_pack.getDirectory());
+			// TODO delete if successful (otherwise leave it behind for user to analyze the internal exception(s))
+			if (!twriter.getConsoleManager().isDontCleanupTestPack() && !active_test_pack.getDirectory().equals(src_test_pack.getSourceDirectory())) {
+				twriter.getConsoleManager().println("PhptTestPackRunner", "deleting/cleaning-up active test-pack: "+active_test_pack);
+				host.delete(active_test_pack.getDirectory());
+				
+				// cleanup, disconnect storage, etc...
+				file_scenario.notifyFinishedTestPack(twriter.getConsoleManager(), host);
+			}
+			//
 		} finally {
 			// be sure all running WebServerInstances, or other SAPIInstances are
-			// closed by end of testing (otherwise php.exe -S will keep on running)
+			// closed by end of testing (otherwise `php.exe -S` will keep on running)
 			close();
 		}
 	} // end public void runTestList
 	
 	public void close() {
-		if (sapi_scenario instanceof AbstractWebServerScenario) // TODO temp
-			((AbstractWebServerScenario)sapi_scenario).smgr.close();
 		sapi_scenario.close();
 	}
 	
@@ -360,7 +372,7 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 					test_case = jobs.poll() 
 					) != null && 
 					run_thread.get() && 
-					runner_state==ETestPackRunnerState.RUNNING
+					runner_state.get()==ETestPackRunnerState.RUNNING
 					) { 
 				// CRITICAL: catch exception so thread will always end normally
 				try {
@@ -378,8 +390,6 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 				counter++;
 				
 				test_count.incrementAndGet();
-				
-				//Thread.yield()
 			}
 		} // end protected void exec_jobs
 
@@ -405,12 +415,12 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 
 	@Override
 	public void setState(ETestPackRunnerState state) throws IllegalStateException {
-		this.runner_state = state;
+		this.runner_state.set(state);
 	}
 
 	@Override
 	public ETestPackRunnerState getState() {
-		return runner_state;
+		return runner_state.get();
 	}
 	
 } // end public class PhptTestPackRunner

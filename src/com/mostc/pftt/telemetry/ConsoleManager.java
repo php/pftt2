@@ -12,14 +12,15 @@ import com.mostc.pftt.ui.PhptDebuggerFrame;
 import com.mostc.pftt.util.ErrorUtil;
 
 public class ConsoleManager {
-	protected final boolean results_only, show_gui, disable_debug_prompt;
+	protected final boolean results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place;
 	protected PhptDebuggerFrame gui;
 		
-	public ConsoleManager(boolean results_only, boolean show_gui, boolean disable_debug_prompt) {
+	public ConsoleManager(boolean results_only, boolean show_gui, boolean disable_debug_prompt, boolean dont_cleanup_test_pack, boolean phpt_not_in_place) {
 		this.results_only = results_only;
 		this.show_gui = show_gui;
 		this.disable_debug_prompt = disable_debug_prompt;
-		
+		this.dont_cleanup_test_pack = dont_cleanup_test_pack;
+		this.phpt_not_in_place = phpt_not_in_place;
 	}
 	
 	public void showGUI(PhptTestPackRunner test_pack_runner) {
@@ -75,6 +76,14 @@ public class ConsoleManager {
 
 	public boolean isResultsOnly() {
 		return results_only;
+	}
+
+	public boolean isDontCleanupTestPack() {
+		return dont_cleanup_test_pack;
+	}
+
+	public boolean isPhptNotInPlace() {
+		return phpt_not_in_place;
 	}
 	
 } // end public class ConsoleManager

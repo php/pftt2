@@ -20,6 +20,11 @@ public class LocalFileSystemScenario extends AbstractFileSystemScenario {
 	public boolean isImplemented() {
 		return true;
 	}
+	
+	@Override
+	public boolean allowPhptInPlace() {
+		return false;
+	}
 
 	@Override
 	public boolean notifyPrepareStorageDir(ConsoleManager cm, Host host) {

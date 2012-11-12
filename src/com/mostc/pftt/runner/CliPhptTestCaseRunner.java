@@ -37,7 +37,7 @@ import com.mostc.pftt.util.StringUtil;
 public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected ExecOutput output;
 	protected HashMap<String,String> env;
-	protected String skip_cmd;
+	protected String selected_php_exe, shell_script, test_cmd, skip_cmd, ini_settings, shell_file;
 	
 	public CliPhptTestCaseRunner(PhpIni ini, PhptThread thread, PhptTestCase test_case, PhptTelemetryWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
 		super(ini, thread, test_case, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
@@ -48,6 +48,8 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	@Override
 	protected boolean prepare() throws IOException, Exception {
 		if (super.prepare()) {
+			ini_settings = ini.toCliArgString(host);
+			
 			// read ENV vars from test, from its parent (if a test redirected to this test), and merge from scenario
 			env = test_case.getENV(env, twriter.getConsoleManager(), host, build);
 			
@@ -76,6 +78,12 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	@Override
 	protected void prepareTest() throws Exception {
 		super.prepareTest();
+		
+		// copy CLI args to pass
+		String args = test_case.containsSection(EPhptSection.ARGS) ? " -- " + test_case.get(EPhptSection.ARGS) : "";
+		
+		// generate cmd string to run test_file with php.exe
+		test_cmd = selected_php_exe+" "+ini_settings+" -f \""+test_file+"\""+(args==null?"":" "+args);
 		
 		if (test_case.containsSection(EPhptSection.STDIN)) {
 			if (host.isWindows()) {
@@ -145,11 +153,6 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	}
 	
 	@Override
-	protected Map<String, String> getEnv() {
-		return this.env;
-	}
-	
-	@Override
 	protected String executeSkipIf() throws Exception {
 		// Check if test should be skipped.
 		if (skipif_file != null) {
@@ -182,7 +185,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	@Override
 	protected void executeClean() throws Exception {
 		if (test_case.containsSection(EPhptSection.CLEAN)) {
-			host.saveFile(test_clean, test_case.getTrim(EPhptSection.CLEAN), null);
+			host.saveTextFile(test_clean, test_case.getTrim(EPhptSection.CLEAN), null);
 		
 			env.remove(ENV_REQUEST_METHOD);
 			env.remove(ENV_QUERY_STRING);
@@ -245,7 +248,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			} else
 				fw.println("export "+name+"=\""+value+"\"");
 		}
-		fw.println(cmd);
+		fw.println(test_cmd);
 		fw.close();
 		shell_script = sw.toString();
 		FileWriter w = new FileWriter(shell_file);
@@ -279,7 +282,17 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 
 	@Override
 	protected String[] splitCmdString() {
-		return LocalHost.splitCmdString(cmd);
+		return LocalHost.splitCmdString(test_cmd);
+	}
+	
+	@Override
+	protected Map<String, String> getEnv() {
+		return env;
+	}
+	
+	@Override
+	protected String getShellScript() {
+		return shell_script;
 	}
 	
 } // end public class CliTestCaseRunner

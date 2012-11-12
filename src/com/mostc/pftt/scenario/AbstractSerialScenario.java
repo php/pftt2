@@ -9,8 +9,7 @@ package com.mostc.pftt.scenario;
  */
 
 public abstract class AbstractSerialScenario extends Scenario {
+	
 	@Override
-	public boolean rejectOther(Scenario o) {
-		return false;
-	}
+	public abstract Class<?> getSerialKey();
 }

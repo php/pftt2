@@ -2,6 +2,7 @@ package com.mostc.pftt.util;
 
 import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.telemetry.ConsoleManager;
 
 /** Utilities for setting up the test environment and convenience settings on Hosts
@@ -54,20 +55,34 @@ public final class HostEnvUtil {
 			cm.println("HostEnvUtil", "disabling Windows Firewall...");
 			
 			// LATER edit firewall rules instead (what if on public network, ex: Azure)
-	        host.execElevated("netsh firewall set opmode disable", Host.ONE_MINUTE);			
-		
-		
-	        cm.println("HostEnvUtil", "creating File Share for "+host.getPhpSdkDir()+"...");
-	        // share PHP-SDK over network. this also will share C$, G$, etc...
-	        host.execElevated("NET SHARE PHP_SDK="+host.getPhpSdkDir()+" /Grant:"+host.getUsername()+",Full", Host.ONE_MINUTE);
+			host.execElevated("netsh firewall set opmode disable", Host.ONE_MINUTE);			
+			
+			
+			cm.println("HostEnvUtil", "creating File Share for "+host.getPhpSdkDir()+"...");
+			// share PHP-SDK over network. this also will share C$, G$, etc...
+			host.execElevated("NET SHARE PHP_SDK="+host.getPhpSdkDir()+" /Grant:"+host.getUsername()+",Full", Host.ONE_MINUTE);
 		}
-		
-        
-        if (host.isVistaOrBefore()) {
+			
+		if (host.isVistaOrBefore()) {
 			// install VC9 runtime (win7+ don't need this)
-			// TODO
-        }
-        cm.println("HostEnvUtil", "Windows host prepared to run PHP.");
+			if (host.dirContainsFragment(host.getSystemRoot()+"\\WinSxS", "vc9")) {
+				cm.println("HostEnvUtil", "VC9 Runtime alread installed");
+			} else {
+				String local_file = LocalHost.getLocalPfttDir()+"/bin/vc9_vcredist_x86.exe";
+				String remote_file = null;
+				if (host.isRemote()) {
+					remote_file = host.mktempname("HostEnvUtil", ".exe");
+					
+					cm.println("HostEnvUtil", "Uploading VC9 Runtime");
+					host.upload(local_file, remote_file);
+				}
+				cm.println("HostEnvUtil", "Installing VC9 Runtime");
+				host.execElevated(remote_file+" /Q", Host.NO_TIMEOUT);
+				if (remote_file!=null)
+					host.delete(remote_file);
+			}
+		}
+		cm.println("HostEnvUtil", "Windows host prepared to run PHP.");
 	} // end public static void prepareWindows
 	
 	public static final String REG_DWORD = "REG_DWORD";

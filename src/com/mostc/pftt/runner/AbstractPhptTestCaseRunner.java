@@ -55,7 +55,7 @@ public abstract class AbstractPhptTestCaseRunner {
 			
 			return true;
 		// TODO openbasedir 
-		} else if (test_case.isNamed("tests/security/open_basedir_is_file.phpt")||test_case.isNamed("ext/standard/tests/php_ini_loaded_file.phpt")||test_case.isNamed("tests/run-test/test010.phpt")||test_case.isNamed("ext/standard/tests/misc/time_sleep_until_basic.phpt") || test_case.getName().contains("session") || test_case.isNamed("ext/standard/tests/misc/time_nanosleep_basic.phpt")) {
+		} else if (test_case.isNamed("tests/security/open_basedir_is_file.phpt", "ext/standard/tests/php_ini_loaded_file.phpt", "tests/run-test/test010.phpt", "ext/standard/tests/misc/time_sleep_until_basic.phpt", "ext/standard/tests/misc/time_nanosleep_basic.phpt")) {
 			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null));
 			
 			return true;

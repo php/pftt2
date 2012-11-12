@@ -24,6 +24,11 @@ import com.mostc.pftt.telemetry.PhptTelemetryWriter;
 
 public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 
+	@Override
+	public Class<?> getSerialKey() {
+		return AbstractSAPIScenario.class;
+	}
+	
 	/** creates a runner to run a single PhptTestCase under this SAPI scenario
 	 * 
 	 * @param thread

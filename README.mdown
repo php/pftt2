@@ -144,11 +144,11 @@ PFTT will automatically generate an FBC report and display it using system defau
 
 ## Adding Scenarios
 
-To add any test [Scenario](doc/apidoc/com/mostc/pftt/scenario/Scenario.html), implement [Scenario](doc/apidoc/com/mostc/pftt/scenario/Scenario.html) and instantiate it in Scenario#getAllScenarios.
+To add any test [Scenario](doc/apidoc/com/mostc/pftt/scenario/Scenario.html), implement [Scenario](doc/apidoc/com/mostc/pftt/scenario/Scenario.html) and instantiate it in Scenario#getAllDefaultScenarios or a config file if it needs special configuration (like connecting to a remote host, database, etc... that the user would have to setup).
 
 ### Database Scenario
 
-More specifically, to add a database scenario (MySQL, Firebird, etc...) implement [AbstractDatabaseScenario](doc/apidoc/com/mostc/pftt/scenario/AbstractDatabaseScenario.html) and add it to Scenario#getAllScenarios.
+More specifically, to add a database scenario (MySQL, Firebird, etc...) implement [AbstractDatabaseScenario](doc/apidoc/com/mostc/pftt/scenario/AbstractDatabaseScenario.html) and add it to Scenario#getAllDefaultScenarios or a config file if it needs special configuration (like connecting to a remote host, database, etc... that the user would have to setup).
 
 ### SAPI Scenario
 

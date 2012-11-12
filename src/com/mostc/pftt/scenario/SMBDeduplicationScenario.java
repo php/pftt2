@@ -56,7 +56,7 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 		if (!remote_host.isWin8OrLater()) {
 			cm.println(getName(), "Scenario can only be run against a Windows 8/2012+ host");
 			return false;
-		} else if (remote_host.getSystemDrive().equalsIgnoreCase(volume)) {
+		} else if (volume.equals("C:")||remote_host.getSystemDrive().equalsIgnoreCase(volume)) {
 			cm.println(getName(), "Can not use Deduplication on a Windows System Drive (ex: C:\\)");
 			return false;
 		}
@@ -76,10 +76,10 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 		
 		// create PowerShell script to install and enable deduplication
 		try {
-			remote_host.saveFile(tmp_file, ps_sb.toString());
+			remote_host.saveTextFile(tmp_file, ps_sb.toString());
 			
 			// 
-			if (remote_host.exec("powershell -File "+tmp_file, Host.ONE_MINUTE * 10).isSuccess()) {
+			if (remote_host.execElevated("powershell -File "+tmp_file, Host.ONE_MINUTE * 10).isSuccess()) {
 				// don't delete tmp_file if it failed to help user see why
 				remote_host.delete(tmp_file);
 			}
@@ -102,12 +102,15 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 	public boolean notifyTestPackInstalled(ConsoleManager cm, Host host) {
 		try {
 			// run deduplication job (on test-pack) -wait for completion
-			remote_host.exec("powershell -Command {Start-Dedupjob -Volume "+volume+" -Type Optimization -Wait}", Host.NO_TIMEOUT);
-			
-			return true;
+			cm.println(getName(), "Running deduplication job...");
+			if (remote_host.exec("powershell -Command {Start-Dedupjob -Volume "+volume+" -Type Optimization -Wait}", Host.NO_TIMEOUT).isSuccess()) {
+				cm.println(getName(), "Deduplication completed successfully.");
+				return true;
+			}
 		} catch ( Exception ex ) {
 			cm.printStackTrace(ex);
 		}
+		cm.println(getName(), "Deduplication failed");
 		return false;
 	}
 	

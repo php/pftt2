@@ -5,6 +5,11 @@ import com.mostc.pftt.telemetry.ConsoleManager;
 
 public abstract class SMBCSCOptionScenario extends AbstractOptionScenario {
 
+	@Override
+	public Class<?> getSerialKey() {
+		return SMBCSCOptionScenario.class;
+	}
+	
 	public abstract boolean isEnable();
 	
 	@Override
@@ -17,7 +22,7 @@ public abstract class SMBCSCOptionScenario extends AbstractOptionScenario {
 		
 		String ps_file = host.mktempname(getName(), "ps1");
 		try {
-			host.saveFile(ps_file, ps_sb.toString());
+			host.saveTextFile(ps_file, ps_sb.toString());
 			
 			if (host.exec("powershell -File "+ps_file, Host.ONE_MINUTE).isSuccess()) {
 				host.delete(ps_file);

@@ -72,6 +72,8 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "ENV section not supported for testing against web servers", null, null, null, null, null, null, null, null, null, null));
 		else if (test_case.containsSection(EPhptSection.STDIN))
 			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "STDIN section not supported for testing against web servers", null, null, null, null, null, null, null, null, null, null));
+		else if (test_case.containsSection(EPhptSection.ARGS))
+			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "ARGS section not supported for testing against web servers", null, null, null, null, null, null, null, null, null, null));
 		
 		return false;
 	}

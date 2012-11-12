@@ -14,6 +14,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.charset.Charset;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -240,7 +241,7 @@ public class SSHHost extends RemoteHost {
 	}
 	
 	@Override
-	public void saveFile(String filename, String text, Charset charset) throws IOException {
+	public void saveTextFile(String filename, String text, Charset charset) throws IOException {
 		if (text==null)
 			text = "";
 		ensureScpOpen();
@@ -249,8 +250,8 @@ public class SSHHost extends RemoteHost {
 	}
 
 	@Override
-	public void saveFile(String filename, String text) throws IOException {
-		saveFile(filename, text, null);
+	public void saveTextFile(String filename, String text) throws IOException {
+		saveTextFile(filename, text, null);
 	}
 	
 	protected SessionChannelClient do_exec(String cmd, Map<String, String> env, String chdir, byte[] stdin_post, OutputStream out) throws IOException, IllegalStateException {
@@ -529,6 +530,37 @@ public class SSHHost extends RemoteHost {
 			ex.printStackTrace();
 		}
 		return false;
+	}
+
+	@Override
+	public boolean dirContainsExact(String path, String name) {
+		for ( String a : list(path) ) {
+			if (a.equalsIgnoreCase(name))
+				return true;
+		}
+		return false;
+	}
+
+	@Override
+	public boolean dirContainsFragment(String path, String name_fragment) {
+		for ( String a : list(path) ) {
+			if (a.contains(name_fragment))
+				return true;
+		}
+		return false;
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Override
+	public String[] list(String path) {
+		try {
+			ensureSftpOpen();
+			List list = sftp.ls(path);
+			return (String[]) list.toArray(new String[list.size()]);
+		} catch ( Exception ex ) {
+			ex.printStackTrace();
+		}
+		return StringUtil.EMPTY_ARRAY;
 	}
 
 } // end public class SSHHost

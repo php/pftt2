@@ -38,7 +38,7 @@ public class SMBDFSRScenario extends AbstractSMBScenario {
 		ps_sb.append("Add-WindowsFeature -name FS-DFS-Replication\n");
 		
 		String tmp_file = host.mktempname(getName(), "ps1");
-		host.saveFile(tmp_file, ps_sb.toString());
+		host.saveTextFile(tmp_file, ps_sb.toString());
 				
 		if (host.exec("Powershell -File "+tmp_file, Host.NO_TIMEOUT).isSuccess()) {
 			host.delete(tmp_file);

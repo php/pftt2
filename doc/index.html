@@ -180,11 +180,11 @@ That should be it (PFTT comes with eclipse .project and .classpath files which a
 
 <h2>Adding Scenarios</h2>
 
-<p>To add any test Scenario, implement <a href="apidoc/com/mostc/pftt/scenario/Scenario.html">Scenario</a> and instantiate it in Scenario#getAllScenarios.</p>
+<p>To add any test Scenario, implement <a href="apidoc/com/mostc/pftt/scenario/Scenario.html">Scenario</a> and instantiate it in Scenario#getAllDefaultScenarios or a config file if it needs special configuration (like connecting to a remote host, database, etc... that the user would have to setup).</p>
 
 <h3>Database Scenario</h3>
 
-<p>More specifically, to add a database scenario (MySQL, Firebird, etc...) implement <a href="apidoc/com/mostc/pftt/scenario/AbstractDatabaseScenario.html">AbstractDatabaseScenario</a> and add it to Scenario#getAllScenarios.</p>
+<p>More specifically, to add a database scenario (MySQL, Firebird, etc...) implement <a href="apidoc/com/mostc/pftt/scenario/AbstractDatabaseScenario.html">AbstractDatabaseScenario</a> and add it to Scenario#getAllDefaultScenarios or a config file if it needs special configuration (like connecting to a remote host, database, etc... that the user would have to setup).</p>
 
 <h3>SAPI Scenario</h3> 
 

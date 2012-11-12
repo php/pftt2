@@ -537,6 +537,15 @@ public class PhptTestCase extends TestCase {
 		return name.equals(o);
 	}
 	
+	public boolean isNamed(String...names) {
+		// XXX someday, do a Trie structure here to speed up checking
+		for (String name:names) {
+			if (this.name.equals(name))
+				return true;
+		}
+		return false;
+	}
+	
 	/** returns the name of this test.
 	 * 
 	 * for standardization/normalization, all backslashes(\) in test names are converted to unix/forwardslashes(/)
@@ -786,64 +795,60 @@ public class PhptTestCase extends TestCase {
 	 * @return
 	 */
 	public boolean isSlowTest() {
-		// TODO start the slow tests first, so that all tests finish faster
-		return isSlowTest(getName());
+		return isNamed(
+				"ext/date/tests/date_diff.phpt",
+				"ext/oci8/tests/bug42496_1.phpt",
+				"ext/oci8/tests/bug42496_2.phpt",
+				"ext/oci8/tests/bug43497.phpt",
+				"ext/oci8/tests/bug43497_92.phpt",
+				"ext/oci8/tests/bug44113.phpt",
+				"ext/oci8/tests/conn_attr_4.phpt",
+				"ext/oci8/tests/error2.phpt",
+				"ext/oci8/tests/extauth_01.phpt",
+				"ext/oci8/tests/extauth_02.phpt",
+				"ext/oci8/tests/extauth_03.phpt",
+				"ext/oci8/tests/lob_043.phpt",
+				"ext/oci8/tests/pecl_bug10194.phpt",
+				"ext/oci8/tests/pecl_bug10194_blob.phpt",
+				"ext/oci8/tests/pecl_bug10194_blob_64.phpt",
+				"ext/phar/tests/bug13727.phpt",
+				"ext/phar/tests/bug45218_SLOWTEST.phpt",
+				"ext/phar/tests/bug45218_SLOWTESTU.phpt",
+				"ext/phar/tests/bug46032.phpt",
+				"ext/phar/tests/bug46060.phpt",
+				"ext/standard/tests/file/001.phpt",
+				"ext/standard/tests/file/005_variation.phpt",
+				"ext/standard/tests/file/file_get_contents_error001.phpt",
+				"ext/standard/tests/file/lstat_stat_basic.phpt",
+				"ext/standard/tests/file/lstat_stat_variation10.phpt",
+				"ext/standard/tests/file/lstat_stat_variation11.phpt",
+				"ext/standard/tests/file/lstat_stat_variation12.phpt",
+				"ext/standard/tests/file/lstat_stat_variation13.phpt",
+				"ext/standard/tests/file/lstat_stat_variation15.phpt",
+				"ext/standard/tests/file/lstat_stat_variation16.phpt",
+				"ext/standard/tests/file/lstat_stat_variation17.phpt",
+				"ext/standard/tests/file/lstat_stat_variation21.phpt",
+				"ext/standard/tests/file/lstat_stat_variation4.phpt",
+				"ext/standard/tests/file/lstat_stat_variation5.phpt",
+				"ext/standard/tests/file/lstat_stat_variation6.phpt",
+				"ext/standard/tests/file/lstat_stat_variation8.phpt",
+				"ext/standard/tests/file/touch_basic.phpt",
+				"ext/standard/tests/general_functions/bug39322.phpt",
+				"ext/standard/tests/general_functions/proc_open02.phpt",
+				"ext/standard/tests/general_functions/sleep_basic.phpt",
+				"ext/standard/tests/general_functions/usleep_basic.phpt",
+				"ext/standard/tests/misc/time_nanosleep_basic.phpt",
+				"ext/standard/tests/misc/time_sleep_until_basic.phpt",
+				"ext/standard/tests/network/gethostbyname_basic001.phpt",
+				"ext/standard/tests/network/gethostbyname_error004.phpt",
+				"ext/standard/tests/network/getmxrr.phpt",
+				"ext/standard/tests/network/http-stream.phpt",
+				"tests/func/005a.phpt",
+				"tests/func/010.phpt",
+				"tests/lang/045.phpt",
+				"Zend/tests/bug55509.phpt"
+			);
 	}
-	public static boolean isSlowTest(String test_name) {
-		// TODO
-		return false;
-	}
-	/* ext/date/tests/date_diff.phpt
-ext/oci8/tests/bug42496_1.phpt
-ext/oci8/tests/bug42496_2.phpt
-ext/oci8/tests/bug43497.phpt
-ext/oci8/tests/bug43497_92.phpt
-ext/oci8/tests/bug44113.phpt
-ext/oci8/tests/conn_attr_4.phpt
-ext/oci8/tests/error2.phpt
-ext/oci8/tests/extauth_01.phpt
-ext/oci8/tests/extauth_02.phpt
-ext/oci8/tests/extauth_03.phpt
-ext/oci8/tests/lob_043.phpt
-ext/oci8/tests/pecl_bug10194.phpt
-ext/oci8/tests/pecl_bug10194_blob.phpt
-ext/oci8/tests/pecl_bug10194_blob_64.phpt
-ext/phar/tests/bug13727.phpt
-ext/phar/tests/bug45218_SLOWTEST.phpt
-ext/phar/tests/bug45218_SLOWTESTU.phpt
-ext/phar/tests/bug46032.phpt
-ext/phar/tests/bug46060.phpt
-ext/standard/tests/file/001.phpt
-ext/standard/tests/file/005_variation.phpt
-ext/standard/tests/file/file_get_contents_error001.phpt
-ext/standard/tests/file/lstat_stat_basic.phpt
-ext/standard/tests/file/lstat_stat_variation10.phpt
-ext/standard/tests/file/lstat_stat_variation11.phpt
-ext/standard/tests/file/lstat_stat_variation12.phpt
-ext/standard/tests/file/lstat_stat_variation13.phpt
-ext/standard/tests/file/lstat_stat_variation15.phpt
-ext/standard/tests/file/lstat_stat_variation16.phpt
-ext/standard/tests/file/lstat_stat_variation17.phpt
-ext/standard/tests/file/lstat_stat_variation21.phpt
-ext/standard/tests/file/lstat_stat_variation4.phpt
-ext/standard/tests/file/lstat_stat_variation5.phpt
-ext/standard/tests/file/lstat_stat_variation6.phpt
-ext/standard/tests/file/lstat_stat_variation8.phpt
-ext/standard/tests/file/touch_basic.phpt
-ext/standard/tests/general_functions/bug39322.phpt
-ext/standard/tests/general_functions/proc_open02.phpt
-ext/standard/tests/general_functions/sleep_basic.phpt
-ext/standard/tests/general_functions/usleep_basic.phpt
-ext/standard/tests/misc/time_nanosleep_basic.phpt
-ext/standard/tests/misc/time_sleep_until_basic.phpt
-ext/standard/tests/network/gethostbyname_basic001.phpt
-ext/standard/tests/network/gethostbyname_error004.phpt
-ext/standard/tests/network/getmxrr.phpt
-ext/standard/tests/network/http-stream.phpt
-tests/func/005a.phpt
-tests/func/010.phpt
-tests/lang/045.phpt
-Zend/tests/bug55509.phpt */
 
 	public static DefaultCharsetDeciderDecoder newCharsetDeciderDecoder() {
 		return new DefaultCharsetDeciderDecoder(CharsetDeciderDecoder.EXPRESS_RECOGNIZERS);

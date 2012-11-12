@@ -40,8 +40,7 @@ public class CliScenario extends AbstractSAPIScenario {
 	
 	@Override
 	public int getTestThreadCount(Host host) {
-		// 4 => 395
-		return 2 * host.getCPUCount();
+		return 4 * host.getCPUCount();
 	}
 
 } // end public class CliScenario

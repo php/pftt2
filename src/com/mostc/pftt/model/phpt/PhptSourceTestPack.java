@@ -53,18 +53,17 @@ public class PhptSourceTestPack extends SourceTestPack {
 		// these are symlinks(junctions) which may cause an infinite loop
 		//
 		// normally, they are deleted, but if certain tests were interrupted, they may still be there
-		host.deleteIfExists("ext/standard/tests/file/windows_links/mklink_junction");
-		host.deleteIfExists("ext/standard/tests/file/windows_links/directory");
-		host.deleteIfExists("ext/standard/tests/file/windows_links/mounted_volume");
-		host.deleteIfExists("ext/standard/tests/file/windows_links/mnt");
+		host.deleteIfExists(test_pack+"/ext/standard/tests/file/windows_links/mklink_junction");
+		host.deleteIfExists(test_pack+"/ext/standard/tests/file/windows_links/directory");
+		host.deleteIfExists(test_pack+"/ext/standard/tests/file/windows_links/mounted_volume");
+		host.deleteIfExists(test_pack+"/ext/standard/tests/file/windows_links/mnt");
 	}
 	
-	public void add_named_tests(List<PhptTestCase> test_files, List<String> names, PhptTelemetryWriter twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {
-		add_named_tests(test_files, names, twriter, build, false);
+	public void read(List<PhptTestCase> test_files, List<String> names, PhptTelemetryWriter twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {
+		read(test_files, names, twriter, build, false);
 	}
 	
-	// TODO rename this - always call before (only once) before using PhptTestPack
-	public void add_named_tests(List<PhptTestCase> test_files, List<String> names, PhptTelemetryWriter twriter, PhpBuild build, boolean ignore_missing) throws FileNotFoundException, IOException, Exception {
+	public void read(List<PhptTestCase> test_files, List<String> names, PhptTelemetryWriter twriter, PhpBuild build, boolean ignore_missing) throws FileNotFoundException, IOException, Exception {
 		test_pack_file = new File(test_pack);
 		test_pack = test_pack_file.getAbsolutePath(); // normalize path
 		
@@ -114,7 +113,7 @@ public class PhptSourceTestPack extends SourceTestPack {
 		twriter.setTotalCount(test_files.size());
 	}
 
-	public void add_test_files(List<PhptTestCase> test_files, PhptTelemetryWriter twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {
+	public void read(List<PhptTestCase> test_files, PhptTelemetryWriter twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {
 		test_pack_file = new File(test_pack);
 		test_pack = test_pack_file.getAbsolutePath(); // normalize path
 		add_test_files(test_pack_file.listFiles(), test_files, null, twriter, build, null, new LinkedList<PhptTestCase>());
@@ -140,9 +139,6 @@ public class PhptSourceTestPack extends SourceTestPack {
 				if (test_name.startsWith("/") || test_name.startsWith("\\"))
 					test_name = test_name.substring(1);
 				
-//				if (test_name.contains("a_dir"))
-//					continue; // TODO
-				
 				PhptTestCase test_case = PhptTestCase.load(host, this, false, test_name, twriter, redirect_parent);
 				
 				add_test_case(test_case, test_files, names, twriter, build, redirect_parent, redirect_targets);
@@ -166,12 +162,8 @@ public class PhptSourceTestPack extends SourceTestPack {
 						add_test_files(dir.listFiles(), test_files, names, twriter, build, redirect_parent, redirect_targets);
 						
 					} else {
-						// test refers to a specific test, try to load it
-						//try {
-							test_case = PhptTestCase.load(host, this, false, target_test_name, twriter, redirect_parent);
-						/*} catch ( Exception ex ) {
-							ex.printStackTrace(); // TODO temp
-						}*/
+						// test refers to a specific test, load it
+						test_case = PhptTestCase.load(host, this, false, target_test_name, twriter, redirect_parent);
 						
 						if (redirect_targets.contains(test_case))
 							// can only have 1 level of redirection
@@ -196,6 +188,10 @@ public class PhptSourceTestPack extends SourceTestPack {
 	
 	public String getContents(Host host, String name) throws IOException {
 		return host.getContentsDetectCharset(new File(test_pack_file, name).getAbsolutePath(), PhptTestCase.newCharsetDeciderDecoder());
+	}
+	
+	public PhptActiveTestPack installInPlace() {
+		return new PhptActiveTestPack(this.getSourceDirectory());
 	}
 
 	public PhptActiveTestPack install(Host host, String test_pack_dir) throws IllegalStateException, IOException, Exception {

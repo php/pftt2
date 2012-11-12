@@ -11,11 +11,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 
-import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -43,8 +41,6 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 	protected TextDisplayPanel expected_display, diff_display, actual_display, test_display;
 	protected DefaultTableModel env_table_model;
 	protected JTable env_table;
-	protected DefaultListModel cmd_array_list_model;
-	protected JList cmd_array_list;
 	protected JTextArea stdin_data_textarea, shell_script_textarea, expectf_textarea, pre_override_textarea, sapi_output_textarea;
 	protected PhptTestResult test;
 			
@@ -102,9 +98,6 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 		prepared_panel.add(new JScrollPane(env_table = new JTable(env_table_model = new DefaultTableModel())));
 		env_table_model.addColumn("Name");
 		env_table_model.addColumn("Value");
-		prepared_panel.add(new JScrollPane(cmd_array_list = new JList(cmd_array_list_model = new DefaultListModel())));
-		vertical_panel.add(prepared_panel);
-		
 		
 		vertical_panel.add(test_display.text_area);
 	}
@@ -123,12 +116,6 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 			for (String name : test.env.keySet()) {
 				env_table_model.addRow(new Object[]{name, test.env.get(name)});
 			} 
-		}
-		cmd_array_list_model.clear();
-		if (test.cmd_array!=null) {
-			for (String cmd : test.cmd_array ) {
-				cmd_array_list_model.addElement(cmd);
-			}
 		}
 		if (test.stdin_data!=null)
 			stdin_data_textarea.setText(new String(test.stdin_data));

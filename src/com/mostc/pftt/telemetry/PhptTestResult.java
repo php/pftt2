@@ -63,8 +63,6 @@ public class PhptTestResult {
 	}
 	
 	public PhptTestResult(Host host, EPhptTestStatus status, PhptTestCase test_case, String actual, String[] actual_lines, String[] expected_lines, Charset actual_cs, Map<String,String> env, String[] cmd_array, byte[] stdin_data, String shell_script, Diff<String> diff, String expectf_output, String preoverride_actual, String sapi_output) {
-		actual = (""+actual_cs)+"\n"+actual; // TODO
-		
 		this.sapi_output = sapi_output;
 		
 		this.host = host;

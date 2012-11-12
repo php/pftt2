@@ -261,11 +261,11 @@ public class PhpBuild extends Build {
 	public void setDefaultPhpIni(Host host, PhpIni ini) throws IOException {
 		this.php_ini = new WeakReference<PhpIni>(ini);
 		
-		host.saveFile(getDefaultPhpIniPath(host), ini.toString());
+		host.saveTextFile(getDefaultPhpIniPath(host), ini.toString());
 		
 		if (!host.isWindows()) {
-			host.saveFile("/etc/php/cli/php.ini", ini.toString());
-			host.saveFile("/etc/php/cgi/php.ini", ini.toString());
+			host.saveTextFile("/etc/php/cli/php.ini", ini.toString());
+			host.saveTextFile("/etc/php/cgi/php.ini", ini.toString());
 		}
 	}
 		
@@ -298,7 +298,7 @@ public class PhpBuild extends Build {
 				
 		String php_filename = host.mktempname("Build", ".php");
 		
-		host.saveFile(php_filename, code);
+		host.saveTextFile(php_filename, code);
 		
 		PHPOutput output = new PHPOutput(php_filename, host.exec(php_exe+" "+php_filename, timeout_seconds, new HashMap<String,String>(), null, Host.dirname(php_filename)));
 		if (auto_cleanup && !output.hasFatalError())

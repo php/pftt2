@@ -13,7 +13,7 @@ abstract class AbstractReportGen implements Runnable {
 		
 		System.out.println(html_file);
 		System.out.println(html_str);
-		host.saveFile(html_file, html_str);
+		host.saveTextFile(html_file, html_str);
 		
 		return html_file;
 	}

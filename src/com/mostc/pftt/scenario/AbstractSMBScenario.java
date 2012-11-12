@@ -39,6 +39,13 @@ public abstract class AbstractSMBScenario extends AbstractFileSystemScenario {
 		this.base_share_name = base_share_name;
 	}
 	
+	@Override
+	public boolean allowPhptInPlace() {
+		// always make sure test-pack is installed onto SMB Share
+		// otherwise, there wouldn't be a point in testing on SMB
+		return false;
+	}
+	
 	/** creates a File Share and connects to it.
 	 * 
 	 * a test-pack can then be installed on that File Share.
@@ -101,7 +108,7 @@ public abstract class AbstractSMBScenario extends AbstractFileSystemScenario {
 				return false;
 			}
 		} else {
-			// XXX
+			// host is local, try using a local drive, normal file system operations, not SMB, etc...
 			local_drive = file_path;
 			
 			return true;
@@ -131,6 +138,36 @@ public abstract class AbstractSMBScenario extends AbstractFileSystemScenario {
 	@Override
 	public String getTestPackStorageDir(Host host) {
 		return local_drive; // H: I: J: ... Y:
+	}
+	
+	public boolean deleteShare(ConsoleManager cm, Host host) {
+		try {
+			if (host.execElevated("NET SHARE "+file_path+" /DELETE", Host.ONE_MINUTE).isSuccess()) {
+				host.delete(file_path);
+			
+				return true;
+			}
+		} catch ( Exception ex ) {
+			cm.printStackTrace(ex);
+		}
+		return false;
+	}
+	
+	public boolean disconnect(ConsoleManager cm, Host host) {
+		try {
+			return host.exec("NET USE "+local_drive+" /DELETE", Host.ONE_MINUTE).isSuccess();
+		} catch ( Exception ex ) {
+			cm.printStackTrace(ex);
+		}
+		return false;
+	}
+	
+	@Override
+	public void notifyFinishedTestPack(ConsoleManager cm, Host host) {
+		if (deleteShare(cm, host) && disconnect(cm, host)) {
+			// reset
+			share_name = file_path = unc_path = smb_path = local_drive = null;
+		}
 	}
 	
 } // end public abstract class AbstractSMBScenario

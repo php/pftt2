@@ -60,7 +60,7 @@ public class PhptDebuggerFrame extends JPanel {
 		jmb.add(new JMenu("Test:"));
 		jmb.add(scenario_menu = new JMenu("Scenarios"));
 		ButtonGroup scenario_bg = new ButtonGroup();
-		for ( ScenarioSet set : ScenarioSet.getScenarioSets() ) {
+		for ( ScenarioSet set : ScenarioSet.getDefaultScenarioSets() ) { // TODO
 			JRadioButtonMenuItem rb = new JRadioButtonMenuItem(set.toString());
 			scenario_bg.add(rb);
 			scenario_menu.add(rb);

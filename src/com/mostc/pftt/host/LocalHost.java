@@ -126,12 +126,12 @@ public class LocalHost extends Host {
 	}
 
 	@Override
-	public void saveFile(String filename, String text) throws IOException {
-		saveFile(filename, text, null);
+	public void saveTextFile(String filename, String text) throws IOException {
+		saveTextFile(filename, text, null);
 	}
 
 	@Override
-	public void saveFile(String filename, String text, Charset charset) throws IOException {
+	public void saveTextFile(String filename, String text, Charset charset) throws IOException {
 		if (text==null)
 			text = "";
 		FileOutputStream fos = new FileOutputStream(filename);
@@ -601,6 +601,38 @@ public class LocalHost extends Host {
 	@Override
 	protected String getOSNameOnWindows() {
 		return getOSNameLong();
+	}
+
+	@Override
+	public boolean dirContainsExact(String path, String name) {
+		for ( File file : new File(path).listFiles() ) {
+			if (file.getName().equalsIgnoreCase(name))
+				return true;
+		}
+		return false;
+	}
+
+	@Override
+	public boolean dirContainsFragment(String path, String name_fragment) {
+		name_fragment = name_fragment.toLowerCase();
+		for ( File file : new File(path).listFiles() ) {
+			if (file.getName().toLowerCase().contains(name_fragment))
+				return true;
+		}
+		return false;
+	}
+
+	@Override
+	public String[] list(String path) {
+		return new File(path).list();
+	}
+	
+	public static String getLocalPfttDir() {
+		if (DEV > 0) {
+			return isLocalhostWindows() ? "C:\\php-sdk\\PFTT\\Dev-"+DEV+"\\" : System.getenv("HOME")+"/php-sdk/PFTT/dev-"+DEV+"/";
+		} else {
+			return isLocalhostWindows() ? "C:\\php-sdk\\PFTT\\Current\\" : System.getenv("HOME")+"/php-sdk/PFTT/current/";
+		}
 	}
 	
 } // end public class Host

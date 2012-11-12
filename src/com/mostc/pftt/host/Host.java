@@ -19,7 +19,7 @@ import com.mostc.pftt.util.StringUtil;
 /** Abstracts host management so client code doesn't need to care if host is local or remote(ssh).
  * 
  * @see #exec
- * @see #cmd
+ * @see #test_cmd
  * @see Host#DEV
  * @see #isRemote
  * @see #readFile
@@ -87,7 +87,7 @@ public abstract class Host {
 		if (path.length() >= 2) {
 			if (path.charAt(1)==':') {
 				if (Character.isLetter(path.charAt(0)))
-					return path.substring(0, 1);
+					return path.substring(0, 1).toUpperCase();
 			}
 		}
 		return null;
@@ -170,8 +170,8 @@ public abstract class Host {
 	 * @throws IllegalStateException
 	 * @throws IOException
 	 */
-	public abstract void saveFile(String filename, String text) throws IllegalStateException, IOException;
-	public abstract void saveFile(String filename, String text, Charset charset) throws IllegalStateException, IOException;
+	public abstract void saveTextFile(String filename, String text) throws IllegalStateException, IOException;
+	public abstract void saveTextFile(String filename, String text, Charset charset) throws IllegalStateException, IOException;
 	public abstract void delete(String path) throws IllegalStateException, IOException;
 	public void deleteIfExists(String path) {
 		try {
@@ -752,5 +752,26 @@ public abstract class Host {
 		}
 		return 0L;
 	} // end public long getTotalPhysicalMemoryK
+
+	/** on Windows, returns the directory where windows is stored, typically C:\Windows.
+	 * 
+	 * on other OSes, it returns /
+	 * 
+	 * @return
+	 */
+	public String getSystemRoot() {
+		if (!isWindows())
+			return "/";
+		String sr = getEnvValue("SYSTEMROOT");
+		if (StringUtil.isNotEmpty(sr))
+			return sr;
+		else
+			// fallback
+			return getSystemDrive()+"\\Windows";
+	}
+	
+	public abstract boolean dirContainsExact(String path, String name);
+	public abstract boolean dirContainsFragment(String path, String name_fragment);
+	public abstract String[] list(String path);
 	
 } // end public abstract class Host

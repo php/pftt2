@@ -1,7 +1,6 @@
 package com.mostc.pftt.main;
 
 import groovy.lang.Binding;
-import groovy.lang.GroovyObject;
 import groovy.ui.Console;
 
 import java.awt.Desktop;
@@ -113,26 +112,28 @@ public class PfttMain {
 		return last_file == null ? null : PhptTelemetryReader.open(host, last_file);
 	}
 
-	public void run_all(ConsoleManager cm, PhpBuild build, PhptSourceTestPack test_pack, ScenarioSet scenario_set) throws Exception {
-		LinkedList<PhptTestCase> test_cases = new LinkedList<PhptTestCase>();
-		
-		PhptTelemetryWriter tmgr = new PhptTelemetryWriter(host, cm, telem_dir(), build, test_pack, scenario_set);
-		test_pack.cleanup();
-		cm.println("PhptTestPack", "enumerating test cases from test-pack...");
-		test_pack.add_test_files(test_cases, tmgr, build);
-		cm.println("PhptTestPack", "enumerated test cases.");
-		
-		PhptTestPackRunner test_pack_runner = new PhptTestPackRunner(tmgr, test_pack, scenario_set, build, host);
-		cm.showGUI(test_pack_runner);
-		
-		test_pack_runner.runTestList(test_cases);
-		
-		tmgr.close();
-		
-		new PhptTestCountsMatchSmokeTest();
-		
-		phpt_report(tmgr);
-	}
+	public void run_all(ConsoleManager cm, PhpBuild build, PhptSourceTestPack test_pack, List<ScenarioSet> scenario_sets) throws Exception {
+		for ( ScenarioSet scenario_set : scenario_sets ) {
+			ArrayList<PhptTestCase> test_cases = new ArrayList<PhptTestCase>(12600);
+			
+			PhptTelemetryWriter tmgr = new PhptTelemetryWriter(host, cm, telem_dir(), build, test_pack, scenario_set);
+			test_pack.cleanup();
+			cm.println("PhptTestPack", "enumerating test cases from test-pack...");
+			test_pack.read(test_cases, tmgr, build);
+			cm.println("PhptTestPack", "enumerated test cases.");
+			
+			PhptTestPackRunner test_pack_runner = new PhptTestPackRunner(tmgr, test_pack, scenario_set, build, host);
+			cm.showGUI(test_pack_runner);
+			
+			test_pack_runner.runTestList(test_cases);
+			
+			tmgr.close();
+			
+			new PhptTestCountsMatchSmokeTest();
+			
+			phpt_report(tmgr);
+		}
+	} // end public void run_all
 	
 	protected void phpt_report(PhptTelemetryWriter test_telem) throws FileNotFoundException {	
 		PhptTelemetryReader base_telem = last_telem(test_telem);
@@ -157,25 +158,27 @@ public class PfttMain {
 		}
 	}
 
-	public void run_named_tests(ConsoleManager cm, PhpBuild build, PhptSourceTestPack test_pack, ScenarioSet scenario_set, List<String> names) throws Exception {
-		LinkedList<PhptTestCase> test_cases = new LinkedList<PhptTestCase>();
-		
-		PhptTelemetryWriter tmgr = new PhptTelemetryWriter(host, cm, telem_dir(), build, test_pack, scenario_set);
-		test_pack.cleanup();
-		cm.println("PhptTestPack", "enumerating test cases from test-pack...");
-		test_pack.add_named_tests(test_cases, names, tmgr, build);
-		cm.println("PhptTestPack", "enumerated test cases.");
-		
-		PhptTestPackRunner test_pack_runner = new PhptTestPackRunner(tmgr, test_pack, scenario_set, build, host);
-		cm.showGUI(test_pack_runner);
-		
-		test_pack_runner.runTestList(test_cases);
-		
-		tmgr.close();
-		
-		new PhptTestCountsMatchSmokeTest();
-		
-		phpt_report(tmgr);
+	public void run_named_tests(ConsoleManager cm, PhpBuild build, PhptSourceTestPack test_pack, List<ScenarioSet> scenario_sets, List<String> names) throws Exception {
+		for ( ScenarioSet scenario_set : scenario_sets ) {
+			LinkedList<PhptTestCase> test_cases = new LinkedList<PhptTestCase>();
+			
+			PhptTelemetryWriter tmgr = new PhptTelemetryWriter(host, cm, telem_dir(), build, test_pack, scenario_set);
+			test_pack.cleanup();
+			cm.println("PhptTestPack", "enumerating test cases from test-pack...");
+			test_pack.read(test_cases, names, tmgr, build);
+			cm.println("PhptTestPack", "enumerated test cases.");
+			
+			PhptTestPackRunner test_pack_runner = new PhptTestPackRunner(tmgr, test_pack, scenario_set, build, host);
+			cm.showGUI(test_pack_runner);
+			
+			test_pack_runner.runTestList(test_cases);
+			
+			tmgr.close();
+			
+			new PhptTestCountsMatchSmokeTest();
+			
+			phpt_report(tmgr);
+		} // end for
 	}
 	
 	/* -------------------------------------------------- */
@@ -205,12 +208,15 @@ public class PfttMain {
 		System.out.println();
 		System.out.println("Options:");
 		System.out.println("-gui - show gui for certain commands");
-		System.out.println("-config <file> - configuration file");
+		System.out.println("-config <file1,file2> - load 1+ configuration file(s)");
 		System.out.println("-force - disables confirmation dialogs and forces proceeding anyway");
 		System.out.println("-stress_each <0+> - runs each test-case N times consecutively");
 		System.out.println("-stress_all <0+> - runs all tests N times in loop");
 		System.out.println("-results_only - displays only test results and no other information (for automation).");
 		System.out.println("-disable_debug_prompt - disables asking you if you want to debug PHP crashes (for automation. default=enabled)");
+		System.out.println("-phpt-not-in-place - copies PHPTs to a temporary dir and runs PHPTs from there (default=disabled, test in-place)");
+		System.out.println("-dont-cleanup-test-pack - doesn't delete temp dir created by -phpt-not-in-place or SMB scenario (default=delete)");
+		System.out.println("-auto - changes default options for automated testing");
 		System.out.println("(note: stress options not useful against CLI without code caching)");
 		System.out.println();
 	} // end protected static void cmd_help
@@ -263,11 +269,11 @@ public class PfttMain {
 		console.run();
 	}
 	
-	protected static void cmd_phpt_all(PfttMain rt, ConsoleManager cm, GroovyObject config_obj, PhpBuild build, PhptSourceTestPack test_pack) throws Exception {
-		rt.run_all(cm, build, test_pack, ScenarioSet.getScenarioSets().iterator().next());
+	protected static void cmd_phpt_all(PfttMain rt, ConsoleManager cm, Config config, PhpBuild build, PhptSourceTestPack test_pack) throws Exception {
+		rt.run_all(cm, build, test_pack, config==null?ScenarioSet.getDefaultScenarioSets():config.getScenarioSets());
 	}
 	
-	protected static void cmd_phpt_list(PfttMain rt, ConsoleManager cm, GroovyObject config_obj, PhpBuild build, PhptSourceTestPack test_pack, File list_file) throws Exception {
+	protected static void cmd_phpt_list(PfttMain rt, ConsoleManager cm, Config config, PhpBuild build, PhptSourceTestPack test_pack, File list_file) throws Exception {
 		BufferedReader fr = new BufferedReader(new FileReader(list_file));
 		LinkedList<String> tests = new LinkedList<String>();
 		String line;
@@ -279,11 +285,11 @@ public class PfttMain {
 				tests.add(line);
 		}
 		
-		rt.run_named_tests(cm, build, test_pack, ScenarioSet.getScenarioSets().iterator().next(), tests);
+		rt.run_named_tests(cm, build, test_pack, config==null?ScenarioSet.getDefaultScenarioSets():config.getScenarioSets(), tests);
 	}
 	
-	protected static void cmd_phpt_named(PfttMain rt, ConsoleManager cm, GroovyObject config_obj, PhpBuild build, PhptSourceTestPack test_pack, List<String> names) throws Exception {
-		rt.run_named_tests(cm, build, test_pack, ScenarioSet.getScenarioSets().iterator().next(), names);
+	protected static void cmd_phpt_named(PfttMain rt, ConsoleManager cm, Config config, PhpBuild build, PhptSourceTestPack test_pack, List<String> names) throws Exception {
+		rt.run_named_tests(cm, build, test_pack, config==null?ScenarioSet.getDefaultScenarioSets():config.getScenarioSets(), names);
 	}
 
 	protected static void cmd_ui() {
@@ -375,7 +381,7 @@ public class PfttMain {
 		HttpProtocolParams.setUserAgent(params, "Mozilla/5.0 (Windows NT 6.1; rv:12.0) Gecko/ 20120405 Firefox/14.0.1");
 		HttpProtocolParams.setUseExpectContinue(params, true);
 		
-		HttpProcessor httpproc = new ImmutableHttpProcessor(new HttpRequestInterceptor[] {// XXX reuse
+		HttpProcessor httpproc = new ImmutableHttpProcessor(new HttpRequestInterceptor[] {
 		        // Required protocol interceptors
 		        new RequestContent(),
 		        new RequestTargetHost(),
@@ -568,8 +574,9 @@ public class PfttMain {
 		//
 		int args_i = 0;
 		
-		GroovyObject config_obj = null;
-		boolean show_gui = false, force = false, disable_debug_prompt = false, results_only = false;
+		Config config = null;
+		boolean show_gui = false, force = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false;
+		LinkedList<File> config_files = new LinkedList<File>();
 		int stress_all = 0, stress_each = 0;
 		
 		//
@@ -579,15 +586,46 @@ public class PfttMain {
 			} else if (args[args_i].equals("-force")) {
 				force = true;
 			} else if (args[args_i].equals("-config")) {
-				File config_file = new File(args[args_i++]);
-				if (!config_file.isFile()) {
-					System.err.println("User Error: config file not found: "+config_file);
-					System.exit(-255);
-					return;
-				}				
-				
-				// load configuration
-				config_obj = ConfigUtil.loadConfigFromFile(config_file);
+				args_i++;
+				for ( String part : args[args_i].split("[;|:|,]") ) {
+					File config_file = new File(part);
+					if (config_file.exists()) {
+						if (!config_files.contains(config_file))
+							config_files.add(config_file);
+					} else {
+						config_file = new File(part+".groovy");
+						if (config_file.exists()) {
+							if (!config_files.contains(config_file))
+								config_files.add(config_file);
+						} else {
+							config_file = new File(LocalHost.getLocalPfttDir()+"/conf/"+part);
+							if (config_file.exists()) {
+								if (!config_files.contains(config_file))
+									config_files.add(config_file);
+							} else {
+								config_file = new File(LocalHost.getLocalPfttDir()+"/conf/"+part+".groovy");
+								if (config_file.exists()) {
+									if (!config_files.contains(config_file))
+										config_files.add(config_file);
+								} else {
+									System.err.println("User Error: config file not found: "+config_file);
+									System.exit(-255);
+									break;
+								}
+							}
+						}
+					}
+				} // end for
+			} else if (args[args_i].equals("-phpt-not-in-place")) {
+				phpt_not_in_place = false;
+			} else if (args[args_i].equals("-dont-cleanup-test-pack")) {
+				dont_cleanup_test_pack = true;
+			} else if (args[args_i].equals("-auto")) {
+				// change these defaults for automated testing
+				disable_debug_prompt = true;
+				results_only = false;
+				dont_cleanup_test_pack = false;
+				phpt_not_in_place = true;
 			} else if (args[args_i].equals("-stress_each")) {
 				stress_each = Integer.parseInt(args[args_i++]);
 			} else if (args[args_i].equals("-stress_all")) {
@@ -619,7 +657,9 @@ public class PfttMain {
 			System.err.println("PFTT: not implemented: stress_each="+stress_each+" stress_all="+stress_all+" ignored");
 		}
 		
-		ConsoleManager cm = new ConsoleManager(results_only, show_gui, disable_debug_prompt);
+		ConsoleManager cm = new ConsoleManager(results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place);
+		
+		config = Config.loadConfigFromFiles(cm, (File[])config_files.toArray(new File[config_files.size()]));
 		
 		if (command!=null) {
 			if (command.equals("phpt_named")||command.equals("phptnamed")||command.equals("phptn")||command.equals("pn")) {
@@ -653,8 +693,8 @@ public class PfttMain {
 				cm.println("Build", build.toString());
 				cm.println("Test-Pack", test_pack.toString());
 				
-				HostEnvUtil.prepareHostEnv(rt.host, cm, !disable_debug_prompt);
-				cmd_phpt_named(rt, cm, config_obj, build, test_pack, names);
+				HostEnvUtil.prepareHostEnv(rt.host, cm, !cm.isDisableDebugPrompt());
+				cmd_phpt_named(rt, cm, config, build, test_pack, names);
 				
 				System.out.println("PFTT: finished");
 			} else if (command.equals("phpt_list")||command.equals("phptlist")||command.equals("phptl")||command.equals("pl")) {
@@ -691,7 +731,7 @@ public class PfttMain {
 				cm.println("Test-Pack", test_pack.toString());
 				
 				HostEnvUtil.prepareHostEnv(rt.host, cm, !disable_debug_prompt);
-				cmd_phpt_list(rt, cm, config_obj, build, test_pack, list_file);		
+				cmd_phpt_list(rt, cm, config, build, test_pack, list_file);		
 				
 				System.out.println("PFTT: finished");
 			} else if (command.equals("phpt_all")||command.equals("phptall")||command.equals("phpta")||command.equals("pa")) {
@@ -722,7 +762,7 @@ public class PfttMain {
 				
 				// run all tests
 				HostEnvUtil.prepareHostEnv(rt.host, cm, !disable_debug_prompt);
-				cmd_phpt_all(rt, cm, config_obj, build, test_pack);
+				cmd_phpt_all(rt, cm, config, build, test_pack);
 				
 				System.out.println("PFTT: finished");
 			} else if (command.equals("aut")) {
@@ -735,7 +775,7 @@ public class PfttMain {
 				}
 				
 				no_show_gui(show_gui, command);
-				cmd_aut(cm, rt, rt.host, build, ScenarioSet.getScenarioSets());
+				cmd_aut(cm, rt, rt.host, build, config==null?ScenarioSet.getDefaultScenarioSets():config.getScenarioSets());
 			} else if (command.equals("shell_ui")||(show_gui && command.equals("shell"))) {
 				cmd_shell_ui();
 			} else if (command.equals("shell")) {

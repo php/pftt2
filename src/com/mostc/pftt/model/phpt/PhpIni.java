@@ -104,9 +104,7 @@ public class PhpIni extends TestCaseGroupKey {
 		ini.putMulti(DISABLE_DEFS, StringUtil.EMPTY);
 		ini.putMulti(OUTPUT_BUFFERING, OFF);
 		ini.putMulti(ERROR_REPORTING, E_ALL_OR_E_STRICT);
-		// IMPORTANT: display_errors=0. doesn't affect test output. run-tests.php sets display_errors=1
-		//            but on Windows, that will cause a blocking Winpopup message (bad)
-		ini.putMulti(DISPLAY_ERRORS, 0);
+		ini.putMulti(DISPLAY_ERRORS, 1);
 		ini.putMulti(DISPLAY_STARTUP_ERRORS, 0);
 		ini.putMulti(LOG_ERRORS, 0);
 		ini.putMulti(HTML_ERRORS, 0);
