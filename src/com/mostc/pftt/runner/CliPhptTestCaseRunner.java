@@ -221,7 +221,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			shell_file = shell_file.substring(active_test_pack.getDirectory().length());
 			if (shell_file.startsWith("/")||shell_file.startsWith("\\"))
 				shell_file = shell_file.substring(1);
-			shell_file = twriter.telem_dir+"/"+shell_file;
+			shell_file = twriter.getTelemetryDir()+"/"+shell_file;
 		}
 		StringWriter sw = new StringWriter();
 		PrintWriter fw = new PrintWriter(sw);
@@ -270,7 +270,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			stdin_file = stdin_file.substring(active_test_pack.getDirectory().length());
 			if (stdin_file.startsWith("/")||stdin_file.startsWith("\\"))
 				stdin_file = stdin_file.substring(1);
-			stdin_file = twriter.telem_dir+"/"+stdin_file;
+			stdin_file = twriter.getTelemetryDir()+"/"+stdin_file;
 		}
 		new File(stdin_file).getParentFile().mkdirs();
 		if (stdin_post!=null) {

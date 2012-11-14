@@ -211,5 +211,34 @@ public class PhptSourceTestPack extends SourceTestPack {
 		}
 		return new PhptActiveTestPack(test_pack_dir);
 	}
+
+	/** gets the branch of this test-pack
+	 * 
+	 * @return
+	 */
+	public EBuildBranch getVersionBranch() {
+		String dir = Host.basename(test_pack);
+		if (dir.contains("5.4")||dir.contains("5-4")||dir.contains("5_4")||dir.contains("54"))
+			return EBuildBranch.PHP_5_4;
+		else if (dir.contains("5.3")||dir.contains("5-3")||dir.contains("5_3")||dir.contains("53"))
+			return EBuildBranch.PHP_5_3;
+		else if (dir.contains("5.5")||dir.contains("5-5")||dir.contains("5_5")||dir.contains("55"))
+			return EBuildBranch.PHP_5_5;
+		else if (dir.contains("5.6")||dir.contains("5-6")||dir.contains("5_6")||dir.contains("56"))
+			return EBuildBranch.PHP_5_6;
+		else if (dir.toLowerCase().contains("master"))
+			return EBuildBranch.MASTER;
+		else
+			return null;
+	}
+
+	/** gets the revision number of this test-pack
+	 * 
+	 * @return
+	 */
+	public String getVersion() {
+		String[] split = Host.basename(test_pack).split("[\\.|\\-]");
+		return split.length==0?null:split[split.length-1];
+	}
 	
 } // end public class PhptSourceTestPack

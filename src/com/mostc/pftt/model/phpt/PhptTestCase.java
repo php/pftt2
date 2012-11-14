@@ -556,6 +556,10 @@ public class PhptTestCase extends TestCase {
 		return name;
 	}
 	
+	public String getBaseName() {
+		return name.endsWith(".phpt") ? name.substring(0, name.length()-".phpt".length()) : name;
+	}
+	
 	public boolean isWin32Test() {
 		return name.lastIndexOf("-win32") != -1;
 	}

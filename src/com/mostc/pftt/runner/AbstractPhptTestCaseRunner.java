@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
+import com.mostc.pftt.model.phpt.ESAPIType;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.model.phpt.PhptTestCase;
@@ -41,12 +42,13 @@ public abstract class AbstractPhptTestCaseRunner {
 	 * 
 	 * @param twriter
 	 * @param host
+	 * @param type
 	 * @param build
 	 * @param test_case
 	 * @return
 	 * @throws Exception
 	 */
-	public static boolean willSkip(PhptTelemetryWriter twriter, Host host, PhpBuild build, PhptTestCase test_case) throws Exception {
+	public static boolean willSkip(PhptTelemetryWriter twriter, Host host, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
 		if (!host.isWindows() && test_case.isWin32Test()) {
 			// skip windows specific tests if host is not windows
 			// do an early quick check... also fixes problem with sapi/cli/tests/021.phpt
@@ -59,7 +61,7 @@ public abstract class AbstractPhptTestCaseRunner {
 			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null));
 			
 			return true;
-		} else if (test_case.isExtensionTest() && !build.isExtensionEnabled(twriter.getConsoleManager(), host, test_case.getExtensionName())) {
+		} else if (test_case.isExtensionTest() && !build.isExtensionEnabled(twriter.getConsoleManager(), host, type, test_case.getExtensionName())) {
 			// if extension-under-test is not loaded, don't bother running test since it'll just be skipped (or false fail)
 			
 			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.SKIP, test_case, "Extension not loaded", null, null, null, null, null, null, null, null, null, null));

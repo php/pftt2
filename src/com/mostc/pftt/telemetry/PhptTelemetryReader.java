@@ -103,10 +103,6 @@ public class PhptTelemetryReader extends PhptTelemetry {
 		}
 		return 0;
 	}
-	@Override
-	public float passRate() {
-		return round1((float)(((double)tally.pass)/((double)getTotalCount())));
-	}
 
 	@Override
 	public void close() {
@@ -114,7 +110,7 @@ public class PhptTelemetryReader extends PhptTelemetry {
 
 	@Override
 	public int getTotalCount() {
-		return tally.pass + tally.fail;
+		return tally.pass + tally.fail + tally.skip + tally.xskip + tally.xfail + tally.xfail_works + tally.unsupported + tally.bork;
 	}	
 
 } // end public class PhptTelemetryReader

@@ -53,9 +53,11 @@ import com.mostc.pftt.model.phpt.EBuildType;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.model.phpt.PhptSourceTestPack;
+import com.mostc.pftt.model.smoke.ESmokeTestStatus;
 import com.mostc.pftt.model.smoke.PhptTestCountsMatchSmokeTest;
 import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.model.smoke.RequiredFeaturesSmokeTest;
+import com.mostc.pftt.model.smoke.SmokeTest;
 import com.mostc.pftt.report.AUTReportGen;
 import com.mostc.pftt.report.AbstractReportGen;
 import com.mostc.pftt.report.FBCReportGen;
@@ -102,7 +104,7 @@ public class PfttMain {
 		File last_file = null;
 		for (File file : files) {
 			if (PhptTelemetryReader.isTelemDir(file)) {
-				if (not!=null && file.equals(not.telem_dir))
+				if (not!=null && file.equals(not.getTelemetryDir()))
 					// be sure to not find the telemetry that is being written presently
 					continue;
 				if (last_file==null || last_file.lastModified() < file.lastModified())
@@ -114,6 +116,31 @@ public class PfttMain {
 
 	public void run_all(ConsoleManager cm, PhpBuild build, PhptSourceTestPack test_pack, List<ScenarioSet> scenario_sets) throws Exception {
 		for ( ScenarioSet scenario_set : scenario_sets ) {
+			//
+			{
+				// TODO what will happen if we try to run PHPTs on a build that is missing a DLL that is
+				//      referenced in the PhpIni?
+				//     -will get a winpopup error
+				//     -will that block/timeout/fail every PHPT?
+				//     -try a PHP-master build from about November 11th or 12th 2012 
+				//        -its missing php_sockets.dll
+				//        -fixed on November 13th 2012
+				RequiredExtensionsSmokeTest test = new RequiredExtensionsSmokeTest();
+				if (test.test(build, cm, host, ScenarioSet.getSAPIScenario(scenario_set).getSAPIType())==ESmokeTestStatus.FAIL) {
+					// if this test fails, RequiredFeaturesSmokeTest will fail for sure
+					cm.println("Main", "Failed smoke test: "+test.getName());
+					break;
+				}
+			}
+			{
+				RequiredFeaturesSmokeTest test = new RequiredFeaturesSmokeTest();
+				if (test.test(build, cm, host)==ESmokeTestStatus.FAIL) {
+					cm.println("Main", "Failed smoke test: "+test.getName());
+					break;
+				}
+			}
+			//
+			
 			ArrayList<PhptTestCase> test_cases = new ArrayList<PhptTestCase>(12600);
 			
 			PhptTelemetryWriter tmgr = new PhptTelemetryWriter(host, cm, telem_dir(), build, test_pack, scenario_set);
@@ -127,11 +154,23 @@ public class PfttMain {
 			
 			test_pack_runner.runTestList(test_cases);
 			
+			// TODO archive telemetry into 7zip file
+			// TODO upload (if in config file)
 			tmgr.close();
 			
-			new PhptTestCountsMatchSmokeTest();
+			//
+			{
+				PhptTestCountsMatchSmokeTest test = new PhptTestCountsMatchSmokeTest();
+				if (test.test(tmgr)==ESmokeTestStatus.FAIL) {
+					cm.println("Main", "Failed smoke test: "+test.getName());
+				}
+			}
+			//
 			
+			// TODO email report (if in config file)
 			phpt_report(tmgr);
+			
+			break; // TODO temp - should support running all scenarios or only some scenarios
 		}
 	} // end public void run_all
 	
@@ -160,6 +199,23 @@ public class PfttMain {
 
 	public void run_named_tests(ConsoleManager cm, PhpBuild build, PhptSourceTestPack test_pack, List<ScenarioSet> scenario_sets, List<String> names) throws Exception {
 		for ( ScenarioSet scenario_set : scenario_sets ) {
+			//
+			{
+				RequiredExtensionsSmokeTest test = new RequiredExtensionsSmokeTest();
+				if (test.test(build, cm, host, ScenarioSet.getSAPIScenario(scenario_set).getSAPIType())==ESmokeTestStatus.FAIL) {
+					cm.println("Main", "Failed smoke test: "+test.getName());
+					break;
+				}
+			}
+			{
+				RequiredFeaturesSmokeTest test = new RequiredFeaturesSmokeTest();
+				if (test.test(build, cm, host)==ESmokeTestStatus.FAIL) {
+					cm.println("Main", "Failed smoke test: "+test.getName());
+					break;
+				}
+			}
+			//
+			
 			LinkedList<PhptTestCase> test_cases = new LinkedList<PhptTestCase>();
 			
 			PhptTelemetryWriter tmgr = new PhptTelemetryWriter(host, cm, telem_dir(), build, test_pack, scenario_set);
@@ -175,7 +231,14 @@ public class PfttMain {
 			
 			tmgr.close();
 			
-			new PhptTestCountsMatchSmokeTest();
+			//
+			{
+				PhptTestCountsMatchSmokeTest test = new PhptTestCountsMatchSmokeTest();
+				if (test.test(tmgr)==ESmokeTestStatus.FAIL) {
+					cm.println("Main", "Failed smoke test: "+test.getName());
+				}
+			}
+			//
 			
 			phpt_report(tmgr);
 		} // end for

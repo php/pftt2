@@ -2,6 +2,7 @@ package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.EBuildBranch;
+import com.mostc.pftt.model.phpt.ESAPIType;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.sapi.BuiltinWebServerManager;
 import com.mostc.pftt.telemetry.ConsoleManager;
@@ -49,6 +50,11 @@ public class BuiltinWebServerScenario extends AbstractWebServerScenario {
 	public int getTestThreadCount(Host host) {
 		// XXX update this calculation from time to time as this web server's performance improves
 		return 8 * host.getCPUCount();
+	}
+
+	@Override
+	public ESAPIType getSAPIType() {
+		return ESAPIType.CLI_WWW;
 	}
 
 } // end public class BuiltinWebServerScenario

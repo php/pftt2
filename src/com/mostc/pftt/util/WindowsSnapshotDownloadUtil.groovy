@@ -27,6 +27,7 @@ final class WindowsSnapshotDownloadUtil {
 	static final URL PHP_5_3_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-5.3/")
 	static final URL PHP_5_4_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-5.4/")
 	static final URL PHP_5_5_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-5.5/")
+	static final URL PHP_5_6_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-5.6/")
 	static final URL PHP_MASTER_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/master/")
 
 	static URL getDownloadURL(EBuildBranch branch) {
@@ -37,6 +38,8 @@ final class WindowsSnapshotDownloadUtil {
 			return PHP_5_4_DOWNLOAD;
 		case EBuildBranch.PHP_5_5:
 			return PHP_5_5_DOWNLOAD;
+		case EBuildBranch.PHP_5_6:
+			return PHP_5_6_DOWNLOAD;
 		case EBuildBranch.MASTER:
 			return PHP_MASTER_DOWNLOAD;
 		}

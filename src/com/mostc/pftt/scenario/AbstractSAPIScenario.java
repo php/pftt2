@@ -1,6 +1,7 @@
 package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.model.phpt.ESAPIType;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.model.phpt.PhptSourceTestPack;
@@ -32,7 +33,7 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 	/** creates a runner to run a single PhptTestCase under this SAPI scenario
 	 * 
 	 * @param thread
-	 * @param ini
+	 * @param group_key
 	 * @param test_case
 	 * @param twriter
 	 * @param host
@@ -42,11 +43,10 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 	 * @param active_test_pack
 	 * @return
 	 */
-	// TODO rename ini
-	public abstract AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey ini, PhptTestCase test_case, PhptTelemetryWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack);
+	public abstract AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, PhptTelemetryWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack);
 
-	public boolean willSkip(PhptTelemetryWriter twriter, Host host, PhpBuild build, PhptTestCase test_case) throws Exception {
-		return AbstractPhptTestCaseRunner.willSkip(twriter, host, build, test_case);
+	public boolean willSkip(PhptTelemetryWriter twriter, Host host, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+		return AbstractPhptTestCaseRunner.willSkip(twriter, host, type, build, test_case);
 	}
 	
 	public TestCaseGroupKey createTestGroupKey(Host host, PhpBuild build, PhptActiveTestPack test_pack, PhptTestCase test_case) {
@@ -58,5 +58,7 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 	}
 
 	public abstract int getTestThreadCount(Host host);
+
+	public abstract ESAPIType getSAPIType();
 
 } // end public abstract class AbstractSAPIScenario

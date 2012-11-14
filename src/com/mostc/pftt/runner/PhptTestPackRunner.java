@@ -97,10 +97,11 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 		// copy
 		active_test_pack = null;
 		try {
-			// TODO console option (local filesystem scenario only) to use PhptSourceTestPack as PhptActiveTestPack
+			// if -auto or -phpt-not-in-place console option, copy test-pack and run phpts from that copy
 			if (twriter.getConsoleManager().isPhptNotInPlace() || !file_scenario.allowPhptInPlace())
 				active_test_pack = src_test_pack.install(host, test_pack_dir);
 			else
+				// otherwise, run phpts directly from test-pack ... copying test-pack is slow (may take longer than running the phpts)
 				active_test_pack = src_test_pack.installInPlace();
 		} catch (Exception ex ) {
 			twriter.getConsoleManager().printStackTrace(ex);
@@ -130,7 +131,7 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 			// TODO serialSAPIInstance_executeTestCases();
 			parallelSAPIInstance_executeTestCases();
 	
-			// TODO delete if successful (otherwise leave it behind for user to analyze the internal exception(s))
+			// if not -dont-cleanup-test-pack and if successful, delete test-pack (otherwise leave it behind for user to analyze the internal exception(s))
 			if (!twriter.getConsoleManager().isDontCleanupTestPack() && !active_test_pack.getDirectory().equals(src_test_pack.getSourceDirectory())) {
 				twriter.getConsoleManager().println("PhptTestPackRunner", "deleting/cleaning-up active test-pack: "+active_test_pack);
 				host.delete(active_test_pack.getDirectory());
@@ -167,7 +168,7 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 			
 			//
 			try {
-				if (sapi_scenario.willSkip(twriter, host, build, test_case)) {
+				if (sapi_scenario.willSkip(twriter, host, sapi_scenario.getSAPIType(), build, test_case)) {
 					// #willSkip will record the PhptTestResult explaining why it was skipped
 					continue;
 				}
@@ -280,10 +281,10 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 			// (if there aren't enough NTS extensions to fill all the threads, some threads will only execute thread-safe tests 
 			//
 			try {
-				runNonThreadSafe();
-				
-				// execute any remaining thread safe jobs
 				runThreadSafe();
+				
+				// execute any remaining non thread safe jobs
+				runNonThreadSafe();
 				
 			} catch ( Exception ex ) {
 				twriter.getConsoleManager().printStackTrace(ex);

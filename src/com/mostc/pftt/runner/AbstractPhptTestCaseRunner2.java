@@ -38,14 +38,8 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	protected final PhptThread thread;
 	protected final PhptActiveTestPack active_test_pack;
 	protected byte[] stdin_post;
-	protected String skipif_file;
-	protected String test_dir;
-	protected String base_file_name;
-	protected String test_file;
-	protected String test_clean;
-	protected String content_type;
+	protected String skipif_file, test_dir, base_file_name, test_file, test_clean, content_type;
 	protected PhpIni ini;
-	protected String tmp_post; // TODO move this to telemetry manager
 	
 	/** runs the test case and reports the results to the PhptTelemetryManager
 	 * 
@@ -111,7 +105,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		
 		test_dir = active_test_pack.getDirectory()+host.dirSeparator()+Host.dirname(test_case.getName());
 	
-		base_file_name = Host.basename(Host.removeFileExt(test_case.getName())); 
+		base_file_name = Host.basename(test_case.getBaseName()); 
 		
 		//
 		if (test_case.containsSection(EPhptSection.SKIPIF)) {
@@ -127,7 +121,6 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	
 		test_file = test_dir + host.dirSeparator() + base_file_name + ".php";
 		test_clean = test_dir + host.dirSeparator() + base_file_name + ".clean.php";
-		tmp_post = test_dir + host.dirSeparator() + base_file_name + ".post.php";
 		
 		//
 		if (test_case.containsSection(EPhptSection.INI)) {
@@ -227,10 +220,10 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 						request_sb.append(line);
 						request_sb.append('\n');	
 					}
-				} // TODO else {
+				} else {
 					request_sb.append(line);
 					request_sb.append('\n');
-				//}
+				}
 			}
 			
 			String request = request_sb.toString();
@@ -247,7 +240,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 				
 				return;
 			}
-			host.saveTextFile(tmp_post, request);
+			twriter.addPostRequest(base_file_name + ".post.txt", request);
 			
 			stdin_post = request.getBytes();
 			

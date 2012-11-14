@@ -71,7 +71,9 @@ public class PhpIni extends TestCaseGroupKey {
 		return LocalHost.isLocalhostWindows() ? "php_" + name + ".dll" : name + ".so";
 	}
 	// names for DLL or SO for dynamically loaded extensions
+	public static final String EXT_BCMATH = dllName("bcmath");
 	public static final String EXT_BZ2 = dllName("bz2");
+	public static final String EXT_COM_DOTNET = dllName("com_dotnet");
 	public static final String EXT_CURL = dllName("curl");
 	public static final String EXT_FILEINFO = dllName("fileinfo");
 	public static final String EXT_GD2 = dllName("gd2");
@@ -85,6 +87,7 @@ public class PhpIni extends TestCaseGroupKey {
 	public static final String EXT_MYSQL = dllName("mysql");
 	public static final String EXT_MYSQLI = dllName("mysqli");
 	public static final String EXT_OPENSSL = dllName("openssl");
+	public static final String EXT_PDO_ODBC = dllName("pdo_odbc");
 	public static final String EXT_PDO_MYSQL = dllName("pdo_mysql");
 	public static final String EXT_PDO_PGSQL = dllName("pdo_pgsql");
 	public static final String EXT_PDO_SQLITE = dllName("pdo_sqlite");
@@ -125,6 +128,42 @@ public class PhpIni extends TestCaseGroupKey {
 		ini.putMulti(UNICODE_OUTPUT_ENCODING, UTF_8);
 		ini.putMulti(UNICODE_FROM_ERROR_MODE, U_INVALID_SUBSTITUTE);
 		ini.putMulti(SESSION_AUTO_START, 0);
+		
+		// default php.ini has these extensions on Windows
+		// NOTE: this is validated by RequiredExtensionsSmokeTest. similar/same info is both there and here
+		//       b/c that needs it for validation and its here because its in the default php.ini
+		if (host.isWindows()) {
+			ini.addExtensions(
+					EXT_BCMATH,
+					EXT_BZ2,
+					EXT_COM_DOTNET,
+					EXT_CURL,
+					EXT_FILEINFO,
+					EXT_GD2,
+					EXT_GETTEXT,
+					EXT_GMP,
+					EXT_INTL,
+					EXT_IMAP,
+					EXT_LDAP,
+					EXT_MBSTRING,
+					EXT_EXIF,
+					EXT_MYSQL,
+					EXT_MYSQLI,
+					EXT_OPENSSL,
+					EXT_PDO_MYSQL,
+					EXT_PDO_PGSQL,
+					EXT_PDO_SQLITE,
+					EXT_PDO_ODBC,
+					EXT_PGSQL,
+					EXT_SHMOP,
+					EXT_SOAP,
+					EXT_SOCKETS,
+					EXT_SQLITE3,
+					EXT_TIDY,
+					EXT_XMLRPC,
+					EXT_XSL
+				);
+		}
 				
 		return ini;
 	} // end public static PhpIni createDefaultIniCopy
@@ -226,6 +265,11 @@ public class PhpIni extends TestCaseGroupKey {
 	
 	public void addExtension(String dll_name) {
 		putMulti(EXTENSION, dll_name);
+	}
+	
+	public void addExtensions(String...dll_names) {
+		for (String dll_name:dll_names)
+			addExtension(dll_name);
 	}
 	
 	/** replaces all directives in this PhpIni that match the given PhpIni with the values from 

@@ -36,9 +36,18 @@ public abstract class PhptTelemetry {
 	public abstract List<String> getTestNames(EPhptTestStatus status);
 	public abstract String getOSName();
 	public abstract int count(EPhptTestStatus status);
-	public abstract float passRate();
+	/** total number of tests (pass, fail, bork, unsupported, xskip, skip, etc... not crash or exception though)
+	 * 
+	 * @return
+	 */
 	public abstract int getTotalCount();
 	public abstract void close();
+	
+	public float passRate() {
+		float pass = count(EPhptTestStatus.PASS);
+		float fail = count(EPhptTestStatus.FAIL);
+		return round1(pass / (pass+fail));
+	}
 	
 	public static float round1(float value) {
 		return (float) Math.round( ( value  * 10000.0d)/100.0d );

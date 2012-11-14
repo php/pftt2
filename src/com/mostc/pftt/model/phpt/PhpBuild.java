@@ -58,18 +58,34 @@ public class PhpBuild extends Build {
 	
 	/** returns who built this build of php
 	 * 
+	 * @param host
 	 * @return
 	 */
-	public EBuildSourceType getBuildSourceType() {
-		return null; // XXX
+	public EBuildSourceType getBuildSourceType(Host host) {
+		// '-dev-' means that its a build the user made themselves
+		if (build_path.toLowerCase().contains("-dev-"))
+			return EBuildSourceType.SELF;
+		else
+			return EBuildSourceType.WINDOWS_DOT_PHP_DOT_NET;
 	}
 	
 	/** returns if this is an NTS or TS build of PHP
 	 * 
+	 * @param host
 	 * @return
 	 */
-	public EBuildType getBuildType() {
-		return null; // XXX
+	public EBuildType getBuildType(Host host) {
+		if (host.isWindows()) {
+			// '-nts-' means its an NTS build
+			if (build_path.toLowerCase().contains("-nts-")) 
+				return EBuildType.NTS;
+			else
+				// has '-ts-' on TS snapshot builds, but doesn't have '-ts-' on release builds
+				return EBuildType.TS;
+		} else {
+			// default
+			return EBuildType.NTS;
+		}
 	}
 	
 	/** returns the path to this build's php executable
@@ -100,34 +116,51 @@ public class PhpBuild extends Build {
 	/** gets the default PhpIni used for this build (unless overriden)
 	 * 
 	 * @param host
+	 * @param type
 	 * @return
 	 * @throws IOException
 	 */
-	public PhpIni getDefaultPhpIni(Host host) throws IOException {
+	public PhpIni getDefaultPhpIni(Host host, ESAPIType type) throws IOException {
 		PhpIni ini;
 		if (this.php_ini!=null) {
 			ini = this.php_ini.get();
 			if (ini!=null)
 				return ini;
 		}
-		String path = getDefaultPhpIniPath(host);
+		String path = getDefaultPhpIniPath(host, type);
 		if (host.exists(path))
 			ini = new PhpIni(host.getContents(path), build_path);
 		else
-			ini = new PhpIni();
+			ini = PhpIni.createDefaultIniCopy(host);
 		
 		this.php_ini = new WeakReference<PhpIni>(ini);
 		return ini;
 	}
 	
-	/** calculates path on Host to php.ini used for this build
+	/** calculates path on Host to php.ini used for this build and SAPIs(cgi, cli).
+	 * 
+	 * On Windows, php.ini is stored in same place for all SAPIs.
+	 * 
+	 * On others, different SAPIs have different php.inis.
 	 * 
 	 * @param host
+	 * @param type
 	 * @return
 	 */
-	public String getDefaultPhpIniPath(Host host) {
-		// XXX /etc/cli/php.ini for linux??
-		return build_path+host.dirSeparator()+"php.ini";
+	public String getDefaultPhpIniPath(Host host, ESAPIType type) {
+		if (host.isWindows()) {
+			return build_path+host.dirSeparator()+"php.ini";
+		} else {
+			switch(type) {
+			case CGI:
+				return "/etc/cgi/php.ini";
+			case MOD_PHP:
+				return "/etc/apache/php.ini";
+			case CLI:
+			default:
+				return "/etc/cli/php.ini";
+			}
+		}
 	}
 	
 	/** gets the version string for this build
@@ -184,20 +217,23 @@ public class PhpBuild extends Build {
 	 *   
 	 * @param cm
 	 * @param host
+	 * @param type
 	 * @param ext_name
 	 * @return
 	 * @throws Exception
 	 */
-	public boolean isExtensionEnabled(ConsoleManager cm, Host host, String ext_name) throws Exception {
+	public boolean isExtensionEnabled(ConsoleManager cm, Host host, ESAPIType type, String ext_name) throws Exception {
 		if (ext_name.equals("spl")||ext_name.equals("standard")||ext_name.equals("core"))
 			// these extensions are always there/always builtin
 			return true;
 		
-		PhpIni ini = getDefaultPhpIni(host);
+		ext_name = ext_name.toLowerCase();
+		
+		PhpIni ini = getDefaultPhpIni(host, type);
 		
 		// key by only extensions, so cache will be reused even if additional directives are added
-		if (ini!=null)
-			ini = ini.getExtensionsOnly();
+		// TODO if (ini!=null)
+			// TODO ini = ini.getExtensionsOnly();
 		
 		WeakHashMap<String,Boolean> map = ext_enable_map.get(ini);
 		if (map==null) {
@@ -211,7 +247,7 @@ public class PhpBuild extends Build {
 			String[] extensions = ini.getExtensions();
 			if (extensions!=null) {
 				for (String module:extensions) {
-					if (module.contains(ext_name)) {
+					if (module.toLowerCase().contains(ext_name)) {
 						map.put(ext_name, true);
 						return true;
 					}
@@ -220,7 +256,7 @@ public class PhpBuild extends Build {
 		}
 		
 		for (String module:getExtensionList(cm, host, ini)) {
-			if (module.contains(ext_name)) {
+			if (module.toLowerCase().contains(ext_name)) {
 				map.put(ext_name, true);
 				return true;
 			}
@@ -255,13 +291,14 @@ public class PhpBuild extends Build {
 	/** replaces the default php ini this build will use, unless overridden
 	 * 
 	 * @param host
+	 * @param type
 	 * @param ini
 	 * @throws IOException
 	 */
-	public void setDefaultPhpIni(Host host, PhpIni ini) throws IOException {
+	public void setDefaultPhpIni(Host host, ESAPIType type, PhpIni ini) throws IOException {
 		this.php_ini = new WeakReference<PhpIni>(ini);
 		
-		host.saveTextFile(getDefaultPhpIniPath(host), ini.toString());
+		host.saveTextFile(getDefaultPhpIniPath(host, type), ini.toString());
 		
 		if (!host.isWindows()) {
 			host.saveTextFile("/etc/php/cli/php.ini", ini.toString());
@@ -349,8 +386,8 @@ public class PhpBuild extends Build {
 		}
 	} // end public static class PHPOutput
 	
-	public String[] getExtensionList(ConsoleManager cm, Host host) throws Exception {
-		return getExtensionList(cm, host, getDefaultPhpIni(host));
+	public String[] getExtensionList(ConsoleManager cm, Host host, ESAPIType type) throws Exception {
+		return getExtensionList(cm, host, getDefaultPhpIni(host, type));
 	}
 	
 	/** gets the static builtin extensions for this build build and the dynamic extensions the

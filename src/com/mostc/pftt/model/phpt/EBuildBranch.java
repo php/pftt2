@@ -4,7 +4,8 @@ public enum EBuildBranch {
 	PHP_5_3,
 	PHP_5_4,
 	MASTER,
-	PHP_5_5;
+	PHP_5_5,
+	PHP_5_6;
 	
 	/** flexibly matches different values, guessing which EBuildBranch it refers to
 	 * 
@@ -23,6 +24,8 @@ public enum EBuildBranch {
 			return PHP_5_4;
 		else if (str.equals("php_5_5")||str.equals("5_5")||str.equals("5.5")||str.equals("55")||str.equals("php5_5")||str.equals("php55")||str.equals("php5.5")||str.equals("php_5.5"))
 			return PHP_5_5;
+		else if (str.equals("php_5_6")||str.equals("5_6")||str.equals("5.6")||str.equals("56")||str.equals("php5_6")||str.equals("php56")||str.equals("php5.6")||str.equals("php_5.6"))
+			return PHP_5_6;
 		else if (str.equals("master"))
 			return MASTER;
 		else

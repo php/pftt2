@@ -25,7 +25,7 @@ import com.mostc.pftt.util.ErrorUtil;
  */
 
 public class PhptTelemetryWriter extends PhptTelemetry {
-	public File telem_dir; // XXX
+	private File telem_dir;
 	protected HashMap<EPhptTestStatus,PrintWriter> status_list_map;
 	protected Host host;
 	protected PrintWriter exception_writer;
@@ -67,6 +67,10 @@ public class PhptTelemetryWriter extends PhptTelemetry {
 		}
 	}
 	
+	public File getTelemetryDir() {
+		return telem_dir;
+	}
+	
 	public ConsoleManager getConsoleManager() {
 		return cm;
 	}
@@ -78,16 +82,24 @@ public class PhptTelemetryWriter extends PhptTelemetry {
 			pw.close();
 		}
 		
-		// TODO store systeminfo
+		// store systeminfo
+		try {
+			FileWriter fw = new FileWriter(new File(telem_dir, "system_info.txt"));
+			fw.write(host.getSystemInfo());
+			fw.close();
+		} catch ( Exception ex ) {
+			ex.printStackTrace();
+		}
+		//
 		
 		// write tally file with 
 		try {
 			PhptTallyFile tally = new PhptTallyFile();
 			tally.sapi_scenario_name = ScenarioSet.getSAPIScenario(scenario_set).getName();
 			tally.build_branch = build.getVersionBranch(cm, host)+"";
-			tally.test_pack_branch = build.getVersionBranch(cm, host)+""; // TODO test_pack.getBranch
-			tally.build_revision = build.getVersionString(cm, host);//
-			tally.test_pack_revision = build.getVersionString(cm, host); // TODO get test_pack version
+			tally.test_pack_branch = test_pack.getVersionBranch()+"";
+			tally.build_revision = build.getVersionString(cm, host);
+			tally.test_pack_revision = test_pack.getVersion();
 			tally.os_name = host.getOSName();
 			tally.os_name_long = host.getOSNameLong();
 			tally.pass = counts.get(EPhptTestStatus.PASS).get();
@@ -105,7 +117,8 @@ public class PhptTelemetryWriter extends PhptTelemetry {
 		} catch ( Exception ex ) {
 			ex.printStackTrace();
 		}
-	}
+	} // end public void close
+	
 	@Override
 	public String getSAPIScenarioName() {
 		return null;
@@ -136,11 +149,13 @@ public class PhptTelemetryWriter extends PhptTelemetry {
 	}
 	@Override
 	public int count(EPhptTestStatus status) {
-		return 0;
+		return counts.get(status).get();
 	}
 	@Override
 	public float passRate() {
-		return 0;
+		float pass = count(EPhptTestStatus.PASS);
+		float fail = count(EPhptTestStatus.FAIL);
+		return pass / (pass+fail);
 	}
 	
 	public void show_exception(PhptTestCase test_file, Throwable ex) {
@@ -166,9 +181,8 @@ public class PhptTelemetryWriter extends PhptTelemetry {
 		
 		// count exceptions as a result (the worst kind of failure, a pftt failure)
 		addResult(new PhptTestResult(host, EPhptTestStatus.EXCEPTION, test_case, ex_str, null, null, null, null, null, null, null, null, null, null));
-		// TODO show count of exceptions in gui
 	}
-	int completed = 0; // XXX 
+	int completed = 0; 
 	public void addResult(PhptTestResult result) {
 		// FUTURE enqueue in writer thread to avoid slowing down PhptThreads
 		// also, on Windows, enqueue printing to console here
@@ -179,7 +193,7 @@ public class PhptTelemetryWriter extends PhptTelemetry {
 		
 		if (cm!=null) {
 			// show in gui (if open)
-			cm.showResult(host, getTotalCount(), completed, result);	
+			cm.showResult(host, getTotalCount(), completed++, result);	
 		}		
 		
 		// record in list files
@@ -204,6 +218,14 @@ public class PhptTelemetryWriter extends PhptTelemetry {
 
 	public void setTotalCount(int total_count) {
 		this.total_count = total_count;
+	}
+
+	public void addPostRequest(String file_name, String request) {
+		try {
+			host.saveTextFile(telem_dir + host.dirSeparator() + file_name, request);
+		} catch ( Exception ex ) {
+			cm.printStackTrace(ex);
+		}
 	}
 		
 } // end public class PhptTelemetryWriter

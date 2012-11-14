@@ -23,7 +23,7 @@ public class LocalFileSystemScenario extends AbstractFileSystemScenario {
 	
 	@Override
 	public boolean allowPhptInPlace() {
-		return false;
+		return true;
 	}
 
 	@Override

@@ -1,6 +1,7 @@
 package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.model.phpt.ESAPIType;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.model.phpt.PhptTestCase;
@@ -41,6 +42,11 @@ public class CliScenario extends AbstractSAPIScenario {
 	@Override
 	public int getTestThreadCount(Host host) {
 		return 4 * host.getCPUCount();
+	}
+
+	@Override
+	public ESAPIType getSAPIType() {
+		return ESAPIType.CLI;
 	}
 
 } // end public class CliScenario

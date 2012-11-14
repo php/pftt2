@@ -20,6 +20,7 @@ import com.github.mattficken.io.IOUtil;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.EPhptSection;
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
+import com.mostc.pftt.model.phpt.ESAPIType;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.model.phpt.PhptSourceTestPack;
@@ -58,13 +59,14 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	 * 
 	 * @param twriter
 	 * @param host
+	 * @param type
 	 * @param build
 	 * @param test_case
 	 * @return
 	 * @throws Exception
 	 */
-	public static boolean willSkip(PhptTelemetryWriter twriter, Host host, PhpBuild build, PhptTestCase test_case) throws Exception {
-		if (AbstractPhptTestCaseRunner.willSkip(twriter, host, build, test_case))
+	public static boolean willSkip(PhptTelemetryWriter twriter, Host host, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+		if (AbstractPhptTestCaseRunner.willSkip(twriter, host, type, build, test_case))
 			return true;
 		
 		if (test_case.containsSection(EPhptSection.ENV))
