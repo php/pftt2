@@ -14,7 +14,7 @@ PFTT has and can mean many different things:
 
 ## License
 
-BSD
+BSD-3 Clause. See LICENSE.txt
 
 ## API Documentation
 
@@ -123,6 +123,14 @@ Run a second test pass, using a different build and/or test-pack
     > pftt pa C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234568 Or pftt phpt_list C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234568 SKIP_list_file Or pftt phpt_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234568 021
 
 PFTT will automatically generate an FBC report and display it using system default web browser
+
+Setup Wordpress (or other ~20 other PHP application), IIS and MySQL
+
+    > pftt -config iis,wordpress,mysql setup
+
+Run PHPT tests on Apache (instead of CLI)
+
+    > pftt -config apache phpt_all C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 Or pftt phpt_list C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 SKIP_list_file Or pftt phpt_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 021
 
 ## DEVELOPMENT
 
