@@ -25,6 +25,9 @@ public class ConsoleManager {
 	
 	public void showGUI(PhptTestPackRunner test_pack_runner) {
 		if (show_gui) {
+			if (gui!=null)
+				((JFrame)gui.getRootPane().getParent()).dispose();
+			
 			gui = new PhptDebuggerFrame(test_pack_runner);
 			show_gui("", gui);
 		}
@@ -58,12 +61,16 @@ public class ConsoleManager {
 		if (gui!=null)
 			gui.showResult(host, totalCount, completed, result);
 	}
-
+	
 	public void println(String ctx_str, String string) {
 		if (results_only)
 			return;
 		
 		System.out.println("PFTT: "+ctx_str+": "+string);
+	}
+	
+	public void println(Class<?> clazz, String string) {
+		println(clazz.getSimpleName(), string);
 	}
 
 	public void printStackTrace(Exception ex) {

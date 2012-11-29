@@ -351,9 +351,11 @@ public abstract class Host {
 			tmp_dir = getEnvValue("TEMP");
 			if (tmp_dir!=null)
 				tmp_dir = getHomeDir() + "\\AppData\\Local\\Temp\\";
+			else if (tmp_dir.endsWith("\\"))
+				tmp_dir += "\\";
 			return tmp_dir;			
 		} else {
-			return "/tmp";
+			return tmp_dir = "/tmp/";
 		}
 	}
 	/** returns the Host's SystemDrive.
@@ -440,7 +442,10 @@ public abstract class Host {
 	}
 	@ThreadSafe
 	public static abstract class ExecHandle {
-		public abstract void close();
+		public abstract void close(boolean force);
+		public void close() {
+			close(false);
+		}
 		public abstract boolean isRunning();
 		public boolean isCrashed() {
 			return getExitCode() != 0;
@@ -536,7 +541,7 @@ public abstract class Host {
 		// generate random filename until one found that isn't in use
 		do {
 			sb.append(getTempDir());
-			sb.append(dirSeparator());
+			//sb.append(dirSeparator()); // getTempDir() returns path ending with / or \
 			sb.append("PFTT-");
 			if (StringUtil.isNotEmpty(ctx_str)) {
 				sb.append(ctx_str);
@@ -551,6 +556,12 @@ public abstract class Host {
 		
 		return str;
 	}
+	public String mktempname(Class<?> clazz, String suffix) {
+		return mktempname(clazz.getSimpleName(), suffix);
+	}
+	public String mktempname(Class<?> clazz) {
+		return mktempname(clazz.getSimpleName());
+	}
 	
 	static final Pattern PAT_fs = Pattern.compile("[/]+");
 	static final Pattern PAT_bs = Pattern.compile("[\\\\]+");
@@ -564,7 +575,7 @@ public abstract class Host {
 	}
 	
 	public static String toWindowsPath(String path) {
-		return StringUtil.replaceAll(PAT_fs, "\\\\", path);
+		return StringUtil.replaceAll(PAT_bs, "\\\\", StringUtil.replaceAll(PAT_fs, "\\\\", path));
 	}
 	
 	/** converts file path to Unix format (using / instead of Windows \)
@@ -574,7 +585,7 @@ public abstract class Host {
 	 */
 	public static String toUnixPath(String name) {
 		// \ is a legal file char on unix so it must get removed or it'll be part of file/dir name
-		return StringUtil.replaceAll(PAT_bs, "/", name);
+		return StringUtil.replaceAll(PAT_fs, "/", StringUtil.replaceAll(PAT_bs, "/", name));
 	}
 	
 	/** uploads a 7zip file from local source to remote destination and decompresses it.
@@ -659,7 +670,7 @@ public abstract class Host {
 	 * 
 	 * @return
 	 */
-	public String getLocalhostServableAddress() {
+	public String getLocalhostListenAddress() {
 		return isWindows() ? getAddress() : "127.0.0.1";
 	}
 	
@@ -695,6 +706,18 @@ public abstract class Host {
 
 	protected abstract String getOSNameOnWindows();
 	
+	public boolean isVistaOrLater() {
+		if (!isWindows())
+			return false;
+		String os_name = getOSNameOnWindows();
+		return os_name.contains("Windows Vista") || os_name.contains("Windows 2008 ") || os_name.contains("Windows 2008r2") || os_name.contains("Windows 7") || os_name.contains("Windows 8") || os_name.contains("Windows 2012");
+	}
+	public boolean isBeforeVista() {
+		if (!isWindows())
+			return false;
+		String os_name = getOSNameOnWindows();
+		return os_name.contains("Windows XP") || os_name.contains("Windows 2003 ") || os_name.contains("Windows 2000");
+	}
 	public boolean isVistaOrBefore() {
 		if (!isWindows())
 			return false;
@@ -773,5 +796,18 @@ public abstract class Host {
 	public abstract boolean dirContainsExact(String path, String name);
 	public abstract boolean dirContainsFragment(String path, String name_fragment);
 	public abstract String[] list(String path);
+
+	public String join(String ...parts) {
+		if (parts==null||parts.length==0)
+			return StringUtil.EMPTY;
+		
+		StringBuilder sb = new StringBuilder(Math.max(1024, parts[0].length()*2));
+		sb.append(parts[0]);
+		for ( int i=1 ; i < parts.length ; i++ ) {
+			sb.append(dirSeparator());
+			sb.append(parts[i]);
+		}
+		return sb.toString();
+	}
 	
 } // end public abstract class Host

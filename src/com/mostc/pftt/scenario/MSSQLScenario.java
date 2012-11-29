@@ -1,5 +1,12 @@
 package com.mostc.pftt.scenario;
 
+import java.util.Map;
+
+import com.mostc.pftt.host.Host;
+import com.mostc.pftt.model.phpt.PhpBuild;
+import com.mostc.pftt.scenario.Scenario.EScenarioStartState;
+import com.mostc.pftt.telemetry.ConsoleManager;
+
 /** Tests the mssql and pdo_mssql extensions against a Microsoft SQL Server. (NOT IMPLEMENTED)
  * 
  * @author Matt Ficken
@@ -22,6 +29,23 @@ public class MSSQLScenario extends AbstractDatabaseScenario {
 	@Override
 	public String getName() {
 		return "MSSQL";
+	}
+
+	@Override
+	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+	
+	@Override
+	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		return EScenarioStartState.SKIP;
+	}
+
+	@Override
+	public void getENV(Map<String, String> env) {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

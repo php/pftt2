@@ -7,8 +7,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.HashMap;
-import java.util.Map;
 
 import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.Host;
@@ -34,24 +32,20 @@ import com.mostc.pftt.util.StringUtil;
  * 
  */
 
+// TODO save .php and/or .out in telemetry, make .cmd script actually usable by itself
 public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected ExecOutput output;
-	protected HashMap<String,String> env;
 	protected String selected_php_exe, shell_script, test_cmd, skip_cmd, ini_settings, shell_file;
 	
 	public CliPhptTestCaseRunner(PhpIni ini, PhptThread thread, PhptTestCase test_case, PhptTelemetryWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
 		super(ini, thread, test_case, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
-		
-		env = new HashMap<String,String>();
 	}
 	
 	@Override
 	protected boolean prepare() throws IOException, Exception {
 		if (super.prepare()) {
+			//
 			ini_settings = ini.toCliArgString(host);
-			
-			// read ENV vars from test, from its parent (if a test redirected to this test), and merge from scenario
-			env = test_case.getENV(env, twriter.getConsoleManager(), host, build);
 			
 			selected_php_exe = build.getPhpExe();
 			
@@ -66,10 +60,8 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				}
 			}
 			
-			// important: some tests need these to work
-			env.put(ENV_TEST_PHP_EXECUTABLE, build.getPhpExe());
-			if (build.hasPhpCgiExe())
-				env.put(ENV_TEST_PHP_CGI_EXECUTABLE, build.getPhpCgiExe());
+			env = generateENVForTestCase(twriter.getConsoleManager(), host, build, scenario_set, test_case);
+			
 			return true;
 		}
 		return false;
@@ -83,7 +75,9 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		String args = test_case.containsSection(EPhptSection.ARGS) ? " -- " + test_case.get(EPhptSection.ARGS) : "";
 		
 		// generate cmd string to run test_file with php.exe
-		test_cmd = selected_php_exe+" "+ini_settings+" -f \""+test_file+"\""+(args==null?"":" "+args);
+		//
+		// -n => critical: ignores any .ini file with the php build
+		test_cmd = selected_php_exe+" -n "+ini_settings+" -f \""+test_file+"\""+(args==null?"":" "+args);
 		
 		if (test_case.containsSection(EPhptSection.STDIN)) {
 			if (host.isWindows()) {
@@ -158,7 +152,8 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		if (skipif_file != null) {
 			env.put(ENV_USE_ZEND_ALLOC, "1");
 				
-			skip_cmd = selected_php_exe+" "+ini_settings+" -f \""+skipif_file+"\"";
+			// -n => critical: ignores any .ini file with the php build
+			skip_cmd = selected_php_exe+" -n "+ini_settings+" -f \""+skipif_file+"\"";
 
 			if (!env.containsKey(ENV_PATH_TRANSLATED))
 				env.put(ENV_PATH_TRANSLATED, skipif_file);
@@ -283,11 +278,6 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	@Override
 	protected String[] splitCmdString() {
 		return LocalHost.splitCmdString(test_cmd);
-	}
-	
-	@Override
-	protected Map<String, String> getEnv() {
-		return env;
 	}
 	
 	@Override

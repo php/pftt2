@@ -16,8 +16,11 @@ import com.mostc.pftt.telemetry.ConsoleManager;
 
 public class RequiredExtensionsSmokeTest extends SmokeTest {
 	// from email conversation Feb 29-Mar 31, 2012
+	//
+	// some extensions are only dynamically loaded depending on PhpIni configuration
+	// some are statically builtin (will always load)
 	static String[] windows_required_extensions = new String[] {
-		"bcmath", 
+		"bcmath", // static|builtin extension
 		"bz2", 
 		"calendar",
 		"com_dotnet",
@@ -82,6 +85,7 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 		try {
 			// Windows PHP builds must have these extensions to pass this test
 			for ( String ext_name : windows_required_extensions ) {
+				// this will timeout in .DLL is missing on Windows - must fail test in that case
 				if (!build.isExtensionEnabled(cm, host, type, ext_name)) {
 					cm.println(getName(), "Missing Required Extension: "+ext_name);
 					return ESmokeTestStatus.FAIL;

@@ -3,6 +3,7 @@ package com.mostc.pftt.runner;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.zip.Deflater;
@@ -37,6 +38,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	protected final ScenarioSet scenario_set;
 	protected final PhptThread thread;
 	protected final PhptActiveTestPack active_test_pack;
+	protected Map<String, String> env;
 	protected byte[] stdin_post;
 	protected String skipif_file, test_dir, base_file_name, test_file, test_clean, content_type;
 	protected PhpIni ini;
@@ -122,13 +124,11 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		test_file = test_dir + host.dirSeparator() + base_file_name + ".php";
 		test_clean = test_dir + host.dirSeparator() + base_file_name + ".clean.php";
 		
-		//
-		if (test_case.containsSection(EPhptSection.INI)) {
-			PhpIni ini = test_case.getINI(active_test_pack, host);
-			ini.appendAll(this.ini);
-			this.ini = ini;
-		}
-		//
+		
+		if (StringUtil.isEmpty(ini.getExtensionDir()))
+			// this is done in PhpIni#createDefaultIniCopy if the host is Windows
+			// but for Linux/non-Windows, this won't have been done
+			ini.setExtensionDir(build.getDefaultExtensionDir());
 		
 		return true;
 	} // end boolean prepare
@@ -183,13 +183,21 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	 * 
 	 * @throws Exception
 	 */
-	protected void prepareTest() throws Exception {		
+	protected void prepareTest() throws Exception {
 		if (test_case.containsSection(EPhptSection.FILE_EXTERNAL)) {
 			// open external file and copy to test_file (binary, no char conversion - which could break it - often this is a PHAR file - which will be broken if charset coversion is done)
 			host.copy(src_test_pack.getSourceDirectory()+host.dirSeparator()+Host.dirname(test_case.getName()) + "/" + test_case.get(EPhptSection.FILE_EXTERNAL), test_file);
 		} else {
 			host.saveTextFile(test_file, test_case.get(EPhptSection.FILE), test_case.getCommonCharset());
 		}
+		
+		// important: some tests need these to work
+		if (env==null)
+			env = new HashMap<String,String>(2);
+		env.put(ENV_TEST_PHP_EXECUTABLE, build.getPhpExe());
+		if (build.hasPhpCgiExe())
+			env.put(ENV_TEST_PHP_CGI_EXECUTABLE, build.getPhpCgiExe());
+		//
 		
 		// copy STDIN to pass (POST, POST_RAW, STDIN, etc...)
 		if (test_case.containsSection(EPhptSection.POST_RAW)) {	
@@ -396,7 +404,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			}
 			if (expected_re_match) {
 
-				twriter.addResult(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, getEnv(), splitCmdString(), stdin_post, getShellScript(), null, null, null));
+				twriter.addResult(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
 						
 				return;
 			} 
@@ -408,7 +416,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	
 			if (output_trim.equals(expected)||output_trim.contains(expected)||expected.contains(output_trim)) {
 				
-				twriter.addResult(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, getEnv(), splitCmdString(), stdin_post, getShellScript(), null, null, null));
+				twriter.addResult(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
 						
 				return;
 			}
@@ -424,7 +432,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 				// compare again
 				if (output_trim.equals(expected)||output_trim.contains(expected)||expected.contains(output_trim)||(output_trim.length()>20&&expected.length()>20&&output_trim.substring(10, 20).equals(expected.substring(10, 20)))) {
 					
-					twriter.addResult(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, getEnv(), splitCmdString(), stdin_post, getShellScript(), null, null, null));
+					twriter.addResult(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
 					
 					return;
 				} // end if
@@ -434,7 +442,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			output_trim = output.trim();
 			
 			if (StringUtil.isEmpty(output_trim)) {
-				twriter.addResult(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, getEnv(), splitCmdString(), stdin_post, getShellScript(), null, null, null));
+				twriter.addResult(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
 				
 				return;
 			}
@@ -443,7 +451,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		// if here, test failed!
 
 		if (test_case.isXFail()) {
-			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XFAIL, test_case, output, null, null, charset, getEnv(), splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual));
+			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XFAIL, test_case, output, null, null, charset, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual));
 		} else {
 			// test is FAIL
 			
@@ -460,13 +468,9 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 				expectf = null;
 			}
 			
-			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.FAIL, test_case, output, actual_lines, expected_lines, charset, getEnv(), splitCmdString(), stdin_post, getShellScript(), diff, expectf, preoverride_actual, getCrashedSAPIOutput()));
+			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.FAIL, test_case, output, actual_lines, expected_lines, charset, env, splitCmdString(), stdin_post, getShellScript(), diff, expectf, preoverride_actual, getCrashedSAPIOutput()));
 		}
 	} // end void evalTest
-	
-	protected Map<String, String> getEnv() {
-		return null;
-	}
 	
 	protected String getShellScript() {
 		return null;

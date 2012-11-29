@@ -61,7 +61,7 @@ public class PhptTestCase extends TestCase {
 	private PhptSourceTestPack test_pack;
 	private CharsetICU common_charset;
 	
-	/** loads the named PHPT test from the given PhptTestPack
+	/** loads the named PHPT test from the given PhptSourceTestPack
 	 * 
 	 * @param host
 	 * @param test_pack
@@ -75,7 +75,7 @@ public class PhptTestCase extends TestCase {
 		return load(host, test_pack, false, test_name, twriter);
 	}
 	
-	/** loads the named PHPT test from the given PhptTestPack for custom usage.
+	/** loads the named PHPT test from the given PhptSourceTestPack for custom usage.
 	 * 
 	 * normally #load won't bother storing certain sections that won't be needed for testing.
 	 * 
@@ -604,7 +604,7 @@ public class PhptTestCase extends TestCase {
 		
 		PHPOutput output = build.eval(host, code).printHasFatalError(cm);
 		
-		ArrayList<String> tests = new ArrayList<String>(2);
+		ArrayList<String> test_names = new ArrayList<String>(2);
 		
 		if (!output.hasFatalError()) {
 			String base_dir = Host.dirname(output.php_filename);
@@ -615,26 +615,25 @@ public class PhptTestCase extends TestCase {
 					if (line.startsWith("/")||line.startsWith("\\"))
 						line = line.substring(1);
 				}
-				if (line.length()==0)
+				if (line.length()==0||line.contains("Warning"))
 					continue;
-				tests.add(line);
+				test_names.add(line);
 			}
 		}
 		
-		return tests.toArray(new String[tests.size()]);
+		return test_names.toArray(new String[test_names.size()]);
 	}
 	
 	/** reads any environment variables this test provides and overrides all the given default environment variables and scenario provided environment variables
 	 * 
 	 * Note: this returns environment variables from a different section than the one read by #readRedirectTestEnvironment
 	 * 
-	 * @param scenario_provided_env_vars
 	 * @param host
 	 * @param build
 	 * @return
 	 * @throws Exception
 	 */
-	public HashMap<String,String> getENV(HashMap<String,String> scenario_provided_env_vars, ConsoleManager cm, Host host, PhpBuild build) throws Exception {
+	public HashMap<String,String> getENV(ConsoleManager cm, Host host, PhpBuild build) throws Exception {
 		HashMap<String,String> env = new HashMap<String,String>();
 		
 		
@@ -672,8 +671,6 @@ public class PhptTestCase extends TestCase {
 		if (parent!=null)
 			env.putAll(parent.readRedirectTestEnvironment(cm, host, build));
 		
-		env.putAll(scenario_provided_env_vars);
-		
 		return env;
 	}
 	
@@ -685,6 +682,7 @@ public class PhptTestCase extends TestCase {
 	 * 
 	 * This differs from #getENV in that #getENV returns the environment variables for a regular (non-redirecting) test, which are stored in a different section from this.
 	 * 
+	 * @see #getENV - calls this method
 	 * @param host
 	 * @param build
 	 * @return
@@ -759,37 +757,40 @@ public class PhptTestCase extends TestCase {
 		}
 		return false;
 	}
+	// any tests in these extensions are considered 'Non 8-Bit'
 	static final String[] NON8BIT_EXTS = new String[]{
-			"ext/intl/tests",
-			"ext/iconv"
+			"ext/intl/",
+			"ext/iconv/",
+			"ext/mbstring/",
 		};
+	// these tests, from other extensions, are considered 'Non 8-Bit'
 	static final String[] NON8BIT_TESTS = new String[]{
-		"ext/standard/tests/serialize/006.phpt",
-		"ext/standard/tests/general_functions/002.phpt",
-		"ext/standard/tests/general_functions/bug49056.phpt",
-		"ext/standard/tests/general_functions/006.phpt",
-		"ext/standard/tests/strings/bug37244.phpt",
-		"ext/standard/tests/array/bug34066.phpt",
-		"ext/standard/tests/strings/html_entity_decode_html5.phpt",
-		"ext/standard/tests/array/bug42233.phpt",
-		"ext/standard/tests/array/bug34066_1.phpt",
-		"ext/standard/tests/math/bug30695.phpt",
-		"ext/standard/tests/strings/vprintf_variation10.phpt",
-		"ext/standard/tests/strings/get_html_translation_table_basic2.phpt",
-		"ext/standard/tests/strings/vfprintf_variation10.phpt",
-		"ext/standard/tests/strings/htmlentities23.phpt",
-		"ext/standard/tests/strings/htmlentities19.phpt",
-		"tests/security/open_basedir_glob_variation.phpt",
-		"tests/security/open_basedir_glob.phpt",
-		"ext/standard/tests/strings/get_html_translation_table_basic6.phpt",
-		"ext/standard/tests/strings/get_html_translation_table_basic7.phpt",
-		"ext/standard/tests/strings/get_html_translation_table_basic5.phpt",
-		"ext/standard/tests/strings/get_html_translation_table_basic1.phpt",
-		"ext/standard/tests/strings/htmlentities.phpt",
-		"ext/standard/tests/strings/quoted_printable_encode_002.phpt",
-		"ext/standard/tests/strings/crypt_chars.phpt",
-		"tests/strings/002.phpt",
-		"ext/standard/tests/file/bug45181.phpt",
+			"ext/standard/tests/serialize/006.phpt",
+			"ext/standard/tests/general_functions/002.phpt",
+			"ext/standard/tests/general_functions/bug49056.phpt",
+			"ext/standard/tests/general_functions/006.phpt",
+			"ext/standard/tests/strings/bug37244.phpt",
+			"ext/standard/tests/array/bug34066.phpt",
+			"ext/standard/tests/strings/html_entity_decode_html5.phpt",
+			"ext/standard/tests/array/bug42233.phpt",
+			"ext/standard/tests/array/bug34066_1.phpt",
+			"ext/standard/tests/math/bug30695.phpt",
+			"ext/standard/tests/strings/vprintf_variation10.phpt",
+			"ext/standard/tests/strings/get_html_translation_table_basic2.phpt",
+			"ext/standard/tests/strings/vfprintf_variation10.phpt",
+			"ext/standard/tests/strings/htmlentities23.phpt",
+			"ext/standard/tests/strings/htmlentities19.phpt",
+			"tests/security/open_basedir_glob_variation.phpt",
+			"tests/security/open_basedir_glob.phpt",
+			"ext/standard/tests/strings/get_html_translation_table_basic6.phpt",
+			"ext/standard/tests/strings/get_html_translation_table_basic7.phpt",
+			"ext/standard/tests/strings/get_html_translation_table_basic5.phpt",
+			"ext/standard/tests/strings/get_html_translation_table_basic1.phpt",
+			"ext/standard/tests/strings/htmlentities.phpt",
+			"ext/standard/tests/strings/quoted_printable_encode_002.phpt",
+			"ext/standard/tests/strings/crypt_chars.phpt",
+			"tests/strings/002.phpt",
+			"ext/standard/tests/file/bug45181.phpt",
 		};
 	/** returns if this test is expected to take more than 40 seconds to execute.
 	 * 
@@ -800,6 +801,9 @@ public class PhptTestCase extends TestCase {
 	 */
 	public boolean isSlowTest() {
 		return isNamed(
+				// tests that check the SKIP_SLOW_TESTS env var (ie tests considered slow by their authors)
+				//
+				// (PFTT always runs those tests. PFTT never sets SKIP_SLOW_TESTS)
 				"ext/date/tests/date_diff.phpt",
 				"ext/oci8/tests/bug42496_1.phpt",
 				"ext/oci8/tests/bug42496_2.phpt",
@@ -850,7 +854,27 @@ public class PhptTestCase extends TestCase {
 				"tests/func/005a.phpt",
 				"tests/func/010.phpt",
 				"tests/lang/045.phpt",
-				"Zend/tests/bug55509.phpt"
+				"Zend/tests/bug55509.phpt",
+				//
+				// tests that seem to run slowly
+				"tests/lang/bug32924.phpt",
+				"tests/lang/bug45392.phpt",
+				"ext/standard/tests/streams/stream_get_meta_data_socket_variation3.phpt",
+				"ext/standard/tests/streams/stream_get_meta_data_socket_variation1.phpt",
+				"ext/standard/tests/network/shutdown.phpt",
+				"ext/standard/tests/streams/bug61371-win.phpt",
+				"ext/standard/tests/streams/stream_get_meta_data_socket_variation4.phpt",
+				"tests/security/open_basedir_error_log_variation.phpt",
+				"tests/security/open_basedir_fileatime.phpt",
+				"tests/security/open_basedir_filectime.phpt",
+				"tests/security/open_basedir_file.phpt",
+				"tests/security/open_basedir_filegroup.phpt",
+				"tests/security/open_basedir_filemtime.phpt",
+				"tests/security/open_basedir_fileowner.phpt",
+				"tests/security/open_basedir_fileinode.phpt",
+				"ext/session/tests/bug41600.phpt",
+				"ext/session/tests/020.phpt",
+				"Zend/tests/unset_cv05.phpt"
 			);
 	}
 

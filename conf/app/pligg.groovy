@@ -1,0 +1,4 @@
+
+def scenarios() {
+	[new PliggScenario()]
+}

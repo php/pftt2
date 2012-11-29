@@ -3,6 +3,7 @@ package com.mostc.pftt.model.sapi;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import javax.annotation.concurrent.ThreadSafe;
 
@@ -24,14 +25,16 @@ public abstract class WebServerInstance extends SAPIInstance {
 	private String sapi_output = "";
 	private Object sync_lock = new Object();
 	protected final PhpIni ini;
+	protected final Map<String,String> env;
 	protected final String[] cmd_array;
 	protected final WebServerManager ws_mgr;
 	WebServerInstance replacement; // @see WebServerManager#getWebServerInstance
 	
-	public WebServerInstance(WebServerManager ws_mgr, String[] cmd_array, PhpIni ini) {
+	public WebServerInstance(WebServerManager ws_mgr, String[] cmd_array, PhpIni ini, Map<String,String> env) {
 		this.ws_mgr = ws_mgr;
 		this.cmd_array = cmd_array;
 		this.ini = ini;
+		this.env = env;
 		active_test_cases = new LinkedList<PhptTestCase>();
 		all_test_cases = new ArrayList<PhptTestCase>(256);
 	}
@@ -169,6 +172,7 @@ public abstract class WebServerInstance extends SAPIInstance {
 	 * 
 	 * @return
 	 */
+	@Override
 	public boolean isCrashed() {
 		synchronized(sync_lock) {
 			return crashed;
@@ -185,8 +189,12 @@ public abstract class WebServerInstance extends SAPIInstance {
 	public PhpIni getPhpIni() {
 		return ini;
 	}
+	
+	public Map<String,String> getEnv() {
+		return env;
+	}
 
-	public String[] getCmdString() {
+	public String[] getCmdArray() {
 		return cmd_array;
 	}
 	

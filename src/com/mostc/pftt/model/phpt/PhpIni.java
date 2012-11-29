@@ -10,7 +10,6 @@ import javax.annotation.Nullable;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.LocalHost;
-import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.util.StringUtil;
 
 /** A PHP INI is the configuration for PHP.
@@ -26,7 +25,7 @@ import com.mostc.pftt.util.StringUtil;
  *
  */
 
-public class PhpIni extends TestCaseGroupKey {
+public class PhpIni {
 	// directives
 	public static final String INCLUDE_PATH = "include_path";
 	public static final String EXTENSION = "extension";
@@ -71,7 +70,6 @@ public class PhpIni extends TestCaseGroupKey {
 		return LocalHost.isLocalhostWindows() ? "php_" + name + ".dll" : name + ".so";
 	}
 	// names for DLL or SO for dynamically loaded extensions
-	public static final String EXT_BCMATH = dllName("bcmath");
 	public static final String EXT_BZ2 = dllName("bz2");
 	public static final String EXT_COM_DOTNET = dllName("com_dotnet");
 	public static final String EXT_CURL = dllName("curl");
@@ -99,7 +97,7 @@ public class PhpIni extends TestCaseGroupKey {
 	public static final String EXT_TIDY = dllName("tidy");
 	public static final String EXT_XMLRPC = dllName("xmlrpc");
 	public static final String EXT_XSL = dllName("xsl");
-	public static PhpIni createDefaultIniCopy(Host host) {
+	public static PhpIni createDefaultIniCopy(Host host, PhpBuild build) {
 		PhpIni ini = new PhpIni();
 		ini.putMulti(OUTPUT_HANDLER, StringUtil.EMPTY);
 		ini.putMulti(OPEN_BASEDIR, StringUtil.EMPTY);
@@ -127,14 +125,14 @@ public class PhpIni extends TestCaseGroupKey {
 		ini.putMulti(UNICODE_SCRIPT_ENCODING, UTF_8);
 		ini.putMulti(UNICODE_OUTPUT_ENCODING, UTF_8);
 		ini.putMulti(UNICODE_FROM_ERROR_MODE, U_INVALID_SUBSTITUTE);
-		ini.putMulti(SESSION_AUTO_START, 0);
+		ini.putMulti(SESSION_AUTO_START, 1);
 		
 		// default php.ini has these extensions on Windows
 		// NOTE: this is validated by RequiredExtensionsSmokeTest. similar/same info is both there and here
 		//       b/c that needs it for validation and its here because its in the default php.ini
 		if (host.isWindows()) {
+			ini.setExtensionDir(build.getDefaultExtensionDir());
 			ini.addExtensions(
-					EXT_BCMATH,
 					EXT_BZ2,
 					EXT_COM_DOTNET,
 					EXT_CURL,
@@ -164,21 +162,40 @@ public class PhpIni extends TestCaseGroupKey {
 					EXT_XSL
 				);
 		}
-				
+		
+		// TIMING: do this after all calls to #putMulti, etc... b/c that sets is_default = false
+		ini.is_default = true;
 		return ini;
 	} // end public static PhpIni createDefaultIniCopy
 	//
 	//
-	private HashMap<String, ArrayList<String>> ini_map;
+	private final HashMap<String, ArrayList<String>> ini_map;
 	private WeakReference<PhpIni> ext_ini;
 	private WeakReference<String> ini_str, cli_arg;
+	private boolean is_default = false;
 	
 	public PhpIni() {
 		ini_map = new HashMap<String, ArrayList<String>>();
 	}
 	
 	public PhpIni(String ini_str) {
-		this(ini_str, null);
+		this(ini_str, "");
+		// "" => replace {PWD} with "" 
+	}
+	
+	private PhpIni(HashMap<String, ArrayList<String>> ini_map) {
+		this.ini_map = ini_map;
+	}
+	
+	@Override
+	public PhpIni clone() {
+		@SuppressWarnings("unchecked")
+		PhpIni o = new PhpIni((HashMap<String,ArrayList<String>>)this.ini_map.clone());
+		o.is_default = this.is_default;
+		o.ext_ini = this.ext_ini;
+		o.ini_str = this.ini_str;
+		o.cli_arg = this.cli_arg;
+		return o;
 	}
 	
 	static final Pattern PAT_PWD = Pattern.compile("\\{PWD\\}");
@@ -282,6 +299,7 @@ public class PhpIni extends TestCaseGroupKey {
 		this.ini_map.putAll(ini.ini_map);
 		if (ini.countDirectives() > 0)
 			this.cli_arg = this.ini_str = null;
+		is_default = false;
 	}
 	
 	/** appends all values from all directives from the given PhpIni to this PhpIni
@@ -291,8 +309,9 @@ public class PhpIni extends TestCaseGroupKey {
 	public void appendAll(PhpIni ini) {
 		for (String directive:ini.getDirectives()) {
 			for (String value:ini.getMulti(directive))
-				ini.putMulti(directive, value);
+				this.putMulti(directive, value);
 		}
+		is_default = false;
 	}
 	
 	public int countDirectives() {
@@ -332,6 +351,7 @@ public class PhpIni extends TestCaseGroupKey {
 		values.add(value);
 		ini_map.put(directive, values);
 		cli_arg = ini_str = null;
+		is_default = false;
 	}
 
 	public void putMulti(String directive, int value) {
@@ -356,11 +376,13 @@ public class PhpIni extends TestCaseGroupKey {
 		} else if (!values.contains(value)) {
 			values.add(value);
 		}
+		is_default = false;
 	}
 	
 	public void remove(String directive) {
 		ini_map.remove(directive);
 		cli_arg = ini_str = null;
+		is_default = false;
 	}
 	
 	@Nullable
@@ -485,6 +507,10 @@ public class PhpIni extends TestCaseGroupKey {
 		return containsPartial(EXTENSION, ext_name);
 	}
 	
+	public boolean isDefault() {
+		return is_default;
+	}
+	
 	@Override
 	public String toString() {
 		String ini_str;
@@ -551,7 +577,10 @@ public class PhpIni extends TestCaseGroupKey {
 		return ext_ini;
 	}
 
-	/** generates -d command line arguments to pass these INI directives to php.exe or php-cgi.exe
+	/** generates -d console arguments to pass these INI directives to php.exe or php-cgi.exe
+	 * 
+	 * NOTE: use -n console option to tell php.exe to ignore an .INI file, otherwise it will load the .INI file
+	 * and override only the directives in this string (other directives from file will remain!)
 	 * 
 	 * @param host
 	 * @return

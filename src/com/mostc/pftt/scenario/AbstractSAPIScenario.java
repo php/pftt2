@@ -9,14 +9,15 @@ import com.mostc.pftt.model.phpt.PhptActiveTestPack;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
 import com.mostc.pftt.runner.PhptTestPackRunner.PhptThread;
+import com.mostc.pftt.telemetry.ConsoleManager;
 import com.mostc.pftt.telemetry.PhptTelemetryWriter;
 
 /** Different scenarios for how PHP can be run
  * 
  * CLI - command line, all that has traditionally been tested
  * Builtin-WWW
- * IIS-Express - using IIS Express on Windows Clients
- * IIS-Standard - IIS on Windows Servers
+ * IIS-Express-FastCGI - using IIS Express on Windows Clients
+ * IIS-FastCGI - IIS on Windows Servers
  * mod_php - using Apache's mod_php
  * 
  * @author Matt Ficken
@@ -49,10 +50,6 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 		return AbstractPhptTestCaseRunner.willSkip(twriter, host, type, build, test_case);
 	}
 	
-	public TestCaseGroupKey createTestGroupKey(Host host, PhpBuild build, PhptActiveTestPack test_pack, PhptTestCase test_case) {
-		return AbstractPhptTestCaseRunner.createIniForTest(host, build, test_pack, test_case);
-	}
-	
 	public void close() {
 		
 	}
@@ -60,5 +57,24 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 	public abstract int getTestThreadCount(Host host);
 
 	public abstract ESAPIType getSAPIType();
+
+	/** creates a key to group test cases under
+	 * 
+	 * each key has a unique phpIni and/or ENV vars
+	 * 
+	 * Web Server SAPIs require grouping test cases by keys because a new WebServerInstance for each PhpIni, but
+	 * a WebServerInstance can be used to run multiple test cases. this will boost performance.
+	 * 
+	 * @param cm
+	 * @param host
+	 * @param build
+	 * @param scenario_set
+	 * @param active_test_pack
+	 * @param test_case
+	 * @param group_key
+	 * @return
+	 * @throws Exception
+	 */
+	public abstract TestCaseGroupKey createTestGroupKey(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack active_test_pack, PhptTestCase test_case, TestCaseGroupKey group_key) throws Exception;
 
 } // end public abstract class AbstractSAPIScenario

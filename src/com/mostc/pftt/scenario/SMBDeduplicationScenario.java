@@ -2,6 +2,7 @@ package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.RemoteHost;
+import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.telemetry.ConsoleManager;
 
 /** Tests the new Remote Data Deduplication feature of Windows 2012 using SMB. (NOT IMPLEMENTED)
@@ -39,6 +40,11 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 	public SMBDeduplicationScenario(RemoteHost remote_host, String base_share_path, String base_share_name) {
 		super(remote_host, base_share_path, base_share_name);
 		this.volume = Host.drive(base_share_path);
+	}
+	
+	@Override
+	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		return notifyPrepareStorageDir(cm, host);
 	}
 	
 	/** installs and enables deduplication on a remote disk Volume and creates a file share and connects to it.
@@ -85,12 +91,15 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 			}
 			
 			// create share on volume
-			return super.notifyPrepareStorageDir(cm, host);
+			if (super.notifyPrepareStorageDir(cm, host)) {
+				cm.println(getName(), "Deduplication enabled on share: "+unc_path+" "+smb_path);
+				return true;
+			}
 		} catch ( Exception ex ) {
 			cm.printStackTrace(ex);
 			cm.println(getName(), "Unable to enable deduplication");
-			return false;
 		}
+		return false;
 	} // end public boolean notifyPrepareStorageDir
 	
 	/** runs a deduplication job after the test-pack is installed, blocking until the deduplication job is done.

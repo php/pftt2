@@ -1,1 +1,4 @@
 build/*
+conf/internal/*
+src/com/sshtools/*
+src/org/apache/sshd/*

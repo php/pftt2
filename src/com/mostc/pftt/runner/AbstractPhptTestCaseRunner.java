@@ -1,6 +1,7 @@
 package com.mostc.pftt.runner;
 
 import java.io.IOException;
+import java.util.Map;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
@@ -9,6 +10,10 @@ import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.model.phpt.PhptActiveTestPack;
+import com.mostc.pftt.scenario.AbstractINIScenario;
+import com.mostc.pftt.scenario.Scenario;
+import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.telemetry.ConsoleManager;
 import com.mostc.pftt.telemetry.PhptTelemetryWriter;
 import com.mostc.pftt.telemetry.PhptTestResult;
 
@@ -28,14 +33,33 @@ public abstract class AbstractPhptTestCaseRunner {
 	
 	public abstract void runTest() throws IOException, Exception, Throwable;
 	
-	static PhpIni _ini;
-	public static PhpIni createIniForTest(Host host, PhpBuild build, PhptActiveTestPack active_test_pack, PhptTestCase test_case) {
-		if (_ini!=null)
-			return _ini; // TODO
-		_ini = PhpIni.createDefaultIniCopy(host);
-		_ini.replaceAll(test_case.getINI(active_test_pack, host));
-		_ini.addToIncludePath(host, active_test_pack.getDirectory());
-		return _ini;
+	public static PhpIni createIniForTest(ConsoleManager cm, Host host, PhpBuild build, PhptActiveTestPack active_test_pack, ScenarioSet scenario_set) {
+		PhpIni ini = PhpIni.createDefaultIniCopy(host, build);
+		//_ini.replaceAll(test_case.getINI(active_test_pack, host));
+		for ( Scenario scenario : scenario_set ) {
+			if (scenario instanceof AbstractINIScenario) {
+				((AbstractINIScenario)scenario).setup(cm, host, build, ini);
+			}
+		}
+		ini.addToIncludePath(host, active_test_pack.getDirectory());
+		return ini;
+	}
+	
+	public static Map<String, String> generateENVForTestCase(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhptTestCase test_case) throws Exception {
+		// read ENV vars from test, from its parent (if a test redirected to this test), and merge from scenario
+		//
+		// NOTE: for HTTP tests, this will be done for each group_key by AbstractWebServerScenario
+		//        -because ENV vars have to be set on each web server instance, not each php.exe instance
+		// @see AbstractWebServerScenario#createTestCaseGroupKey
+		// @see CliScenario#createtestCaseGroupKey
+		Map<String,String> env = test_case.getENV(cm, host, build);
+		
+		// some scenario sets will need to provide custom ENV vars
+		Map<String,String> s_env = scenario_set.getENV();
+		if (s_env!=null)
+			env.putAll(s_env);
+		
+		return env;
 	}
 	
 	/** @see AbstractSAPIScenario#willSkip
@@ -56,8 +80,17 @@ public abstract class AbstractPhptTestCaseRunner {
 			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "OS not supported", null, null, null, null, null, null, null, null, null, null));
 			
 			return true;
-		// TODO openbasedir 
-		} else if (test_case.isNamed("tests/security/open_basedir_is_file.phpt", "ext/standard/tests/php_ini_loaded_file.phpt", "tests/run-test/test010.phpt", "ext/standard/tests/misc/time_sleep_until_basic.phpt", "ext/standard/tests/misc/time_nanosleep_basic.phpt")) {
+		} else if (test_case.isNamed(
+				// these ext/session tests, on CLI sapi, cause a blocking winpopup msg about some mystery 'Syntax Error'
+				"ext/session/tests/bug41600.phpt",
+				"ext/session/tests/011.phpt", 
+				"ext/session/tests/020.phpt", 
+				"ext/session/tests/010.phpt",
+				// these tests randomly fail (ignore them)
+				"ext/standard/tests/php_ini_loaded_file.phpt", 
+				"tests/run-test/test010.phpt", 
+				"ext/standard/tests/misc/time_sleep_until_basic.phpt", 
+				"ext/standard/tests/misc/time_nanosleep_basic.phpt")) {
 			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null));
 			
 			return true;
@@ -68,7 +101,7 @@ public abstract class AbstractPhptTestCaseRunner {
 			
 			return true;
 		}
-		
+		//Thread.sleep(500);
 		
 		return false;
 	} // end public static boolean willSkip

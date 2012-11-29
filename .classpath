@@ -7,7 +7,6 @@
 	<classpathentry kind="lib" path="lib/icu4j-49_1.jar"/>
 	<classpathentry kind="lib" path="lib/icudata.jar"/>
 	<classpathentry kind="lib" path="lib/icutzdata.jar"/>
-	<classpathentry kind="lib" path="lib/j2ssh-common-0.2.9.jar"/>
 	<classpathentry kind="lib" path="lib/jansi-1.7.jar"/>
 	<classpathentry kind="lib" path="lib/jline-0.9.94.jar"/>
 	<classpathentry kind="lib" path="lib/jzlib-1.0.7.jar"/>
@@ -23,7 +22,7 @@
 	<classpathentry kind="lib" path="lib/asm-commons-3.2.jar"/>
 	<classpathentry kind="lib" path="lib/asm-tree-3.2.jar"/>
 	<classpathentry kind="lib" path="lib/asm-util-3.2.jar"/>
-	<classpathentry kind="lib" path="lib/j2ssh-core-0.2.9.jar"/>
 	<classpathentry kind="lib" path="lib/winp-1.14.jar"/>
+	<classpathentry kind="lib" path="lib/SSHD_fat.jar"/>
 	<classpathentry kind="output" path="build"/>
 </classpath>

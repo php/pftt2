@@ -36,15 +36,15 @@ public final class HostEnvUtil {
 	 * @throws Exception
 	 */
 	public static void prepareWindows(Host host, ConsoleManager cm, boolean enable_debug_prompt) throws Exception {
-		cm.println("HostEnvUtil", "preparing Windows host to run PHP...");
+		cm.println(HostEnvUtil.class, "preparing Windows host to run PHP...");
 		// have to fix Windows Error Reporting from popping up and blocking execution:
 		
 		String value;
 		if (enable_debug_prompt) {
-			cm.println("HostEnvUtil", "enabling Windows Error Reporting...");
+			cm.println(HostEnvUtil.class, "enabling Windows Error Reporting...");
 			value = "0x0";
 		} else {
-			cm.println("HostEnvUtil", "disabling Windows Error Reporting...");
+			cm.println(HostEnvUtil.class, "disabling Windows Error Reporting...");
 			value = "0x1";
 		}
 		
@@ -52,13 +52,13 @@ public final class HostEnvUtil {
 		boolean b = regQueryAdd(cm, host, "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting", "Disable", value, REG_DWORD);
 		if ( a || b ) {			
 			// assume if registry had to be edited, that firewall has to be disabled (avoid doing this if possible because it requires user to approve elevation)
-			cm.println("HostEnvUtil", "disabling Windows Firewall...");
+			cm.println(HostEnvUtil.class, "disabling Windows Firewall...");
 			
 			// LATER edit firewall rules instead (what if on public network, ex: Azure)
 			host.execElevated("netsh firewall set opmode disable", Host.ONE_MINUTE);			
 			
 			
-			cm.println("HostEnvUtil", "creating File Share for "+host.getPhpSdkDir()+"...");
+			cm.println(HostEnvUtil.class, "creating File Share for "+host.getPhpSdkDir()+"...");
 			// share PHP-SDK over network. this also will share C$, G$, etc...
 			host.execElevated("NET SHARE PHP_SDK="+host.getPhpSdkDir()+" /Grant:"+host.getUsername()+",Full", Host.ONE_MINUTE);
 		}
@@ -66,23 +66,23 @@ public final class HostEnvUtil {
 		if (host.isVistaOrBefore()) {
 			// install VC9 runtime (win7+ don't need this)
 			if (host.dirContainsFragment(host.getSystemRoot()+"\\WinSxS", "vc9")) {
-				cm.println("HostEnvUtil", "VC9 Runtime alread installed");
+				cm.println(HostEnvUtil.class, "VC9 Runtime alread installed");
 			} else {
 				String local_file = LocalHost.getLocalPfttDir()+"/bin/vc9_vcredist_x86.exe";
 				String remote_file = null;
 				if (host.isRemote()) {
-					remote_file = host.mktempname("HostEnvUtil", ".exe");
+					remote_file = host.mktempname(HostEnvUtil.class, ".exe");
 					
-					cm.println("HostEnvUtil", "Uploading VC9 Runtime");
+					cm.println(HostEnvUtil.class, "Uploading VC9 Runtime");
 					host.upload(local_file, remote_file);
 				}
-				cm.println("HostEnvUtil", "Installing VC9 Runtime");
+				cm.println(HostEnvUtil.class, "Installing VC9 Runtime");
 				host.execElevated(remote_file+" /Q", Host.NO_TIMEOUT);
 				if (remote_file!=null)
 					host.delete(remote_file);
 			}
 		}
-		cm.println("HostEnvUtil", "Windows host prepared to run PHP.");
+		cm.println(HostEnvUtil.class, "Windows host prepared to run PHP.");
 	} // end public static void prepareWindows
 	
 	public static final String REG_DWORD = "REG_DWORD";

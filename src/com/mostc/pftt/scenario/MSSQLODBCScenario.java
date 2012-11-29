@@ -1,5 +1,12 @@
 package com.mostc.pftt.scenario;
 
+import java.util.Map;
+
+import com.mostc.pftt.host.Host;
+import com.mostc.pftt.model.phpt.PhpBuild;
+import com.mostc.pftt.scenario.Scenario.EScenarioStartState;
+import com.mostc.pftt.telemetry.ConsoleManager;
+
 /** Tests the pdo_odbc and odbc extensions against a Microsoft SQL Server. (NOT IMPLEMENTED)
  * 
  * SQL Server is one of 3 supported databases for odbc and pdo_odbc.
@@ -29,6 +36,23 @@ public class MSSQLODBCScenario extends AbstractODBCScenario {
 	@Override
 	public String getName() {
 		return "ODBC-MSSQL";
+	}
+	
+	@Override
+	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		return EScenarioStartState.SKIP;
+	}
+
+	@Override
+	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public void getENV(Map<String, String> env) {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

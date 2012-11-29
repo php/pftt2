@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -74,6 +73,14 @@ public final class Config {
 		return hosts;
 	}
 	
+	/** returns the ScenarioSets from this configuration
+	 * 
+	 * this is the ScenarioSets defined in the configuration file(s)'s 
+	 * scenario_sets() functions AND all valid permutations of Scenarios
+	 * provided by the scenarios() functions.
+	 * 
+	 * @return
+	 */
 	public List<ScenarioSet> getScenarioSets() {
 		return scenario_sets;
 	}
@@ -123,8 +130,8 @@ public final class Config {
 		
 		Config config = new Config();
 		
+		// don't load default scenarios. configuration file(s) completely replace them (not merged)
 		LinkedList<Scenario> scenarios = new LinkedList<Scenario>();
-		scenarios.addAll(Arrays.asList(Scenario.getAllDefaultScenarios()));
 		
 		// load each configuration streams
 		GroovyObject go;
@@ -147,8 +154,8 @@ public final class Config {
 		
 		Config config = new Config();
 		
+		// don't load default scenarios. configuration file(s) completely replace them (not merged)
 		LinkedList<Scenario> scenarios = new LinkedList<Scenario>();
-		scenarios.addAll(Arrays.asList(Scenario.getAllDefaultScenarios()));
 		
 		// load each configuration file
 		GroovyObject go;
@@ -185,15 +192,18 @@ public final class Config {
 			if (!config.scenario_sets.contains(scenario_set))
 				config.scenario_sets.add(scenario_set);
 		}
+		// make sure all scenario sets have a filesystem and SAPI
+		for (ScenarioSet scenario_set : config.scenario_sets )
+			ScenarioSet.ensureSetHasFileSystemAndSAPI(scenario_set);
 		//
 		
 		if (cm!=null) {
 			// report progress
 			if (config.hosts.size()>0) {
-				cm.println("Config", "Loaded "+config.hosts.size()+" hosts");
+				cm.println(Config.class, "Loaded "+config.hosts.size()+" hosts");
 			}
 			if (config.scenario_sets.size()>0) {
-				cm.println("Config", "Loaded "+config.scenario_sets.size()+" Scenario-Sets");
+				cm.println(Config.class, "Loaded "+config.scenario_sets.size()+" Scenario-Sets");
 			}
 		}
 		

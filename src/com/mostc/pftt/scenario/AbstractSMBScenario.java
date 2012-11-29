@@ -2,6 +2,7 @@ package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.RemoteHost;
+import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.telemetry.ConsoleManager;
 import com.mostc.pftt.util.StringUtil;
 
@@ -13,7 +14,7 @@ import com.mostc.pftt.util.StringUtil;
  * 
  */
 
-public abstract class AbstractSMBScenario extends AbstractFileSystemScenario {
+public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenario {
 	protected final RemoteHost remote_host;
 	protected final String base_file_path, base_share_name;
 	protected String share_name, file_path, unc_path, smb_path, local_drive;
@@ -59,6 +60,11 @@ public abstract class AbstractSMBScenario extends AbstractFileSystemScenario {
 		return createShare(cm) && connect(cm, host);
 	}
 	
+	@Override
+	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		return createShare(cm);
+	}
+	
 	public boolean createShare(ConsoleManager cm) {
 		for ( int i=1 ; ; ) {
 			file_path = base_file_path + i;
@@ -81,6 +87,8 @@ public abstract class AbstractSMBScenario extends AbstractFileSystemScenario {
 		
 		unc_path = "\\\\"+remote_host.getHostname()+"\\"+share_name; // for Windows
 		smb_path = "smb://"+remote_host.getHostname()+"/"+share_name; // for linux
+		
+		cm.println(getName(), "Share created: "+unc_path+" "+smb_path);
 		
 		return true;
 	} // end public boolean createShare

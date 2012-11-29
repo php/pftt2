@@ -1,0 +1,4 @@
+
+def scenario() {
+	[new ElggScenario()]
+}

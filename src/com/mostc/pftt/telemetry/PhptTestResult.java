@@ -147,21 +147,24 @@ public class PhptTestResult {
 		StringBuilder sb = new StringBuilder(list.size()*64);
 		int i;
 		for (Difference d:list) {
-			if (d.addStart!=-1) {
-				for (i=d.addStart;i<d.addEnd;i++) {
-					if (i>=actual_lines.length)
+			sb.append("150 "+d.addStart+" "+d.addEnd+" "+d.delStart+" "+d.delEnd+" "+d+"\n");
+			if (d.addEnd!=-1) {
+				for (i=d.addStart;i<=d.addEnd;i++) {
+					if (i>=actual_lines.length) {
 						continue;
+					}
 					
-					sb.append("+ ");
+					sb.append("+ ");//+i+" "+actual_lines.length);
 					sb.append(actual_lines[i]);
 					sb.append('\n');
 				}
-			} else if (d.addStart==-1) {
-				for (i=d.delStart;i<d.delEnd;i++) {
-					if (i>=expected_lines.length)
+			} else if (d.delEnd!=-1) {
+				for (i=d.delStart;i<=d.delEnd;i++) {
+					if (i>=expected_lines.length) {
 						continue;
+					}
 					
-					sb.append("- ");
+					sb.append("- ");//+i+" "+expected_lines.length);
 					sb.append(expected_lines[i]);
 					sb.append('\n');
 				}

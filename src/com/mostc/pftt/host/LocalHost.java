@@ -49,7 +49,7 @@ public class LocalHost extends Host {
 	private static int self_process_id;
 	static {
 		try {
-			// this works only on Windows
+			// this works only onvo Windows
 			self_process_id = Kernel32.INSTANCE.GetCurrentProcessId();
 		} catch ( Throwable t ) {
 			t.printStackTrace(); // XXX fix this on Linux
@@ -97,6 +97,8 @@ public class LocalHost extends Host {
 
 	@Override
 	public void delete(String path) {
+		if (true)
+			return; // TODO temp
 		if (isDirectory(path)) {
 			// ensure empty
 			try {
@@ -135,12 +137,14 @@ public class LocalHost extends Host {
 		if (text==null)
 			text = "";
 		FileOutputStream fos = new FileOutputStream(filename);
-		if (charset==null)
-			fos.write(text.getBytes());
-		else
-			fos.write(text.getBytes(charset));
-		fos.close();
-		
+		try {
+			if (charset==null)
+				fos.write(text.getBytes());
+			else
+				fos.write(text.getBytes(charset));
+		} finally {
+			fos.close();
+		}
 	}
 
 	@Override
@@ -225,7 +229,7 @@ public class LocalHost extends Host {
 		return System.getProperty("user.name");
 	}
 	
-	public static class LocalExecHandle extends ExecHandle {
+	public class LocalExecHandle extends ExecHandle {
 		protected Process process;
 		protected OutputStream stdin;
 		protected InputStream stdout, stderr;
@@ -254,11 +258,13 @@ public class LocalHost extends Host {
 
 		boolean run = true;
 		@Override
-		public synchronized void close() {
+		public synchronized void close(boolean force) {
 			run = false;
 			
 			// may take multiple tries to make it exit (lots of processes, certain OSes, etc...)
 			for ( int tries = 0 ; tries < 10 ; tries++ ) {
+				// 
+				//
 				try {
 					process.exitValue();
 					break; 
@@ -325,23 +331,42 @@ public class LocalHost extends Host {
 							} // end try
 						} // end try
 						
+						
+						// NOTE: on Windows, if WER is not disabled(enabled by default), if a process crashes,
+						//       WER popup will appear and process will block until popup closed
+						//       -this can be detected by looking for `C:\Windows\SysWOW64\WerFault.exe -u -p <process id> -s 1032`
+						if (force && (tries > 1 && tries < 5)) {
+							// need to kill this process (execution timeout or other critical)
+							// but have failed at least once to kill it
+							//
+							// see if its exit/killing is blocked by werfault.exe
+							//
+							try {
+								String[] lines = exec("WMIC path win32_process get Processid,Commandline", Host.ONE_MINUTE).getLines();
+								String prev_line = "";
+								for ( String line : lines ) {
+									line = line.toLowerCase();
+									if (line.contains("werfault.exe") && line.contains("-p "+process_id)) {
+										// blocking werfault.exe (not actually the process parent, its a separate SVC)
+										int blocking_process_id = Integer.parseInt(prev_line.trim());
+										
+										// kill werfault.exe so we can try killing the target process again
+										winKillProcess("werfault.exe", blocking_process_id);
+									}
+									prev_line = line;
+								}
+							} catch ( Exception ex ) {
+								ex.printStackTrace();
+							}
+						}
+						//
+						
 						// second: make sure we found a process id (safety check: make sure its not our process id)
 						if (process_id != 0 && process_id!=self_process_id) {
 							// also, WinProcess#killRecursively only checks by process id (not image/program name)
 							// while that should be enough, experience on Windows has shown that it isn't and somehow gets PFTT killed eventually
 							//
-							// third:instead, run TASKKILL and provide it both the process id and image/program name
-							//
-							// image name: ex: `php.exe` 
-							// /F => forcefully terminate ('kill')
-							// /T => terminate all child processes (process is cmd.exe and PHP is a child)
-							//      process.destory might not do this, so thats why its CRITICAL that TASKKILL
-							//      be tried before process.destroy
-							try {
-								Runtime.getRuntime().exec("TASKKILL /FI \"IMAGENAME eq "+image_name+"\" /FI \"PID eq "+process_id+"\" /F /T");
-							} catch (Throwable t3) {
-								t3.printStackTrace();
-							}
+							winKillProcess(image_name, process_id);
 						}
 					} // end if
 					//
@@ -359,6 +384,21 @@ public class LocalHost extends Host {
 				} // end try
 			} // end for
 		} // end public void close
+		
+		protected void winKillProcess(String image_name, int process_id) {
+			// third:instead, run TASKKILL and provide it both the process id and image/program name
+			//
+			// image name: ex: `php.exe` 
+			// /F => forcefully terminate ('kill')
+			// /T => terminate all child processes (process is cmd.exe and PHP is a child)
+			//      process.destory might not do this, so thats why its CRITICAL that TASKKILL
+			//      be tried before process.destroy
+			try {
+				Runtime.getRuntime().exec("TASKKILL /FI \"IMAGENAME eq "+image_name+"\" /FI \"PID eq "+process_id+"\" /F /T");
+			} catch (Throwable t3) {
+				t3.printStackTrace();
+			}
+		}
 		
 		protected void run(Charset charset) throws IOException, InterruptedException {
 			output_sb = new StringBuilder(1024);
@@ -414,7 +454,7 @@ public class LocalHost extends Host {
 				return 0;
 			}
 		}
-	} // end public static class LocalExecHandle
+	} // end public class LocalExecHandle
 	
 	private static final Pattern PAT_QUOTE = Pattern.compile("\\\"");
 	public static String[] splitCmdString(String command) {
@@ -455,7 +495,7 @@ public class LocalHost extends Host {
 		return (String[])parts.toArray(new String[]{});
 	} // end public static String[] splitCmdString
 	
-	protected static LocalExecHandle exec_impl(String[] cmd_array, Map<String,String> env, String chdir, int timeout, byte[] stdin_data) throws IOException, InterruptedException {
+	protected LocalExecHandle exec_impl(String[] cmd_array, Map<String,String> env, String chdir, int timeout, byte[] stdin_data) throws IOException, InterruptedException {
 		ProcessBuilder builder = new ProcessBuilder(cmd_array);
 		if (env!=null)
 			builder.environment().putAll(env);
@@ -495,7 +535,7 @@ public class LocalHost extends Host {
 	    }
 	    
 	    return h;
-	} // end protected static LocalExecHandle exec_impl
+	} // end protected LocalExecHandle exec_impl
 		
 	protected static class ExitMonitorTask extends TimerTask {
 		protected final LocalExecHandle h;
@@ -506,7 +546,10 @@ public class LocalHost extends Host {
 		
 		@Override
 		public void run() {
-			h.close();
+			// go further trying to kill the process
+			//
+			// LocalHostExecHandle#close checks for WerFault.exe blocking on Windows
+			h.close(true);
 		}
 		
 	} // end protected static class ExitMonitorTask	
@@ -565,8 +608,11 @@ public class LocalHost extends Host {
 		return System.getProperty("os.name");
 	}
 
+	protected String addr;
 	@Override
 	public String getAddress() {
+		if (this.addr!=null)
+			return this.addr;
 		try {
 			Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
 			Enumeration<InetAddress> addrs;
@@ -583,7 +629,7 @@ public class LocalHost extends Host {
 						continue;
 					if (addr_str.split("\\.").length==4)
 						// IPv4 address
-						return addr_str;
+						return this.addr = addr_str;
 				}
 			}
 		} catch (SocketException ex) {

@@ -1,5 +1,7 @@
 package com.mostc.pftt.util
 
+import java.io.File;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -30,6 +32,25 @@ final class WindowsSnapshotDownloadUtil {
 	static final URL PHP_5_6_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-5.6/")
 	static final URL PHP_MASTER_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/master/")
 
+	static File snapshotURLtoLocalFile(Host host, URL url) {
+		String local_path = null;
+		if (url.getHost().equals("windows.php.net")) {
+			if (url.getPath().contains("release")||url.getPath().contains("qa")||url.getPath().contains("/snaps/php-5.3/")||url.getPath().contains("/snaps/php-5.4/")||url.getPath().contains("/snaps/php-5.5/")||url.getPath().contains("/snaps/master/")) {
+				local_path = Host.basename(url.getPath());
+			} else if (url.getPath().startsWith("/downloads/")) {
+				// some special build being shared on windows.php.net (probably unstable, expiremental, etc...)
+				local_path = url.getPath().replaceAll("/downloads/", "");
+				if (local_path.startsWith("/snaps/"))
+					local_path = local_path.replaceAll("/snaps/", "");
+			}
+		}
+		if (local_path==null) {
+			// fallback: store in directory named after URL: php-sdk/<url>/<build>
+			local_path = url.getHost()+"_"+url.getPath().replaceAll("/", "_");
+		}
+		return new File(host.getPhpSdkDir()+"/"+local_path);
+	}
+	
 	static URL getDownloadURL(EBuildBranch branch) {
 		switch(branch) {
 		case EBuildBranch.PHP_5_3:

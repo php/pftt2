@@ -1,5 +1,7 @@
 package com.mostc.pftt.scenario;
 
+import java.util.Map;
+
 import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.HttpVersion;
 import org.apache.http.params.HttpParams;
@@ -15,17 +17,21 @@ import org.apache.http.protocol.RequestTargetHost;
 import org.apache.http.protocol.RequestUserAgent;
 
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.model.phpt.EPhptSection;
 import com.mostc.pftt.model.phpt.ESAPIType;
 import com.mostc.pftt.model.phpt.PhpBuild;
+import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.model.phpt.PhptSourceTestPack;
 import com.mostc.pftt.model.phpt.PhptActiveTestPack;
+import com.mostc.pftt.model.sapi.SharedSAPIInstanceTestCaseGroupKey;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.model.sapi.WebServerInstance;
 import com.mostc.pftt.model.sapi.WebServerManager;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
 import com.mostc.pftt.runner.HttpTestCaseRunner;
 import com.mostc.pftt.runner.PhptTestPackRunner.PhptThread;
+import com.mostc.pftt.telemetry.ConsoleManager;
 import com.mostc.pftt.telemetry.PhptTelemetryWriter;
 
 /** scenarios for testing PHP while its running under a web server
@@ -63,9 +69,36 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 	}
 	
 	@Override
-	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey ini, PhptTestCase test_case, PhptTelemetryWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
-		return new HttpTestCaseRunner(params, httpproc, httpexecutor, smgr, (WebServerInstance)ini, thread, test_case, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
+	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		return smgr.setup(cm, host);
 	}
+	
+	@Override
+	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, PhptTelemetryWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+		return new HttpTestCaseRunner(params, httpproc, httpexecutor, smgr, (WebServerInstance) ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance(), thread, test_case, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
+	}
+	
+	public TestCaseGroupKey createTestGroupKey(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack active_test_pack, PhptTestCase test_case, TestCaseGroupKey group_key) throws Exception {
+		Map<String,String> env = null;
+		if (test_case.containsSection(EPhptSection.ENV)) {
+			env = AbstractPhptTestCaseRunner.generateENVForTestCase(cm, host, build, scenario_set, test_case);
+			
+			// for most test cases, env will be null|empty, so the TestCaseGroupKey will match (assuming PhpInis match)
+		}
+		
+		if (test_case.containsSection(EPhptSection.INI)) {
+			PhpIni ini = AbstractPhptTestCaseRunner.createIniForTest(cm, host, build, active_test_pack, scenario_set);
+			ini.replaceAll(test_case.getINI(active_test_pack, host));
+			
+			// note: don't bother comparing test case's INI with existing group_key's INI, PhptTestPackRunner
+			//       already does comparison of this new group_key and discards any duplicates
+			return new SharedSAPIInstanceTestCaseGroupKey(ini, env);
+		} else if (env==null && group_key!=null && group_key.getPhpIni().isDefault()) {
+			return group_key;
+		} else {
+			return new SharedSAPIInstanceTestCaseGroupKey(AbstractPhptTestCaseRunner.createIniForTest(cm, host, build, active_test_pack, scenario_set), env);
+		}
+	} // end public TestCaseGroupKey createTestGroupKey
 	
 	@Override
 	public void close() {

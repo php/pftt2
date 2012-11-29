@@ -204,7 +204,7 @@ public class PhptSourceTestPack extends SourceTestPack {
 		} else {
 			// installing from 1 remote host to a different remote host
 			LocalHost local_host = new LocalHost();
-			String local_dir = local_host.mktempname("PhptTestPack");
+			String local_dir = local_host.mktempname(getClass());
 			this.host.download(test_pack, local_dir);
 			host.upload(local_dir, test_pack_dir);
 			local_host.delete(local_dir);

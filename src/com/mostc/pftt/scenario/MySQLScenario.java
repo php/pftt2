@@ -1,5 +1,12 @@
 package com.mostc.pftt.scenario;
 
+import java.util.Map;
+
+import com.mostc.pftt.host.Host;
+import com.mostc.pftt.model.phpt.PhpBuild;
+import com.mostc.pftt.scenario.Scenario.EScenarioStartState;
+import com.mostc.pftt.telemetry.ConsoleManager;
+
 /** Sets up a MySQL database and tests the mysql, mysqli and pdo_mysql extensions against it. (NOT IMPLEMENTED)
  * 
  * @author Matt Ficken
@@ -34,6 +41,10 @@ public class MySQLScenario extends AbstractDatabaseScenario {
 			// TODO when to drop?
 			return;
 		// TODO mysql.exec("DROP DATABASE $db_name");
+	}
+	@Override
+	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		return EScenarioStartState.SKIP;
 	}
 	void start(Object host) {
 		// already started?
@@ -78,5 +89,15 @@ public class MySQLScenario extends AbstractDatabaseScenario {
 	@Override
 	public String getName() {
 		return "MySQL";
+	}
+	@Override
+	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+	@Override
+	public void getENV(Map<String, String> env) {
+		// TODO Auto-generated method stub
+		
 	}	
 } // end class MySQLScenario

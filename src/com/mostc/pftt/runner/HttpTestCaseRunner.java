@@ -66,19 +66,20 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	 * @throws Exception
 	 */
 	public static boolean willSkip(PhptTelemetryWriter twriter, Host host, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
-		if (AbstractPhptTestCaseRunner.willSkip(twriter, host, type, build, test_case))
+		if (AbstractPhptTestCaseRunner.willSkip(twriter, host, type, build, test_case)) {
 			return true;
-		
-		if (test_case.containsSection(EPhptSection.ENV))
-			// can't configure Environment Variables on a web server
-			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "ENV section not supported for testing against web servers", null, null, null, null, null, null, null, null, null, null));
-		else if (test_case.containsSection(EPhptSection.STDIN))
+		} else if (test_case.containsSection(EPhptSection.STDIN)) {
 			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "STDIN section not supported for testing against web servers", null, null, null, null, null, null, null, null, null, null));
-		else if (test_case.containsSection(EPhptSection.ARGS))
+			
+			return true;
+		} else if (test_case.containsSection(EPhptSection.ARGS)) {
 			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "ARGS section not supported for testing against web servers", null, null, null, null, null, null, null, null, null, null));
-		
-		return false;
-	}
+			
+			return true;
+		} else {
+			return false;
+		}
+	} // end public static boolean willSkip
 	
 	/** executes SKIPIF, TEST or CLEAN over http.
 	 * 
@@ -139,7 +140,7 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	
 	protected String do_http_execute(String path, EPhptSection section, boolean is_replacement) throws Exception {
 		{
-			WebServerInstance _web = smgr.getWebServerInstance(host, build, ini, active_test_pack.getDirectory(), web);
+			WebServerInstance _web = smgr.getWebServerInstance(twriter.getConsoleManager(), host, build, ini, env, active_test_pack.getDirectory(), web);
 			if (_web!=web) {
 				this.web = _web;
 				is_replacement = true;
@@ -273,7 +274,7 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 
 	@Override
 	protected String[] splitCmdString() {
-		return web.getCmdString();
+		return web.getCmdArray();
 	}
 
 } // end public class HttpTestCaseRunner

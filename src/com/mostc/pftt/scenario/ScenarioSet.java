@@ -6,6 +6,9 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Nullable;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
@@ -20,8 +23,8 @@ import com.mostc.pftt.telemetry.ConsoleManager;
  *                Windows(17)  Azure-Windows(3) Linux(5)+FreeBSD(1)  => 26
  * CLI            17           3                 6
  * Builtin-WWW    17           1 VM              6
- * IIS-Express    1            0                 0
- * IIS-Standard   1            1 WinCache or No  0
+ * IIS-Express-FastCGI    1            0                 0
+ * IIS-FastCGI   1            1 WinCache or No  0
  * mod_php        1            0                 6
  *                37           5                 18     => 60
  *
@@ -96,6 +99,45 @@ public class ScenarioSet extends ArrayList<Scenario> {
 	public int hashCode() {
 		ensureSorted();
 		return super.hashCode();
+	}
+	
+	/** returns any special ENV vars for this scenario or NULL if not are needed.
+	 * 
+	 * this is mainly used for PHPTs that need to receive database configuration
+	 * 
+	 * @see Scenario#hasENV - Scenario#getENV only called if Scenario#hasENV returns true
+	 * @return
+	 */
+	@Nullable
+	public Map<String, String> getENV() {
+		HashMap<String,String> env = null;
+		for ( Scenario scenario : this ) {
+			if (scenario.hasENV()) {
+				env = new HashMap<String,String>(5);
+				break;
+			}	
+		}
+		if (env==null)
+			return null;
+		for ( Scenario scenario : this )
+			scenario.getENV(env);
+		
+		return env;
+	}
+	
+	/** return FALSE if any Scenario in set is not implemented.
+	 * 
+	 * return TRUE if all Scenarios in set are implemented.
+	 * 
+	 * @see Scenario#isImplemented
+	 * @return
+	 */
+	public boolean isImplemented() {
+		for ( Scenario scenario : this ) {
+			if (!scenario.isImplemented())
+				return false;
+		}
+		return true;
 	}
 	
 	/** finds the SAPI Scenario in the ScenarioSet or returns the default SAPI scenario (CLI) in case the ScenarioSet doesn't specify one.
@@ -206,5 +248,28 @@ public class ScenarioSet extends ArrayList<Scenario> {
 	static {
 		scenario_sets = permuteScenarioSets(Arrays.asList(Scenario.getAllDefaultScenarios()));
 	}
+	
+	public static void ensureSetHasFileSystemAndSAPI(ScenarioSet scenario_set) {
+		boolean match = false;
+		for ( Scenario scenario : scenario_set ) {
+			if (scenario instanceof AbstractSAPIScenario) {
+				match = true;
+				break;
+			}
+		}
+		if (!match) {
+			scenario_set.add(Scenario.DEFAULT_SAPI_SCENARIO);
+		}
+		match = false;
+		for ( Scenario scenario : scenario_set ) {
+			if (scenario instanceof AbstractFileSystemScenario) {
+				match = true;
+				break;
+			}
+		}
+		if (!match) {
+			scenario_set.add(Scenario.DEFAULT_FILESYSTEM_SCENARIO);
+		}
+	} // end public static void ensureSetHasFileSystemAndSAPI
 	
 } // end public class ScenarioSet

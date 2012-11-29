@@ -2,6 +2,8 @@ package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.RemoteHost;
+import com.mostc.pftt.model.phpt.PhpBuild;
+import com.mostc.pftt.telemetry.ConsoleManager;
 
 /** Tests PHP with PHP build and test pack being stored remotely on a group of DFS-R SMB Shares. (NOT IMPLEMENTED)
  * 
@@ -30,7 +32,8 @@ public class SMBDFSRScenario extends AbstractSMBScenario {
 		return "SMB-DFSR";
 	}
 	
-	protected boolean prep(Host host) throws Exception {
+	@Override
+	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		StringBuilder ps_sb = new StringBuilder();
 		ps_sb.append("Import-Module ServerManager\n");
 		ps_sb.append("Add-WindowsFeature -name File-Services\n");
@@ -38,15 +41,25 @@ public class SMBDFSRScenario extends AbstractSMBScenario {
 		ps_sb.append("Add-WindowsFeature -name FS-DFS-Replication\n");
 		
 		String tmp_file = host.mktempname(getName(), "ps1");
-		host.saveTextFile(tmp_file, ps_sb.toString());
+		
+		try {
+			host.saveTextFile(tmp_file, ps_sb.toString());
+					
+			if (host.exec("Powershell -File "+tmp_file, Host.NO_TIMEOUT).isSuccess()) {
+				host.delete(tmp_file);
 				
-		if (host.exec("Powershell -File "+tmp_file, Host.NO_TIMEOUT).isSuccess()) {
-			host.delete(tmp_file);
-			
-			return true;
-		} else {
-			return false;
+				if (super.setup(cm, host, build, scenario_set)) {
+					cm.println(getName(), "DFSR setup successfully on "+unc_path+" "+smb_path);
+					
+					return true;
+				}
+			} else {
+				cm.println(getName(), "can't exec powershell script: "+tmp_file);
+			}
+		} catch ( Exception ex ) {
+			cm.printStackTrace(ex);
 		}
+		return false;
 	}
 	
 	@Override

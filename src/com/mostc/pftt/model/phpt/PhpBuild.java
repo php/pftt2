@@ -40,6 +40,10 @@ public class PhpBuild extends Build {
 	
 	@Override
 	public String toString() {
+		return getBuildPath();
+	}
+	
+	public String getBuildPath() {
 		return build_path;
 	}
 	
@@ -88,6 +92,14 @@ public class PhpBuild extends Build {
 		}
 	}
 	
+	public boolean isTS(Host host) {
+		return getBuildType(host) == EBuildType.TS;
+	}
+	
+	public boolean isNTS(Host host) {
+		return getBuildType(host) == EBuildType.NTS;
+	}
+	
 	/** returns the path to this build's php executable
 	 * 
 	 * @return
@@ -131,7 +143,7 @@ public class PhpBuild extends Build {
 		if (host.exists(path))
 			ini = new PhpIni(host.getContents(path), build_path);
 		else
-			ini = PhpIni.createDefaultIniCopy(host);
+			ini = PhpIni.createDefaultIniCopy(host, this);
 		
 		this.php_ini = new WeakReference<PhpIni>(ini);
 		return ini;
@@ -232,8 +244,8 @@ public class PhpBuild extends Build {
 		PhpIni ini = getDefaultPhpIni(host, type);
 		
 		// key by only extensions, so cache will be reused even if additional directives are added
-		// TODO if (ini!=null)
-			// TODO ini = ini.getExtensionsOnly();
+		if (ini!=null)
+			ini = ini.getExtensionsOnly();
 		
 		WeakHashMap<String,Boolean> map = ext_enable_map.get(ini);
 		if (map==null) {
@@ -309,39 +321,55 @@ public class PhpBuild extends Build {
 	/** executes/evaluates the given php code with this php build and returns the output result
 	 * 	
 	 * @param host
+	 * @param ini
 	 * @param code
 	 * @return
 	 * @throws Exception
 	 */
+	public PHPOutput eval(Host host, PhpIni ini, String code) throws Exception {
+		return eval(host, ini, code, true);
+	}
+	
 	public PHPOutput eval(Host host, String code) throws Exception {
-		return eval(host, code, true);
+		return eval(host, null, code);
 	}
 	
 	/** executes/evaluates the given php code with this php build and returns the output result
 	 * 
 	 * @param host
+	 * @param ini
 	 * @param code
 	 * @param auto_cleanup - default=true, deletes the temporary file before returning
 	 * @return
 	 * @throws Exception
 	 * @see PHPOutput#cleanup
 	 */
+	public PHPOutput eval(Host host, PhpIni ini, String code, boolean auto_cleanup) throws Exception {
+		return eval(host, ini, code, Host.NO_TIMEOUT, auto_cleanup);
+	}
+	
 	public PHPOutput eval(Host host, String code, boolean auto_cleanup) throws Exception {
-		return eval(host, code, Host.NO_TIMEOUT, auto_cleanup);
+		return eval(host, null, code, auto_cleanup);
 	}
 		
-	public PHPOutput eval(Host host, String code, int timeout_seconds, boolean auto_cleanup) throws Exception {
+	public PHPOutput eval(Host host, PhpIni ini, String code, int timeout_seconds, boolean auto_cleanup) throws Exception {
 		code = StringUtil.ensurePhpTags(code);
 				
 		String php_filename = host.mktempname("Build", ".php");
 		
 		host.saveTextFile(php_filename, code);
 		
-		PHPOutput output = new PHPOutput(php_filename, host.exec(php_exe+" "+php_filename, timeout_seconds, new HashMap<String,String>(), null, Host.dirname(php_filename)));
+		// -n => CRITICAL: causes php.exe to ignore any .ini file that comes with build
+		//    (so PFTT won't be affected and/or can override that .ini file)
+		PHPOutput output = new PHPOutput(php_filename, host.exec(php_exe+" -n "+(ini==null?"":ini.toCliArgString(host))+" "+php_filename, timeout_seconds, new HashMap<String,String>(), null, Host.dirname(php_filename)));
 		if (auto_cleanup && !output.hasFatalError())
 			// if fatal error, don't clean up so user can check it
 			output.cleanup(host);
 		return output;
+	}
+	
+	public PHPOutput eval(Host host, String code, int timeout_seconds, boolean auto_cleanup) throws Exception {
+		return eval(host, null, code, timeout_seconds, auto_cleanup);
 	}
 	
 	public static class PHPOutput extends ExecOutput {
@@ -391,7 +419,11 @@ public class PhpBuild extends Build {
 	}
 	
 	/** gets the static builtin extensions for this build build and the dynamic extensions the
-	 * PhpIni loads (minus any extensions that can't actually be loaded)
+	 * PhpIni loads (minus any extensions that can't actually be loaded).
+	 * 
+	 * on Windows, if a dynamic extension (.DLL) can't be loaded for some reason (binary compatibility,
+	 * missing file) a Popup dialog box will be shown which will block execution until OK is clicked. In that
+	 * case, this will kill PHP after 1 minute and fail to detect any extensions.
 	 * 
 	 * @param cm
 	 * @param host
@@ -409,7 +441,7 @@ public class PhpBuild extends Build {
 		
 		String ini_settings = ini==null?null:ini.toCliArgString(host);
 		
-		ExecOutput output = host.exec(php_exe+(ini_settings==null?"":" "+ini_settings)+" -m", Host.NO_TIMEOUT);
+		ExecOutput output = host.exec(php_exe+(ini_settings==null?"":" "+ini_settings)+" -m", Host.ONE_MINUTE);
 		output.printOutputIfCrash(cm);
 		
 		ArrayList<String> list = new ArrayList<String>();

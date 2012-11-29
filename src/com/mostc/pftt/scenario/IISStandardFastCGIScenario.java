@@ -10,7 +10,7 @@ public class IISStandardFastCGIScenario extends AbstractIISFastCGIScenario {
 
 	@Override
 	public String getName() {
-		return "IIS-Standard";
+		return "IIS-FastCGI";
 	}
 	
 	@Override

@@ -24,6 +24,7 @@ import com.mostc.pftt.util.ErrorUtil;
  *
  */
 
+// TODO store systeminfo and phpinfo 
 public class PhptTelemetryWriter extends PhptTelemetry {
 	private File telem_dir;
 	protected HashMap<EPhptTestStatus,PrintWriter> status_list_map;
