@@ -3,14 +3,15 @@ package com.mostc.pftt.scenario;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.ESAPIType;
 import com.mostc.pftt.model.phpt.PhpBuild;
+import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.model.phpt.PhptSourceTestPack;
 import com.mostc.pftt.model.phpt.PhptActiveTestPack;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
+import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.PhptResultPackWriter;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
 import com.mostc.pftt.runner.PhptTestPackRunner.PhptThread;
-import com.mostc.pftt.telemetry.ConsoleManager;
-import com.mostc.pftt.telemetry.PhptTelemetryWriter;
 
 /** Different scenarios for how PHP can be run
  * 
@@ -44,13 +45,17 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 	 * @param active_test_pack
 	 * @return
 	 */
-	public abstract AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, PhptTelemetryWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack);
+	public abstract AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack);
 
-	public boolean willSkip(PhptTelemetryWriter twriter, Host host, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+	public boolean willSkip(PhptResultPackWriter twriter, Host host, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
 		return AbstractPhptTestCaseRunner.willSkip(twriter, host, type, build, test_case);
 	}
 	
-	public void close() {
+	public boolean willSkip(PhptResultPackWriter twriter, Host host, ESAPIType type, PhpIni ini, PhpBuild build, PhptTestCase test_case) throws Exception {
+		return AbstractPhptTestCaseRunner.willSkip(twriter, host, type, ini, build, test_case);
+	}
+	
+	public void close(boolean debug) {
 		
 	}
 

@@ -65,8 +65,24 @@ public abstract class Host {
 	 * @return
 	 */
 	public static String dirname(String path) {
-		String p = new File(path).getParent();
-		return p == null ? "" : p;
+		int i = path.lastIndexOf('/');
+		int j = path.lastIndexOf('\\');
+		if (i==-1) {
+			if (j==-1)
+				return path;
+			else
+				return path.substring(0, j);
+		} else if (j==-1) {
+			if (i==-1)
+				return path;
+			else
+				return path.substring(0, i);
+		} else if (i>j) {
+			return path.substring(j, i);
+		} else {
+			// j>i
+			return path.substring(i, j);
+		}		
 	}
 	
 	/** returns the filename from a directory path
@@ -535,11 +551,11 @@ public abstract class Host {
 	 * @return
 	 */
 	public String mktempname(String ctx_str, String suffix) {
-		StringBuilder sb = new StringBuilder(30);
+		StringBuilder sb = new StringBuilder(50);
 		String str;
 		
 		// generate random filename until one found that isn't in use
-		do {
+		while(true) {
 			sb.append(getTempDir());
 			//sb.append(dirSeparator()); // getTempDir() returns path ending with / or \
 			sb.append("PFTT-");
@@ -547,12 +563,20 @@ public abstract class Host {
 				sb.append(ctx_str);
 				sb.append('-');
 			}
-			for (int i=0 ; i < 5 ; i++ )
+			for (int i=0 ; i < 10 ; i++ )
 				sb.append((char)( rand.nextInt(26) + 65 ));
 			if (StringUtil.isNotEmpty(suffix))
 				sb.append(suffix);
 			str = sb.toString();
-		} while (exists(str));
+			
+			//
+			if (exists(str)) {
+				sb.setLength(0); // important
+				continue;
+			} else {
+				break;
+			}
+		}
 		
 		return str;
 	}
@@ -797,15 +821,42 @@ public abstract class Host {
 	public abstract boolean dirContainsFragment(String path, String name_fragment);
 	public abstract String[] list(String path);
 
-	public String join(String ...parts) {
+	public String joinIntoOnePath(String ...parts) {
 		if (parts==null||parts.length==0)
 			return StringUtil.EMPTY;
 		
 		StringBuilder sb = new StringBuilder(Math.max(1024, parts[0].length()*2));
 		sb.append(parts[0]);
 		for ( int i=1 ; i < parts.length ; i++ ) {
+			if (parts[i]==null)
+				continue;
 			sb.append(dirSeparator());
 			sb.append(parts[i]);
+		}
+		return sb.toString();
+	}
+	
+	public String anyExist(String...files) {
+		for (String file:files) {
+			if (exists(file))
+				return file;
+		}
+		return null;
+	}
+
+	public abstract long getSize(String file);
+
+	public String joinMultiplePaths(String ...paths) {
+		if (paths==null||paths.length==0)
+			return StringUtil.EMPTY;
+		
+		StringBuilder sb = new StringBuilder(Math.max(1024, paths[0].length()*2));
+		sb.append(paths[0]);
+		for ( int i=1 ; i < paths.length ; i++ ) {
+			if (paths[i]==null)
+				continue;
+			sb.append(pathsSeparator());
+			sb.append(paths[i]);
 		}
 		return sb.toString();
 	}

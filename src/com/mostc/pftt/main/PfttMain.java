@@ -35,16 +35,17 @@ import com.mostc.pftt.model.smoke.RequiredFeaturesSmokeTest;
 import com.mostc.pftt.report.AUTReportGen;
 import com.mostc.pftt.report.AbstractReportGen;
 import com.mostc.pftt.report.FBCReportGen;
+import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.PhptResultPackReader;
+import com.mostc.pftt.results.PhptResultPackWriter;
 import com.mostc.pftt.runner.PhpUnitTestPackRunner;
 import com.mostc.pftt.runner.PhptTestPackRunner;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
-import com.mostc.pftt.telemetry.ConsoleManager;
-import com.mostc.pftt.telemetry.PhptTelemetryReader;
-import com.mostc.pftt.telemetry.PhptTelemetryWriter;
 import com.mostc.pftt.util.DownloadUtil;
 import com.mostc.pftt.util.HostEnvUtil;
 import com.mostc.pftt.util.StringUtil;
+import com.mostc.pftt.util.WinDebugManager;
 import com.mostc.pftt.util.WindowsSnapshotDownloadUtil;
 import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 
@@ -75,11 +76,11 @@ public class PfttMain {
 		return file;
 	}
 	
-	protected PhptTelemetryReader last_telem(PhptTelemetryWriter not) throws FileNotFoundException {
+	protected PhptResultPackReader last_telem(PhptResultPackWriter not) throws FileNotFoundException {
 		File[] files = telem_dir().listFiles();
 		File last_file = null;
 		for (File file : files) {
-			if (PhptTelemetryReader.isTelemDir(file)) {
+			if (PhptResultPackReader.isTelemDir(file)) {
 				if (not!=null && file.equals(not.getTelemetryDir()))
 					// be sure to not find the telemetry that is being written presently
 					continue;
@@ -87,7 +88,7 @@ public class PfttMain {
 					last_file = file;
 			}
 		}
-		return last_file == null ? null : PhptTelemetryReader.open(host, last_file);
+		return last_file == null ? null : PhptResultPackReader.open(host, last_file);
 	}
 
 	public void run_all(ConsoleManager cm, PhpBuild build, PhptSourceTestPack test_pack, List<ScenarioSet> scenario_sets) throws Exception {
@@ -121,7 +122,7 @@ public class PfttMain {
 			}
 			//
 			
-			PhptTelemetryWriter tmgr = new PhptTelemetryWriter(host, cm, telem_dir(), build, test_pack, scenario_set);
+			PhptResultPackWriter tmgr = new PhptResultPackWriter(host, cm, telem_dir(), build, test_pack, scenario_set);
 			if (test_cases==null) {
 				test_cases = new ArrayList<PhptTestCase>(12600);
 				
@@ -149,25 +150,26 @@ public class PfttMain {
 			//
 			
 			// TODO email report (if in config file)
-			phpt_report(tmgr);
+			phpt_report(cm, tmgr);
 		}
 	} // end public void run_all
 	
-	protected void phpt_report(PhptTelemetryWriter test_telem) throws FileNotFoundException {	
-		PhptTelemetryReader base_telem = last_telem(test_telem);
+	protected void phpt_report(ConsoleManager cm, PhptResultPackWriter test_telem) throws FileNotFoundException {	
+		PhptResultPackWriter base_telem = test_telem; // TODO temp last_telem(test_telem);
 		if (base_telem==null) {
 			// this isn't an error, so don't interrupt the test run or anything
 			System.err.println("User Info: run again (with different build and/or different test-pack) and PFTT");
 			System.err.println("                  will generate an FBC report comparing the builds");
 			System.err.println();
 		} else {
-			// TODO temp show_report(new FBCReportGen(base_telem, test_telem));
+			// TODO temp 
+			//show_report(cm, new FBCReportGen(base_telem, test_telem));
 		}
 	}
 	
 	protected void show_report(ConsoleManager cm, AbstractReportGen report) {
 		String html_file = report.createHTMLTempFile(host);
-		
+		System.out.println(html_file);
 		try {
 			Desktop.getDesktop().browse(new File(html_file).toURI());
 		} catch ( Exception ex ) {
@@ -197,7 +199,7 @@ public class PfttMain {
 			
 			LinkedList<PhptTestCase> test_cases = new LinkedList<PhptTestCase>();
 			
-			PhptTelemetryWriter tmgr = new PhptTelemetryWriter(host, cm, telem_dir(), build, test_pack, scenario_set);
+			PhptResultPackWriter tmgr = new PhptResultPackWriter(host, cm, telem_dir(), build, test_pack, scenario_set);
 			test_pack.cleanup();
 			cm.println("PhptSourceTestPack", "enumerating test cases from test-pack...");
 			test_pack.read(test_cases, names, tmgr, build);
@@ -219,7 +221,7 @@ public class PfttMain {
 			}
 			//
 			
-			phpt_report(tmgr);
+			phpt_report(cm, tmgr);
 		} // end for
 	}
 	
@@ -253,17 +255,20 @@ public class PfttMain {
 		System.out.println("-gui - show gui for certain commands");
 		System.out.println("-config <file1,file2> - load 1+ configuration file(s)");
 		System.out.println("-force - disables confirmation dialogs and forces proceeding anyway");
+		System.out.println("-src_pack <path> - folder with the source code");
+		System.out.println("-debug_pack <path> - folder with debugger symbols (usually folder with .pdb files)");
 		System.out.println("-stress_each <0+> - runs each test-case N times consecutively");
 		System.out.println("-stress_all <0+> - runs all tests N times in loop");
 		System.out.println("-results_only - displays only test results and no other information (for automation).");
 		System.out.println("-disable_debug_prompt - disables asking you if you want to debug PHP crashes (for automation. default=enabled)");
 		System.out.println("-phpt-not-in-place - copies PHPTs to a temporary dir and runs PHPTs from there (default=disabled, test in-place)");
 		System.out.println("-dont-cleanup-test-pack - doesn't delete temp dir created by -phpt-not-in-place or SMB scenario (default=delete)");
-		if (LocalHost.isLocalhostWindows()) {
-			// NOTE: -uac and UAC part of -auto are implemented entirely in bin\pftt.cmd (batch script)
-			System.out.println("-uac - runs PFTT in Elevated Privileges so you only get 1 UAC popup dialog (when PFTT is started)");
-		}
 		System.out.println("-auto - changes default options for automated testing (-uac -disable_debug_prompt -phpt-not-in-place)");
+		if (LocalHost.isLocalhostWindows()) {
+			// NOTE: -uac and UAC part of -auto and -windebug are implemented entirely in bin\pftt.cmd (batch script)
+			System.out.println("-uac - runs PFTT in Elevated Privileges so you only get 1 UAC popup dialog (when PFTT is started)");
+			System.out.println("-windebug - runs PHPT tests under WinDebug to debug any PHP crashes");
+		}
 		System.out.println("(note: stress options not useful against CLI without code caching)");
 		System.out.println();
 	} // end protected static void cmd_help
@@ -281,7 +286,7 @@ public class PfttMain {
 		host.upload7ZipAndDecompress(host.getPfttDir()+"/cache/joomla-platform.7z", "");
 		String tmp_file = host.mktempname("Main", ".xml");
 		ExecOutput eo = host.exec("phpunit --log-junit "+tmp_file, Host.ONE_HOUR * 4);
-		eo.printOutputIfCrash(cm);
+		eo.printOutputIfCrash(PfttMain.class.getSimpleName(), cm);
 		host.getContents(tmp_file);
 		// for now, don't delete tmp_file
 				
@@ -507,7 +512,7 @@ public class PfttMain {
 		
 		// execute 'git pull' in c:\php-sdk\PFTT\current
 		try {
-			host.execElevated("git pull", Host.NO_TIMEOUT, host.getPfttDir()).printOutputIfCrash(cm);
+			host.execElevated("git pull", Host.NO_TIMEOUT, host.getPfttDir()).printOutputIfCrash(PfttMain.class.getSimpleName(), cm);
 		} catch ( Exception ex ) {
 			cm.printStackTrace(ex);
 			cm.println("upgrade", "error upgrading PFTT");
@@ -543,6 +548,23 @@ public class PfttMain {
 			System.out.println("PFTT: Note: -gui not supported for "+command+" (ignored)");
 		}
 	}
+	
+	protected static void checkUAC(boolean is_uac, boolean is_setup, Config config, ConsoleManager cm) {
+		if (!LocalHost.isLocalhostWindows())
+			return;
+		
+		boolean req_uac = false;
+		for ( ScenarioSet set : getScenarioSets(config) ) {
+			if (is_setup?set.isUACRequiredForSetup():set.isUACRequiredForStart()) {
+				req_uac = true;
+				break;
+			}
+		}
+		if (is_uac||!req_uac)
+			return;
+		
+		cm.println("Note", "run pftt with -uac to avoid getting lots of UAC Dialog boxes (see -help)");
+	}
 
 	public static void main(String[] args) throws Throwable {
 		PfttMain rt = new PfttMain();
@@ -551,7 +573,8 @@ public class PfttMain {
 		int args_i = 0;
 		
 		Config config = null;
-		boolean show_gui = false, force = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false;
+		boolean is_uac = false, windebug = false, show_gui = false, force = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false;
+		String source_pack = null, debug_pack = null;
 		LinkedList<File> config_files = new LinkedList<File>();
 		int stress_all = 0, stress_each = 0;
 		
@@ -647,6 +670,7 @@ public class PfttMain {
 				results_only = false;
 				dont_cleanup_test_pack = false;
 				phpt_not_in_place = true;
+				is_uac = true;
 			} else if (args[args_i].equals("-stress_each")) {
 				stress_each = Integer.parseInt(args[args_i++]);
 			} else if (args[args_i].equals("-stress_all")) {
@@ -657,10 +681,19 @@ public class PfttMain {
 				results_only = true;
 			} else if (args[args_i].startsWith("-uac")) {
 				// ignore: intercepted and handled by bin/pftt.cmd batch script
+				is_uac = true;
+			} else if (args[args_i].startsWith("-windebug")) {
+				// also intercepted and handled by bin/pftt.cmd batch script
+				windebug = true;
+			} else if (args[args_i].equals("-src_pack")) {
+				source_pack = args[args_i++];
+			} else if (args[args_i].equals("-debug_pack")) {
+				debug_pack = args[args_i++];
 			} else if (args[args_i].startsWith("-")) {
 				System.err.println("User Error: unknown option "+args[args_i]);
 				System.exit(-255);
 				return;
+				
 			} else {
 				// not option
 				break;
@@ -680,11 +713,27 @@ public class PfttMain {
 			System.err.println("PFTT: not implemented: stress_each="+stress_each+" stress_all="+stress_all+" ignored");
 		}
 		
-		ConsoleManager cm = new ConsoleManager(results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place);
+		ConsoleManager cm = new ConsoleManager(source_pack, debug_pack, force, windebug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place);
 		
 		if (config_files.size()>0) {
 			config = Config.loadConfigFromFiles(cm, (File[])config_files.toArray(new File[config_files.size()]));
+			System.out.println("PFTT: Config: loaded "+config_files);
+		} else {
+			System.out.println("PFTT: Config: no config files loaded... using defaults only");
 		}
+
+		//
+		if (cm.isWinDebug() && rt.host.isWindows()) {
+			String win_dbg_exe = WinDebugManager.findWinDebugExe(rt.host);
+			
+			if (StringUtil.isEmpty(win_dbg_exe)) {
+				System.err.println("PFTT: -windebug console option given but WinDebug is not installed");
+				System.err.println("PFTT: searched for WinDebug at these locations: "+StringUtil.toString(WinDebugManager.getWinDebugPaths(rt.host)));
+				System.err.println("PFTT: install WinDebug or remove -windebug console option");
+				System.exit(-245);
+			}
+		}
+		//
 		
 		if (command!=null) {
 			if (command.equals("phpt_named")||command.equals("phptnamed")||command.equals("phptn")||command.equals("pn")) {
@@ -709,6 +758,8 @@ public class PfttMain {
 					return;
 				}				
 				args_i += 2; // skip over build and test_pack
+				
+				checkUAC(is_uac, false, config, cm);
 				
 				// read name fragments from CLI arguments
 				ArrayList<String> names = new ArrayList<String>(args.length-args_i);
@@ -752,6 +803,8 @@ public class PfttMain {
 					return;
 				}
 				
+				checkUAC(is_uac, false, config, cm);
+				
 				cm.println("Build", build.toString());
 				cm.println("Test-Pack", test_pack.toString());
 				
@@ -785,6 +838,8 @@ public class PfttMain {
 				cm.println("Build", build.toString());
 				cm.println("Test-Pack", test_pack.toString());
 				
+				checkUAC(is_uac, false, config, cm);
+				
 				// run all tests
 				HostEnvUtil.prepareHostEnv(rt.host, cm, !disable_debug_prompt);
 				cmd_phpt_all(rt, cm, config, build, test_pack);
@@ -804,6 +859,8 @@ public class PfttMain {
 					System.exit(-255);
 					return;
 				}
+				
+				checkUAC(is_uac, true, config, cm);
 				
 				// setup all scenarios
 				for ( ScenarioSet set : getScenarioSets(config) ) {
@@ -832,6 +889,7 @@ public class PfttMain {
 					} // end for
 				}
 			} else if (command.equals("list")||command.equals("ls")) {
+				checkUAC(is_uac, false, config, cm);
 				for ( ScenarioSet set : getScenarioSets(config) ) {
 					cm.println("List", set.toString());
 				}
@@ -844,6 +902,7 @@ public class PfttMain {
 					return;
 				}
 				
+				checkUAC(is_uac, false, config, cm);
 				no_show_gui(show_gui, command);
 				cmd_aut(cm, rt, rt.host, build, getScenarioSets(config));
 			} else if (command.equals("shell_ui")||(show_gui && command.equals("shell"))) {
@@ -852,12 +911,14 @@ public class PfttMain {
 				no_show_gui(show_gui, command);
 				cmd_shell();				
 			} else if (command.equals("exec")) {
+				checkUAC(is_uac, false, config, cm);
 				no_show_gui(show_gui, command);
 				cmd_exec();
 			} else if (command.equals("ui")) {
 				no_show_gui(show_gui, command);
 				cmd_ui();
 			} else if (command.equals("perf")) {
+				checkUAC(is_uac, false, config, cm);
 				cmd_perf();
 			} else if (command.equals("release_get")||command.equals("rgn")||command.equals("rgnew")||command.equals("rgnewest")||command.equals("rgp")||command.equals("rgprev")||command.equals("rgprevious")||command.equals("rg")||command.equals("rget")) {
 				EBuildBranch branch = null;

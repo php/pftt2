@@ -1,4 +1,4 @@
-package com.mostc.pftt.telemetry;
+package com.mostc.pftt.results;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -12,29 +12,29 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.EBuildBranch;
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
 
-/** Reads telemetry from a test run completed in the past.
+/** Reads result-pack of a test run completed in the past.
  * 
  * @author Matt Ficken
  *
  */
 
-public class PhptTelemetryReader extends PhptTelemetry {
+public class PhptResultPackReader extends PhptResultPack {
 	
-	/** opens telemetry from completed test run for reading
+	/** opens result-pack from completed test run for reading
 	 * 
 	 * @param host
 	 * @param last_file
 	 * @return
 	 * @throws FileNotFoundException 
 	 */
-	public static PhptTelemetryReader open(Host host, File last_file) throws FileNotFoundException {
-		return new PhptTelemetryReader(host, last_file, PhptTallyFile.open(new File(last_file, "tally.xml")));
+	public static PhptResultPackReader open(Host host, File last_file) throws FileNotFoundException {
+		return new PhptResultPackReader(host, last_file, PhptTallyFile.open(new File(last_file, "tally.xml")));
 	}
 	//
 	protected PhptTallyFile tally;
 	protected HashMap<EPhptTestStatus,BufferedReader> readers;
 
-	protected PhptTelemetryReader(Host host, File telem_dir, PhptTallyFile tally) throws FileNotFoundException {
+	protected PhptResultPackReader(Host host, File telem_dir, PhptTallyFile tally) throws FileNotFoundException {
 		super(host);
 		this.tally = tally;
 		readers = new HashMap<EPhptTestStatus,BufferedReader>();
@@ -98,7 +98,7 @@ public class PhptTelemetryReader extends PhptTelemetry {
 			return tally.unsupported;
 		case BORK:
 			return tally.bork;
-		case EXCEPTION:
+		case TEST_EXCEPTION:
 			return tally.exception;
 		}
 		return 0;

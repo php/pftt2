@@ -28,11 +28,10 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.results.PhptResultPack;
+import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.PhptTestPackRunner;
 import com.mostc.pftt.runner.AbstractTestPackRunner.ETestPackRunnerState;
-import com.mostc.pftt.telemetry.PhptTelemetry;
-import com.mostc.pftt.telemetry.PhptTestResult;
-import com.mostc.pftt.util.StringUtil;
 
 import se.datadosen.component.RiverLayout;
 
@@ -44,16 +43,15 @@ public class PhptHostTab extends JSplitPane {
 	protected JLabel pass_label, total_label, fail_label, crash_label, xfail_label, xfail_works_label, skip_label, xskip_label, bork_label, unsupported_label, exceptions_label;
 	protected JMenuBar jmb;
 	protected JMenu options_menu, status_list_menu;
-	protected JRadioButtonMenuItem list_fail_rb;
 	protected ExpectedActualDiffPHPTDisplay eat_display;
 	protected JCheckBoxMenuItem host_console_cb;
 	protected JSplitPane jsp;
-	protected DefaultListModel fail_list_model, crash_list_model, xfail_list_model, xfail_works_list_model, xskip_list_model, skip_list_model, pass_list_model, bork_list_model, unsupported_list_model, exceptions_list_model;
+	protected final DefaultListModel fail_list_model, crash_list_model, xfail_list_model, xfail_works_list_model, xskip_list_model, skip_list_model, pass_list_model, bork_list_model, unsupported_list_model, exceptions_list_model;
 	protected JList test_list;
 	protected JScrollPane test_list_jsp;
 	protected ConsoleTextEditor host_console;
 	protected Host host;
-	protected JRadioButtonMenuItem list_xfail_rb, list_crash_rb, list_xfail_works_rb, list_skip_rb, list_xskip_rb, list_pass_rb, list_bork_rb, list_unsupported_rb, list_exceptions_rb;
+	protected final JRadioButtonMenuItem list_fail_rb, list_xfail_rb, list_crash_rb, list_xfail_works_rb, list_skip_rb, list_xskip_rb, list_pass_rb, list_bork_rb, list_unsupported_rb, list_exceptions_rb;
 	
 	public PhptHostTab(Host host, final PhptTestPackRunner phpt_test_pack_runner) {
 		super(JSplitPane.VERTICAL_SPLIT);
@@ -66,7 +64,7 @@ public class PhptHostTab extends JSplitPane {
 		
 		fail_list_model = new DefaultListModel();
 		crash_list_model = new DefaultListModel();
-		xfail_list_model  = new DefaultListModel();
+		xfail_list_model = new DefaultListModel();
 		xfail_works_list_model = new DefaultListModel();
 		xskip_list_model = new DefaultListModel();
 		skip_list_model = new DefaultListModel();
@@ -97,6 +95,8 @@ public class PhptHostTab extends JSplitPane {
 		panel.add("left", total_label = new JLabel("0"));
 		panel.add("left", new JLabel("Fail"));
 		panel.add("left", fail_label = new JLabel("0"));
+		panel.add(new JLabel("CRASH"));
+		panel.add(crash_label = new JLabel("0"));
 		panel.add("left", new JLabel("XFail"));
 		panel.add("left", xfail_label = new JLabel("0"));
 		panel.add("left", new JLabel("XSkip"));
@@ -109,11 +109,9 @@ public class PhptHostTab extends JSplitPane {
 		panel.add("left", xfail_works_label = new JLabel("0"));
 		panel.add(new JLabel("Unsupported"));
 		panel.add(unsupported_label = new JLabel("0"));
-		panel.add(new JLabel("Exceptions:"));
+		panel.add(new JLabel("Exceptions"));
 		panel.add(exceptions_label = new JLabel("0"));
-		panel.add(new JLabel("Failed Retries:"));
-		panel.add(crash_label = new JLabel("0"));
-  
+		
 		///////////////
 		
 		panel.add("p left hfill", button_panel = new JPanel(new GridLayout(1, 5, 10, 10)));
@@ -166,6 +164,12 @@ public class PhptHostTab extends JSplitPane {
 					showList(fail_list_model); 
 			} });
 		list_button_group.add(list_fail_rb);
+		status_list_menu.add(list_crash_rb = new JRadioButtonMenuItem("CRASH"));
+		list_crash_rb.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent e) { 
+				if (list_crash_rb.isSelected())
+					showList(crash_list_model); 
+			} });
+		list_button_group.add(list_crash_rb);
 		status_list_menu.add(list_xfail_rb = new JRadioButtonMenuItem("XFail"));
 		list_xfail_rb.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent e) { 
 				if (list_xfail_rb.isSelected())
@@ -214,12 +218,6 @@ public class PhptHostTab extends JSplitPane {
 					showList(exceptions_list_model); 
 			} });
 		list_button_group.add(list_exceptions_rb);
-		status_list_menu.add(list_crash_rb = new JRadioButtonMenuItem("Failed Retries"));
-		list_crash_rb.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent e) { 
-				if (list_crash_rb.isSelected())
-					showList(crash_list_model); 
-			} });
-		list_button_group.add(list_crash_rb);
 		
 		options_menu.add(host_console_cb = new JCheckBoxMenuItem("Host Console"));
 		host_console_cb.addActionListener(new ActionListener() {
@@ -297,21 +295,18 @@ public class PhptHostTab extends JSplitPane {
 				public void run() {
 					progress_bar.setMaximum(total);
 					
-					//
-					// count crashes - crash != test status though (crashed test will be counted as fail, pass, xfail, etc...)
-					if (StringUtil.isNotEmpty(result.getSAPIOutput())) {
+					switch(result.status) {
+					case CRASH:
 						crash++;
 						crash_label.setText(Integer.toString(crash));
 						crash_list_model.addElement(result);
-					}
-					//
-					
-					switch(result.status) {
+						
+						break;
 					case FAIL:
 						fail++;
 						fail_label.setText(Integer.toString(fail));
 						
-						pass_bar.setString(Float.toString(PhptTelemetry.round1( (float)( (double)pass / ((double)( pass + fail )) )))+"%"); // 1 decimal places nn.y
+						pass_bar.setString(Float.toString(PhptResultPack.round1( (float)( (double)pass / ((double)( pass + fail )) )))+"%"); // 1 decimal places nn.y
 						pass_bar.setMaximum(fail+pass);
 						total_label.setText(""+(fail+pass));
 						
@@ -348,7 +343,7 @@ public class PhptHostTab extends JSplitPane {
 						
 						bork_list_model.addElement(result);
 						break;
-					case EXCEPTION:
+					case TEST_EXCEPTION:
 						exceptions++;
 						exceptions_label.setText(Integer.toString(exceptions));
 						
@@ -356,7 +351,7 @@ public class PhptHostTab extends JSplitPane {
 						break;
 					case PASS:
 						pass++;
-						pass_bar.setString(Float.toString(PhptTelemetry.round1( (float)( (double)pass / ((double)( pass + fail )) )))+"%"); // 1 decimal places nn.y
+						pass_bar.setString(Float.toString(PhptResultPack.round1( (float)( (double)pass / ((double)( pass + fail )) )))+"%"); // 1 decimal places nn.y
 						
 						
 						pass_bar.setValue(pass);

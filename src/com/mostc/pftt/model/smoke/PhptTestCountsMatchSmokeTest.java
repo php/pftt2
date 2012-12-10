@@ -1,7 +1,7 @@
 package com.mostc.pftt.model.smoke;
 
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
-import com.mostc.pftt.telemetry.PhptTelemetry;
+import com.mostc.pftt.results.PhptResultPackWriter;
 
 /** compares the count of tests completed to the total of each test status and the total number of
  * tests loaded from the test pack.
@@ -14,19 +14,45 @@ import com.mostc.pftt.telemetry.PhptTelemetry;
 
 public class PhptTestCountsMatchSmokeTest extends SmokeTest {
 
-	public ESmokeTestStatus test(PhptTelemetry tmgr) {
+	public ESmokeTestStatus test(PhptResultPackWriter tmgr) {
 		int completion = 0;
 		for ( EPhptTestStatus status : EPhptTestStatus.values() ) {
-			if (status==EPhptTestStatus.EXCEPTION)
+			switch(status) {
+			case TEST_EXCEPTION:
 				continue;
+			default:
+				break;
+			}
 			
 			completion += tmgr.count(status);
 		}
-		if (completion == tmgr.getTotalCount())
+		if (completion == tmgr.getTotalCount()) {
 			return ESmokeTestStatus.PASS;
-		else
+		} else {
+			StringBuilder sb = new StringBuilder(100);
+			sb.append("complete=");
+			sb.append(completion);
+			sb.append(" recorded_complete=");
+			sb.append(tmgr.getTotalCount());
+			for ( EPhptTestStatus status : EPhptTestStatus.values() ) {
+				switch(status) {
+				case TEST_EXCEPTION:
+					continue;
+				default:
+					break;
+				}
+				
+				sb.append(' ');
+				sb.append(status);
+				sb.append('=');
+				sb.append(tmgr.count(status));
+			}
+			
+			tmgr.getConsoleManager().println(getName(), sb.toString());
+			
 			return ESmokeTestStatus.FAIL;
-	}
+		}
+	} // end public ESmokeTestStatus test
 
 	@Override
 	public String getName() {

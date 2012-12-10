@@ -125,7 +125,7 @@ public class PhpIni {
 		ini.putMulti(UNICODE_SCRIPT_ENCODING, UTF_8);
 		ini.putMulti(UNICODE_OUTPUT_ENCODING, UTF_8);
 		ini.putMulti(UNICODE_FROM_ERROR_MODE, U_INVALID_SUBSTITUTE);
-		ini.putMulti(SESSION_AUTO_START, 1);
+		ini.putMulti(SESSION_AUTO_START, 0);
 		
 		// default php.ini has these extensions on Windows
 		// NOTE: this is validated by RequiredExtensionsSmokeTest. similar/same info is both there and here
@@ -204,7 +204,7 @@ public class PhpIni {
 	public PhpIni(String ini_str, String pwd) {
 		this();
 		if (pwd!=null&&ini_str.contains("{PWD}")) {
-			ini_str = StringUtil.replaceAll(PAT_PWD, StringUtil.replaceAll(PAT_BS, "\\\\", pwd), ini_str);
+			ini_str = StringUtil.replaceAll(PAT_PWD, pwd, ini_str);
 			
 			// BN: ensure that correct \\s are used for paths on Windows
 			ini_str = StringUtil.replaceAll(PAT_FS, "\\\\", ini_str);
@@ -525,6 +525,8 @@ public class PhpIni {
 			for ( String value : ini_map.get(directive) ) {
 				sb.append(directive);
 				sb.append('=');
+				if (value.contains("=")||value.contains("&")||value.contains("~")||value.contains("|")||value.contains("!"))
+					value = StringUtil.ensureQuoted(value);
 				sb.append(value);
 				sb.append('\n');
 			}

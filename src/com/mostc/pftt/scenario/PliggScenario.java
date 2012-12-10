@@ -2,7 +2,7 @@ package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.telemetry.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager;
 
 /** Pligg is an open source CMS (Content Management System) that you can download and use for free. 
  * Pligg CMS provides social publishing software that encourages visitors to register on your website

@@ -14,6 +14,11 @@ public abstract class AbstractIISScenario extends AbstractProductionWebServerSce
 		super(new IISManager());
 	}
 
+	@Override
+	public boolean isUACRequiredForStart() {
+		return true;
+	}
+	
 	public abstract boolean isExpress();
 	
 	public boolean isStandard() {

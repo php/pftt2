@@ -5,7 +5,7 @@ import com.mostc.pftt.model.phpt.EBuildBranch;
 import com.mostc.pftt.model.phpt.ESAPIType;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.sapi.BuiltinWebServerManager;
-import com.mostc.pftt.telemetry.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager;
 
 /** Tests PHP using PHP's builtin web server.
  * 

@@ -4,7 +4,7 @@ import java.util.Map;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.telemetry.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager;
 
 /** Scenario to test PHP under.
  * 
@@ -54,6 +54,20 @@ public abstract class Scenario {
 	}
 
 	public boolean hasENV() {
+		return false;
+	}
+	
+	/** TRUE if UAC (Run As Administrator or Privilege Elevation) is required when
+	 * starting scenario on Windows
+	 * 
+	 * #start
+	 * @return
+	 */
+	public boolean isUACRequiredForStart() {
+		return false;
+	}
+	
+	public boolean isUACRequiredForSetup() {
 		return false;
 	}
 	

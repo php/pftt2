@@ -2,7 +2,7 @@ package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.telemetry.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager;
 
 /** phpFormGenerator is a an easy, online tool for creating reliable, efficient, and aesthetically
  * pleasing web forms in a snap. No programming of any sort is required: phpFormGenerator generates

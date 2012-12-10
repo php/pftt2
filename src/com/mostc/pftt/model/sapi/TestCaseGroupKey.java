@@ -25,11 +25,6 @@ public class TestCaseGroupKey {
 	}
 	
 	@Override
-	public String toString() {
-		return "[env="+env+" ini="+ini+"]";
-	}
-	
-	@Override
 	public boolean equals(Object o) {
 		if (o==this) {
 			return true;
@@ -44,7 +39,7 @@ public class TestCaseGroupKey {
 	
 	@Override
 	public int hashCode() {
-		return (env==null?1:env.hashCode()) & (ini==null?1:ini.hashCode());
+		return (env==null?1:env.hashCode()) | (ini==null?1:ini.hashCode());
 	}
 	
 	@Nullable

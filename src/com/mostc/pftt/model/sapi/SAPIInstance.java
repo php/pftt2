@@ -1,6 +1,6 @@
 package com.mostc.pftt.model.sapi;
 
-import com.mostc.pftt.telemetry.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager;
 
 /** Running instance of a SAPI like a web server
  * 

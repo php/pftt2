@@ -13,9 +13,9 @@ import org.columba.ristretto.smtp.SMTPProtocol;
 
 import com.github.mattficken.io.IOUtil;
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
-import com.mostc.pftt.telemetry.ConsoleManager;
 
 import groovy.lang.GroovyClassLoader;
 import groovy.lang.GroovyObject;

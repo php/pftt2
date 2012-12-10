@@ -1,4 +1,4 @@
-package com.mostc.pftt.telemetry;
+package com.mostc.pftt.results;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -15,6 +15,7 @@ import org.incava.util.diff.Difference;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
+import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 
 /** result of running a PhptTestCase
@@ -29,6 +30,7 @@ import com.mostc.pftt.model.phpt.PhptTestCase;
  */
 
 public class PhptTestResult {
+	public final Charset actual_cs;
 	public final Host host;
 	/** the result of the test case */
 	public final EPhptTestStatus status;
@@ -57,18 +59,20 @@ public class PhptTestResult {
 	@Nullable
 	public final String diff_str;
 	protected final String sapi_output;
+	public final PhpIni ini;
 	
-	public PhptTestResult(Host host, EPhptTestStatus status, PhptTestCase test_case, String actual, String[] actual_lines, String[] expected_lines, Charset actual_cs, Map<String,String> env, String[] cmd_array, byte[] stdin_data, String shell_script, Diff<String> diff, String expectf_output, String preoverride_actual) {
-		this(host, status, test_case, actual, actual_lines, expected_lines, actual_cs, env, cmd_array, stdin_data, shell_script, diff, expectf_output, preoverride_actual, null);
+	public PhptTestResult(Host host, EPhptTestStatus status, PhptTestCase test_case, String actual, String[] actual_lines, String[] expected_lines, Charset actual_cs, PhpIni ini, Map<String,String> env, String[] cmd_array, byte[] stdin_data, String shell_script, Diff<String> diff, String expectf_output, String preoverride_actual) {
+		this(host, status, test_case, actual, actual_lines, expected_lines, actual_cs, ini, env, cmd_array, stdin_data, shell_script, diff, expectf_output, preoverride_actual, null);
 	}
 	
-	public PhptTestResult(Host host, EPhptTestStatus status, PhptTestCase test_case, String actual, String[] actual_lines, String[] expected_lines, Charset actual_cs, Map<String,String> env, String[] cmd_array, byte[] stdin_data, String shell_script, Diff<String> diff, String expectf_output, String preoverride_actual, String sapi_output) {
+	public PhptTestResult(Host host, EPhptTestStatus status, PhptTestCase test_case, String actual, String[] actual_lines, String[] expected_lines, Charset actual_cs, PhpIni ini, Map<String,String> env, String[] cmd_array, byte[] stdin_data, String shell_script, Diff<String> diff, String expectf_output, String preoverride_actual, String sapi_output) {
 		this.sapi_output = sapi_output;
-		
+		this.actual_cs = actual_cs;
 		this.host = host;
 		this.status = status;
 		this.test_case = test_case;
 		this.actual = actual;
+		this.ini = ini;
 		this.env = env;
 		this.cmd_array = cmd_array;
 		this.stdin_data = stdin_data;

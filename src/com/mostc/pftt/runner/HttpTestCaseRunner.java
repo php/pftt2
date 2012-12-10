@@ -27,11 +27,12 @@ import com.mostc.pftt.model.phpt.PhptSourceTestPack;
 import com.mostc.pftt.model.phpt.PhptActiveTestPack;
 import com.mostc.pftt.model.sapi.WebServerInstance;
 import com.mostc.pftt.model.sapi.WebServerManager;
+import com.mostc.pftt.results.PhptResultPackWriter;
+import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.PhptTestPackRunner.PhptThread;
 import com.mostc.pftt.scenario.ScenarioSet;
-import com.mostc.pftt.telemetry.PhptTelemetryWriter;
-import com.mostc.pftt.telemetry.PhptTestResult;
 import com.mostc.pftt.util.ErrorUtil;
+import com.mostc.pftt.util.StringUtil;
 
 /** Runs PHPT Test Cases against PHP while its running under a Web Server (builtin, IIS or Apache)
  * 
@@ -46,7 +47,7 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected final HttpRequestExecutor httpexecutor;
 	protected WebServerInstance web = null;
 
-	public HttpTestCaseRunner(HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web, PhptThread thread, PhptTestCase test_case, PhptTelemetryWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+	public HttpTestCaseRunner(HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web, PhptThread thread, PhptTestCase test_case, PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
 		super(web.getPhpIni(), thread, test_case, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 		this.params = params;
 		this.httpproc = httpproc;
@@ -65,15 +66,15 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	 * @return
 	 * @throws Exception
 	 */
-	public static boolean willSkip(PhptTelemetryWriter twriter, Host host, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+	public static boolean willSkip(PhptResultPackWriter twriter, Host host, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
 		if (AbstractPhptTestCaseRunner.willSkip(twriter, host, type, build, test_case)) {
 			return true;
 		} else if (test_case.containsSection(EPhptSection.STDIN)) {
-			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "STDIN section not supported for testing against web servers", null, null, null, null, null, null, null, null, null, null));
+			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "STDIN section not supported for testing against web servers", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return true;
 		} else if (test_case.containsSection(EPhptSection.ARGS)) {
-			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "ARGS section not supported for testing against web servers", null, null, null, null, null, null, null, null, null, null));
+			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "ARGS section not supported for testing against web servers", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return true;
 		} else {
@@ -99,7 +100,7 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				web.notifyCrash("PFTT: timeout during test("+section+" SECTION): "+test_case.getName()+"\n"+ErrorUtil.toString(ex1), 0);
 				// ok to close this here, since its not an Access Violation(AV) and so won't prompt
 				// the user to enter Visual Studio, WinDbg or GDB
-				web.close();
+				web.close(); 
 				
 				twriter.getConsoleManager().restartingAndRetryingTest(test_case);
 				
@@ -139,16 +140,6 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	} // end protected String http_execute
 	
 	protected String do_http_execute(String path, EPhptSection section, boolean is_replacement) throws Exception {
-		{
-			WebServerInstance _web = smgr.getWebServerInstance(twriter.getConsoleManager(), host, build, ini, env, active_test_pack.getDirectory(), web);
-			if (_web!=web) {
-				this.web = _web;
-				is_replacement = true;
-				// make sure this test case is in the list
-				_web.notifyTestPreRequest(test_case);
-			}
-		}
-		
 		path = Host.toUnixPath(path);
 		if (path.startsWith(Host.toUnixPath(active_test_pack.getDirectory())))
 			path = path.substring(active_test_pack.getDirectory().length());
@@ -156,28 +147,61 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			path = "/" + path;
 		
 		try {
-			if (web.isCrashed())
-				// test will fail (because this(`PFTT: server...`) is the actual output which won't match the expected output)
-				//
-				// return server's crash output and an additional message about this test
-				return web.getSAPIOutput() + "PFTT: server crashed already, didn't bother trying to execute test: "+test_case.getName();
-			
+			if (web!=null) {
+				synchronized(web) {
+					WebServerInstance _web = smgr.getWebServerInstance(twriter.getConsoleManager(), host, build, ini, env, active_test_pack.getDirectory(), web, test_case);
+					if (_web!=web) {
+						this.web = _web;
+						is_replacement = true;
+					
+						if (web.isCrashed()) {
+							markTestAsCrash();
+							
+							// test will fail (because this(`PFTT: server...`) is the actual output which won't match the expected output)
+							//
+							// return server's crash output and an additional message about this test
+							return web.getSAPIOutput() + "PFTT: server crashed already (server was created to replace a crashed web server. server was created to run this 1 test and didn't run any other tests before this one), didn't bother trying to execute test: "+test_case.getName();
+						}
+					}
+				} // end sync
+			}
+			if (web==null) {
+				// XXX report TEST_EXCEPTION
+				return "PFTT: no web server available!\n";
+			}
+				
+			// CRITICAL: keep track of test cases running on web server
+			web.notifyTestPreRequest(test_case);
 			
 			if (stdin_post==null || section != EPhptSection.TEST)
 				return do_http_get(path);
-			else
-				// only do POST for TEST sections where stdin_post!=null
-				return do_http_post(path);
+			
+			// only do POST for TEST sections where stdin_post!=null
+			return do_http_post(path);
 		} finally {
-			if (is_replacement && (twriter.getConsoleManager().isDisableDebugPrompt()||!web.isCrashed()||!host.isWindows())) {
-				// CRITICAL: if this WebServerInstance is a replacement, then it exists only within this specific HttpTestCaseRunner
-				// instance. if it is not terminated here, it will keep running forever!
-				//
-				// don't close crashed servers on windows unless WER popup is disabled because user may want to
-				// debug them. if user doesn't, they'll click close in WER popup
-				web.close();
+			// CRITICAL: keep track of test cases running on web server
+			if (web!=null) {
+				web.notifyTestPostResponse(test_case);
+			
+				if (web.isCrashed())
+					markTestAsCrash();
+				if (is_replacement && (twriter.getConsoleManager().isDisableDebugPrompt()||!web.isCrashed()||!host.isWindows())) {
+					// CRITICAL: if this WebServerInstance is a replacement, then it exists only within this specific HttpTestCaseRunner
+					// instance. if it is not terminated here, it will keep running forever!
+					//
+					// don't close crashed servers on windows unless WER popup is disabled because user may want to
+					// debug them. if user doesn't, they'll click close in WER popup
+					web.close();
+				}
+			
 			}
 		}
+	}
+	
+	protected void markTestAsCrash() {
+		not_crashed = false; // @see #runTest
+		
+		twriter.addResult(new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, null, null, null, null, ini, env, null, stdin_post, null, null, null, null, web==null?null:web.getSAPIOutput()));
 	}
 		
 	protected String do_http_get(String path) throws Exception {
@@ -240,17 +264,6 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			conn.close();
 		}
 	} // end protected String do_http_post
-
-	@Override
-	protected void notifyStart() {
-		web.notifyTestPreRequest(test_case);
-	}
-	
-	@Override
-	protected void notifyEnd() {
-		// critical: make sure that WebServerInstance keeps accurate track of all test cases that are running now
-		web.notifyTestPostResponse(test_case);
-	}
 	
 	@Override
 	protected String executeSkipIf() throws Exception {
@@ -269,12 +282,12 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 
 	@Override
 	protected String getCrashedSAPIOutput() {
-		return web.isCrashed() ? web.getSAPIOutput() : null;
+		return web!=null&&web.isCrashed() ? web.getSAPIOutput() : null;
 	}
 
 	@Override
 	protected String[] splitCmdString() {
-		return web.getCmdArray();
+		return web==null?StringUtil.EMPTY_ARRAY:web.getCmdArray();
 	}
 
 } // end public class HttpTestCaseRunner

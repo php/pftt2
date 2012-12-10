@@ -9,11 +9,11 @@ import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.model.phpt.PhptSourceTestPack;
 import com.mostc.pftt.model.phpt.PhptActiveTestPack;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
+import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.PhptResultPackWriter;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
 import com.mostc.pftt.runner.CliPhptTestCaseRunner;
 import com.mostc.pftt.runner.PhptTestPackRunner.PhptThread;
-import com.mostc.pftt.telemetry.ConsoleManager;
-import com.mostc.pftt.telemetry.PhptTelemetryWriter;
 
 /** Tests the Command Line Interface(CLI) for running PHP.
  * 
@@ -36,7 +36,7 @@ public class CliScenario extends AbstractSAPIScenario {
 	@Override
 	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(
 			PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case,
-			PhptTelemetryWriter twriter, Host host, ScenarioSet scenario_set,
+			PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set,
 			PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
 		return new CliPhptTestCaseRunner(group_key.getPhpIni(), thread, test_case, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 	}

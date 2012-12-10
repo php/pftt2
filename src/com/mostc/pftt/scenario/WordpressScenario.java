@@ -2,7 +2,7 @@ package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.telemetry.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager;
 
 /** WordPress is a free and open source blogging tool and a content management system (CMS) 
  * based on PHP and MySQL. It has many features including a plug-in architecture and a

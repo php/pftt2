@@ -10,6 +10,5 @@ com.mostc.pftt.model.smoke
 com.mostc.pftt.report
 com.mostc.pftt.runner
 com.mostc.pftt.scenario
-com.mostc.pftt.telemetry
 com.mostc.pftt.ui
 com.mostc.pftt.util

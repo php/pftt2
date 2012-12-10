@@ -23,9 +23,9 @@ import javax.swing.border.LineBorder;
 import se.datadosen.component.RiverLayout;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.LocalHost;
+import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.PhptTestPackRunner;
 import com.mostc.pftt.scenario.ScenarioSet;
-import com.mostc.pftt.telemetry.PhptTestResult;
 
 @SuppressWarnings("serial")
 public class PhptDebuggerFrame extends JPanel {

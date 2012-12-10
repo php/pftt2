@@ -10,7 +10,7 @@ import javax.annotation.concurrent.ThreadSafe;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhpIni;
-import com.mostc.pftt.telemetry.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager;
 
 /** Manages a certain type of web server, such as PHP's builtin web server.
  * 
@@ -44,13 +44,23 @@ public abstract class WebServerManager extends SAPIManager {
 	
 	/** closes all web servers this managed
 	 * 
+	 * @param debug - TRUE if you might want to debug a web server that has crashed
 	 */
-	public void close() {
+	public void close(boolean debug) {
 		synchronized(instances) {
-			for ( WebServerInstance wsi : instances )
+			for ( WebServerInstance wsi : instances ) {
+				if (debug && wsi.isCrashed())
+					continue;
+				
+				// don't close instance if user might want to debug it
 				wsi.do_close();
+			}
 			instances.clear();
 		}
+	}
+	
+	public void close() {
+		close(false);
 	}
 	
 	/** gets a running WebServerInstance
@@ -70,9 +80,10 @@ public abstract class WebServerManager extends SAPIManager {
 	 * @param env
 	 * @param docroot
 	 * @param assigned
+	 * @param server_name null or unique name of server (could be list of test cases)
 	 * @return
 	 */
-	public WebServerInstance getWebServerInstance(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, WebServerInstance assigned) {
+	public WebServerInstance getWebServerInstance(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, WebServerInstance assigned, Object server_name) {
 		WebServerInstance sapi;
 		if (assigned!=null) {
 			if (assigned.isRunning())
@@ -86,12 +97,12 @@ public abstract class WebServerManager extends SAPIManager {
 				}
 			}
 			
-			assigned.replacement = sapi = createWebServerInstance(cm, host, build, ini, env, docroot);
+			assigned.replacement = sapi = createWebServerInstance(cm, host, build, ini, env, docroot, server_name);
 			synchronized(assigned.active_test_cases) {
 				sapi.active_test_cases.addAll(assigned.active_test_cases);
 			}
 		} else {
-			sapi = createWebServerInstance(cm, host, build, ini, env, docroot);
+			sapi = createWebServerInstance(cm, host, build, ini, env, docroot, server_name);
 		}
 		if (sapi.isRunning()) {
 			synchronized(instances) {
@@ -101,7 +112,7 @@ public abstract class WebServerManager extends SAPIManager {
 		return sapi;
 	}
 	
-	protected abstract WebServerInstance createWebServerInstance(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot);
+	protected abstract WebServerInstance createWebServerInstance(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, Object server_name);
 	
 	/** some web servers can only have one active instance at any one time
 	 * 

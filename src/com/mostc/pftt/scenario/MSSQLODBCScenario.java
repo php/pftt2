@@ -4,8 +4,7 @@ import java.util.Map;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.scenario.Scenario.EScenarioStartState;
-import com.mostc.pftt.telemetry.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager;
 
 /** Tests the pdo_odbc and odbc extensions against a Microsoft SQL Server. (NOT IMPLEMENTED)
  * 
@@ -26,6 +25,11 @@ public class MSSQLODBCScenario extends AbstractODBCScenario {
 		// TODO Auto-generated method stub
 		
 		
+	}
+	
+	@Override
+	public boolean isUACRequiredForStart() {
+		return true;
 	}
 	
 	@Override

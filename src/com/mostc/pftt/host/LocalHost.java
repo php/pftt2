@@ -48,11 +48,14 @@ public class LocalHost extends Host {
 	private static final boolean is_windows = System.getProperty("os.name").toLowerCase().contains("windows");
 	private static int self_process_id;
 	static {
-		try {
-			// this works only onvo Windows
-			self_process_id = Kernel32.INSTANCE.GetCurrentProcessId();
-		} catch ( Throwable t ) {
-			t.printStackTrace(); // XXX fix this on Linux
+		if (isLocalhostWindows()) {
+			// only need this on windows (see LocalExecHandle#close)
+			try {
+				// this works only on Windows
+				self_process_id = Kernel32.INSTANCE.GetCurrentProcessId();
+			} catch ( Throwable t ) {
+				t.printStackTrace();
+			}
 		}
 	}
 	
@@ -97,8 +100,6 @@ public class LocalHost extends Host {
 
 	@Override
 	public void delete(String path) {
-		if (true)
-			return; // TODO temp
 		if (isDirectory(path)) {
 			// ensure empty
 			try {
@@ -298,38 +299,7 @@ public class LocalHost extends Host {
 						int process_id = 0;
 						
 						// first: find the process id
-						try {
-							// clean way
-							WinProcess wproc = new WinProcess(process);
-							process_id = wproc.getPid();
-						} catch ( Throwable wt ) {
-							// WinProcess native code couldn't be loaded
-							// (maybe it wasn't included or maybe somebody didn't compile it)
-							//
-							// fallback on some old code using reflection, etc...
-							try {
-								// process.getClass() != Process.class
-								//
-								// kind of a hack to get the process id:
-								//      look through hidden fields to find a field like java.lang.ProcessImpl#handle (long)
-								for (java.lang.reflect.Field f : process.getClass().getDeclaredFields() ) {
-									if (f.getType()==long.class) { // ProcessImpl#handle
-										// this is a private field. without this, #getLong will throw an IllegalAccessException
-										f.setAccessible(true); 
-										
-										long handle = f.getLong(process);
-										
-										HANDLE h = new HANDLE();
-										h.setPointer(Pointer.createConstant(handle));
-										process_id = Kernel32.INSTANCE.GetProcessId(h);
-										
-										break;
-									}
-								} // end for
-							} catch ( Throwable t2 ) {
-								t2.printStackTrace();
-							} // end try
-						} // end try
+						getWindowsProcessID(process);
 						
 						
 						// NOTE: on Windows, if WER is not disabled(enabled by default), if a process crashes,
@@ -362,10 +332,19 @@ public class LocalHost extends Host {
 						//
 						
 						// second: make sure we found a process id (safety check: make sure its not our process id)
-						if (process_id != 0 && process_id!=self_process_id) {
+						if (process_id != 0 && process_id!=self_process_id && (image_name.equals("cmd.exe")||image_name.equals("conhost.exe"))) {
 							// also, WinProcess#killRecursively only checks by process id (not image/program name)
 							// while that should be enough, experience on Windows has shown that it isn't and somehow gets PFTT killed eventually
 							//
+							//
+							// Process#destroy works for processes except for those that
+							// are launched using cmd.exe (the parent of those processes is conhost.exe)
+							//
+							// actually, if a bunch of httpd.exe processes are being
+							// killed at ~same time, we can have an explosion of taskkill.exe processes
+							// so its better to not use taskkill.exe for processes that don't need it
+							// (ie only use taskkill.exe for cmd.exe or conhost.exe)
+							// 
 							winKillProcess(image_name, process_id);
 						}
 					} // end if
@@ -454,7 +433,46 @@ public class LocalHost extends Host {
 				return 0;
 			}
 		}
+
+		public int getProcessID() {
+			return isLocalhostWindows() ? getWindowsProcessID(process) : 0;
+		}
+		
 	} // end public class LocalExecHandle
+	
+	public static int getWindowsProcessID(Process process) {
+		try {
+			// clean way
+			WinProcess wproc = new WinProcess(process);
+			return wproc.getPid();
+		} catch ( Throwable wt ) {
+			// WinProcess native code couldn't be loaded
+			// (maybe it wasn't included or maybe somebody didn't compile it)
+			//
+			// fallback on some old code using reflection, etc...
+			try {
+				// process.getClass() != Process.class
+				//
+				// kind of a hack to get the process id:
+				//      look through hidden fields to find a field like java.lang.ProcessImpl#handle (long)
+				for (java.lang.reflect.Field f : process.getClass().getDeclaredFields() ) {
+					if (f.getType()==long.class) { // ProcessImpl#handle
+						// this is a private field. without this, #getLong will throw an IllegalAccessException
+						f.setAccessible(true); 
+						
+						long handle = f.getLong(process);
+						
+						HANDLE h = new HANDLE();
+						h.setPointer(Pointer.createConstant(handle));
+						return Kernel32.INSTANCE.GetProcessId(h);
+					}
+				} // end for
+			} catch ( Throwable t2 ) {
+				t2.printStackTrace();
+			} // end try
+		} // end try
+		return 0;
+	} // end public static int getWindowsProcessID
 	
 	private static final Pattern PAT_QUOTE = Pattern.compile("\\\"");
 	public static String[] splitCmdString(String command) {
@@ -470,8 +488,7 @@ public class LocalHost extends Host {
 			if (c == ' ' && !in_quote) {
 				buf = buf.trim();
 				if (buf.length() > 0) {
-					if (buf.startsWith("\""))
-						buf  = buf.substring(1, buf.length()-1);
+					buf = StringUtil.unquote(buf);
 					
 					buf = StringUtil.replaceAll(PAT_QUOTE, "\"", buf);
 					
@@ -679,6 +696,11 @@ public class LocalHost extends Host {
 		} else {
 			return isLocalhostWindows() ? "C:\\php-sdk\\PFTT\\Current\\" : System.getenv("HOME")+"/php-sdk/PFTT/current/";
 		}
+	}
+
+	@Override
+	public long getSize(String file) {
+		return new File(file).length();
 	}
 	
 } // end public class Host

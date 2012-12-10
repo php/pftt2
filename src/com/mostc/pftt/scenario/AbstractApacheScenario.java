@@ -5,7 +5,7 @@ import com.mostc.pftt.model.phpt.ESAPIType;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.model.sapi.ApacheManager;
-import com.mostc.pftt.telemetry.PhptTelemetryWriter;
+import com.mostc.pftt.results.PhptResultPackWriter;
 
 /** Scenarios for testing managing and testing Apache
  * 
@@ -20,7 +20,7 @@ public abstract class AbstractApacheScenario extends AbstractProductionWebServer
 	}
 	
 	@Override
-	public boolean willSkip(PhptTelemetryWriter twriter, Host host, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+	public boolean willSkip(PhptResultPackWriter twriter, Host host, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
 		if (!ApacheManager.isSupported(twriter, host, build, test_case)) {
 			return false;
 		}

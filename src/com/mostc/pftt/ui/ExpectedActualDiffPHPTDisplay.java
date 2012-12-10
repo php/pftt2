@@ -2,7 +2,6 @@ package com.mostc.pftt.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Font;
-import java.awt.GridLayout;
 import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -28,7 +27,7 @@ import javax.swing.table.DefaultTableModel;
 import com.github.mattficken.io.RestartableInputStream;
 import com.github.mattficken.io.ui.CharsetDebuggerPanel;
 import com.mostc.pftt.model.phpt.PhptTestCase;
-import com.mostc.pftt.telemetry.PhptTestResult;
+import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.util.ErrorUtil;
 import com.mostc.pftt.util.StringUtil;
 
@@ -41,19 +40,19 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 	protected TextDisplayPanel expected_display, diff_display, actual_display, test_display;
 	protected DefaultTableModel env_table_model;
 	protected JTable env_table;
-	protected JTextArea stdin_data_textarea, shell_script_textarea, expectf_textarea, pre_override_textarea, sapi_output_textarea;
-	protected PhptTestResult test;
+	protected JTextArea ini_textarea, stdin_data_textarea, shell_script_textarea, expectf_textarea, pre_override_textarea, sapi_output_textarea;
+	protected PhptTestResult test_result;
 			
 	public ExpectedActualDiffPHPTDisplay() {
-		horizontal_jsp = this;
+		horizontal_jsp = this; // TODO
 					
 		horizontal_panel = new JPanel(new BorderLayout());
 		horizontal_jsp.getViewport().setView(horizontal_panel);
-		horizontal_button_panel  = new JPanel(new GridLayout(1, 7, 2, 2));		
-		vertical_panel = new JPanel(new GridLayout(1, 7, 2, 2));
+		horizontal_button_panel  = new JPanel(new RiverLayout());
+		vertical_panel = new JPanel(new RiverLayout());
 			
 		horizontal_panel.add(vertical_jsp = new JScrollPane(vertical_panel), BorderLayout.CENTER);
-		vertical_jsp = this;
+		vertical_jsp = this; // TODO
 		vertical_jsp.getViewport().setView(vertical_panel);
 		horizontal_panel.add(horizontal_button_panel, BorderLayout.PAGE_END);
 		
@@ -73,78 +72,84 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 		pre_override_textarea.setToolTipText("Actual test output before any OS specific overrides applied");
 		sapi_output_textarea = new JTextArea();
 		sapi_output_textarea.setToolTipText("Output from SAPI - did web server crash? etc...");
+		ini_textarea = new JTextArea();
+		ini_textarea.setToolTipText("entire INI used for this test case");
 		
-		horizontal_button_panel.add(actual_display.button_panel);
-		horizontal_button_panel.add(expected_display.button_panel);
-		horizontal_button_panel.add(diff_display.button_panel);
-		horizontal_button_panel.add(new JPanel()); // placeholder
-		horizontal_button_panel.add(test_display.button_panel);
-		horizontal_button_panel.add(new JPanel()); // placeholder
-		horizontal_button_panel.add(new JPanel()); // placeholder
+		horizontal_button_panel.add("p left", actual_display.button_panel);
+		horizontal_button_panel.add("tab", expected_display.button_panel);
+		horizontal_button_panel.add("tab", diff_display.button_panel);
+		horizontal_button_panel.add("tab", new JPanel()); // placeholder
+		horizontal_button_panel.add("tab", test_display.button_panel);
+		horizontal_button_panel.add("tab", new JPanel()); // placeholder
+		horizontal_button_panel.add("tab", new JPanel()); // placeholder
 		
-		vertical_panel.add(actual_display.text_area);
-		vertical_panel.add(expected_display.text_area);
-		vertical_panel.add(diff_display.text_area);
-		vertical_panel.add(expectf_textarea);
-		vertical_panel.add(pre_override_textarea);
+		vertical_panel.add("p left vfill", actual_display.text_area);
+		vertical_panel.add("tab vfill", expected_display.text_area);
+		vertical_panel.add("tab vfill", diff_display.text_area);
+		vertical_panel.add("tab vfill", expectf_textarea);
+		vertical_panel.add("tab vfill", pre_override_textarea);
 		
 		
-		JPanel prepared_panel = new JPanel(new GridLayout(5, 1, 2, 2));
-		prepared_panel.add(new JScrollPane(sapi_output_textarea));
-		prepared_panel.add(new JScrollPane(stdin_data_textarea = new JTextArea()));
+		JPanel prepared_panel = new JPanel(new RiverLayout());
+		prepared_panel.add("p left", new JScrollPane(sapi_output_textarea));
+		prepared_panel.add("p left", new JScrollPane(ini_textarea));
+		prepared_panel.add("p left", new JScrollPane(stdin_data_textarea = new JTextArea()));
 		stdin_data_textarea.setLineWrap(true);
-		prepared_panel.add(new JScrollPane(shell_script_textarea = new JTextArea()));
+		prepared_panel.add("p left", new JScrollPane(shell_script_textarea = new JTextArea()));
 		shell_script_textarea.setLineWrap(true);
-		prepared_panel.add(new JScrollPane(env_table = new JTable(env_table_model = new DefaultTableModel())));
+		prepared_panel.add("p left", new JScrollPane(env_table = new JTable(env_table_model = new DefaultTableModel())));
 		env_table_model.addColumn("Name");
 		env_table_model.addColumn("Value");
+		vertical_panel.add("tab vfill", prepared_panel);
 		
-		vertical_panel.add(test_display.text_area);
+		vertical_panel.add("tab vfill", test_display.text_area);
 	}
 	
-	public void showTest(PhptTestResult test) {
-		if (test==null)
+	public void showTest(PhptTestResult result) {
+		if (result==null)
 			return;
 		
-		this.test = test;
+		this.test_result = result;
 		
 		while (env_table_model.getRowCount() > 0) {
 			env_table_model.removeRow(0);
 		}
 		
-		if (test.env!=null) {
-			for (String name : test.env.keySet()) {
-				env_table_model.addRow(new Object[]{name, test.env.get(name)});
+		if (result.env!=null) {
+			for (String name : result.env.keySet()) {
+				env_table_model.addRow(new Object[]{name, result.env.get(name)});
 			} 
 		}
-		if (test.stdin_data!=null)
-			stdin_data_textarea.setText(new String(test.stdin_data));
+		ini_textarea.setText(result.ini+"");
+		if (result.stdin_data!=null)
+			stdin_data_textarea.setText(new String(result.stdin_data));
 		else
 			stdin_data_textarea.setText("");
-		shell_script_textarea.setText(test.shell_script);
+		shell_script_textarea.setText(result.shell_script);
 		
-		expected_display.text_area.setText(test.test_case.getCommonCharset()+"\n"+test.test_case.getExpected());
+		expected_display.text_area.setText(result.test_case.getCommonCharset()+"\n"+result.test_case.getExpected());
 		
-		actual_display.showFile(test.test_case, test.actual);
+		actual_display.showFile(result.test_case, result.actual);
 		try {
-			test_display.showFile(test.test_case, test.test_case.getContents(test.host));
+			test_display.showFile(result.test_case, result.test_case.getContents(result.host));
 		} catch ( IOException ex ) {
 			ErrorUtil.display_error(this, ex);
 		}
 		 
-		diff_display.showFile(test.test_case, test.diff_str==null?"":test.diff_str);
-		expectf_textarea.setText(test.expectf_output==null?"":test.expectf_output);
-		pre_override_textarea.setText(test.preoverride_actual==null?"":test.preoverride_actual);
+		diff_display.showFile(result.test_case, result.diff_str==null?"":result.diff_str);
+		expectf_textarea.setText(result.expectf_output==null?"":result.expectf_output);
+		pre_override_textarea.setText(result.preoverride_actual==null?"":result.preoverride_actual);
 		//
-		String sapi_output = test.getSAPIOutput();
+		String sapi_output = result.getSAPIOutput();
 		sapi_output_textarea.setText(sapi_output==null?"":sapi_output);
 		//
 		
+		revalidate();
 		SwingUtilities.invokeLater(new Runnable() {
 				public void run() {
 					getViewport().setViewPosition(new Point(0, 0)); // scroll to top (ensure top is visible)		
 				}
-			});		
+			});
 	}
 	
 	protected class TextDisplayPanel implements CaretListener {
@@ -183,7 +188,7 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 					@Override
 					public void actionPerformed(ActionEvent e) {
 						CharsetDebuggerPanel panel = new CharsetDebuggerPanel();
-						JFrame jf = new JFrame("Charset Debugger - "+test.test_case.getName());
+						JFrame jf = new JFrame("Charset Debugger - "+test_result.test_case.getName());
 						jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 						jf.setContentPane(panel);
 						jf.pack();
@@ -192,12 +197,11 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 	
 						// load file
 						panel.setInputStream(new RestartableInputStream() {
-							@Override
-							public InputStream openInputStream() throws FileNotFoundException {
-								// TODO provide charset to bytearrayinputstream
-								return new ByteArrayInputStream(text_area.getText().getBytes());
-							}
-						});
+								@Override
+								public InputStream openInputStream() throws FileNotFoundException {
+									return new ByteArrayInputStream(test_result.actual_cs==null?text_area.getText().getBytes():text_area.getText().getBytes(test_result.actual_cs));
+								}
+							});
 					}
 				});
 			

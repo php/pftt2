@@ -40,6 +40,9 @@ public abstract class WebServerInstance extends SAPIInstance {
 	}
 	
 	@Override
+	public abstract String toString();
+	
+	@Override
 	public int hashCode() {
 		return this.port() + StringUtil.hashCode(this.hostname());
 	}
@@ -164,8 +167,6 @@ public abstract class WebServerInstance extends SAPIInstance {
 		synchronized(active_test_cases) {
 			active_test_cases.remove(test_case);
 		}
-		if (replacement!=null)
-			replacement.notifyTestPostResponse(test_case);
 	}
 	
 	/** returns TRUE if this web server crashed

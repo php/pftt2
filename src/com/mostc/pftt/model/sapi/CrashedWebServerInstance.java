@@ -3,7 +3,7 @@ package com.mostc.pftt.model.sapi;
 import java.util.Map;
 
 import com.mostc.pftt.model.phpt.PhpIni;
-import com.mostc.pftt.telemetry.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager;
 
 /** special marker for WebServerInstances that crashed on startup/couldn't be started.
  * 
@@ -29,6 +29,11 @@ public class CrashedWebServerInstance extends WebServerInstance {
 	}
 	
 	@Override
+	public String toString() {
+		return "Crashed";
+	}
+	
+	@Override
 	public String getSAPIOutput() {
 		return sapi_output;
 	}
@@ -36,6 +41,11 @@ public class CrashedWebServerInstance extends WebServerInstance {
 	@Override
 	public String hostname() {
 		return null;
+	}
+	
+	@Override
+	public boolean isCrashed() {
+		return true;
 	}
 
 	@Override

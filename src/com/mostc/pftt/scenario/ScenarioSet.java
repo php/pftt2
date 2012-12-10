@@ -12,7 +12,7 @@ import javax.annotation.Nullable;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.telemetry.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager;
 
 /** A Set of Scenarios to test PHP under.
  * 
@@ -123,6 +123,22 @@ public class ScenarioSet extends ArrayList<Scenario> {
 			scenario.getENV(env);
 		
 		return env;
+	}
+	
+	public boolean isUACRequiredForStart() {
+		for ( Scenario scenario : this ) {
+			if (scenario.isUACRequiredForStart())
+				return true;
+		}
+		return false;
+	}
+	
+	public boolean isUACRequiredForSetup() {
+		for ( Scenario scenario : this ) {
+			if (scenario.isUACRequiredForSetup())
+				return true;
+		}
+		return false;
 	}
 	
 	/** return FALSE if any Scenario in set is not implemented.

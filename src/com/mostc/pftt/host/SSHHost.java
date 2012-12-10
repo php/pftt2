@@ -590,4 +590,10 @@ public class SSHHost extends RemoteHost {
 		return StringUtil.EMPTY_ARRAY;
 	}
 
+	@Override
+	public long getSize(String file) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
 } // end public class SSHHost

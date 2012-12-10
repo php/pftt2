@@ -12,7 +12,7 @@ import javax.annotation.Nullable;
 import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.Build;
-import com.mostc.pftt.telemetry.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.util.StringUtil;
 
 /** represents a single build of PHP.
@@ -28,10 +28,10 @@ public class PhpBuild extends Build {
 	private WeakHashMap<PhpIni,WeakHashMap<String,Boolean>> ext_enable_map;
 	private WeakReference<String> php_info;
 	private WeakReference<PhpIni> php_ini;
-	private String version_str;
+	private String version_str, release;
 	private EBuildBranch branch;
 	private WeakReference<String[]> module_list;
-	private int major, minor, release; 
+	private int major, minor;
 	
 	public PhpBuild(String build_path) {
 		this.build_path = build_path;
@@ -73,6 +73,36 @@ public class PhpBuild extends Build {
 			return EBuildSourceType.WINDOWS_DOT_PHP_DOT_NET;
 	}
 	
+	/** returns compiler used to compile this build
+	 * 
+	 * @param cm
+	 * @param host
+	 * @return
+	 */
+	public ECompiler getCompiler(ConsoleManager cm, Host host) {
+		String n = Host.basename(build_path).toLowerCase();
+		for (ECompiler c : ECompiler.values() ) {
+			if (n.contains(c.toString().toLowerCase()))
+				return c;
+		}
+		return null;
+	}
+	
+	/** returns cpu architecture build was compiled for
+	 * 
+	 * @param cm
+	 * @param host
+	 * @return
+	 */
+	public ECPUArch getCPUArch(ConsoleManager cm, Host host) {
+		String n = Host.basename(build_path).toLowerCase();
+		for (ECPUArch c : ECPUArch.values() ) {
+			if (n.contains(c.toString().toLowerCase()))
+				return c;
+		}
+		return null;
+	}
+	
 	/** returns if this is an NTS or TS build of PHP
 	 * 
 	 * @param host
@@ -88,9 +118,90 @@ public class PhpBuild extends Build {
 				return EBuildType.TS;
 		} else {
 			// default
-			return EBuildType.NTS;
+			return EBuildType.TS;
 		}
 	}
+	
+	/** guesses location of debug pack based on location of build... probably won't work except on Windows
+	 * 
+	 * returns NULL if debug pack not found
+	 * 
+	 * @param cm
+	 * @param host
+	 * @return
+	 * @throws Exception
+	 */
+	public String guessDebugPackPath(ConsoleManager cm, Host host) throws Exception {
+		String revision = getVersionRevision(cm, host);
+		EBuildType build_type = getBuildType(host);
+		EBuildBranch build_branch = getVersionBranch(cm, host);
+		ECompiler compiler = getCompiler(cm, host);
+		ECPUArch cpu_arch = getCPUArch(cm, host);
+		
+		String debug_path = null;
+		switch(build_branch) {
+		case PHP_5_3:
+			debug_path = "php-debug-pack-5.3-"+build_type+"-windows-"+compiler+"-"+cpu_arch+"-"+revision;
+			break;
+		case PHP_5_4:
+			debug_path = "php-debug-pack-5.4-"+build_type+"-windows-"+compiler+"-"+cpu_arch+"-"+revision;
+			break;
+		case PHP_5_5:
+			debug_path = "php-debug-pack-5.5-"+build_type+"-windows-"+compiler+"-"+cpu_arch+"-"+revision;
+			break;
+		case PHP_5_6:
+			debug_path = "php-debug-pack-5.6-"+build_type+"-windows-"+compiler+"-"+cpu_arch+"-"+revision;
+			break;
+		case MASTER:
+			debug_path = "php-debug-pack-master-"+build_type+"-windows-"+compiler+"-"+cpu_arch+"-"+revision;
+			break;
+		default:
+		}
+		if (debug_path==null)
+			return null;
+		else
+			debug_path = host.joinIntoOnePath(Host.dirname(build_path), debug_path);
+		return host.exists(debug_path) ? debug_path : null;
+	}
+	
+	/** guesses location of source pack based on build location
+	 * 
+	 * returns NULL if source pack not found.
+	 * 
+	 * @param cm
+	 * @param host
+	 * @return
+	 * @throws Exception
+	 */
+	public String guessSourcePackPath(ConsoleManager cm, Host host) throws Exception {
+		String revision = getVersionRevision(cm, host);
+		EBuildBranch build_branch = getVersionBranch(cm, host);
+		
+		String source_path = null;
+		switch(build_branch) {
+		case PHP_5_3:
+			source_path = "php-5.3-src-"+revision;
+			break;
+		case PHP_5_4:
+			source_path = "php-5.4-src-"+revision;
+			break;
+		case PHP_5_5:
+			source_path = "php-5.5-src-"+revision;
+			break;
+		case PHP_5_6:
+			source_path = "php-5.6-src-"+revision;
+			break;
+		case MASTER:
+			source_path = "php-master-src-"+revision;
+			break;
+		default:
+		}
+		if (source_path==null)
+			return null;
+		else
+			source_path = host.joinIntoOnePath(Host.dirname(build_path), source_path);
+		return host.exists(source_path) ? source_path : null;
+	} // end public String guessSourcePackPath
 	
 	public boolean isTS(Host host) {
 		return getBuildType(host) == EBuildType.TS;
@@ -186,17 +297,59 @@ public class PhpBuild extends Build {
 		if (version_str!=null) {
 			return version_str;
 		}
-		for (String line : StringUtil.splitLines(getPhpInfo(cm, host))) {
-			if (line.startsWith("PHP Version =>")) {
-				version_str = line.substring("PHP Version => ".length());
-				
-				String[] split = version_str.split("[\\.|\\-]");
-				major = Integer.parseInt(split[0]);
-				minor = Integer.parseInt(split[1]);
-				release = Integer.parseInt(split[2]);
-				branch = EBuildBranch.guessValueOf(split[3]);
-				
-				return version_str;
+		String b = Host.basename(build_path).toLowerCase();
+		
+		// naming convention php-5.3-[optionally ts|nts]-[compiler]-[optionally rNNNNNNN]
+		if (b.contains("php-5.3"))
+			branch = EBuildBranch.PHP_5_3;
+		else if (b.contains("php-5.4"))
+			branch = EBuildBranch.PHP_5_4;
+		else if (b.contains("php-5.5"))
+			branch = EBuildBranch.PHP_5_5;
+		else if (b.contains("php-5.6"))
+			branch = EBuildBranch.PHP_5_6;
+		else if (b.contains("php-master"))
+			branch = EBuildBranch.MASTER;
+		
+		// custom dev builds may not have a revision number
+		if (branch!=null) {
+			String[] split = b.split("\\-");
+			String last = split[split.length-1];
+			if (last.startsWith("r")) {
+				release = last;
+			}
+		}
+		
+		// should be able to get this info for release, qa and snapshot builds
+		// but for dev builds, might not be able to get this info any other way than parsing phpinfo
+		if (getBuildSourceType(host)!=EBuildSourceType.WINDOWS_DOT_PHP_DOT_NET) {
+			for (String line : StringUtil.splitLines(getPhpInfo(cm, host))) {
+				if (line.startsWith("PHP Version =>")) {
+					version_str = line.substring("PHP Version => ".length());
+					
+					String[] split = version_str.split("[\\.|\\-]");
+					major = Integer.parseInt(split[0]);
+					minor = Integer.parseInt(split[1]);
+					release = split[2];
+					if (major==5) {
+						switch(minor) {
+						case 3:
+							branch  = EBuildBranch.PHP_5_3;
+							break;
+						case 4:
+							branch  = EBuildBranch.PHP_5_4;
+							break;
+						case 5:
+							branch  = EBuildBranch.PHP_5_5;
+							break;
+						case 6:
+							branch  = EBuildBranch.PHP_5_6;
+							break;
+						}
+					}
+					
+					return version_str;
+				}
 			}
 		}
 		return null; // shouldn't happen
@@ -213,6 +366,11 @@ public class PhpBuild extends Build {
 	}
 	
 	public int getVersionRelease(ConsoleManager cm, Host host) throws Exception {
+		getVersionString(cm, host);
+		return Integer.parseInt(release);
+	}
+	
+	public String getVersionRevision(ConsoleManager cm, Host host) throws Exception {
 		getVersionString(cm, host);
 		return release;
 	}
@@ -234,14 +392,15 @@ public class PhpBuild extends Build {
 	 * @return
 	 * @throws Exception
 	 */
-	public boolean isExtensionEnabled(ConsoleManager cm, Host host, ESAPIType type, String ext_name) throws Exception {
+	public boolean isExtensionEnabled(ConsoleManager cm, Host host, ESAPIType type, PhpIni ini, String ext_name) throws Exception {
 		if (ext_name.equals("spl")||ext_name.equals("standard")||ext_name.equals("core"))
 			// these extensions are always there/always builtin
 			return true;
 		
 		ext_name = ext_name.toLowerCase();
 		
-		PhpIni ini = getDefaultPhpIni(host, type);
+		if (ini==null)
+			ini = getDefaultPhpIni(host, type);
 		
 		// key by only extensions, so cache will be reused even if additional directives are added
 		if (ini!=null)
@@ -276,6 +435,19 @@ public class PhpBuild extends Build {
 		
 		map.put(ext_name, false);
 		return false;
+	} // end public boolean isExtensionEnabled
+	
+	/** checks to see if the extension is enabled or statically builtin to this build <b>using the default PhpIni</b>
+	 *  
+	 * @param cm
+	 * @param host
+	 * @param type
+	 * @param ext_name
+	 * @return
+	 * @throws Exception
+	 */
+	public boolean isExtensionEnabled(ConsoleManager cm, Host host, ESAPIType type, String ext_name) throws Exception {
+		return isExtensionEnabled(cm, host, type, null, ext_name);
 	}
 	
 	/** gets the PhpInfo string for this build
@@ -294,7 +466,7 @@ public class PhpBuild extends Build {
 		}
 		
 		ExecOutput eo = eval(host, "phpinfo();");
-		eo.printOutputIfCrash(cm);
+		eo.printOutputIfCrash(getClass().getSimpleName()+"#getPhpInfo", cm);
 		php_info = eo.output;
 		this.php_info = new WeakReference<String>(php_info);
 		return php_info;
@@ -389,15 +561,18 @@ public class PhpBuild extends Build {
 			return output.contains("Fatal") || output.contains("fatal");
 		}
 		
-		public PHPOutput printHasFatalError(ConsoleManager cm) {
+		public PHPOutput printHasFatalError(String ctx, ConsoleManager cm) {
 			if (cm==null||cm.isResultsOnly())
 				return this;
-			return printHasFatalError(System.err);
+			return printHasFatalError(ctx, System.err);
 		}
-		public PHPOutput printHasFatalError(PrintStream ps) {
-			if (hasFatalError())
-				ps.println(output);
-			return printOutputIfCrash(ps);
+		public PHPOutput printHasFatalError(String ctx, PrintStream ps) {
+			if (hasFatalError()) {
+				ps.println(ctx+": "+output.trim());
+				return this;
+			} else {
+				return printOutputIfCrash(ctx, ps);
+			}
 		}
 		
 		public void cleanup(Host host) {
@@ -406,11 +581,11 @@ public class PhpBuild extends Build {
 			} catch ( Exception ex ) {}
 		}
 		@Override
-		public PHPOutput printOutputIfCrash(ConsoleManager cm) {
-			return (PHPOutput) super.printOutputIfCrash(cm);
+		public PHPOutput printOutputIfCrash(String ctx, ConsoleManager cm) {
+			return (PHPOutput) super.printOutputIfCrash(ctx, cm);
 		}
-		public PHPOutput printOutputIfCrash(PrintStream ps) {
-			return (PHPOutput) super.printOutputIfCrash(ps);
+		public PHPOutput printOutputIfCrash(String ctx, PrintStream ps) {
+			return (PHPOutput) super.printOutputIfCrash(ctx, ps);
 		}
 	} // end public static class PHPOutput
 	
@@ -442,7 +617,7 @@ public class PhpBuild extends Build {
 		String ini_settings = ini==null?null:ini.toCliArgString(host);
 		
 		ExecOutput output = host.exec(php_exe+(ini_settings==null?"":" "+ini_settings)+" -m", Host.ONE_MINUTE);
-		output.printOutputIfCrash(cm);
+		output.printOutputIfCrash(getClass().getSimpleName()+"#getExtensionList", cm);
 		
 		ArrayList<String> list = new ArrayList<String>();
 		

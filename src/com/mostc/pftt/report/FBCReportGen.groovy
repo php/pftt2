@@ -6,15 +6,15 @@ import org.apache.commons.collections.ListUtils;
 
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
 import com.mostc.pftt.model.phpt.EBuildBranch;
-import com.mostc.pftt.telemetry.PhptTestResult;
-import com.mostc.pftt.telemetry.PhptTelemetry;
+import com.mostc.pftt.results.PhptTestResult;
+import com.mostc.pftt.results.PhptResultPack;
 
 class FBCReportGen extends AbstractReportGen {
-	final PhptTelemetry base_telem, test_telem;
+	final PhptResultPack base_telem, test_telem;
 	int row = 1;
 	StringWriter sw;
 	
-	public FBCReportGen(PhptTelemetry base_telem, PhptTelemetry test_telem) {
+	public FBCReportGen(PhptResultPack base_telem, PhptResultPack test_telem) {
 		this.base_telem = base_telem;
 		this.test_telem = test_telem;
 		
@@ -31,11 +31,11 @@ class FBCReportGen extends AbstractReportGen {
 
 	@Override
 	public void run() {
-		def sapi_title = base_telem.getSAPIScenarioName()
-		if (sapi_title!=test_telem.getSAPIScenarioName()) {
+		def scenario_set_title = 'Apache-ModPHP, Local-FileSystem'//base_telem.getSAPIScenarioName()
+		/* TODO if (scenario_set_title!=test_telem.getSAPIScenarioName()) {
 			// for some reason, comparing runs of 2 different SAPIs... make that clear in report.
-			sapi_title = sapi_title+' (Base) ' + test_telem.getSAPIScenarioName()+' (Test)'
-		}
+			scenario_set_title = scenario_set_title+' (Base) ' + test_telem.getSAPIScenarioName()+' (Test)'
+		} */
 		String base_build_branch_and_version = bav(base_telem.getBuildBranch(), base_telem.getBuildVersion())
 		String base_test_pack_branch_and_version = bav(base_telem.getTestPackBranch(), base_telem.getTestPackVersion())
 		String test_build_branch_and_version = bav(test_telem.getBuildBranch(), test_telem.getBuildVersion())
@@ -70,12 +70,12 @@ html.html {
 			/* --------------- begin headers -------------- */
 			tr {
 				td {
-					p(sapi_title)
+					p(scenario_set_title)
 				}
 			}
 			tr {
 				td(colspan:2) { p(align: 'center', 'OS') }
-				td(colspan:6, style:'background:#CCFF66') {}
+				td(colspan:8, style:'background:#CCFF66') {}
 				td(colspan:4, style:'background:yellow') {
 					p(align:'center', 'Skip')
 				}
@@ -103,6 +103,9 @@ html.html {
 				td(colspan:2, style:'background:#CCFF66') {
 					p('XFail')
 				}
+				td(colspan:2, style:'background:#CCFF66') {
+					p('Crash')
+				}
 				td(colspan:2, style:'background:yellow') {
 					p('Skip')
 				}
@@ -115,8 +118,11 @@ html.html {
 				td(colspan:2, style:'background:#FFC000') {
 					p('Bork**')
 				}
-				td(colspan:2, style:'background:#F28020') {
+				td(colspan:1, style:'background:#F28020') {
 					p('Unsupported***')
+				}
+				td(colspan:1, style:'background:#F28020') {
+					p('Exceptions')
 				}
 				td() {
 					p(align:'center', 'Required Extensions')
@@ -135,6 +141,10 @@ html.html {
 				td(add(test_telem.count(EPhptTestStatus.PASS) - base_telem.count(EPhptTestStatus.PASS)))
 				td(test_telem.count(EPhptTestStatus.FAIL))
 				td(add(test_telem.count(EPhptTestStatus.FAIL) - base_telem.count(EPhptTestStatus.FAIL)))
+				td(test_telem.count(EPhptTestStatus.XFAIL))
+				td(add(test_telem.count(EPhptTestStatus.XFAIL) - base_telem.count(EPhptTestStatus.XFAIL)))
+				td(style:'background:#ffffff', '8')// TODO td(test_telem.count(EPhptTestStatus.CRASH))
+				td('0')// TODO td(add(test_telem.count(EPhptTestStatus.CRASH) - base_telem.count(EPhptTestStatus.CRASH)))
 				td(test_telem.count(EPhptTestStatus.SKIP))
 				td(add(test_telem.count(EPhptTestStatus.SKIP) - base_telem.count(EPhptTestStatus.SKIP)))
 				td(test_telem.count(EPhptTestStatus.XSKIP))
@@ -154,16 +164,13 @@ html.html {
 			tr {
 				td('Telemetry')
 				td() {
-					a(href:'http://131.107.220.66/PFTT-Results/PHPT/PHP_5_4/', 'Base')
+					a(href:'http://131.107.220.66/PFTT-Results/PHPT/PHP_5_4/', 'Base') // TODO
 				}
 				td() {
-					a(href:'http://131.107.220.66/PFTT-Results/PHPT/PHP_5_4/', 'Test')
+					a(href:'http://131.107.220.66/PFTT-Results/PHPT/PHP_5_4/', 'Test') // TODO
 				}
+				td('PFTT Exceptions: 0') // TODO
 			}
-			/* TODO tr {
-				td('Scenarios:')
-				test_telem.scenario_set
-			} // tr*/
 			/* ----------------- end footer ------------------ */
 			
 		} // table
@@ -178,7 +185,7 @@ html.html {
 			/* ---------------- begin header ------------------- */
 			tr {
 				td(colspan:4) {
-					p(style:'text-align:center', sapi_title)
+					p(style:'text-align:center', scenario_set_title)
 				}
 			}
 			tr {
@@ -194,6 +201,33 @@ html.html {
 				td('Yes')
 				td('Yes')
 			} // tr
+		} // table
+		
+		// all PHPTs marked as CRASH
+		table(border:0, cellspacing:0, cellpadding:0, style:'background:#FFC000') {
+			/* --------------- begin headers -------------- */
+			tr {
+				td(colspan:4, scenario_set_title)
+			}
+			tr {
+				td(colspan:2, 'Crashes (Base)')
+				td(colspan:2, 'Crashes (Test)')
+			}
+			/* --------------- end headers -------------- */
+			/*tr {
+				td(row++)
+				td(test_telem.getOSName())
+				td() {
+					for ( String test_name : base_telem.getTestNames(EPhptTestStatus.CRASH)) {
+						br(test_name)
+					}
+				}
+				td() {
+					for ( String test_name : test_telem.getTestNames(EPhptTestStatus.CRASH)) {
+						br(test_name)
+					}
+				}
+			}*/
 		} // table
 
 		// new PHPT failures
@@ -214,11 +248,11 @@ html.html {
 			}
 		}
 		
-		// all PHPT failures
+		// all PHPTs marked as FAIL
 		table(border:0, cellspacing:0, cellpadding:0, style:'background:#FFC000') {
 			/* --------------- begin headers -------------- */
 			tr {
-				td(colspan:4, sapi_title)
+				td(colspan:4, scenario_set_title)
 			}
 			tr {
 				td(colspan:2, 'Failures (Base)')

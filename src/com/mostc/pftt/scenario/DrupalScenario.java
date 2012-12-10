@@ -2,7 +2,7 @@ package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.telemetry.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager;
 
 /** A free and open-source content management framework (CMF) written in PHP and distributed under
  * the GNU General Public License. It is used as a back-end system for at least 2.1% of

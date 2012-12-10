@@ -2,7 +2,7 @@ package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.telemetry.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager;
 
 /** phplist is the world's most popular open source email campaign manager. phplist is free to download, 
  * install and use, and is easy to integrate with any website. 

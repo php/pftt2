@@ -1,4 +1,4 @@
-package com.mostc.pftt.telemetry;
+package com.mostc.pftt.results;
 
 import java.awt.Container;
 
@@ -12,10 +12,15 @@ import com.mostc.pftt.ui.PhptDebuggerFrame;
 import com.mostc.pftt.util.ErrorUtil;
 
 public class ConsoleManager {
-	protected final boolean results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place;
+	protected final boolean force, windebug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place;
+	protected String source_pack, debug_pack;
 	protected PhptDebuggerFrame gui;
 		
-	public ConsoleManager(boolean results_only, boolean show_gui, boolean disable_debug_prompt, boolean dont_cleanup_test_pack, boolean phpt_not_in_place) {
+	public ConsoleManager(String source_pack, String debug_pack, boolean force, boolean windebug, boolean results_only, boolean show_gui, boolean disable_debug_prompt, boolean dont_cleanup_test_pack, boolean phpt_not_in_place) {
+		this.source_pack = source_pack;
+		this.debug_pack = debug_pack;
+		this.force = force;
+		this.windebug = windebug;
 		this.results_only = results_only;
 		this.show_gui = show_gui;
 		this.disable_debug_prompt = disable_debug_prompt;
@@ -44,6 +49,14 @@ public class ConsoleManager {
 	
 	public boolean isDisableDebugPrompt() {
 		return disable_debug_prompt;
+	}
+	
+	public boolean isForce() {
+		return force;
+	}
+	
+	public boolean isWinDebug() {
+		return windebug;
 	}
 
 	public void finishedTest(PhptTestCase test_case, EPhptTestStatus status) {
@@ -91,6 +104,14 @@ public class ConsoleManager {
 
 	public boolean isPhptNotInPlace() {
 		return phpt_not_in_place;
+	}
+
+	public String getDebugPack() {
+		return debug_pack;
+	}
+
+	public String getSourcePack() {
+		return source_pack;
 	}
 	
 } // end public class ConsoleManager

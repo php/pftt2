@@ -2,7 +2,7 @@ package com.mostc.pftt.model.smoke;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.telemetry.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager;
 
 /** tests that a build has all required features
  * 

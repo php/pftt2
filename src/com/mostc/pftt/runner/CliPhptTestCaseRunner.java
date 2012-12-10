@@ -18,10 +18,10 @@ import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.model.phpt.PhptSourceTestPack;
 import com.mostc.pftt.model.phpt.PhptActiveTestPack;
+import com.mostc.pftt.results.PhptResultPackWriter;
+import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.PhptTestPackRunner.PhptThread;
 import com.mostc.pftt.scenario.ScenarioSet;
-import com.mostc.pftt.telemetry.PhptTelemetryWriter;
-import com.mostc.pftt.telemetry.PhptTestResult;
 import com.mostc.pftt.util.StringUtil;
 
 /** one of the core classes. runs a PhptTestCase.
@@ -37,7 +37,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected ExecOutput output;
 	protected String selected_php_exe, shell_script, test_cmd, skip_cmd, ini_settings, shell_file;
 	
-	public CliPhptTestCaseRunner(PhpIni ini, PhptThread thread, PhptTestCase test_case, PhptTelemetryWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+	public CliPhptTestCaseRunner(PhpIni ini, PhptThread thread, PhptTestCase test_case, PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
 		super(ini, thread, test_case, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 	}
 	
@@ -54,7 +54,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				if (build.hasPhpCgiExe()) {
 					selected_php_exe = build.getPhpCgiExe() + " -C ";
 				} else {
-					twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "CGI not available", null, null, null, null, null, null, null, null, null, null));
+					twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "CGI not available", null, null, null, null, null, null, null, null, null, null, null));
 					
 					return false;
 				}
@@ -71,13 +71,33 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected void prepareTest() throws Exception {
 		super.prepareTest();
 		
-		// copy CLI args to pass
-		String args = test_case.containsSection(EPhptSection.ARGS) ? " -- " + test_case.get(EPhptSection.ARGS) : "";
-		
 		// generate cmd string to run test_file with php.exe
 		//
-		// -n => critical: ignores any .ini file with the php build
-		test_cmd = selected_php_exe+" -n "+ini_settings+" -f \""+test_file+"\""+(args==null?"":" "+args);
+		String query_string = "";
+		{
+			StringBuilder sb = new StringBuilder(64);
+			sb.append(selected_php_exe);
+			// -n => critical: ignores any .ini file with the php build
+			sb.append(" -n ");
+			sb.append(ini_settings);
+			sb.append(" -f \"");sb.append(test_file);sb.append("\" ");
+			if (test_case.containsSection(EPhptSection.ARGS)) {
+				// copy CLI args to pass
+				sb.append(" -- ");
+				sb.append(StringUtil.removeLineEnding(test_case.getTrim(EPhptSection.ARGS)));
+			} else if (test_case.containsSection(EPhptSection.GET)) {
+				query_string = test_case.getTrim(EPhptSection.GET);
+				sb.append(" -- ");
+				// include query string in php command too
+				for ( String kv_pair : query_string.split("\\&") ) {
+					sb.append(' ');
+					sb.append(kv_pair);
+				}
+			}	
+			test_cmd = sb.toString();
+		}
+		//
+		
 		
 		if (test_case.containsSection(EPhptSection.STDIN)) {
 			if (host.isWindows()) {
@@ -90,16 +110,10 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			}
 		}
 		
-		String query_string;
-		if (test_case.containsSection(EPhptSection.GET)) {
-			query_string = test_case.getTrim(EPhptSection.GET);
-		} else {
-			query_string = "";
-		}
-	
 		// critical to avoid security warning: see http://php.net/security.cgi-bin
 		env.put(ENV_REDIRECT_STATUS, "1");
 		if (!env.containsKey(ENV_QUERY_STRING))
+			// NOTE: some tests use both --GET-- and --POST--
 			env.put(ENV_QUERY_STRING, query_string);
 		if (!env.containsKey(ENV_PATH_TRANSLATED))
 			env.put(ENV_PATH_TRANSLATED, test_file);
@@ -172,7 +186,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected String executeTest() throws Exception { 
 		// execute PHP to execute the TEST code ... allow up to 60 seconds for execution
 		//      if test is taking longer than 40 seconds to run, spin up an additional thread to compensate (so other non-slow tests can be executed)
-		output = host.exec(shell_file, Host.ONE_MINUTE, null, stdin_post, test_case.isNon8BitCharset()?test_case.getCommonCharset():null, active_test_pack.getDirectory(), thread, 40);
+		output = host.exec(shell_file, Host.ONE_MINUTE, env, stdin_post, test_case.isNon8BitCharset()?test_case.getCommonCharset():null, active_test_pack.getDirectory(), thread, 40);
 		
 		return output.output;
 	} // end String executeTest

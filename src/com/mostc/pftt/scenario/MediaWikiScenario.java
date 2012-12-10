@@ -2,7 +2,7 @@ package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.telemetry.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager;
 
 /** MediaWiki is a free wiki software application. Developed by the Wikimedia Foundation and others,
  * it is used to run all of the projects hosted by the Foundation, including Wikipedia, Wiktionary

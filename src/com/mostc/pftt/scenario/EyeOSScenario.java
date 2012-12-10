@@ -4,7 +4,7 @@ import java.net.URL;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.telemetry.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager;
 
 /** eyeOS is a web desktop following the cloud computing concept that seeks to enable collaboration
  * and communication among users. It is mainly written in PHP, XML, and JavaScript. It is a

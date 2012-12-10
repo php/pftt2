@@ -3,7 +3,7 @@ package com.mostc.pftt.scenario;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.sapi.WebServerManager;
-import com.mostc.pftt.telemetry.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager;
 
 public abstract class AbstractProductionWebServerScenario extends AbstractWebServerScenario {
 
@@ -12,8 +12,13 @@ public abstract class AbstractProductionWebServerScenario extends AbstractWebSer
 	}
 	
 	@Override
+	public boolean isUACRequiredForSetup() {
+		return true;
+	}
+	
+	@Override
 	public int getTestThreadCount(Host host) {
-		return 6 * host.getCPUCount();
+		return 4 * host.getCPUCount();
 	}
 	
 	@Override
@@ -21,4 +26,4 @@ public abstract class AbstractProductionWebServerScenario extends AbstractWebSer
 		return smgr.start(cm, host) ? EScenarioStartState.STARTED : EScenarioStartState.FAILED_TO_START;
 	}
 	
-}
+} // end public abstract class AbstractProductionWebServerScenario

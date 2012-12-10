@@ -1,4 +1,4 @@
-package com.mostc.pftt.telemetry
+package com.mostc.pftt.results
 
 class PhptTallyFile {
 	public String sapi_scenario_name, build_branch, test_pack_branch, build_revision, test_pack_revision, os_name, os_name_long

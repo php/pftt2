@@ -3,7 +3,7 @@ package com.mostc.pftt.util;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.mostc.pftt.telemetry.PhptTelemetryWriter;
+import com.mostc.pftt.results.PhptResultPackWriter;
 import com.mostc.pftt.util.apache.regexp.RE;
 import com.mostc.pftt.util.apache.regexp.RECompiler;
 import com.mostc.pftt.util.apache.regexp.REProgram;
@@ -99,7 +99,15 @@ public final class StringUtil {
 			return str;
 		 
 		str = replaceAll(PATTERN_R_N, "\n", str);
-		str = replaceAll(PATTERN_R, "", str);
+		str = replaceAll(PATTERN_R, EMPTY, str);
+		return str;
+	}
+	public static String removeLineEnding(String str) {
+		if (str==null)
+			return str;
+		
+		str = replaceAll(PATTERN_R_N, EMPTY, str);
+		str = replaceAll(PATTERN_R, EMPTY, str);
 		return str;
 	}
 	
@@ -107,11 +115,39 @@ public final class StringUtil {
 		return pat.matcher(str).replaceAll(rep);
 	}
 	
-	public static String quote(String str) {
-		return quote(str, "/");
+	/** ensures returned string starts and end with "
+	 * 
+	 * @see #ensureApos
+	 * @param str
+	 * @return
+	 */
+	public static String ensureQuoted(String str) {
+		if (!str.startsWith("\""))
+			str = "\"" + str;
+		if (!str.endsWith("\""))
+			str = str + "\"";
+		return str;
+	}
+	
+	/** ensures returned string starts and end with '
+	 * 
+	 * @see #ensureQuoted
+	 * @param str
+	 * @return
+	 */
+	public static String ensureApos(String str) {
+		if (!str.startsWith("'"))
+			str = "'" + str;
+		if (!str.endsWith("'"))
+			str = str + "'";
+		return str;
+	}
+	
+	public static String makeRegularExpressionSafe(String str) {
+		return makeRegularExpressionSafe(str, "/");
 	}
 
-	public static String quote(String str, String delim) {
+	public static String makeRegularExpressionSafe(String str, String delim) {
 		//Pattern.quote(str)
 		StringBuilder sb = new StringBuilder(str.length());
 		char c;
@@ -145,7 +181,7 @@ public final class StringUtil {
 		return new RE(prog);
 	}
 	public static RE compileQuote(String needle) {
-		return compile(quote(needle));
+		return compile(makeRegularExpressionSafe(needle));
 	}
 	public static boolean isNotEmpty(CharSequence cs) {
 		return cs != null && cs.length() > 0;
@@ -202,12 +238,12 @@ public final class StringUtil {
 		return a == null || b == null ? false : a.equals(b);
 	}
 	
-	public static boolean match(Pattern pat, String text, PhptTelemetryWriter twriter) {
+	public static boolean match(Pattern pat, String text, PhptResultPackWriter twriter) {
 		// TODO log in telemetry that match found or not
 		return pat.matcher(text).matches();
 	}
 
-	public static String[] getMatches(Pattern pat, String text, PhptTelemetryWriter twriter) {
+	public static String[] getMatches(Pattern pat, String text, PhptResultPackWriter twriter) {
 		Matcher m = pat.matcher(text);
 		
 		if (!m.matches())

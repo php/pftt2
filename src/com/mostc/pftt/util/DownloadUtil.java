@@ -29,7 +29,7 @@ import org.apache.http.protocol.RequestTargetHost;
 import org.apache.http.protocol.RequestUserAgent;
 
 import com.mostc.pftt.host.Host;
-import com.mostc.pftt.telemetry.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager;
 
 public class DownloadUtil {
 
@@ -109,7 +109,7 @@ public class DownloadUtil {
 			System.out.println("PFTT: release_get: decompressing "+local_file_zip+"...");
 			
 			// TODO c:\program files
-			host.exec("\"C:\\Program Files\\7-Zip\\7z\" x "+local_file_zip, Host.NO_TIMEOUT, local_dir).printOutputIfCrash(cm);
+			host.exec("\"C:\\Program Files\\7-Zip\\7z\" x "+local_file_zip, Host.NO_TIMEOUT, local_dir).printOutputIfCrash(DownloadUtil.class.getSimpleName(), cm);
 			
 			return true;
 		} catch ( Exception ex ) {

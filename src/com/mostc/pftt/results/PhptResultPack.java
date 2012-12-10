@@ -1,4 +1,4 @@
-package com.mostc.pftt.telemetry;
+package com.mostc.pftt.results;
 
 import java.io.File;
 import java.util.List;
@@ -14,17 +14,17 @@ import com.mostc.pftt.util.StringUtil;
  *
  */
 
-public abstract class PhptTelemetry {
+public abstract class PhptResultPack {
 	
 	public static boolean isTelemDir(File file) {
-		if (!StringUtil.startsWithIC(file.getName(), "PHP-telemetry-"))
+		if (!StringUtil.startsWithIC(file.getName(), "PHP-Result-Pack-"))
 			return false;
 		return new File(file, "tally.xml").exists();
 	}
 	//
 	protected final Host host;
 	
-	public PhptTelemetry(Host host) {
+	public PhptResultPack(Host host) {
 		this.host = host;
 	}
 	

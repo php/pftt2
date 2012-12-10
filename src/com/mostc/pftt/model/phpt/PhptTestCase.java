@@ -20,8 +20,8 @@ import com.ibm.icu.charset.CharsetICU;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.TestCase;
 import com.mostc.pftt.model.phpt.PhpBuild.PHPOutput;
-import com.mostc.pftt.telemetry.ConsoleManager;
-import com.mostc.pftt.telemetry.PhptTelemetryWriter;
+import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.PhptResultPackWriter;
 import com.mostc.pftt.util.StringUtil;
 import com.mostc.pftt.util.apache.regexp.RE;
 import com.mostc.pftt.util.apache.regexp.RECompiler;
@@ -46,7 +46,7 @@ import com.mostc.pftt.util.apache.regexp.REProgram;
 
 public class PhptTestCase extends TestCase {
 	/** extensions (& name fragments) that have non-thread-safe tests (only 1 test of an NTS extension will be run at a time) */
-	public static final String[] NON_THREAD_SAFE_EXTENSIONS = new String[]{"gd", "fileinfo", "file", "sockets", "phar", "xsl", "xml", "network", "pdo", "mysql", "pgsql", "math", "cli_server", "cgi", "strings", "firebird", "sybase", "interbase", "mssql"};
+	public static final String[] NON_THREAD_SAFE_EXTENSIONS = new String[]{"fileinfo", "file", "sockets", "xsl", "xml", "network", "pdo", "mysql", "pgsql", "math", "cli_server", "cgi", "strings", "firebird", "sybase", "interbase", "mssql"};
 	// PHPT test files end with .phpt
 	public static final String PHPT_FILE_EXTENSION = ".phpt";
 	// PHPT files are composed of multiple sections
@@ -71,7 +71,7 @@ public class PhptTestCase extends TestCase {
 	 * @throws FileNotFoundException
 	 * @throws IOException
 	 */
-	public static PhptTestCase load(Host host, PhptSourceTestPack test_pack, String test_name, PhptTelemetryWriter twriter) throws FileNotFoundException, IOException {
+	public static PhptTestCase load(Host host, PhptSourceTestPack test_pack, String test_name, PhptResultPackWriter twriter) throws FileNotFoundException, IOException {
 		return load(host, test_pack, false, test_name, twriter);
 	}
 	
@@ -90,12 +90,12 @@ public class PhptTestCase extends TestCase {
 	 * @throws FileNotFoundException
 	 * @throws IOException
 	 */
-	public static PhptTestCase load(Host host, PhptSourceTestPack test_pack, boolean keep_all, String test_name, PhptTelemetryWriter twriter) throws FileNotFoundException, IOException {
+	public static PhptTestCase load(Host host, PhptSourceTestPack test_pack, boolean keep_all, String test_name, PhptResultPackWriter twriter) throws FileNotFoundException, IOException {
 		return load(host, test_pack, keep_all, test_name, twriter, null);
 	}
 		
 	static final Pattern PATTERN_AZ = Pattern.compile("^--([_A-Z]+)--");
-	public static PhptTestCase load(Host host, PhptSourceTestPack test_pack, boolean keep_all, String test_name, PhptTelemetryWriter twriter, PhptTestCase parent) throws FileNotFoundException, IOException {
+	public static PhptTestCase load(Host host, PhptSourceTestPack test_pack, boolean keep_all, String test_name, PhptResultPackWriter twriter, PhptTestCase parent) throws FileNotFoundException, IOException {
 		String file = host.fixPath(test_pack.getSourceDirectory()+host.dirSeparator()+test_name); 
 		
 		PhptTestCase test_case = new PhptTestCase(test_pack, test_name);
@@ -188,7 +188,7 @@ public class PhptTestCase extends TestCase {
 	
 	public PhptTestCase(PhptSourceTestPack test_pack, String name) {
 		this.test_pack = test_pack;
-		this.name = Host.toUnixPath(name);
+		this.name = Host.toUnixPath(name).toLowerCase();
 		
 		section_text = new HashMap<EPhptSection,String>();
 	}
@@ -286,11 +286,11 @@ public class PhptTestCase extends TestCase {
 	 * @param twriter
 	 * @return
 	 */
-	public RE getExpectedCompiled(PhptTelemetryWriter twriter) {
+	public RE getExpectedCompiled(PhptResultPackWriter twriter) {
 		return getExpectedCompiled(null, twriter);
 	}
 	
-	public RE getExpectedCompiled(Host host, PhptTelemetryWriter twriter) {
+	public RE getExpectedCompiled(Host host, PhptResultPackWriter twriter) {
 		RE expected_re;
 		if (this.expected_re!=null) {
 			expected_re = this.expected_re.get();
@@ -367,7 +367,7 @@ public class PhptTestCase extends TestCase {
 				start = end = length;
 			}
 			// quote a non re portion of the string
-			temp = temp + StringUtil.quote(expected_str.substring(startOffset, start), "/"); //(start - startOffset)),  "/");
+			temp = temp + StringUtil.makeRegularExpressionSafe(expected_str.substring(startOffset, start), "/"); //(start - startOffset)),  "/");
 			// add the re unquoted.
 			if (end > start) {
 				temp = temp + "(" + expected_str.substring(start+2, end) + ")";
@@ -560,6 +560,22 @@ public class PhptTestCase extends TestCase {
 		return name.endsWith(".phpt") ? name.substring(0, name.length()-".phpt".length()) : name;
 	}
 	
+	/** returns the base name of tests without the folder name or .phpt... if a/b.phpt then returns b.
+	 * 
+	 * @return
+	 */
+	public String getShortName() {
+		return Host.basename(getBaseName());
+	}
+	
+	/** returns the folder the test is in
+	 * 
+	 * @return
+	 */
+	public String getFolder() {
+		return Host.dirname(getBaseName());
+	}
+	
 	public boolean isWin32Test() {
 		return name.lastIndexOf("-win32") != -1;
 	}
@@ -602,7 +618,7 @@ public class PhptTestCase extends TestCase {
 		
 		code = "<?php function a() {\n"+code+" \n}\n $a = a();\n $a=$a['TESTS'];\n if (is_array($a)) { foreach ($a as $b) { echo $b.\"\\n\";}} elseif (is_string($a)) {echo $a.\"\\n\";} ?>";
 		
-		PHPOutput output = build.eval(host, code).printHasFatalError(cm);
+		PHPOutput output = build.eval(host, code).printHasFatalError(getClass().getSimpleName()+"#readRedirectTestNames", cm);
 		
 		ArrayList<String> test_names = new ArrayList<String>(2);
 		
@@ -650,7 +666,7 @@ public class PhptTestCase extends TestCase {
 				
 				String code = "<?php function a() {\n"+env_str+" \n}\n $a=a(); echo $a.\"\\n\"; ?>";
 				
-				PHPOutput output = build.eval(host, code).printHasFatalError(cm);
+				PHPOutput output = build.eval(host, code).printHasFatalError(getClass().getSimpleName()+"#getENV", cm);
 				
 				lines = output.hasFatalError() ? null : output.getLines();
 			} else {
@@ -695,7 +711,7 @@ public class PhptTestCase extends TestCase {
 		if (StringUtil.isNotEmpty(rt_str)) {
 			String code = "<?php function a() {\n"+rt_str+" \n}\n $a = a();\n $a=$a['ENV'];\n foreach ($a as $b=>$c) { echo $b.\"\\n\"; echo $c.\"\\n\"; } ?>";
 			
-			PHPOutput output = build.eval(host, code).printHasFatalError(cm);
+			PHPOutput output = build.eval(host, code).printHasFatalError(getClass().getSimpleName()+"#readRedirectTestEnvironment", cm);
 			if (!output.hasFatalError()) {
 				String[] lines = output.getLines();
 				for ( int i=0 ; i < lines.length ; i+=2) {
@@ -800,7 +816,7 @@ public class PhptTestCase extends TestCase {
 	 * @return
 	 */
 	public boolean isSlowTest() {
-		return isNamed(
+		return name.startsWith("ext/phar/")||isNamed(
 				// tests that check the SKIP_SLOW_TESTS env var (ie tests considered slow by their authors)
 				//
 				// (PFTT always runs those tests. PFTT never sets SKIP_SLOW_TESTS)
@@ -819,11 +835,6 @@ public class PhptTestCase extends TestCase {
 				"ext/oci8/tests/pecl_bug10194.phpt",
 				"ext/oci8/tests/pecl_bug10194_blob.phpt",
 				"ext/oci8/tests/pecl_bug10194_blob_64.phpt",
-				"ext/phar/tests/bug13727.phpt",
-				"ext/phar/tests/bug45218_SLOWTEST.phpt",
-				"ext/phar/tests/bug45218_SLOWTESTU.phpt",
-				"ext/phar/tests/bug46032.phpt",
-				"ext/phar/tests/bug46060.phpt",
 				"ext/standard/tests/file/001.phpt",
 				"ext/standard/tests/file/005_variation.phpt",
 				"ext/standard/tests/file/file_get_contents_error001.phpt",
@@ -861,6 +872,10 @@ public class PhptTestCase extends TestCase {
 				"tests/lang/bug45392.phpt",
 				"ext/standard/tests/streams/stream_get_meta_data_socket_variation3.phpt",
 				"ext/standard/tests/streams/stream_get_meta_data_socket_variation1.phpt",
+				"ext/standard/tests/streams/stream_get_meta_data_socket_variation2.phpt",
+				"ext/standard/tests/streams/stream_get_meta_data_socket_variation4.phpt",
+				"ext/standard/tests/streams/stream_socket_pair.phpt",
+				"ext/standard/tests/streams/stream_set_timeout_error.phpt",
 				"ext/standard/tests/network/shutdown.phpt",
 				"ext/standard/tests/streams/bug61371-win.phpt",
 				"ext/standard/tests/streams/stream_get_meta_data_socket_variation4.phpt",

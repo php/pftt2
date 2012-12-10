@@ -4,8 +4,8 @@ import java.util.Map;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
+import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.scenario.Scenario.EScenarioStartState;
-import com.mostc.pftt.telemetry.ConsoleManager;
 
 /** Tests postgres and pdo_postgres (NOT IMPLEMENTED)
  * 

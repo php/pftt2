@@ -12,7 +12,7 @@ import java.util.List;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.SourceTestPack;
-import com.mostc.pftt.telemetry.PhptTelemetryWriter;
+import com.mostc.pftt.results.PhptResultPackWriter;
 
 /** manages a test-pack of PHPT tests
  * 
@@ -59,11 +59,11 @@ public class PhptSourceTestPack extends SourceTestPack {
 		host.deleteIfExists(test_pack+"/ext/standard/tests/file/windows_links/mnt");
 	}
 	
-	public void read(List<PhptTestCase> test_files, List<String> names, PhptTelemetryWriter twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {
+	public void read(List<PhptTestCase> test_files, List<String> names, PhptResultPackWriter twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {
 		read(test_files, names, twriter, build, false);
 	}
 	
-	public void read(List<PhptTestCase> test_files, List<String> names, PhptTelemetryWriter twriter, PhpBuild build, boolean ignore_missing) throws FileNotFoundException, IOException, Exception {
+	public void read(List<PhptTestCase> test_files, List<String> names, PhptResultPackWriter twriter, PhpBuild build, boolean ignore_missing) throws FileNotFoundException, IOException, Exception {
 		test_pack_file = new File(test_pack);
 		test_pack = test_pack_file.getAbsolutePath(); // normalize path
 		
@@ -113,14 +113,14 @@ public class PhptSourceTestPack extends SourceTestPack {
 		twriter.setTotalCount(test_files.size());
 	}
 
-	public void read(List<PhptTestCase> test_files, PhptTelemetryWriter twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {
+	public void read(List<PhptTestCase> test_files, PhptResultPackWriter twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {
 		test_pack_file = new File(test_pack);
 		test_pack = test_pack_file.getAbsolutePath(); // normalize path
 		add_test_files(test_pack_file.listFiles(), test_files, null, twriter, build, null, new LinkedList<PhptTestCase>());
 		twriter.setTotalCount(test_files.size());
 	}
 	
-	private void add_test_files(File[] files, List<PhptTestCase> test_files, List<String> names, PhptTelemetryWriter twriter, PhpBuild build, PhptTestCase redirect_parent, List<PhptTestCase> redirect_targets) throws FileNotFoundException, IOException, Exception {
+	private void add_test_files(File[] files, List<PhptTestCase> test_files, List<String> names, PhptResultPackWriter twriter, PhpBuild build, PhptTestCase redirect_parent, List<PhptTestCase> redirect_targets) throws FileNotFoundException, IOException, Exception {
 		if (files==null)
 			return;
 		main_loop:
@@ -147,7 +147,7 @@ public class PhptSourceTestPack extends SourceTestPack {
 		}
 	}
 	
-	private void add_test_case(PhptTestCase test_case, List<PhptTestCase> test_files, List<String> names, PhptTelemetryWriter twriter, PhpBuild build, PhptTestCase redirect_parent, List<PhptTestCase> redirect_targets) throws FileNotFoundException, IOException, Exception {
+	private void add_test_case(PhptTestCase test_case, List<PhptTestCase> test_files, List<String> names, PhptResultPackWriter twriter, PhpBuild build, PhptTestCase redirect_parent, List<PhptTestCase> redirect_targets) throws FileNotFoundException, IOException, Exception {
 		if (test_case.containsSection(EPhptSection.REDIRECTTEST)) {
 			if (build==null || redirect_parent!=null) {
 				// ignore the test

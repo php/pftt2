@@ -1,7 +1,7 @@
 package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.Host;
-import com.mostc.pftt.telemetry.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager;
 
 /** Placeholder scenario for storing a PHP build and its test pack on the local file system as opposed to remotely somewhere.
  * 

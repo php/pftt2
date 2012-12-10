@@ -3,7 +3,7 @@ package com.mostc.pftt.util;
 import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.LocalHost;
-import com.mostc.pftt.telemetry.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager;
 
 /** Utilities for setting up the test environment and convenience settings on Hosts
  * 
@@ -30,6 +30,8 @@ public final class HostEnvUtil {
 	 * -creates a php-sdk share pointing to %SYSTEMDRIVE%\\php-sdk
 	 * -installs VC9 runtime if its not Windows 7/2008r2 or Windows 8/2012 (which don't need it to run PHP)
 	 * 
+	 * If enable_debug_prompt and if WinDebug is installed, enables it for debugging PHP.
+	 * 
 	 * @param host
 	 * @param cm
 	 * @param enable_debug_prompt
@@ -51,12 +53,32 @@ public final class HostEnvUtil {
 		boolean a = regQueryAdd(cm, host, "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting", "DontShowUI", value, REG_DWORD);
 		boolean b = regQueryAdd(cm, host, "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting", "Disable", value, REG_DWORD);
 		if ( a || b ) {			
-			// assume if registry had to be edited, that firewall has to be disabled (avoid doing this if possible because it requires user to approve elevation)
+			// assume if registry had to be edited, the rest of this has to be done, otherwise assume this is all already done
+			// (avoid doing this if possible because it requires user to approve elevation)
+			
+			
 			cm.println(HostEnvUtil.class, "disabling Windows Firewall...");
 			
 			// LATER edit firewall rules instead (what if on public network, ex: Azure)
-			host.execElevated("netsh firewall set opmode disable", Host.ONE_MINUTE);			
+			host.execElevated("netsh firewall set opmode disable", Host.ONE_MINUTE);
 			
+			//
+			if (enable_debug_prompt) {
+				String win_dbg_exe = WinDebugManager.findWinDebugExe(host);
+				//
+				// reminder: can PHPTs with WinDebug using -windebug console option
+				if (StringUtil.isNotEmpty(win_dbg_exe)) {
+					cm.println(HostEnvUtil.class, "Enabling WinDebug as the default debugger...");
+					
+					// make windebug the default debugger, otherwise, it probably won't even be an option in the WER popup
+					//  1. windebug is easier to setup for a php build than VS (will have lots of builds)
+					//  2. VS may have problems with PHP's pdb files
+					//
+					// `windbg -IS`
+					host.execElevated(StringUtil.ensureQuoted(win_dbg_exe)+" -IS", Host.ONE_MINUTE);
+				}
+			}
+			//
 			
 			cm.println(HostEnvUtil.class, "creating File Share for "+host.getPhpSdkDir()+"...");
 			// share PHP-SDK over network. this also will share C$, G$, etc...
@@ -86,10 +108,25 @@ public final class HostEnvUtil {
 	} // end public static void prepareWindows
 	
 	public static final String REG_DWORD = "REG_DWORD";
+	/** checks if a registry key matches the given value. if it does, returns true.
+	 * 
+	 * if not, asks user for privilege elevation and changes the registry key.
+	 * 
+	 * returns false only if key could not be changed to value.
+	 * 
+	 * @param cm
+	 * @param host
+	 * @param key
+	 * @param name
+	 * @param value
+	 * @param type
+	 * @return
+	 * @throws Exception
+	 */
 	public static boolean regQueryAdd(ConsoleManager cm, Host host, String key, String name, String value, String type) throws Exception {
 		// check the registry first, to not edit the registry if we don't have too		
 		ExecOutput output = host.exec("REG QUERY \""+key+"\" /f "+name, Host.ONE_MINUTE);
-		output.printOutputIfCrash(cm);
+		output.printOutputIfCrash(HostEnvUtil.class.getSimpleName(), cm);
 		for ( String line : output.getLines() ) {
 			if (line.contains(name) && line.contains(type) && line.contains(value))
 				return false;

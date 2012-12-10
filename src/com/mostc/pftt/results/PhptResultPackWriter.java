@@ -1,4 +1,4 @@
-package com.mostc.pftt.telemetry;
+package com.mostc.pftt.results;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.mostc.pftt.host.Host;
@@ -17,15 +18,15 @@ import com.mostc.pftt.model.phpt.PhptSourceTestPack;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.ErrorUtil;
 
-/** Writes the telemetry during a test run.
+/** Writes the result-pack from a test run.
  * 
- * @see PhptTelemetryReader
+ * @see PhptResultPackReader
  * @author Matt Ficken
  *
  */
 
 // TODO store systeminfo and phpinfo 
-public class PhptTelemetryWriter extends PhptTelemetry {
+public class PhptResultPackWriter extends PhptResultPack {
 	private File telem_dir;
 	protected HashMap<EPhptTestStatus,PrintWriter> status_list_map;
 	protected Host host;
@@ -36,17 +37,21 @@ public class PhptTelemetryWriter extends PhptTelemetry {
 	protected PhpBuild build;
 	protected PhptSourceTestPack test_pack;
 	protected ScenarioSet scenario_set;
+	protected LinkedBlockingQueue<PhptTestResult> results;
+	protected boolean run = true;
 	
-	public PhptTelemetryWriter(Host host, ConsoleManager cm, File telem_base_dir, PhpBuild build, PhptSourceTestPack test_pack, ScenarioSet scenario_set) throws IOException {
+	public PhptResultPackWriter(Host host, ConsoleManager cm, File telem_base_dir, PhpBuild build, PhptSourceTestPack test_pack, ScenarioSet scenario_set) throws IOException {
 		super(host);
 		this.host = host;
 		this.cm = cm;
 		this.scenario_set = scenario_set;
 		this.build = build;
 		this.test_pack = test_pack;
-		this.telem_dir = new File(telem_base_dir + "/PFTT-telemetry-"+System.currentTimeMillis());
+		this.telem_dir = new File(telem_base_dir + "/PFTT-Result-Pack-"+System.currentTimeMillis());
 		this.telem_dir.mkdirs();
 		this.telem_dir = new File(this.telem_dir.getAbsolutePath());
+		
+		results = new LinkedBlockingQueue<PhptTestResult>();
 		
 		counts = new HashMap<EPhptTestStatus,AtomicInteger>();
 		for (EPhptTestStatus status:EPhptTestStatus.values())
@@ -58,14 +63,37 @@ public class PhptTelemetryWriter extends PhptTelemetry {
 		for(EPhptTestStatus status:EPhptTestStatus.values()) {
 			FileWriter fw = new FileWriter(telem_dir+"/"+status+".txt");
 			PrintWriter pw = new PrintWriter(fw);
-			if (status==EPhptTestStatus.XSKIP) {
+			switch(status) {
+			case XSKIP:
+			case UNSUPPORTED:
+			case BORK:
 				// this is a list/status that PHP run-tests doesn't produce, so its less likely that 
 				// someone will want to pass this list to run-tests, so its safe to add a comment/header to the XSKIP list
 				pw.println("; can add comments or comment out any line by adding ; or #");
 				pw.println("; line will be ignored when you pass this list to pftt phpt_list");
+				break;
+			default:
+				break;
 			}
 			status_list_map.put(status, pw);
 		}
+		
+		new Thread() {
+				@Override
+				public void run() {
+					PhptTestResult result;
+					
+					while (run) {
+						try {
+							result = results.take();
+						
+							handleResult(result);
+						} catch ( Exception ex ) {
+							ex.printStackTrace();
+						}
+					}
+				}
+			}.start();
 	}
 	
 	public File getTelemetryDir() {
@@ -78,6 +106,7 @@ public class PhptTelemetryWriter extends PhptTelemetry {
 	
 	@Override
 	public void close() {
+		run = false;
 		for(EPhptTestStatus status:EPhptTestStatus.values()) {
 			PrintWriter pw = status_list_map.get(status);
 			pw.close();
@@ -111,7 +140,7 @@ public class PhptTelemetryWriter extends PhptTelemetry {
 			tally.xfail_works = counts.get(EPhptTestStatus.XFAIL_WORKS).get();
 			tally.unsupported = counts.get(EPhptTestStatus.UNSUPPORTED).get();
 			tally.bork = counts.get(EPhptTestStatus.BORK).get();
-			tally.exception = counts.get(EPhptTestStatus.EXCEPTION).get();		
+			tally.exception = counts.get(EPhptTestStatus.TEST_EXCEPTION).get();		
 			FileWriter fw = new FileWriter(new File(telem_dir, "tally.xml"));
 			PhptTallyFile.write(tally, fw);
 			fw.close();
@@ -165,37 +194,32 @@ public class PhptTelemetryWriter extends PhptTelemetry {
 	public void show_exception(PhptTestCase test_file, Throwable ex, Object a) {
 		show_exception(test_file, ex, a, null);
 	}
-	protected void writeException(PhptTestCase test_case, Throwable ex) {
-		ex.printStackTrace();
+	public void show_exception(PhptTestCase test_case, Throwable ex, Object a, Object b) {
+		String ex_str = ErrorUtil.toString(ex);
+		if (a!=null)
+			ex_str += " a="+a;
+		if (b!=null)
+			ex_str += " b="+b;
 		
-		// store all stack traces in 1 file
 		synchronized(exception_writer) {
 			exception_writer.println("EXCEPTION "+test_case);
-			ex.printStackTrace(exception_writer);
+			exception_writer.println(ex_str);
 			exception_writer.flush(); // CRITICAL
 		}
-	}
-	public void show_exception(PhptTestCase test_case, Throwable ex, Object a, Object b) {
-		writeException(test_case, ex);
 		
-		String ex_str = ErrorUtil.toString(ex);
+		System.err.println(ex_str);
 		
 		// count exceptions as a result (the worst kind of failure, a pftt failure)
-		addResult(new PhptTestResult(host, EPhptTestStatus.EXCEPTION, test_case, ex_str, null, null, null, null, null, null, null, null, null, null));
+		addResult(new PhptTestResult(host, EPhptTestStatus.TEST_EXCEPTION, test_case, ex_str, null, null, null, null, null, null, null, null, null, null, null));
 	}
 	int completed = 0; 
 	public void addResult(PhptTestResult result) {
-		// FUTURE enqueue in writer thread to avoid slowing down PhptThreads
-		// also, on Windows, enqueue printing to console here
-		//      -on Windows, if you grab the scrollbar, it will pause printing and
-		//       println() call(s) will be blocked until scrollbar is released (ie this can pause/block up all the testing)
+		// enqueue result to be handled by another thread to avoid interrupting every phpt thread
+		results.add(result);
+	}
 		
+	protected void handleResult(PhptTestResult result) {
 		counts.get(result.status).incrementAndGet();
-		
-		if (cm!=null) {
-			// show in gui (if open)
-			cm.showResult(host, getTotalCount(), completed++, result);	
-		}		
 		
 		// record in list files
 		PrintWriter pw = status_list_map.get(result.status);
@@ -205,11 +229,16 @@ public class PhptTelemetryWriter extends PhptTelemetry {
 		try {
 			result.write(telem_dir);
 		} catch ( Exception ex ) {
-			writeException(result.test_case, ex);
+			ex.printStackTrace();
 		}
 		
 		// show on console
 		System.out.println(result.status+" "+result.test_case);
+		
+		if (cm!=null) {
+			// show in tui/gui (if open)
+			cm.showResult(host, getTotalCount(), completed++, result);	
+		}
 	}
 
 	@Override

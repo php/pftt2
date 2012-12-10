@@ -6,6 +6,7 @@ import com.mostc.pftt.util.StringUtil;
  * 
  * Contains all the official documented sections and de-facto undocumented sections used by a few actual PHPTs.
  * 
+ * @see http://qa.php.net/phpt_details.php
  * @author Matt Ficken
  *
  */

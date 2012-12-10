@@ -2,7 +2,7 @@ package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.telemetry.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager;
 
 /** Joomla is a free and open source content management system (CMS) for publishing content on the
  * World Wide Web and intranets and a model–view–controller (MVC) Web application framework that can
