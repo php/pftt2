@@ -10,13 +10,7 @@ import com.mostc.pftt.results.ConsoleManager;
  * 
  */
 
-public class Typo3Scenario extends ApplicationScenario {
-
-	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
-		// TODO Auto-generated method stub
-		return false;
-	}
+public class Typo3Scenario extends ZipDbApplication {
 
 	@Override
 	public String getName() {
@@ -25,6 +19,17 @@ public class Typo3Scenario extends ApplicationScenario {
 
 	@Override
 	public boolean isImplemented() {
+		return false;
+	}
+
+	@Override
+	protected String getZipAppFileName() {
+		return "typo3-6.0.0.zip";
+	}
+
+	@Override
+	protected boolean configure(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, String app_dir) {
+		// TODO Auto-generated method stub
 		return false;
 	}
 

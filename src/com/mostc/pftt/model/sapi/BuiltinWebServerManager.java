@@ -81,4 +81,9 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 		return false; // nothing to stop
 	}
 
+	@Override
+	public String getDefaultDocroot(Host host, PhpBuild build) {
+		return build.getBuildPath();
+	}
+
 } // end public class BuiltinWebServerManager

@@ -12,7 +12,9 @@ import java.util.List;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.SourceTestPack;
+import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.PhptResultPackWriter;
+import com.mostc.pftt.util.StringUtil;
 
 /** manages a test-pack of PHPT tests
  * 
@@ -36,7 +38,16 @@ public class PhptSourceTestPack extends SourceTestPack {
 		return getSourceDirectory();
 	}
 	
-	public boolean open(Host host) {
+	public boolean open(ConsoleManager cm, Host host) {
+		if (StringUtil.endsWithIC(this.test_pack, ".zip")) {
+			// automatically decompress build
+			String zip_file = test_pack;
+			this.test_pack = host.uniqueNameFromBase(Host.removeFileExt(test_pack));
+				
+			if (!host.unzip(cm, zip_file, test_pack))
+				return false;
+		}
+		
 		this.host = host;
 		this.test_pack = host.fixPath(test_pack);
 		return host.exists(this.test_pack);

@@ -12,13 +12,7 @@ import com.mostc.pftt.results.ConsoleManager;
  * 
  */
 
-public class JoomlaScenario extends ApplicationScenario {
-
-	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
-		// TODO Auto-generated method stub
-		return false;
-	}
+public class JoomlaScenario extends ZipDbApplication {
 
 	@Override
 	public String getName() {
@@ -27,6 +21,17 @@ public class JoomlaScenario extends ApplicationScenario {
 
 	@Override
 	public boolean isImplemented() {
+		return false;
+	}
+
+	@Override
+	protected String getZipAppFileName() {
+		return "Joomla_3.0.2-Stable-Full_Package.zip";
+	}
+
+	@Override
+	protected boolean configure(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, String app_dir) {
+		// TODO Auto-generated method stub
 		return false;
 	}
 

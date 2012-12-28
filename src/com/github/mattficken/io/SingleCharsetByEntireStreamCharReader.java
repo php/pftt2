@@ -22,7 +22,7 @@ public class SingleCharsetByEntireStreamCharReader extends AbstractSingleCharset
 		if (first) {
 			first = false;
 			
-			bbuf = IOUtil.toBytes(in);
+			bbuf = IOUtil.toBytes(in, IOUtil.HALF_MEGABYTE);
 			
 			detectCharset(bbuf, 0, bbuf.length);
 		}

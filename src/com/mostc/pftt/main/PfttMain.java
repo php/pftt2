@@ -26,6 +26,7 @@ import com.mostc.pftt.model.app.PhpUnitAppTestPack;
 import com.mostc.pftt.model.phpt.EBuildBranch;
 import com.mostc.pftt.model.phpt.EBuildType;
 import com.mostc.pftt.model.phpt.PhpBuild;
+import com.mostc.pftt.model.phpt.PhpDebugPack;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.model.phpt.PhptSourceTestPack;
 import com.mostc.pftt.model.smoke.ESmokeTestStatus;
@@ -232,6 +233,7 @@ public class PfttMain {
 		System.out.println();
 		System.out.println("Commands:");
 		System.out.println("phpt_all <build> <test-pack> - runs all tests in given test pack");
+		System.out.println("phpt_repro <build> <test-pack> <XML result-pack file> - replays .XML file from previous result-pack run");
 		System.out.println("phpt_named <build> <test-pack> <test1> <test2> <test name fragment> - runs named tests or tests matching name pattern");
 		System.out.println("phpt_list <build> <test-pack> <file> - runs list of tests stored in file");
 		System.out.println("custom <build> - runs PFTT specific functional tests (bugs that can not be tested using PHP testsT)");
@@ -580,11 +582,11 @@ public class PfttMain {
 		
 		//
 		for ( ; args_i < args.length ; args_i++ ) {
-			if (args[args_i].equals("-gui")) {
+			if (args[args_i].equals("-gui")||args[args_i].equals("-g")) {
 				show_gui = true;
-			} else if (args[args_i].equals("-force")) {
+			} else if (args[args_i].equals("-force")||args[args_i].equals("-f")) {
 				force = true;
-			} else if (args[args_i].equals("-config")) {
+			} else if (args[args_i].equals("-config")||args[args_i].equals("-c")) {
 				// 
 				// configuration file(s) are separated by ; or : or ,
 				args_i++;
@@ -689,6 +691,9 @@ public class PfttMain {
 				source_pack = args[args_i++];
 			} else if (args[args_i].equals("-debug_pack")) {
 				debug_pack = args[args_i++];
+				
+				PhpDebugPack.open();
+				
 			} else if (args[args_i].startsWith("-")) {
 				System.err.println("User Error: unknown option "+args[args_i]);
 				System.exit(-255);
@@ -812,6 +817,11 @@ public class PfttMain {
 				cmd_phpt_list(rt, cm, config, build, test_pack, list_file);		
 				
 				System.out.println("PFTT: finished");
+			} else if (command.equals("phpt_repro")||command.equals("phpt_replay")||command.equals("phpt_re")||command.equals("phptrepro")||command.equals("phptreplay")||command.equals("phptre")||command.equals("pr")) {
+				// TODO
+				
+				// TODO if -c gives config file(s) different from result-pack, show warning
+				
 			} else if (command.equals("phpt_all")||command.equals("phptall")||command.equals("phpta")||command.equals("pa")) {
 				if (!(args.length > args_i+2)) {
 					System.err.println("User Error: must specify build and test-pack");

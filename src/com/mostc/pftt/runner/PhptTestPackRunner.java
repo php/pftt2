@@ -25,6 +25,7 @@ import com.mostc.pftt.scenario.AbstractSAPIScenario;
 import com.mostc.pftt.scenario.AbstractWebServerScenario;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.util.StringUtil;
 
 /** Runs PHPTs from a given PhptTestPack.
  * 
@@ -38,11 +39,12 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 	protected static final int MAX_THREAD_COUNT = 64;
 	protected final PhptSourceTestPack src_test_pack;
 	protected final PhptResultPackWriter twriter;
+	protected int thread_safe_test_count;
 	protected PhptActiveTestPack active_test_pack;
 	protected AtomicReference<ETestPackRunnerState> runner_state;
 	protected AtomicInteger test_count, active_thread_count;
 	HashMap<TestCaseGroupKey,TestCaseGroup> thread_safe_tests = new HashMap<TestCaseGroupKey,TestCaseGroup>();
-	HashMap<String,NonThreadSafeExt> non_thread_safe_tests = new HashMap<String,NonThreadSafeExt>();
+	HashMap<String[],NonThreadSafeExt> non_thread_safe_tests = new HashMap<String[],NonThreadSafeExt>();
 	protected AbstractSAPIScenario sapi_scenario;
 	protected AbstractFileSystemScenario file_scenario;
 	//protected LinkedBlockingQueue<TestCaseGroupKey> group_keys;
@@ -51,12 +53,12 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 	LinkedBlockingQueue<TestCaseGroup> thread_safe_groups = new LinkedBlockingQueue<TestCaseGroup>();
 	
 	class NonThreadSafeExt {
-		String ext_name;
+		String[] ext_names;
 		LinkedBlockingQueue<TestCaseGroup> test_groups;
 		HashMap<TestCaseGroupKey,TestCaseGroup> test_groups_by_key = new HashMap<TestCaseGroupKey,TestCaseGroup>();
 		
-		public NonThreadSafeExt(String ext_name) {
-			this.ext_name = ext_name;
+		public NonThreadSafeExt(String[] ext_names) {
+			this.ext_names = ext_names;
 			test_groups = new LinkedBlockingQueue<TestCaseGroup>(); 
 		}
 	}
@@ -220,13 +222,14 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 		TestCaseGroupKey group_key = null;
 		
 		LinkedList<TestCaseGroup> thread_safe_list = new LinkedList<TestCaseGroup>();
+		thread_safe_test_count = 0;
 		
 		for (PhptTestCase test_case : test_cases) {
 			is_thread_safe = true;
 			
 			//
 			try {
-				if (sapi_scenario.willSkip(twriter, host, sapi_scenario.getSAPIType(), build, test_case)) {
+				if (sapi_scenario.willSkip(twriter, host, scenario_set, sapi_scenario.getSAPIType(), build, test_case)) {
 					// #willSkip will record the PhptTestResult explaining why it was skipped
 					//
 					// do some checking before making a PhpIni (part of group_key) below
@@ -237,7 +240,7 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 				group_key = sapi_scenario.createTestGroupKey(twriter.getConsoleManager(), host, build, scenario_set, active_test_pack, test_case, group_key);
 				
 				//
-				if (sapi_scenario.willSkip(twriter, host, sapi_scenario.getSAPIType(), group_key.getPhpIni(), build, test_case)) {
+				if (sapi_scenario.willSkip(twriter, host, scenario_set, sapi_scenario.getSAPIType(), group_key.getPhpIni(), build, test_case)) {
 					// #willSkip will record the PhptTestResult explaining why it was skipped
 					continue;
 				}
@@ -249,14 +252,13 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 			//
 			
 			//
-			for (String ext_name:PhptTestCase.NON_THREAD_SAFE_EXTENSIONS) {
-				if (test_case.getName().toLowerCase().contains(ext_name)) {
-					
-					NonThreadSafeExt ext = non_thread_safe_tests.get(ext_name);
+			for (String[] ext_names:PhptTestCase.NON_THREAD_SAFE_EXTENSIONS) {
+				if (StringUtil.startsWithAnyIC(test_case.getName(), ext_names)) {
+					NonThreadSafeExt ext = non_thread_safe_tests.get(ext_names);
 					if (ext==null) {
-						ext = new NonThreadSafeExt(ext_name);
+						ext = new NonThreadSafeExt(ext_names);
 						non_thread_safe_exts.add(ext);
-						non_thread_safe_tests.put(ext_name, ext);
+						non_thread_safe_tests.put(ext_names, ext);
 					}
 					
 					ext.test_groups_by_key.get(group_key);
@@ -272,7 +274,7 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 					//
 					
 					is_thread_safe = false;
-					
+						
 					break;
 				}
 			}
@@ -283,10 +285,10 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 				TestCaseGroup group = thread_safe_tests.get(group_key);
 				if (group==null) {
 					group = new TestCaseGroup(group_key);
-					//thread_safe_groups.add(group);
 					thread_safe_list.add(group);
 					thread_safe_tests.put(group_key, group);
 				}
+				thread_safe_test_count++;
 				group.test_cases.add(test_case);
 			}
 			//
@@ -307,7 +309,13 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 	} // end protected void groupTestCases
 	
 	protected void executeTestCases(boolean parallel) throws InterruptedException {
-		int thread_count = Math.min(MAX_THREAD_COUNT, sapi_scenario.getTestThreadCount(host));
+		// decide number of threads
+		// 1. limit to MAX_THREAD_COUNT
+		// 2. limit to number of thread safe tests + number of NTS extensions (extensions with NTS tests)
+		//        -exceed this number and there will be threads that won't have any tests to run
+		// 3. ask SAPI Scenario
+		// 4. if debugging
+		int thread_count = Math.min(MAX_THREAD_COUNT, Math.min(thread_safe_test_count + non_thread_safe_exts.size(), sapi_scenario.getTestThreadCount(host)));
 		if (twriter.getConsoleManager().isWinDebug()) {
 			// run fewer threads b/c we're running WinDebug
 			// (can run WinDebug w/ same number of threads, but UI responsiveness will be slow)
@@ -437,7 +445,7 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 						sapi_scenario.createPhptTestCaseRunner(this, group_key, test_case, twriter, host, scenario_set, build, src_test_pack, active_test_pack)
 							.runTest();
 					} catch ( Throwable ex ) {
-						twriter.show_exception(test_case, ex, sa);
+						twriter.show_exception(host, scenario_set, test_case, ex, sa);
 					}
 					
 					test_count.incrementAndGet();

@@ -49,6 +49,15 @@ public class PhpBuild extends Build {
 	
 	public boolean open(ConsoleManager cm, Host host) {
 		try {
+			if (StringUtil.endsWithIC(build_path, ".zip")) {
+				// automatically decompress build
+				String zip_file = build_path;
+				this.build_path = host.uniqueNameFromBase(Host.removeFileExt(build_path));
+				
+				if (!host.unzip(zip_file, build_path))
+					return false;
+			}
+			
 			php_exe = host.isWindows() ? build_path + "\\php.exe" : build_path + "/sapi/cli/php";
 			php_cgi_exe = host.isWindows() ? build_path + "\\php-cgi.exe" : build_path + "/sapi/cgi/php-cgi";
 			if (!host.exists(php_cgi_exe))

@@ -300,4 +300,9 @@ public class IISManager extends WebServerManager {
 		}
 	} // end public boolean setup
 
+	@Override
+	public String getDefaultDocroot(Host host, PhpBuild build) {
+		return host.getSystemDrive() + "\\inetpub\\wwwroot";
+	}
+
 } // end public class IISManager

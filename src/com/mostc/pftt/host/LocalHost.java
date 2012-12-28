@@ -11,7 +11,11 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.nio.charset.Charset;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CharsetEncoder;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -24,6 +28,7 @@ import org.jvnet.winp.WinProcess;
 
 import com.github.mattficken.io.AbstractDetectingCharsetReader;
 import com.github.mattficken.io.ByLineReader;
+import com.github.mattficken.io.CharsetByLineReader;
 import com.github.mattficken.io.CharsetDeciderDecoder;
 import com.github.mattficken.io.DefaultCharsetDeciderDecoder;
 import com.github.mattficken.io.IOUtil;
@@ -88,6 +93,12 @@ public class LocalHost extends Host {
 	public ByLineReader readFile(String file) throws FileNotFoundException, IOException {
 		return new NoCharsetByLineReader(new FileInputStream(file));
 	}
+	
+	@Override
+	public ByLineReader readFile(String file, Charset cs) throws IllegalStateException, FileNotFoundException, IOException {
+		return new CharsetByLineReader(new FileInputStream(file), cs);
+	}
+	
 	@Override
 	public ByLineReader readFileDetectCharset(String file, CharsetDeciderDecoder cdd) throws FileNotFoundException, IOException {
 		return new MultiCharsetByLineReader(new FileInputStream(file), cdd);
@@ -139,10 +150,19 @@ public class LocalHost extends Host {
 			text = "";
 		FileOutputStream fos = new FileOutputStream(filename);
 		try {
-			if (charset==null)
+			if (charset==null) {
 				fos.write(text.getBytes());
-			else
-				fos.write(text.getBytes(charset));
+			} else {
+				
+				
+				//fos.write(text.getBytes(charset));
+			
+				CharsetEncoder ce = charset.newEncoder(); // TODO share
+				ByteBuffer bbuf = ce.encode(CharBuffer.wrap(text.toCharArray()));
+				fos.getChannel().write(bbuf);
+			
+			
+			}
 		} finally {
 			fos.close();
 		}
@@ -196,7 +216,7 @@ public class LocalHost extends Host {
 	@Override
 	public String getContents(String file) throws IOException {
 		NoCharsetByLineReader reader = new NoCharsetByLineReader(new FileInputStream(file));
-		String str = IOUtil.toString(reader);
+		String str = IOUtil.toString(reader, IOUtil.HALF_MEGABYTE);
 		reader.close();
 		return str;
 	}
@@ -204,7 +224,7 @@ public class LocalHost extends Host {
 	@Override
 	public String getContentsDetectCharset(String file, CharsetDeciderDecoder cdd) throws IOException {
 		MultiCharsetByLineReader reader = new MultiCharsetByLineReader(new FileInputStream(file), cdd);
-		String str = IOUtil.toString(reader);
+		String str = IOUtil.toString(reader, IOUtil.HALF_MEGABYTE);
 		reader.close();
 		return str;
 	}
@@ -214,10 +234,17 @@ public class LocalHost extends Host {
 		if (isWindows()) {
 			src = toWindowsPath(src);
 			dst = toWindowsPath(dst);
-			if (isDirectory(src))
+			if (isDirectory(src)) {
 				// ensure xcopy sees destination is supposed to be a directory, or xcopy will ask/block forever
-				dst += "\\"; 
-			exec("xcopy /Q /Y /S /E \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
+				dst += "\\";
+			} else {
+				mkdirs(dirname(dst));
+				if (basename(src).equals(basename(dst)))
+					dst = dirname(dst);
+			}
+			String cmd = "xcopy /Q /Y /S /E \""+src+"\" \""+dst+"\"";
+			
+			exec(cmd, NO_TIMEOUT);
 		} else {
 			src = toUnixPath(src);
 			dst = toUnixPath(dst);

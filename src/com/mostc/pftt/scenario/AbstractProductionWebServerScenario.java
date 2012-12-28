@@ -21,9 +21,4 @@ public abstract class AbstractProductionWebServerScenario extends AbstractWebSer
 		return 4 * host.getCPUCount();
 	}
 	
-	@Override
-	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
-		return smgr.start(cm, host) ? EScenarioStartState.STARTED : EScenarioStartState.FAILED_TO_START;
-	}
-	
 } // end public abstract class AbstractProductionWebServerScenario

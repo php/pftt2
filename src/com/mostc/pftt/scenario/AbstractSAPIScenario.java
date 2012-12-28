@@ -47,12 +47,10 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 	 */
 	public abstract AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack);
 
-	public boolean willSkip(PhptResultPackWriter twriter, Host host, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
-		return AbstractPhptTestCaseRunner.willSkip(twriter, host, type, build, test_case);
-	}
+	public abstract boolean willSkip(PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception;
 	
-	public boolean willSkip(PhptResultPackWriter twriter, Host host, ESAPIType type, PhpIni ini, PhpBuild build, PhptTestCase test_case) throws Exception {
-		return AbstractPhptTestCaseRunner.willSkip(twriter, host, type, ini, build, test_case);
+	public boolean willSkip(PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpIni ini, PhpBuild build, PhptTestCase test_case) throws Exception {
+		return AbstractPhptTestCaseRunner.willSkip(twriter, host, scenario_set, type, ini, build, test_case);
 	}
 	
 	public void close(boolean debug) {

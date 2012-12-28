@@ -1,7 +1,9 @@
 package com.mostc.pftt.model.sapi;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketAddress;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -98,11 +100,25 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 				final Host.ExecHandle handlef = handle;
 								
 				// ensure server can be connected to
-				Socket sock = new Socket(listen_address, port);
-				if (!sock.isConnected())
-					// kill server and try again
-					throw new IOException("socket not connected");
-				sock.close();
+				{
+					Socket sock = null;
+					for ( int i=0 ; i < 3 ; i++ ) {
+						try {
+							sock = new Socket();
+							sock.setSoTimeout(10);
+							sock.connect(new InetSocketAddress(listen_address, port));
+							if (sock.isConnected())
+								break;
+						} catch ( IOException ex ) {
+							
+						} finally {
+							sock.close();
+						}
+					}
+					if (!sock.isConnected())
+						// kill server and try again
+						throw new IOException("socket not connected");
+				}
 				//
 				
 				//

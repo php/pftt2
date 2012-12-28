@@ -10,32 +10,40 @@ import java.io.OutputStream;
 import com.github.mattficken.io.ByLineReader;
 
 public final class IOUtil {
+	public static final int ONE_MEGABYTE = 1024*1024;
+	public static final int HALF_MEGABYTE = 512*1024;
+	public static final int QUARTER_MEGABYTE = 256*1024;
 	
-	public static InputStream ensureMarkSupported(InputStream in) throws IOException {
+	public static InputStream ensureMarkSupported(InputStream in, int max_bytes) throws IOException {
 		if (in.markSupported())
 			return in;
-		return new ByteArrayInputStream(toOUT(in).toByteArray());
+		return new ByteArrayInputStream(toOUT(in, max_bytes).toByteArray());
 	}
 	
-	public static byte[] toBytes(InputStream in) throws IOException {
-		return toOUT(in).toByteArray();
+	public static byte[] toBytes(InputStream in, int max_bytes) throws IOException {
+		return toOUT(in, max_bytes).toByteArray();
 	}
 	
-	public static String toString(InputStream in) throws IOException {
-		return toOUT(in).toString();
+	public static String toString(InputStream in, int max_bytes) throws IOException {
+		return toOUT(in, max_bytes).toString();
 	}
 	
-	public static void copy(InputStream in, OutputStream out) throws IOException {
+	public static int copy(InputStream in, OutputStream out, int max_bytes) throws IOException {
 		byte[] buf = new byte[1024];
-		int len;
-		while ( ( len = in.read(buf) ) != -1 )
+		int len, total_len = 0;
+		while ( ( len = in.read(buf) ) != -1 ) {
 			out.write(buf, 0, len);
+			total_len += len;
+			if (max_bytes>0 && total_len>=max_bytes)
+				break;
+		}
+		return total_len;
 	}
 	
-	private static ByteArrayOutputStream toOUT(InputStream in) throws IOException {
+	private static ByteArrayOutputStream toOUT(InputStream in, int max_bytes) throws IOException {
 		in = ensureBuffered(in);
 		ByteArrayOutputStream out = new ByteArrayOutputStream(1024);
-		copy(in, out);
+		copy(in, out, max_bytes);
 		return out;
 	}
 
@@ -60,7 +68,7 @@ public final class IOUtil {
 		return out;
 	}
 
-	public static String toString(ByLineReader reader) throws IOException {
+	public static String toString(ByLineReader reader, int max_chars) throws IOException {
 		StringBuilder sb = new StringBuilder(4096);
 		String line;
 		while (reader.hasMoreLines()) {
@@ -69,6 +77,8 @@ public final class IOUtil {
 				break;
 			sb.append(line);
 			sb.append('\n');
+			if (max_chars > 0 && sb.length() > max_chars)
+				break;
 		}
 		return sb.toString();
 	}

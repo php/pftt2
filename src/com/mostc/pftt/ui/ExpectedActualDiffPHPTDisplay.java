@@ -1,8 +1,7 @@
 package com.mostc.pftt.ui;
 
-import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.ByteArrayInputStream;
@@ -19,7 +18,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
 import javax.swing.event.CaretEvent;
 import javax.swing.event.CaretListener;
 import javax.swing.table.DefaultTableModel;
@@ -35,74 +33,88 @@ import se.datadosen.component.RiverLayout;
 
 @SuppressWarnings("serial")
 public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
-	protected JScrollPane horizontal_jsp, vertical_jsp;
 	protected JPanel horizontal_panel, horizontal_button_panel, vertical_panel;
 	protected TextDisplayPanel expected_display, diff_display, actual_display, test_display;
 	protected DefaultTableModel env_table_model;
 	protected JTable env_table;
 	protected JTextArea ini_textarea, stdin_data_textarea, shell_script_textarea, expectf_textarea, pre_override_textarea, sapi_output_textarea;
 	protected PhptTestResult test_result;
+	protected JScrollPane expectf_jsp, pre_override_jsp, sapi_output_jsp, ini_jsp, stdin_data_jsp, shell_script_jsp, env_table_jsp;
 			
 	public ExpectedActualDiffPHPTDisplay() {
-		horizontal_jsp = this; // TODO
-					
-		horizontal_panel = new JPanel(new BorderLayout());
-		horizontal_jsp.getViewport().setView(horizontal_panel);
-		horizontal_button_panel  = new JPanel(new RiverLayout());
-		vertical_panel = new JPanel(new RiverLayout());
-			
-		horizontal_panel.add(vertical_jsp = new JScrollPane(vertical_panel), BorderLayout.CENTER);
-		vertical_jsp = this; // TODO
-		vertical_jsp.getViewport().setView(vertical_panel);
-		horizontal_panel.add(horizontal_button_panel, BorderLayout.PAGE_END);
-		
-		horizontal_jsp.getHorizontalScrollBar().setUnitIncrement(20);
-		vertical_jsp.getVerticalScrollBar().setUnitIncrement(20);
+		super(JScrollPane.VERTICAL_SCROLLBAR_NEVER, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+		horizontal_panel = new JPanel(new RiverLayout(2, 2)) {
+				@Override
+				public Dimension getPreferredSize() {
+					Dimension dim = super.getPreferredSize();
+					return new Dimension(dim.width, 300);
+				}
+			};
+		getHorizontalScrollBar().setUnitIncrement(100);
+		setViewportView(horizontal_panel);
+		vertical_panel = new JPanel(new InvisibleGridLayout(1, 12, 2, 2));
+		horizontal_panel.add("p left hfill vfill", vertical_panel);//, BorderLayout.CENTER);
+		horizontal_panel.add("p left hfill", horizontal_button_panel = new JPanel(new InvisibleGridLayout(1, 12, 2, 2)));//, BorderLayout.PAGE_END);
 		
 		actual_display = new TextDisplayPanel();
 		actual_display.text_area.setToolTipText("Actual test output");
+		vertical_panel.add(new JScrollPane(actual_display.text_area));
+		
 		expected_display = new TextDisplayPanel();
 		expected_display.text_area.setToolTipText("Expected test output");
+		vertical_panel.add(new JScrollPane(expected_display.text_area));
+		
 		diff_display = new TextDisplayPanel();
 		diff_display.text_area.setToolTipText("Diff");
-		test_display = new TextDisplayPanel();
+		vertical_panel.add(new JScrollPane(diff_display.text_area));
+		
 		expectf_textarea = new JTextArea();
 		expectf_textarea.setToolTipText("EXPECTF section after regular expression patterns are added");
+		vertical_panel.add(expectf_jsp = new JScrollPane(expectf_textarea));
+		
 		pre_override_textarea = new JTextArea();
 		pre_override_textarea.setToolTipText("Actual test output before any OS specific overrides applied");
+		vertical_panel.add(pre_override_jsp = new JScrollPane(pre_override_textarea));
+		
 		sapi_output_textarea = new JTextArea();
 		sapi_output_textarea.setToolTipText("Output from SAPI - did web server crash? etc...");
+		vertical_panel.add(sapi_output_jsp = new JScrollPane(sapi_output_textarea));
+		
 		ini_textarea = new JTextArea();
 		ini_textarea.setToolTipText("entire INI used for this test case");
+		vertical_panel.add(ini_jsp = new JScrollPane(ini_textarea));
 		
-		horizontal_button_panel.add("p left", actual_display.button_panel);
-		horizontal_button_panel.add("tab", expected_display.button_panel);
-		horizontal_button_panel.add("tab", diff_display.button_panel);
-		horizontal_button_panel.add("tab", new JPanel()); // placeholder
-		horizontal_button_panel.add("tab", test_display.button_panel);
-		horizontal_button_panel.add("tab", new JPanel()); // placeholder
-		horizontal_button_panel.add("tab", new JPanel()); // placeholder
-		
-		vertical_panel.add("p left vfill", actual_display.text_area);
-		vertical_panel.add("tab vfill", expected_display.text_area);
-		vertical_panel.add("tab vfill", diff_display.text_area);
-		vertical_panel.add("tab vfill", expectf_textarea);
-		vertical_panel.add("tab vfill", pre_override_textarea);
-		
-		
-		JPanel prepared_panel = new JPanel(new RiverLayout());
-		prepared_panel.add("p left", new JScrollPane(sapi_output_textarea));
-		prepared_panel.add("p left", new JScrollPane(ini_textarea));
-		prepared_panel.add("p left", new JScrollPane(stdin_data_textarea = new JTextArea()));
+		stdin_data_textarea = new JTextArea();
 		stdin_data_textarea.setLineWrap(true);
-		prepared_panel.add("p left", new JScrollPane(shell_script_textarea = new JTextArea()));
+		stdin_data_textarea.setToolTipText("STDIN");
+		vertical_panel.add(stdin_data_jsp = new JScrollPane(stdin_data_textarea));
+		
+		shell_script_textarea = new JTextArea();
 		shell_script_textarea.setLineWrap(true);
-		prepared_panel.add("p left", new JScrollPane(env_table = new JTable(env_table_model = new DefaultTableModel())));
+		shell_script_textarea.setToolTipText("Shell Script");
+		vertical_panel.add(shell_script_jsp = new JScrollPane(shell_script_textarea));
+		
+		env_table = new JTable(env_table_model = new DefaultTableModel());
+		env_table.setToolTipText("ENV vars");
 		env_table_model.addColumn("Name");
 		env_table_model.addColumn("Value");
-		vertical_panel.add("tab vfill", prepared_panel);
+		vertical_panel.add(env_table_jsp = new JScrollPane(env_table));
 		
-		vertical_panel.add("tab vfill", test_display.text_area);
+		test_display = new TextDisplayPanel();
+		test_display.text_area.setToolTipText("PHPT");
+		vertical_panel.add(new JScrollPane(test_display.text_area));
+		
+		horizontal_button_panel.add(actual_display.button_panel);
+		horizontal_button_panel.add(expected_display.button_panel);
+		horizontal_button_panel.add(diff_display.button_panel);
+		horizontal_button_panel.add(new JPanel()); // placeholder: expectf
+		horizontal_button_panel.add(new JPanel()); // placeholder: pre-override
+		horizontal_button_panel.add(new JPanel()); // placeholder: sapi-output
+		horizontal_button_panel.add(new JPanel()); // placeholder: ini
+		horizontal_button_panel.add(new JPanel()); // placeholder: stdin
+		horizontal_button_panel.add(new JPanel()); // placeholder: shell-script
+		horizontal_button_panel.add(new JPanel()); // placeholder: env
+		horizontal_button_panel.add(test_display.button_panel);
 	}
 	
 	public void showTest(PhptTestResult result) {
@@ -115,41 +127,68 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 			env_table_model.removeRow(0);
 		}
 		
-		if (result.env!=null) {
+		if (result.env!=null && result.env.size()>0) {
+			env_table_jsp.setVisible(true);
 			for (String name : result.env.keySet()) {
 				env_table_model.addRow(new Object[]{name, result.env.get(name)});
 			} 
+		} else {
+			env_table_jsp.setVisible(false);
 		}
-		ini_textarea.setText(result.ini+"");
-		if (result.stdin_data!=null)
+		if (result.ini==null) {
+			ini_jsp.setVisible(false);
+		} else {
+			ini_jsp.setVisible(true);
+			ini_textarea.setText(result.ini+"");
+		}
+		if (result.stdin_data!=null) {
+			stdin_data_jsp.setVisible(true);
 			stdin_data_textarea.setText(new String(result.stdin_data));
-		else
-			stdin_data_textarea.setText("");
-		shell_script_textarea.setText(result.shell_script);
+		} else {
+			stdin_data_jsp.setVisible(false);
+		}
+		if (StringUtil.isEmpty(result.shell_script)) {
+			shell_script_jsp.setVisible(false);
+		} else {
+			shell_script_jsp.setVisible(true);
+			shell_script_textarea.setText(result.shell_script);
+		}
 		
+		// TODO temp
 		expected_display.text_area.setText(result.test_case.getCommonCharset()+"\n"+result.test_case.getExpected());
 		
-		actual_display.showFile(result.test_case, result.actual);
+		// TODO temp
+		actual_display.showFile(result.test_case, result.actual_cs+"\n"+result.actual);
 		try {
 			test_display.showFile(result.test_case, result.test_case.getContents(result.host));
 		} catch ( IOException ex ) {
 			ErrorUtil.display_error(this, ex);
 		}
-		 
+		
 		diff_display.showFile(result.test_case, result.diff_str==null?"":result.diff_str);
-		expectf_textarea.setText(result.expectf_output==null?"":result.expectf_output);
-		pre_override_textarea.setText(result.preoverride_actual==null?"":result.preoverride_actual);
+		if (StringUtil.isEmpty(result.expectf_output)) {
+			expectf_jsp.setVisible(false);
+		} else {
+			expectf_jsp.setVisible(true);
+			expectf_textarea.setText(result.expectf_output);
+		}
+		if (StringUtil.isEmpty(result.preoverride_actual)) {
+			pre_override_jsp.setVisible(false);
+		} else {
+			pre_override_jsp.setVisible(true);
+			pre_override_textarea.setText(result.preoverride_actual);
+		}
 		//
 		String sapi_output = result.getSAPIOutput();
-		sapi_output_textarea.setText(sapi_output==null?"":sapi_output);
+		if (StringUtil.isEmpty(sapi_output)) {
+			sapi_output_jsp.setVisible(false);
+		} else {
+			sapi_output_jsp.setVisible(true);
+			sapi_output_textarea.setText(sapi_output);
+		}
 		//
 		
-		revalidate();
-		SwingUtilities.invokeLater(new Runnable() {
-				public void run() {
-					getViewport().setViewPosition(new Point(0, 0)); // scroll to top (ensure top is visible)		
-				}
-			});
+		vertical_panel.revalidate();
 	}
 	
 	protected class TextDisplayPanel implements CaretListener {
@@ -172,14 +211,14 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 			button_panel.add("p left", row_field = new JTextField(3));
 			row_field.addActionListener(new ActionListener() {
 					public void actionPerformed(ActionEvent e) {
-						setPosition(Integer.parseInt(row_field.getText()), Integer.parseInt(column_field.getText())); 
+						setPosition(Integer.parseInt(row_field.getText())-1, Integer.parseInt(column_field.getText())-1); 
 					}
 				});
 			
 			button_panel.add("tab", column_field = new JTextField(3));
 			column_field.addActionListener(new ActionListener() {
 					public void actionPerformed(ActionEvent e) {
-						setPosition(Integer.parseInt(row_field.getText()), Integer.parseInt(column_field.getText())); 
+						setPosition(Integer.parseInt(row_field.getText())-1, Integer.parseInt(column_field.getText())-1); 
 					}
 				});
 			
@@ -244,8 +283,8 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 	
 				int columnnum = caretpos - text_area.getLineStartOffset(linenum);
 	
-				column_field.setText(Integer.toString(columnnum));
-				row_field.setText(Integer.toString(linenum));
+				column_field.setText(Integer.toString(columnnum+1));
+				row_field.setText(Integer.toString(linenum+1));
 			} catch ( Exception ex ) {
 				ex.printStackTrace();
 			}

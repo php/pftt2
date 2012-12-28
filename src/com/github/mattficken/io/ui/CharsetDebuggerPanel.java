@@ -242,7 +242,7 @@ public class CharsetDebuggerPanel extends JPanel {
 	
 	protected void applyCharsetDetectionAndReadStyle(ECharsetDetectionStyle cs, EReadStyle rs, ERecognizerGroup rg, int chunk_size) {
 		try {
-			in = IOUtil.ensureMarkSupported(rin.openInputStream());
+			in = IOUtil.ensureMarkSupported(rin.openInputStream(), IOUtil.ONE_MEGABYTE);
 		} catch ( Exception ex ) {
 			ErrorUtil.display_error(this, ex);
 			return;

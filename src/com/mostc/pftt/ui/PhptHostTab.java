@@ -40,18 +40,18 @@ public class PhptHostTab extends JSplitPane {
 	protected JPanel panel, button_panel;
 	protected JProgressBar progress_bar, pass_bar;
 	protected JButton stop_button, prev_file_button, prev_button, next_file_button, next_button, to_actual_button, to_expect_button, ignore_button, skip_button, pass_button;
-	protected JLabel pass_label, total_label, fail_label, crash_label, xfail_label, xfail_works_label, skip_label, xskip_label, bork_label, unsupported_label, exceptions_label;
+	protected JLabel pass_label, total_label, fail_label, crash_label, xfail_label, xfail_works_label, skip_label, xskip_label, bork_label, unsupported_label, test_exceptions_label;
 	protected JMenuBar jmb;
 	protected JMenu options_menu, status_list_menu;
 	protected ExpectedActualDiffPHPTDisplay eat_display;
 	protected JCheckBoxMenuItem host_console_cb;
 	protected JSplitPane jsp;
-	protected final DefaultListModel fail_list_model, crash_list_model, xfail_list_model, xfail_works_list_model, xskip_list_model, skip_list_model, pass_list_model, bork_list_model, unsupported_list_model, exceptions_list_model;
+	protected final DefaultListModel fail_list_model, crash_list_model, xfail_list_model, xfail_works_list_model, xskip_list_model, skip_list_model, pass_list_model, bork_list_model, unsupported_list_model, test_exceptions_list_model;
 	protected JList test_list;
 	protected JScrollPane test_list_jsp;
 	protected ConsoleTextEditor host_console;
 	protected Host host;
-	protected final JRadioButtonMenuItem list_fail_rb, list_xfail_rb, list_crash_rb, list_xfail_works_rb, list_skip_rb, list_xskip_rb, list_pass_rb, list_bork_rb, list_unsupported_rb, list_exceptions_rb;
+	protected final JRadioButtonMenuItem list_fail_rb, list_xfail_rb, list_crash_rb, list_xfail_works_rb, list_skip_rb, list_xskip_rb, list_pass_rb, list_bork_rb, list_unsupported_rb, list_test_exceptions_rb;
 	
 	public PhptHostTab(Host host, final PhptTestPackRunner phpt_test_pack_runner) {
 		super(JSplitPane.VERTICAL_SPLIT);
@@ -71,7 +71,7 @@ public class PhptHostTab extends JSplitPane {
 		pass_list_model = new DefaultListModel();
 		bork_list_model = new DefaultListModel();
 		unsupported_list_model = new DefaultListModel();
-		exceptions_list_model = new DefaultListModel();
+		test_exceptions_list_model = new DefaultListModel();
 		
 		//
 		setTopComponent(panel = new JPanel(new RiverLayout()));
@@ -109,8 +109,8 @@ public class PhptHostTab extends JSplitPane {
 		panel.add("left", xfail_works_label = new JLabel("0"));
 		panel.add(new JLabel("Unsupported"));
 		panel.add(unsupported_label = new JLabel("0"));
-		panel.add(new JLabel("Exceptions"));
-		panel.add(exceptions_label = new JLabel("0"));
+		panel.add(new JLabel("Test Exceptions"));
+		panel.add(test_exceptions_label = new JLabel("0"));
 		
 		///////////////
 		
@@ -212,12 +212,12 @@ public class PhptHostTab extends JSplitPane {
 					showList(unsupported_list_model); 
 			} });
 		list_button_group.add(list_unsupported_rb);
-		status_list_menu.add(list_exceptions_rb = new JRadioButtonMenuItem("Internal Exceptions"));
-		list_exceptions_rb.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent e) { 
-				if (list_exceptions_rb.isSelected())
-					showList(exceptions_list_model); 
+		status_list_menu.add(list_test_exceptions_rb = new JRadioButtonMenuItem("Test Exceptions"));
+		list_test_exceptions_rb.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent e) { 
+				if (list_test_exceptions_rb.isSelected())
+					showList(test_exceptions_list_model); 
 			} });
-		list_button_group.add(list_exceptions_rb);
+		list_button_group.add(list_test_exceptions_rb);
 		
 		options_menu.add(host_console_cb = new JCheckBoxMenuItem("Host Console"));
 		host_console_cb.addActionListener(new ActionListener() {
@@ -345,9 +345,9 @@ public class PhptHostTab extends JSplitPane {
 						break;
 					case TEST_EXCEPTION:
 						exceptions++;
-						exceptions_label.setText(Integer.toString(exceptions));
+						test_exceptions_label.setText(Integer.toString(exceptions));
 						
-						exceptions_list_model.addElement(result);
+						test_exceptions_list_model.addElement(result);
 						break;
 					case PASS:
 						pass++;

@@ -14,12 +14,7 @@ import com.mostc.pftt.results.ConsoleManager;
  * 
  */
 
-public class PliggScenario extends ApplicationScenario {
-
-	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
-		return false;
-	}
+public class PliggScenario extends ZipDbApplication {
 
 	@Override
 	public String getName() {
@@ -28,6 +23,17 @@ public class PliggScenario extends ApplicationScenario {
 
 	@Override
 	public boolean isImplemented() {
+		return false;
+	}
+
+	@Override
+	protected String getZipAppFileName() {
+		return "Pligg_CMS 1.2.2.zip";
+	}
+
+	@Override
+	protected boolean configure(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, String app_dir) {
+		// TODO Auto-generated method stub
 		return false;
 	}
 

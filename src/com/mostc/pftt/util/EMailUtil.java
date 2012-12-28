@@ -98,7 +98,7 @@ public final class EMailUtil {
 	public static enum ESMTPSSL {
 		EXPLICIT_SSL,
 		IMPLICIT_SSL,
-		NONE
+		NO_SSL
 	}
 	
 	public static enum ESMTPAuthMethod {
@@ -127,16 +127,19 @@ public final class EMailUtil {
 		boolean authenticated = (auth_method == ESMTPAuthMethod.NONE);
 
 		if (smtp.getState() == SMTPProtocol.NOT_CONNECTED) {
-
+			System.out.println("130");
 			if (use_ssl==ESMTPSSL.EXPLICIT_SSL)
 				smtp.startTLS();
 			
 			smtp.openPort();
 
-			smtp.helo(InetAddress.getLocalHost());
+			// TODO smtp.helo(InetAddress.getByName("redmond.corp.microsoft.com"));// TODO InetAddress.getLocalHost());
+			smtp.helo(InetAddress.getByName("smtp.exchange.microsoft.com"));// TODO InetAddress.getLocalHost());
 
-			if (use_ssl==ESMTPSSL.IMPLICIT_SSL)
+			if (use_ssl==ESMTPSSL.IMPLICIT_SSL) {
+				System.out.println("139");
 				smtp.startTLS();
+			}
 		}
 
 		if (!authenticated) {
@@ -151,9 +154,8 @@ public final class EMailUtil {
 						System.err.println("Authentication Method not supported: "+auth_method);
 						return;
 					}
-				} else {
-					throw (SMTPException) e.getCause();
 				}
+				throw (SMTPException) e.getCause();
 
 			}
 		} // end if
@@ -161,4 +163,11 @@ public final class EMailUtil {
 	} // end public static void ensureAuthenticated
 	
 	private EMailUtil() {}
+	
+	public static void main(String[] args) throws Exception {
+		SMTPProtocol smtp = EMailUtil.connect("smtp.exchange.microsoft.com", new Address("v-mafick@microsoft.com"), ESMTPSSL.IMPLICIT_SSL, ESMTPAuthMethod.DIGEST_MD5, "v-mafick@redmond.corp.microsoft.com", "$PLASTICMOUSE30".toCharArray());
+		
+		System.out.println(smtp);
+		EMailUtil.sendHTMLMessage(smtp, new Address("v-mafick@microsoft.com"), java.util.Arrays.asList(new Address[]{new Address("v-mafick@microsoft.com")}), "test", "<html><body><h1>test</h1><p>msg</p></body></html>");
+	}
 } // end public final class EMailUtil

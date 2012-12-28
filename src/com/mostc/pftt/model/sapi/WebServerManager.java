@@ -124,6 +124,8 @@ public abstract class WebServerManager extends SAPIManager {
 	
 	public abstract boolean isSSLSupported();
 	
+	public abstract String getDefaultDocroot(Host host, PhpBuild build);
+	
 	/** checks if the given port is being used on localhost
 	 * 
 	 * @param port

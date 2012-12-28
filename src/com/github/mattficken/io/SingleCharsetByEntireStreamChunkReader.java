@@ -18,7 +18,7 @@ public class SingleCharsetByEntireStreamChunkReader extends AbstractSingleCharse
 	@Override
 	public int readChunk(char[] chars, int coff, int clen) throws IOException {
 		if (this.bbuf==null) {
-			this.bbuf = IOUtil.toBytes(this.in);
+			this.bbuf = IOUtil.toBytes(this.in, IOUtil.HALF_MEGABYTE);
 		
 			detectCharset(this.bbuf, 0, this.bbuf.length);
 		}

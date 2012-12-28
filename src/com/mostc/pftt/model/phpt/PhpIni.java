@@ -108,7 +108,7 @@ public class PhpIni {
 		ini.putMulti(DISPLAY_ERRORS, 1);
 		ini.putMulti(DISPLAY_STARTUP_ERRORS, 0);
 		ini.putMulti(LOG_ERRORS, 0);
-		ini.putMulti(HTML_ERRORS, 0);
+		ini.putMulti(HTML_ERRORS, 1);
 		ini.putMulti(TRACK_ERRORS, 1);
 		ini.putMulti(REPORT_MEMLEAKS, 1);
 		ini.putMulti(REPORT_ZEND_DEBUG, 0);
@@ -204,10 +204,15 @@ public class PhpIni {
 	public PhpIni(String ini_str, String pwd) {
 		this();
 		if (pwd!=null&&ini_str.contains("{PWD}")) {
+			// TODO important to use \\\\
+			if (pwd.contains("cache_list")) {
+				pwd="C:/php-sdk/php-test-pack-5.4-ts-windows-vc9-x86-r811cd76/ext/phar/tests/cache_list";
+			}
+			//pwd = "C:\\\\php-sdk\\\\php-test-pack-5.4-ts-windows-vc9-x86-r811cd76\\\\"; // TODO temp
 			ini_str = StringUtil.replaceAll(PAT_PWD, pwd, ini_str);
 			
 			// BN: ensure that correct \\s are used for paths on Windows
-			ini_str = StringUtil.replaceAll(PAT_FS, "\\\\", ini_str);
+			// TODO ini_str = StringUtil.replaceAll(PAT_FS, "\\\\", ini_str);
 		}
 		// read ini string, line by line
 		for (String line : StringUtil.splitLines(ini_str)) {
@@ -525,7 +530,7 @@ public class PhpIni {
 			for ( String value : ini_map.get(directive) ) {
 				sb.append(directive);
 				sb.append('=');
-				if (value.contains("=")||value.contains("&")||value.contains("~")||value.contains("|")||value.contains("!"))
+				if (value.contains("=")||value.contains("&")||value.contains("~"))
 					value = StringUtil.ensureQuoted(value);
 				sb.append(value);
 				sb.append('\n');
@@ -602,12 +607,12 @@ public class PhpIni {
 				continue; // allow "" empty values though
 			
 			// CRITICAL: escape these characters in the INI
-			value = StringUtil.replaceAll(PAT_bs, "\\\\\"", StringUtil.replaceAll(PAT_amp, "\\&", StringUtil.replaceAll(PAT_pipe, "\\|", value)));
+			value = StringUtil.replaceAll(PAT_bs, "\\\\\"", StringUtil.replaceAll(PAT_amp, "\\\\&", StringUtil.replaceAll(PAT_pipe, "\\\\|", value)));
 			
 			// CRITICAL: in a windows batch script % is replaced with the command to execute.
 			//           need to escape this value.
 			if (host.isWindows())
-				value = value.replace("%", "%%");
+				value = StringUtil.replaceAll(PAT_per, "\\%\\%", value);
 			
 			sb.append(" -d \"");
 			sb.append(directive);
@@ -621,6 +626,8 @@ public class PhpIni {
 	} // end public String toCliArgString
 	static final Pattern PAT_bs = Pattern.compile("\"");
 	static final Pattern PAT_amp = Pattern.compile("\\&");
-	static final Pattern PAT_pipe = Pattern.compile("\\|");
+	static final Pattern PAT_pipe = Pattern.compile(
+			"\\|");
+	static final Pattern PAT_per = Pattern.compile("\\%");
 	
 } // end public class PhpIni

@@ -40,7 +40,7 @@ public class SingleCharsetByEntireStreamLineReader extends AbstractSingleCharset
 			first = false;
 			
 			// read entire stream
-			bbuf = IOUtil.toBytes(in);
+			bbuf = IOUtil.toBytes(in, IOUtil.HALF_MEGABYTE);
 			bbuf_off = 0;
 			bbuf_len = bbuf.length;					
 			

@@ -138,7 +138,7 @@ public final class Config {
 		Class<?> clazz;
 		int i=1;
 		for (InputStream in : ins) {
-			clazz = loader.parseClass(importString(IOUtil.toString(in)));
+			clazz = loader.parseClass(importString(IOUtil.toString(in, IOUtil.QUARTER_MEGABYTE)));
 			
 			go = (GroovyObject) clazz.newInstance();
 			
@@ -161,7 +161,7 @@ public final class Config {
 		GroovyObject go;
 		Class<?> clazz;
 		for (File file : files) {
-			clazz = loader.parseClass(importString(IOUtil.toString(new FileInputStream(file))));
+			clazz = loader.parseClass(importString(IOUtil.toString(new FileInputStream(file), IOUtil.QUARTER_MEGABYTE)));
 			
 			go = (GroovyObject) clazz.newInstance();
 			

@@ -11,13 +11,7 @@ import com.mostc.pftt.results.ConsoleManager;
  * 
  */
 
-public class SquirrelMailScenario extends ApplicationScenario {
-
-	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
-		// TODO Auto-generated method stub
-		return false;
-	}
+public class SquirrelMailScenario extends ZipDbApplication {
 
 	@Override
 	public String getName() {
@@ -26,6 +20,17 @@ public class SquirrelMailScenario extends ApplicationScenario {
 
 	@Override
 	public boolean isImplemented() {
+		return false;
+	}
+
+	@Override
+	protected String getZipAppFileName() {
+		return "squirrelmail-webmail-1.4.22.zip";
+	}
+
+	@Override
+	protected boolean configure(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, String app_dir) {
+		// TODO Auto-generated method stub
 		return false;
 	}
 

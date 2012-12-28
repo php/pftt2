@@ -20,11 +20,11 @@ public abstract class AbstractApacheScenario extends AbstractProductionWebServer
 	}
 	
 	@Override
-	public boolean willSkip(PhptResultPackWriter twriter, Host host, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
-		if (!ApacheManager.isSupported(twriter, host, build, test_case)) {
+	public boolean willSkip(PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+		if (!ApacheManager.isSupported(twriter, host, scenario_set, build, test_case)) {
 			return false;
 		}
-		return super.willSkip(twriter, host, type, build, test_case);
+		return super.willSkip(twriter, host, scenario_set, type, build, test_case);
 	}
 	
 }

@@ -240,7 +240,7 @@ public class SSHHost extends RemoteHost {
 	public String getContents(String file) throws IOException {
 		ensureScpOpen();
 		NoCharsetByLineReader reader = new NoCharsetByLineReader(scp.get(normalizePath(file)));
-		String str = IOUtil.toString(reader);
+		String str = IOUtil.toString(reader, IOUtil.HALF_MEGABYTE);
 		reader.close();
 		return str;
 	}
@@ -249,7 +249,7 @@ public class SSHHost extends RemoteHost {
 	public String getContentsDetectCharset(String file, CharsetDeciderDecoder cdd) throws IOException {
 		ensureScpOpen();
 		MultiCharsetByLineReader reader = new MultiCharsetByLineReader(scp.get(normalizePath(file)), cdd);
-		String str = IOUtil.toString(reader);
+		String str = IOUtil.toString(reader, IOUtil.HALF_MEGABYTE);
 		reader.close();
 		return str;
 	}
@@ -468,7 +468,7 @@ public class SSHHost extends RemoteHost {
 	@Override
 	public void download(String src, String dst) throws IllegalStateException, IOException, Exception {
 		ensureScpOpen();
-		IOUtil.copy(scp.get(normalizePath(src)), new BufferedOutputStream(new FileOutputStream(dst)));
+		IOUtil.copy(scp.get(normalizePath(src)), new BufferedOutputStream(new FileOutputStream(dst)), IOUtil.HALF_MEGABYTE);
 	}
 	
 	protected static void walk(File[] files, LinkedList<String> file_list) {
@@ -594,6 +594,13 @@ public class SSHHost extends RemoteHost {
 	public long getSize(String file) {
 		// TODO Auto-generated method stub
 		return 0;
+	}
+
+	@Override
+	public ByLineReader readFile(String file, Charset cs)
+			throws IllegalStateException, FileNotFoundException, IOException {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 } // end public class SSHHost

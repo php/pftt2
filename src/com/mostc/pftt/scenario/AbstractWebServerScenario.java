@@ -2,20 +2,6 @@ package com.mostc.pftt.scenario;
 
 import java.util.Map;
 
-import org.apache.http.HttpRequestInterceptor;
-import org.apache.http.HttpVersion;
-import org.apache.http.params.HttpParams;
-import org.apache.http.params.HttpProtocolParams;
-import org.apache.http.params.SyncBasicHttpParams;
-import org.apache.http.protocol.HttpProcessor;
-import org.apache.http.protocol.HttpRequestExecutor;
-import org.apache.http.protocol.ImmutableHttpProcessor;
-import org.apache.http.protocol.RequestConnControl;
-import org.apache.http.protocol.RequestContent;
-import org.apache.http.protocol.RequestExpectContinue;
-import org.apache.http.protocol.RequestTargetHost;
-import org.apache.http.protocol.RequestUserAgent;
-
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.EPhptSection;
 import com.mostc.pftt.model.phpt.ESAPIType;
@@ -32,6 +18,7 @@ import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.PhptResultPackWriter;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
 import com.mostc.pftt.runner.HttpTestCaseRunner;
+import com.mostc.pftt.runner.PhptHttpClient;
 import com.mostc.pftt.runner.PhptTestPackRunner.PhptThread;
 
 /** scenarios for testing PHP while its running under a web server
@@ -42,30 +29,38 @@ import com.mostc.pftt.runner.PhptTestPackRunner.PhptThread;
  */
 
 public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
-	public final WebServerManager smgr;
-	protected final HttpParams params;
-	protected final HttpProcessor httpproc;
-	protected final HttpRequestExecutor httpexecutor;
+	public final WebServerManager smgr; // TODO protected
+	protected final PhptHttpClient http_client;
 	
 	protected AbstractWebServerScenario(WebServerManager smgr) {
 		this.smgr = smgr;
 		
-		params = new SyncBasicHttpParams();
-		HttpProtocolParams.setVersion(params, HttpVersion.HTTP_1_1);
-		HttpProtocolParams.setContentCharset(params, "UTF-8");
-		HttpProtocolParams.setUserAgent(params, "Mozilla/5.0 (Windows NT 6.1; rv:12.0) Gecko/20120405 Firefox/14.0.1");
-		HttpProtocolParams.setUseExpectContinue(params, true);
-		
-		httpproc = new ImmutableHttpProcessor(new HttpRequestInterceptor[] {
-		        // Required protocol interceptors
-		        new RequestContent(),
-		        new RequestTargetHost(),
-		        // Recommended protocol interceptors
-		        new RequestConnControl(),
-		        new RequestUserAgent(),
-		        new RequestExpectContinue()});
-		
-		httpexecutor = new HttpRequestExecutor();
+		http_client = new PhptHttpClient();
+	}
+	
+	/**
+	 * 
+	 * @param cm
+	 * @param host
+	 * @param build
+	 * @param scenario_set
+	 * @param docroot
+	 * @return
+	 */
+	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, String docroot) {
+		return smgr.getWebServerInstance(cm, host, build, null, null, docroot, null, this).isRunning() ? EScenarioStartState.STARTED : EScenarioStartState.FAILED_TO_START;
+	}
+	
+	/**
+	 * 
+	 */
+	@Override
+	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		return smgr.start(cm, host) ? EScenarioStartState.STARTED : EScenarioStartState.FAILED_TO_START;
+	}
+	
+	public String getDefaultDocroot(Host host, PhpBuild build) {
+		return smgr.getDefaultDocroot(host, build);
 	}
 	
 	@Override
@@ -75,7 +70,7 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 	
 	@Override
 	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
-		return new HttpTestCaseRunner(params, httpproc, httpexecutor, smgr, (WebServerInstance) ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance(), thread, test_case, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
+		return new HttpTestCaseRunner(http_client, smgr, (WebServerInstance) ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance(), thread, test_case, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 	}
 	
 	public TestCaseGroupKey createTestGroupKey(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack active_test_pack, PhptTestCase test_case, TestCaseGroupKey group_key) throws Exception {
@@ -106,8 +101,8 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 	}
 	
 	@Override
-	public boolean willSkip(PhptResultPackWriter twriter, Host host, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
-		return HttpTestCaseRunner.willSkip(twriter, host, type, build, test_case);
+	public boolean willSkip(PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+		return HttpTestCaseRunner.willSkip(twriter, host, scenario_set, type, build, test_case);
 	}
 	
 } // end public abstract class AbstractWebServerScenario

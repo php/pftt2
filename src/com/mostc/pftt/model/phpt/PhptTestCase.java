@@ -12,6 +12,8 @@ import java.util.regex.Pattern;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import org.xmlpull.v1.XmlSerializer;
+
 import com.github.mattficken.io.AbstractDetectingCharsetReader;
 import com.github.mattficken.io.ByLineReader;
 import com.github.mattficken.io.CharsetDeciderDecoder;
@@ -22,6 +24,7 @@ import com.mostc.pftt.model.TestCase;
 import com.mostc.pftt.model.phpt.PhpBuild.PHPOutput;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.PhptResultPackWriter;
+import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.StringUtil;
 import com.mostc.pftt.util.apache.regexp.RE;
 import com.mostc.pftt.util.apache.regexp.RECompiler;
@@ -45,8 +48,47 @@ import com.mostc.pftt.util.apache.regexp.REProgram;
  */
 
 public class PhptTestCase extends TestCase {
-	/** extensions (& name fragments) that have non-thread-safe tests (only 1 test of an NTS extension will be run at a time) */
-	public static final String[] NON_THREAD_SAFE_EXTENSIONS = new String[]{"fileinfo", "file", "sockets", "xsl", "xml", "network", "pdo", "mysql", "pgsql", "math", "cli_server", "cgi", "strings", "firebird", "sybase", "interbase", "mssql"};
+	/** extensions (& name fragments) that have non-thread-safe tests (only 1 test of an NTS extension will be run at a time) processed in order*/
+	public static final String[][] NON_THREAD_SAFE_EXTENSIONS = new String[][]{
+			new String[]{"ext/fileinfo"},
+			// split up the ext/standard/tests/file PHPTs
+			// they can be run in 1 thread, but split them into several threads so they'll all finish faster
+			new String[]{"ext/standard/tests/file/mkdir_"},
+			new String[]{"ext/standard/tests/file/lstat_", "ext/standard/tests/file/stat_"},
+			new String[]{"ext/standard/tests/file/fgets_"},
+			new String[]{"ext/standard/tests/file/tempnam_"},
+			new String[]{"ext/standard/tests/file/touch_"},
+			new String[]{"ext/standard/tests/file/symlink_"},
+			new String[]{"ext/standard/tests/file/file_get_contents_"},
+			new String[]{"ext/standard/tests/file/include_"},
+			// note: this array is processed in order, so this entry will catch any remaining /file/ phpts
+			new String[]{"ext/standard/tests/file"},
+			new String[]{"ext/standard/tests/dir"},
+			new String[]{"ext/standard/tests/sockets", "ext/sockets"},
+			new String[]{"ext/xsl"},
+			new String[]{"tests/security"},
+			new String[]{"ext/zip/"}, // TODO needed?
+			new String[]{"ext/zlib/"}, // TODO needed?
+			new String[]{"ext/xml"}, // TODO needed?
+			new String[]{"ext/dom"}, // TODO needed?
+			new String[]{"ext/standard/tests/network"},
+			new String[]{"ext/standard/tests/strings"},
+			new String[]{"ext/session", "tests/basic/bug20539.phpt"},
+			new String[]{"ext/mysql", "ext/pdo_mysql"},
+			new String[]{"ext/pgsql", "ext/pdo_pgsql"},
+			new String[]{"sapi/cli/php_cli_server"},
+			new String[]{"sapi/cgi"},
+			new String[]{"ext/firebird", "ext/pdo_firebird"},
+			new String[]{"ext/sybase"},
+			new String[]{"ext/interbase", "ext/pdo_interbase"},
+			new String[]{"ext/mssql", "ext/pdo_mssql"},
+			new String[]{"ext/odbc", "ext/pdo_odbc"},
+			new String[]{"ext/pdo"}, // for any remaining pdo tests
+			new String[]{"ext/xmlrpc"},
+			new String[]{"ext/soap"},
+			// TODO test for some ext/spl phpts
+			new String[]{"csv"}
+		};
 	// PHPT test files end with .phpt
 	public static final String PHPT_FILE_EXTENSION = ".phpt";
 	// PHPT files are composed of multiple sections
@@ -102,7 +144,15 @@ public class PhptTestCase extends TestCase {
 		test_case.parent = parent;
 		
 		DefaultCharsetDeciderDecoder cdd = newCharsetDeciderDecoder();
-		ByLineReader reader = PhptTestCase.isNon8BitCharset(test_case.name) ? host.readFileDetectCharset(file, cdd) : host.readFile(file);
+		ByLineReader reader;
+		// TODO temp
+		if (test_case.name.equals("ext/iconv/tests/iconv_substr.phpt"))
+			reader = host.readFile(file, test_case.common_charset = (CharsetICU) CharsetICU.forNameICU("ISO-2022-JP"));
+		else if (test_case.name.startsWith("ext/mbstring/tests/mb_output_handler_pattern"))
+			reader = host.readFile(file, test_case.common_charset = (CharsetICU) CharsetICU.forNameICU("EUC-JP"));
+		else
+			reader = PhptTestCase.isNon8BitCharset(test_case.name) ? host.readFileDetectCharset(file, cdd) : host.readFile(file);
+			
 		
 		String line = reader.readLine();
 		if (!line.startsWith("--TEST--")) {
@@ -283,14 +333,12 @@ public class PhptTestCase extends TestCase {
 	 * 
 	 * this compiles that expression and returns it, or null if neither the EXPECTF or EXPECTREGEX sections are used.
 	 * 
+	 * @param host
+	 * @param scenario_set
 	 * @param twriter
 	 * @return
 	 */
-	public RE getExpectedCompiled(PhptResultPackWriter twriter) {
-		return getExpectedCompiled(null, twriter);
-	}
-	
-	public RE getExpectedCompiled(Host host, PhptResultPackWriter twriter) {
+	public RE getExpectedCompiled(Host host, ScenarioSet scenario_set, PhptResultPackWriter twriter) {
 		RE expected_re;
 		if (this.expected_re!=null) {
 			expected_re = this.expected_re.get();
@@ -331,7 +379,7 @@ public class PhptTestCase extends TestCase {
 			
 			// provide the regular expression and the original section from the PHPT test
 			
-			twriter.show_exception(this, ex, expected_str, oexpected_str);
+			twriter.show_exception(host, scenario_set, this, ex, expected_str, oexpected_str);
 			expected_re = new RE(); // marker to avoid trying again
 			this.expected_re = new WeakReference<RE>(expected_re);
 			return expected_re;
@@ -763,7 +811,7 @@ public class PhptTestCase extends TestCase {
 	public static boolean isNon8BitCharset(String test_name) {
 		if (test_name.startsWith("ext/")) {
 			for ( String tc : NON8BIT_EXTS) {
-				if (tc.startsWith(test_name)) 
+				if (test_name.startsWith(tc)) 
 					return true;
 			}
 		}
@@ -778,9 +826,14 @@ public class PhptTestCase extends TestCase {
 			"ext/intl/",
 			"ext/iconv/",
 			"ext/mbstring/",
+			"zend/tests/multibyte/",
+			// Apache
+			"ext/xsl/"
 		};
 	// these tests, from other extensions, are considered 'Non 8-Bit'
 	static final String[] NON8BIT_TESTS = new String[]{
+			"ext/pcre/tests/locales.phpt",
+			"ext/dom/tests/bug46335.phpt",
 			"ext/standard/tests/serialize/006.phpt",
 			"ext/standard/tests/general_functions/002.phpt",
 			"ext/standard/tests/general_functions/bug49056.phpt",
@@ -798,6 +851,7 @@ public class PhptTestCase extends TestCase {
 			"ext/standard/tests/strings/htmlentities19.phpt",
 			"tests/security/open_basedir_glob_variation.phpt",
 			"tests/security/open_basedir_glob.phpt",
+			"tests/output/ob_018.phpt",
 			"ext/standard/tests/strings/get_html_translation_table_basic6.phpt",
 			"ext/standard/tests/strings/get_html_translation_table_basic7.phpt",
 			"ext/standard/tests/strings/get_html_translation_table_basic5.phpt",
@@ -806,7 +860,18 @@ public class PhptTestCase extends TestCase {
 			"ext/standard/tests/strings/quoted_printable_encode_002.phpt",
 			"ext/standard/tests/strings/crypt_chars.phpt",
 			"tests/strings/002.phpt",
+			"tests/basic/022.phpt",
+			"ext/json/tests/002.phpt",
+			"ext/json/tests/bug53946.phpt",
+			"ext/json/tests/pass001.phpt",
 			"ext/standard/tests/file/bug45181.phpt",
+			"ext/filter/tests/028.phpt",
+			"ext/zlib/tests/ob_001.phpt",
+			"ext/zlib/tests/ob_003.phpt",
+			"ext/zlib/tests/ob_004.phpt",
+			"ext/xml/tests/xml007.phpt",
+			"ext/tidy/tests/020.phpt", // Apache?
+			"ext/standard/tests/general_functions/parse_ini_basic.phpt" // Apache
 		};
 	/** returns if this test is expected to take more than 40 seconds to execute.
 	 * 
@@ -835,6 +900,7 @@ public class PhptTestCase extends TestCase {
 				"ext/oci8/tests/pecl_bug10194.phpt",
 				"ext/oci8/tests/pecl_bug10194_blob.phpt",
 				"ext/oci8/tests/pecl_bug10194_blob_64.phpt",
+				"ext/standard/tests/file/fgets_socket_variation2.phpt",
 				"ext/standard/tests/file/001.phpt",
 				"ext/standard/tests/file/005_variation.phpt",
 				"ext/standard/tests/file/file_get_contents_error001.phpt",
@@ -865,9 +931,11 @@ public class PhptTestCase extends TestCase {
 				"tests/func/005a.phpt",
 				"tests/func/010.phpt",
 				"tests/lang/045.phpt",
-				"Zend/tests/bug55509.phpt",
+				"zend/tests/bug55509.phpt",
 				//
 				// tests that seem to run slowly
+				"ext/standard/tests/file/include_userstream_001.phpt",
+				"ext/standard/tests/file/file_get_contents_error002.phpt",
 				"tests/lang/bug32924.phpt",
 				"tests/lang/bug45392.phpt",
 				"ext/standard/tests/streams/stream_get_meta_data_socket_variation3.phpt",
@@ -889,7 +957,7 @@ public class PhptTestCase extends TestCase {
 				"tests/security/open_basedir_fileinode.phpt",
 				"ext/session/tests/bug41600.phpt",
 				"ext/session/tests/020.phpt",
-				"Zend/tests/unset_cv05.phpt"
+				"zend/tests/unset_cv05.phpt"
 			);
 	}
 
@@ -903,6 +971,23 @@ public class PhptTestCase extends TestCase {
 	 */
 	public Charset getCommonCharset() {
 		return common_charset;
+	}
+
+	public void serialize(XmlSerializer serial) throws IllegalArgumentException, IllegalStateException, IOException {
+		serial.startTag(null, "phptTestCase");
+		serial.attribute(null, "name", getName());
+		// TODO include test pack revision
+		for ( EPhptSection section : section_text.keySet()) {
+			String text = section_text.get(section);
+			String section_str = section.toString();
+			
+			serial.startTag(null, section_str);
+			if (StringUtil.isNotEmpty(text)) {
+				serial.text(text);
+			}
+			serial.endTag(null, section_str);
+		}
+		serial.endTag(null, "phptTestCase");
 	}
 		
 } // end public class PhptTestCase

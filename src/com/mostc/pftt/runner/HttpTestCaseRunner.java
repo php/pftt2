@@ -1,20 +1,16 @@
 package com.mostc.pftt.runner;
 
 import java.io.IOException;
-import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
 
-import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
-import org.apache.http.entity.ByteArrayEntity;
-import org.apache.http.impl.DefaultHttpClientConnection;
-import org.apache.http.message.BasicHttpEntityEnclosingRequest;
-import org.apache.http.message.BasicHttpRequest;
-import org.apache.http.params.HttpParams;
-import org.apache.http.protocol.BasicHttpContext;
-import org.apache.http.protocol.ExecutionContext;
-import org.apache.http.protocol.HttpContext;
-import org.apache.http.protocol.HttpProcessor;
-import org.apache.http.protocol.HttpRequestExecutor;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpRequestBase;
 
 import com.github.mattficken.io.IOUtil;
 import com.mostc.pftt.host.Host;
@@ -41,17 +37,14 @@ import com.mostc.pftt.util.StringUtil;
  */
 
 public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
+	// "Mozilla/5.0 (Windows NT 6.1; rv:12.0) Gecko/20120405 Firefox/14.0.1"
 	protected final WebServerManager smgr;
-	protected final HttpParams params;
-	protected final HttpProcessor httpproc;
-	protected final HttpRequestExecutor httpexecutor;
+	protected final PhptHttpClient http_client;
 	protected WebServerInstance web = null;
 
-	public HttpTestCaseRunner(HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web, PhptThread thread, PhptTestCase test_case, PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+	public HttpTestCaseRunner(PhptHttpClient http_client, WebServerManager smgr, WebServerInstance web, PhptThread thread, PhptTestCase test_case, PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
 		super(web.getPhpIni(), thread, test_case, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
-		this.params = params;
-		this.httpproc = httpproc;
-		this.httpexecutor = httpexecutor;
+		this.http_client = http_client;
 		this.smgr = smgr;
 		this.web = web;
 	}
@@ -60,23 +53,35 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	 * 
 	 * @param twriter
 	 * @param host
+	 * @param scenario_set
 	 * @param type
 	 * @param build
 	 * @param test_case
 	 * @return
 	 * @throws Exception
 	 */
-	public static boolean willSkip(PhptResultPackWriter twriter, Host host, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
-		if (AbstractPhptTestCaseRunner.willSkip(twriter, host, type, build, test_case)) {
+	public static boolean willSkip(PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+		if (AbstractPhptTestCaseRunner.willSkip(twriter, host, scenario_set, type, build, test_case)) {
 			return true;
 		} else if (test_case.containsSection(EPhptSection.STDIN)) {
-			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "STDIN section not supported for testing against web servers", null, null, null, null, null, null, null, null, null, null, null));
+			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "STDIN section not supported for testing against web servers", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return true;
 		} else if (test_case.containsSection(EPhptSection.ARGS)) {
-			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "ARGS section not supported for testing against web servers", null, null, null, null, null, null, null, null, null, null, null));
+			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "ARGS section not supported for testing against web servers", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return true;
+		} else if (twriter.getConsoleManager().isDisableDebugPrompt()&&test_case.isNamed(
+				// causes a blocking winpopup msg about a few php_*.dll DLLs that couldn't be loaded
+				// (ignore these for automated testing, but still show them for manual testing)
+				"ext/zlib/tests/008.phpt",
+				"ext/standard/tests/popen_pclose_basic-win32.phpt", // fpassthru() doesn't run on Apache
+				"ext/standard/tests/general_functions/get_cfg_var_variation8.phpt",
+				// this test will return different output on apache/iis
+				"tests/basic/bug54514.phpt")) {
+				twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null, null));
+				
+				return true;
 		} else {
 			return false;
 		}
@@ -201,69 +206,31 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected void markTestAsCrash() {
 		not_crashed = false; // @see #runTest
 		
-		twriter.addResult(new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, null, null, null, null, ini, env, null, stdin_post, null, null, null, null, web==null?null:web.getSAPIOutput()));
+		twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, null, null, null, null, ini, env, null, stdin_post, null, null, null, null, web==null?null:web.getSAPIOutput()));
 	}
 		
-	protected String do_http_get(String path) throws Exception {
-		HttpContext context = new BasicHttpContext(null);
-		HttpHost http_host = new HttpHost(web.hostname(), web.port());
-		
-		DefaultHttpClientConnection conn = new DefaultHttpClientConnection();
-		try {
-			context.setAttribute(ExecutionContext.HTTP_CONNECTION, conn);
-			context.setAttribute(ExecutionContext.HTTP_TARGET_HOST, http_host);
-			
-			Socket socket = new Socket(http_host.getHostName(), http_host.getPort());
-			conn.bind(socket, params);
-			conn.setSocketTimeout(60*1000);
-			
-			BasicHttpRequest request = new BasicHttpRequest("GET", path);
-			
-			request.setParams(params);
-			httpexecutor.preProcess(request, httpproc, context);
-			
-			HttpResponse response = httpexecutor.execute(request, conn, context);
-			
-			response.setParams(params);
-			httpexecutor.postProcess(response, httpproc, context);
-			
-			return IOUtil.toString(response.getEntity().getContent());
-		} finally {
-			conn.close();
-		}
-	} // end protected String do_http_get
+	protected String do_http_get(String path) throws ClientProtocolException, IOException {
+        HttpGet http_get = new HttpGet("http://"+web.hostname()+":"+web.port()+"/"+path); // TODO
+
+        HttpResponse response = http_client.execute(http_get);
+        
+        return do_http_response(http_get, response);
+	} 
 	
-	protected String do_http_post(String path) throws Exception {
-		if (content_type!=null)
-			params.setParameter("Content-Type", content_type);
-		
-		HttpContext context = new BasicHttpContext(null);
-		HttpHost http_host = new HttpHost(web.hostname(), web.port());
-		
-		DefaultHttpClientConnection conn = new DefaultHttpClientConnection();
-		try {
-			context.setAttribute(ExecutionContext.HTTP_CONNECTION, conn);
-			context.setAttribute(ExecutionContext.HTTP_TARGET_HOST, http_host);
-			
-			Socket socket = new Socket(http_host.getHostName(), http_host.getPort());
-			conn.bind(socket, params);
-			conn.setSocketTimeout(60*1000);
-			
-			BasicHttpEntityEnclosingRequest request = new BasicHttpEntityEnclosingRequest("POST", path);
-			request.setParams(params);
-			httpexecutor.preProcess(request, httpproc, context);		
-			request.setEntity(new ByteArrayEntity(stdin_post));
-			conn.sendRequestEntity(request);
-			HttpResponse response = httpexecutor.execute(request, conn, context);
-			
-			response.setParams(params);
-			httpexecutor.postProcess(response, httpproc, context);
-			
-			return IOUtil.toString(response.getEntity().getContent());
-		} finally {
-			conn.close();
-		}
-	} // end protected String do_http_post
+	protected String do_http_post(String path) throws ClientProtocolException, IOException {
+		HttpPost httpPost = new HttpPost("http://"+web.hostname()+":"+web.port()+"/"+path); // TODO
+        List<NameValuePair> nvps = new ArrayList <NameValuePair>();
+        //nvps.add(new BasicNameValuePair("username", "vip"));
+        //nvps.add(new BasicNameValuePair("password", "secret"));
+        httpPost.setEntity(new UrlEncodedFormEntity(nvps));
+        HttpResponse response2 = http_client.execute(httpPost);
+        
+        return do_http_response(httpPost, response2);
+	}
+	
+	protected String do_http_response(HttpRequestBase request, HttpResponse response) throws IllegalStateException, IOException {
+		return IOUtil.toString(response.getEntity().getContent(), IOUtil.HALF_MEGABYTE);
+	}
 	
 	@Override
 	protected String executeSkipIf() throws Exception {
@@ -272,7 +239,22 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 
 	@Override
 	protected String executeTest() throws Exception {
+		// TODO temp DefaultClientConnectionOperator
+		// TODO temp SocketHttpClientConnection 
+		
 		return http_execute(test_file, EPhptSection.TEST);
+	}
+	
+	@Override
+	protected PhptTestResult notifyFail(PhptTestResult result) {
+		// test failed... log all the http requests and responses (headers and bodies) in case
+		// it helps triage why the test failed
+		
+		// TODO result.http_request = connection.getHttpRequestData();
+		// TODO result.http_response = connection.getHttpResponseData();
+		
+		
+		return result;
 	}
 
 	@Override

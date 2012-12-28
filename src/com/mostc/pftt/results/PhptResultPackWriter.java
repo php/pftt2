@@ -1,22 +1,33 @@
 package com.mostc.pftt.results;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.kxml2.io.KXmlSerializer;
+import org.xmlpull.v1.XmlSerializer;
+
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.EBuildBranch;
+import com.mostc.pftt.model.phpt.EBuildSourceType;
+import com.mostc.pftt.model.phpt.ECPUArch;
+import com.mostc.pftt.model.phpt.ECompiler;
+import com.mostc.pftt.model.phpt.EPhptSection;
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.model.phpt.PhptSourceTestPack;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.ErrorUtil;
+import com.mostc.pftt.util.StringUtil;
 
 /** Writes the result-pack from a test run.
  * 
@@ -24,70 +35,90 @@ import com.mostc.pftt.util.ErrorUtil;
  * @author Matt Ficken
  *
  */
-
-// TODO store systeminfo and phpinfo 
+ 
 public class PhptResultPackWriter extends PhptResultPack {
 	private File telem_dir;
-	protected HashMap<EPhptTestStatus,PrintWriter> status_list_map;
+	protected final HashMap<Host,HashMap<ScenarioSet,HashMap<EPhptTestStatus,PrintWriter>>> status_list_map;
 	protected Host host;
 	protected PrintWriter exception_writer;
 	protected int total_count = 0;
 	protected ConsoleManager cm;
-	protected HashMap<EPhptTestStatus,AtomicInteger> counts;
+	protected final HashMap<Host,HashMap<ScenarioSet,HashMap<EPhptTestStatus,AtomicInteger>>> counts;
 	protected PhpBuild build;
 	protected PhptSourceTestPack test_pack;
 	protected ScenarioSet scenario_set;
-	protected LinkedBlockingQueue<PhptTestResult> results;
+	protected LinkedBlockingQueue<ResultQueueEntry> results;
 	protected boolean run = true;
+	protected XmlSerializer serial;
 	
-	public PhptResultPackWriter(Host host, ConsoleManager cm, File telem_base_dir, PhpBuild build, PhptSourceTestPack test_pack, ScenarioSet scenario_set) throws IOException {
+	protected static File makeName(ConsoleManager cm, Host host, File base, PhpBuild build, int i) throws Exception {
+		StringBuilder sb = new StringBuilder();
+		sb.append("/PFTT-Result-Pack-");
+		sb.append(build.getVersionBranch(cm, host));
+		sb.append("-");
+		sb.append(build.getBuildType(host));
+		sb.append("-");
+		sb.append(build.getVersionRevision(cm, host));
+		
+		EBuildSourceType src_type = build.getBuildSourceType(host);
+		if (src_type!=EBuildSourceType.WINDOWS_DOT_PHP_DOT_NET) {
+			sb.append("-");
+			sb.append(src_type);
+		}
+		
+		ECompiler compiler = build.getCompiler(cm, host);
+		if (compiler!=ECompiler.VC9) {
+			sb.append("-");
+			sb.append(compiler);
+		}
+		ECPUArch cpu = build.getCPUArch(cm, host);
+		if (cpu!=ECPUArch.X86) {
+			sb.append("-");
+			sb.append(cpu);
+		}
+		
+		if (i>0) {
+			sb.append("-");
+			sb.append(i);
+		}
+		return new File(base.getAbsolutePath() + sb);
+	}
+	
+	public PhptResultPackWriter(Host host, ConsoleManager cm, File telem_base_dir, PhpBuild build, PhptSourceTestPack test_pack, ScenarioSet scenario_set) throws Exception {
 		super(host);
+		
+		status_list_map = new HashMap<Host,HashMap<ScenarioSet,HashMap<EPhptTestStatus,PrintWriter>>>(16);
+		counts = new HashMap<Host,HashMap<ScenarioSet,HashMap<EPhptTestStatus,AtomicInteger>>>(16);
+		
+		// setup serializer to indent XML (pretty print) so its easy for people to read
+		serial = new KXmlSerializer();
+		serial.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
+		//
+		
+		
+		
 		this.host = host;
 		this.cm = cm;
 		this.scenario_set = scenario_set;
 		this.build = build;
 		this.test_pack = test_pack;
-		this.telem_dir = new File(telem_base_dir + "/PFTT-Result-Pack-"+System.currentTimeMillis());
+		this.telem_dir = new File(host.uniqueNameFromBase(makeName(cm, host, telem_base_dir, build, 0).getAbsolutePath()));
 		this.telem_dir.mkdirs();
-		this.telem_dir = new File(this.telem_dir.getAbsolutePath());
 		
-		results = new LinkedBlockingQueue<PhptTestResult>();
+		results = new LinkedBlockingQueue<ResultQueueEntry>();
 		
-		counts = new HashMap<EPhptTestStatus,AtomicInteger>();
-		for (EPhptTestStatus status:EPhptTestStatus.values())
-			counts.put(status, new AtomicInteger(0));
-		
-		exception_writer = new PrintWriter(new FileWriter(this.telem_dir+"/EXCEPTIONS.txt"));
-		
-		status_list_map = new HashMap<EPhptTestStatus,PrintWriter>();
-		for(EPhptTestStatus status:EPhptTestStatus.values()) {
-			FileWriter fw = new FileWriter(telem_dir+"/"+status+".txt");
-			PrintWriter pw = new PrintWriter(fw);
-			switch(status) {
-			case XSKIP:
-			case UNSUPPORTED:
-			case BORK:
-				// this is a list/status that PHP run-tests doesn't produce, so its less likely that 
-				// someone will want to pass this list to run-tests, so its safe to add a comment/header to the XSKIP list
-				pw.println("; can add comments or comment out any line by adding ; or #");
-				pw.println("; line will be ignored when you pass this list to pftt phpt_list");
-				break;
-			default:
-				break;
-			}
-			status_list_map.put(status, pw);
-		}
+		exception_writer = new PrintWriter(new FileWriter(this.telem_dir+"/GLOBAL_EXCEPTIONS.txt"));
 		
 		new Thread() {
 				@Override
 				public void run() {
-					PhptTestResult result;
+					ResultQueueEntry q;
 					
 					while (run) {
 						try {
-							result = results.take();
+							q = results.take();
 						
-							handleResult(result);
+							handleResult(q.this_host, q.this_scenario_set, q.result);
 						} catch ( Exception ex ) {
 							ex.printStackTrace();
 						}
@@ -107,24 +138,39 @@ public class PhptResultPackWriter extends PhptResultPack {
 	@Override
 	public void close() {
 		run = false;
-		for(EPhptTestStatus status:EPhptTestStatus.values()) {
-			PrintWriter pw = status_list_map.get(status);
-			pw.close();
+		
+		try {
+			for ( Host this_host : status_list_map.keySet() ) {
+				for ( ScenarioSet this_scenario_set : status_list_map.get(this_host).keySet() ) {
+					for ( PrintWriter pw : status_list_map.get(this_host).get(this_scenario_set).values() ) {
+						pw.close();
+					}
+				}
+			}
+		} catch ( Exception ex ) {
+			ex.printStackTrace();
 		}
 		
+		/* TODO for(EPhptTestStatus status:EPhptTestStatus.values()) {
+			PrintWriter pw = status_list_map.get(status);
+			pw.close();
+		}*/
+		
+		// TODO store phpinfo
+		
 		// store systeminfo
-		try {
+		/* TODO try {
 			FileWriter fw = new FileWriter(new File(telem_dir, "system_info.txt"));
 			fw.write(host.getSystemInfo());
 			fw.close();
 		} catch ( Exception ex ) {
 			ex.printStackTrace();
-		}
+		}*/
 		//
 		
 		// write tally file with 
 		try {
-			PhptTallyFile tally = new PhptTallyFile();
+			/*PhptTallyFile tally = new PhptTallyFile();
 			tally.sapi_scenario_name = ScenarioSet.getSAPIScenario(scenario_set).getName();
 			tally.build_branch = build.getVersionBranch(cm, host)+"";
 			tally.test_pack_branch = test_pack.getVersionBranch()+"";
@@ -140,10 +186,11 @@ public class PhptResultPackWriter extends PhptResultPack {
 			tally.xfail_works = counts.get(EPhptTestStatus.XFAIL_WORKS).get();
 			tally.unsupported = counts.get(EPhptTestStatus.UNSUPPORTED).get();
 			tally.bork = counts.get(EPhptTestStatus.BORK).get();
-			tally.exception = counts.get(EPhptTestStatus.TEST_EXCEPTION).get();		
-			FileWriter fw = new FileWriter(new File(telem_dir, "tally.xml"));
+			tally.exception = counts.get(EPhptTestStatus.TEST_EXCEPTION).get();*/		
+			
+			/* TODO FileWriter fw = new FileWriter(new File(telem_dir, "tally.xml"));
 			PhptTallyFile.write(tally, fw);
-			fw.close();
+			fw.close();*/
 		} catch ( Exception ex ) {
 			ex.printStackTrace();
 		}
@@ -179,7 +226,7 @@ public class PhptResultPackWriter extends PhptResultPack {
 	}
 	@Override
 	public int count(EPhptTestStatus status) {
-		return counts.get(status).get();
+		return 0; // TODO counts.get(status).get();
 	}
 	@Override
 	public float passRate() {
@@ -188,49 +235,170 @@ public class PhptResultPackWriter extends PhptResultPack {
 		return pass / (pass+fail);
 	}
 	
-	public void show_exception(PhptTestCase test_file, Throwable ex) {
-		show_exception(test_file, ex, null);
+	public void show_exception(Host this_host, ScenarioSet this_scenario_set, PhptTestCase test_file, Throwable ex) {
+		show_exception(this_host, this_scenario_set, test_file, ex, null);
 	}
-	public void show_exception(PhptTestCase test_file, Throwable ex, Object a) {
-		show_exception(test_file, ex, a, null);
+	public void show_exception(Host this_host, ScenarioSet this_scenario_set, PhptTestCase test_file, Throwable ex, Object a) {
+		show_exception(this_host, this_scenario_set, test_file, ex, a, null);
 	}
-	public void show_exception(PhptTestCase test_case, Throwable ex, Object a, Object b) {
+	public void show_exception(Host this_host, ScenarioSet this_scenario_set, PhptTestCase test_case, Throwable ex, Object a, Object b) {
 		String ex_str = ErrorUtil.toString(ex);
 		if (a!=null)
 			ex_str += " a="+a;
 		if (b!=null)
 			ex_str += " b="+b;
 		
-		synchronized(exception_writer) {
+		/*synchronized(exception_writer) {
 			exception_writer.println("EXCEPTION "+test_case);
 			exception_writer.println(ex_str);
 			exception_writer.flush(); // CRITICAL
-		}
+		}*/
 		
 		System.err.println(ex_str);
 		
 		// count exceptions as a result (the worst kind of failure, a pftt failure)
-		addResult(new PhptTestResult(host, EPhptTestStatus.TEST_EXCEPTION, test_case, ex_str, null, null, null, null, null, null, null, null, null, null, null));
+		addResult(this_host, this_scenario_set, new PhptTestResult(host, EPhptTestStatus.TEST_EXCEPTION, test_case, ex_str, null, null, null, null, null, null, null, null, null, null, null));
 	}
 	int completed = 0; 
-	public void addResult(PhptTestResult result) {
+	public void addResult(Host this_host, ScenarioSet this_scenario_set, PhptTestResult result) {
 		// enqueue result to be handled by another thread to avoid interrupting every phpt thread
-		results.add(result);
+		results.add(new ResultQueueEntry(this_host, this_scenario_set, result));
 	}
+	
+	protected static final class ResultQueueEntry {
+		protected final Host this_host;
+		protected final ScenarioSet this_scenario_set;
+		protected final PhptTestResult result;
 		
-	protected void handleResult(PhptTestResult result) {
-		counts.get(result.status).incrementAndGet();
+		protected ResultQueueEntry(Host this_host, ScenarioSet this_scenario_set, PhptTestResult result) {
+			this.this_host = this_host;
+			this.this_scenario_set = this_scenario_set;
+			this.result = result;
+		}
 		
-		// record in list files
-		PrintWriter pw = status_list_map.get(result.status);
+	} // end protected static final class ResultQueueEntry
+	
+	protected File telem_dir(Host this_host, ScenarioSet this_scenario_set) {
+		return new File(host.joinIntoOnePath(telem_dir.getAbsolutePath(), this_host.getName(), this_scenario_set.toString()));
+	}
+	
+	private void incrementStatusCount(final Host this_host, final ScenarioSet this_scenario_set, final PhptTestResult result) {
+		HashMap<ScenarioSet,HashMap<EPhptTestStatus,AtomicInteger>> a = counts.get(this_host);
+		if (a==null) {
+			a = new HashMap<ScenarioSet,HashMap<EPhptTestStatus,AtomicInteger>>(4);
+			counts.put(this_host, a);
+		}
+		HashMap<EPhptTestStatus,AtomicInteger> b = a.get(this_scenario_set);
+		if (b==null) {
+			b = new HashMap<EPhptTestStatus,AtomicInteger>(10);
+			a.put(this_scenario_set, b);
+			for ( EPhptTestStatus status : EPhptTestStatus.values() )
+				b.put(status, new AtomicInteger(0));
+		}
+		b.get(result.status).incrementAndGet();
+	} // end private void incrementStatusCount
+	
+	private void recordStatusInList(final Host this_host, final ScenarioSet this_scenario_set, final File this_telem_dir, final PhptTestResult result) throws IOException {
+		HashMap<ScenarioSet,HashMap<EPhptTestStatus,PrintWriter>> a = status_list_map.get(this_host);
+		if (a==null) {
+			a = new HashMap<ScenarioSet,HashMap<EPhptTestStatus,PrintWriter>>(4);
+			status_list_map.put(this_host, a);
+		}
+		HashMap<EPhptTestStatus,PrintWriter> b = a.get(this_scenario_set);
+		if (b==null||b.isEmpty()) {
+			b = new HashMap<EPhptTestStatus,PrintWriter>(10);
+			a.put(this_scenario_set, b);
+			
+			for(EPhptTestStatus status:EPhptTestStatus.values()) {
+				PrintWriter pw = new PrintWriter(new FileWriter(this_telem_dir+"/"+status+".txt"));
+				
+				switch(status) {
+				case XSKIP:
+				case UNSUPPORTED:
+				case BORK:
+					// this is a list/status that PHP run-tests doesn't produce, so its less likely that 
+					// someone will want to pass this list to run-tests, so its safe to add a comment/header to the XSKIP list
+					pw.println("; can add comments or comment out any line by adding ; or #");
+					pw.println("; line will be ignored when you pass this list to pftt phpt_list");
+					break;
+				default:
+					break;
+				} // end switch
+				
+				b.put(status, pw);
+			}
+		} // end if
+		
+		PrintWriter pw = b.get(result.status);
 		pw.println(result.test_case.getName());
+		pw.flush();
+	} // end private void recordStatusInList
 		
-		// have result store diff, output, expected as appropriate
+	//@NotThreadSafe
+	protected void handleResult(final Host this_host, final ScenarioSet this_scenario_set, final PhptTestResult result) {
+		incrementStatusCount(this_host, this_scenario_set, result);
+		
+		final File this_telem_dir = telem_dir(host, this_scenario_set);
+		
 		try {
-			result.write(telem_dir);
-		} catch ( Exception ex ) {
+			recordStatusInList(this_host, this_scenario_set, this_telem_dir, result);
+		} catch (Exception ex) {
 			ex.printStackTrace();
 		}
+	
+		
+		final String test_case_base_name = result.test_case.getBaseName();
+		
+		// record in list files
+		
+		final boolean store_all = PhptTestResult.shouldStoreAllInfo(result.status);
+		
+		
+		try {
+			File result_file = new File(this_telem_dir, test_case_base_name+".xml");
+			
+			result_file.getParentFile().mkdirs();
+			
+			OutputStream out = new BufferedOutputStream(new FileOutputStream(result_file));
+			
+			serial.setOutput(out, null);
+			
+			// write result info in XML format
+			serial.startDocument(null, null);
+			result.serialize(serial, store_all);
+			serial.endDocument();
+			
+			serial.flush();
+			out.close();
+			
+		} catch ( Exception ex ) {
+			cm.printStackTrace(ex);
+		}
+		
+		//
+		if (store_all && StringUtil.isNotEmpty(result.shell_script)) {
+			// store .cmd|.sh and .php file
+			// (if no .cmd|.sh don't need a .php file; .php file needed for .cmd|.sh)
+			
+			FileWriter fw;
+			
+			try {
+				fw = new FileWriter(host.joinIntoOnePath(this_telem_dir.getAbsolutePath(), test_case_base_name+(host.isWindows()?".cmd":".sh")));
+				fw.write(result.shell_script);
+				fw.close();
+			} catch ( Exception ex ) {
+				cm.printStackTrace(ex);
+			}
+			
+			try {
+				fw = new FileWriter(host.joinIntoOnePath(this_telem_dir.getAbsolutePath(), test_case_base_name+".php"));
+				fw.write(result.test_case.get(EPhptSection.FILE));
+				fw.close();
+			} catch ( Exception ex ) {
+				cm.printStackTrace(ex);
+			}
+		}
+		//
 		
 		// show on console
 		System.out.println(result.status+" "+result.test_case);
@@ -239,7 +407,7 @@ public class PhptResultPackWriter extends PhptResultPack {
 			// show in tui/gui (if open)
 			cm.showResult(host, getTotalCount(), completed++, result);	
 		}
-	}
+	} // end protected void handleResult
 
 	@Override
 	public int getTotalCount() {
@@ -249,13 +417,5 @@ public class PhptResultPackWriter extends PhptResultPack {
 	public void setTotalCount(int total_count) {
 		this.total_count = total_count;
 	}
-
-	public void addPostRequest(String file_name, String request) {
-		try {
-			host.saveTextFile(telem_dir + host.dirSeparator() + file_name, request);
-		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
-		}
-	}
-		
+	
 } // end public class PhptTelemetryWriter

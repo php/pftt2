@@ -13,4 +13,9 @@ package com.mostc.pftt.scenario;
 
 public class SemanticMediaWikiScenario extends MediaWikiScenario {
 	
+	@Override
+	protected String getZipAppFileName() {
+		return "SemanticMediaWiki1.8.zip";
+	}
+	
 }

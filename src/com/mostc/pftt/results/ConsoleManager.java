@@ -48,7 +48,7 @@ public class ConsoleManager {
 	}
 	
 	public boolean isDisableDebugPrompt() {
-		return disable_debug_prompt;
+		return true||disable_debug_prompt; // TODO temp
 	}
 	
 	public boolean isForce() {

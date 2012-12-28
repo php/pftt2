@@ -285,6 +285,71 @@ public final class StringUtil {
 		return sb.toString();
 	}
 	
+	public static boolean containsAnyCS(String str, String[] needles) {
+		if (str==null||str.length()==0)
+			return false;
+		for ( String n : needles ) {
+			if (str.contains(n))
+				return true;
+		}
+		return false;
+	}
+	
+	public static boolean containsAnyIC(String str, String[] needles) {
+		if (str==null||str.length()==0||needles==null||needles.length==0)
+			return false;
+		str = str.toLowerCase();
+		for ( String n : needles ) {
+			if (str.contains(n))
+				return true;
+		}
+		return false;
+	}
+	
+	public static boolean startsWithAnyCS(String str, String[] needles) {
+		if (str==null||str.length()==0)
+			return false;
+		for ( String n : needles ) {
+			if (str.startsWith(n))
+				return true;
+		}
+		return false;
+	}
+	
+	public static boolean startsWithAnyIC(String str, String[] needles) {
+		if (str==null||str.length()==0||needles==null||needles.length==0)
+			return false;
+		str = str.toLowerCase();
+		for ( String n : needles ) {
+			if (str.startsWith(n))
+				return true;
+		}
+		return false;
+	}
+	
+	public static boolean endsWithAnyCS(String str, String[] needles) {
+		if (str==null||str.length()==0)
+			return false;
+		for ( String n : needles ) {
+			if (str.endsWith(n))
+				return true;
+		}
+		return false;
+	}
+	
+	public static boolean endsWithAnyIC(String str, String[] needles) {
+		if (str==null||str.length()==0||needles==null||needles.length==0)
+			return false;
+		str = str.toLowerCase();
+		for ( String n : needles ) {
+			if (str.endsWith(n))
+				return true;
+		}
+		return false;
+	}
+	
 	private StringUtil() {}
+
+	
 	
 } // end public class StringUtil

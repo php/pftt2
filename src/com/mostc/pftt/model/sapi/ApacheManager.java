@@ -15,6 +15,7 @@ import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.PhptResultPackWriter;
 import com.mostc.pftt.results.PhptTestResult;
+import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.DownloadUtil;
 import com.mostc.pftt.util.StringUtil;
 
@@ -76,10 +77,10 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		return host.exec(httpd(host)+" -V", Host.ONE_MINUTE).isSuccess();
 	}
 	
-	public static boolean isSupported(PhptResultPackWriter twriter, Host host, PhpBuild build, PhptTestCase test_case) {
+	public static boolean isSupported(PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptTestCase test_case) {
 		if (build.isNTS(host)) {
 			twriter.getConsoleManager().println(ApacheManager.class, "Error Apache requires TS Php Build. NTS Php Builds aren't supported with Apache mod_php.");
-			twriter.addResult(new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "NTS Build not supported", null, null, null, null, null, null, null, null, null, null, null));
+			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "NTS Build not supported", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return false;
 		} else {
@@ -138,6 +139,9 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			env = new HashMap<String,String>(2);
 		// tell apache mod_php where to find php.ini
 		env.put("PHPRC", php_conf_file);
+		// these vars are needed by some PHPTs
+		env.put("TEST_PHP_EXECUTABLE", build.getPhpExe());
+		env.put("TEST_PHP_CGI_EXECUTABLE", build.getPhpCgiExe());
 		
 		// apache configuration (also tells where to find php.ini. see PHPIniDir directive)
 		String conf_str = writeConfigurationFile(host, dll, conf_dir, error_log, listen_address, port, docroot);
@@ -286,13 +290,11 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		sb.append("Listen "+listen_address+":"+port+"\n");
 		sb.append("<Directory />\n");
 		sb.append("    AllowOverride none\n");
-		//sb.append("    Require all denied\n");
 		sb.append("</Directory>\n");
 		sb.append("DocumentRoot \""+host.fixPath(docroot)+"\"\n");
 		sb.append("<Directory \""+host.fixPath(docroot)+"\">\n");
 		sb.append("    Options Indexes FollowSymLinks\n");
 		sb.append("    AllowOverride None\n");
-		//sb.append("    Require all granted\n");
 		sb.append("</Directory>\n");
 		sb.append("ErrorLog \""+host.fixPath(error_log)+"\"\n");
 		sb.append("LogLevel warn\n");
@@ -331,6 +333,11 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			cm.printStackTrace(ex);
 		}
 		return false;
+	}
+
+	@Override
+	public String getDefaultDocroot(Host host, PhpBuild build) {
+		return host.isWindows() ? host.getSystemDrive() + "\\Apache24\\htdocs" : "/var/www/localhost/htdocs";
 	}
 	
 } // end public class ApacheManager

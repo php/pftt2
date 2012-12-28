@@ -71,5 +71,10 @@ public class CliScenario extends AbstractSAPIScenario {
 			return new TestCaseGroupKey(AbstractPhptTestCaseRunner.createIniForTest(cm, host, build, active_test_pack, scenario_set), null);
 		}
 	} // end public TestCaseGroupKey createTestGroupKey
+	
+	@Override
+	public boolean willSkip(PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+		return CliPhptTestCaseRunner.willSkip(twriter, host, scenario_set, type, build, test_case);
+	}
 
 } // end public class CliScenario

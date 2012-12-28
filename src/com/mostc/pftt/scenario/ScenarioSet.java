@@ -47,8 +47,8 @@ import com.mostc.pftt.results.ConsoleManager;
 
 @SuppressWarnings("serial")
 public class ScenarioSet extends ArrayList<Scenario> {
-	
 	private boolean sorted = false, sorting = false;
+	private String str;
 	private static Comparator<Scenario> COMPARATOR = new Comparator<Scenario>() {
 			@Override
 			public int compare(Scenario a, Scenario b) {
@@ -62,6 +62,14 @@ public class ScenarioSet extends ArrayList<Scenario> {
 		Collections.sort(this, COMPARATOR);
 		sorting = false;
 		sorted = true;
+		
+		StringBuilder sb = new StringBuilder(40);
+		for ( Scenario s : this ) {
+			if (sb.length()>0)
+				sb.append('_');
+			sb.append(s);
+		}
+		str = sb.toString();
 	}
 	
 	protected void forceSort() {
@@ -79,7 +87,7 @@ public class ScenarioSet extends ArrayList<Scenario> {
 	@Override
 	public String toString() {
 		ensureSorted();
-		return super.toString();
+		return str; // @see #sort
 	}
 	
 	@Override
@@ -200,6 +208,20 @@ public class ScenarioSet extends ArrayList<Scenario> {
 		return (ScenarioSet) super.clone();
 	}
 	
+	/**
+	 * 
+	 */
+	@Override
+	public boolean contains(Object o) {
+		if (o instanceof Class) {
+			Class<?> clazz = (Class<?>) o;
+			for ( Object a : this ) {
+				if (clazz.isAssignableFrom(a.getClass()))
+					return true;
+			}	
+		}
+		return super.contains(o);
+	}
 	
 	/** calculates all permutations/combinations of given Scenarios and returns them as ScenarioSets 
 	 * 

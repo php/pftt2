@@ -13,6 +13,7 @@ import javax.annotation.concurrent.ThreadSafe;
 
 import com.github.mattficken.io.ByLineReader;
 import com.github.mattficken.io.CharsetDeciderDecoder;
+import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
 import com.mostc.pftt.util.StringUtil;
 
@@ -254,6 +255,7 @@ public abstract class Host {
 	 * @throws IOException
 	 */
 	public abstract ByLineReader readFile(String file) throws IllegalStateException, FileNotFoundException, IOException;
+	public abstract ByLineReader readFile(String file, Charset cs) throws IllegalStateException, FileNotFoundException, IOException;
 	/** opens a file to be read line by line, automatically detecting charset
 	 * 
 	 * @param file
@@ -458,7 +460,22 @@ public abstract class Host {
 	}
 	@ThreadSafe
 	public static abstract class ExecHandle {
+		/** KILLs process
+		 * 
+		 * @param force - on Windows, if the process crashed and Windows Error Reporting(WER) is enabled (default=enabled),
+		 *                then a WER Popup dialog will block the process from being killed. set force=true
+		 *                if the process needs to be killed even in this situation (normally process should be left running/crashed
+		 *                so user can debug it)
+		 */
 		public abstract void close(boolean force);
+		/** KILLs process.
+		 * 
+		 * Note: on Windows, if process crashed and Windows Error Reporting(WER) is enabled (default=enabled)
+		 * a WER Popup dialog box will appear and block the process from exiting AND block the process from
+		 * being killed
+		 * 
+		 * @see #close(boolean)
+		 */
 		public void close() {
 			close(false);
 		}
@@ -466,7 +483,17 @@ public abstract class Host {
 		public boolean isCrashed() {
 			return getExitCode() != 0;
 		}
+		/** immediately returns the output the process has returned (if process is still running, it may
+		 * return more output after this call)
+		 * 
+		 * @return
+		 */
 		public abstract String getOutput();
+		/** returns the process's exit code
+		 * 
+		 * @see #isRunning - don't call this if the process is still running (call #isRunning first to check)
+		 * @return
+		 */
 		public abstract int getExitCode();
 	}
 	public ExecHandle execThread(String commandline) throws Exception {
@@ -859,6 +886,42 @@ public abstract class Host {
 			sb.append(paths[i]);
 		}
 		return sb.toString();
+	}
+	
+	/** unzips .ZIP file into base_dir
+	 * 
+	 * @param zip_file
+	 * @param base_dir
+	 * @return
+	 */
+	public boolean unzip(String zip_file, String base_dir) {
+		mkdirs(base_dir);
+		return exec("unzip "+zip_file+" "+base_dir, ONE_HOUR).isSuccess();
+	}
+	
+	public boolean unzip(ConsoleManager cm, String zip_file, String base_dir) {
+		if (unzip(zip_file, base_dir))
+			return true;
+		cm.println(getClass(), "Unable to unzip: "+zip_file);
+		return false;
+	}
+
+	/** ensures that name is unique by adding a number to the end of it if
+	 * it already exists... returns unqiue name.
+	 * 
+	 * @param base
+	 * @return
+	 */
+	public String uniqueNameFromBase(String base) {
+		if (exists(base)) {
+			String name;
+			for ( int i=1 ; ; i++ ) {
+				name = base + "-" + i;
+				if (!exists(name))
+					return name;
+			} 
+		}
+		return base;
 	}
 	
 } // end public abstract class Host
