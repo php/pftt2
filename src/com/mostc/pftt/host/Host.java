@@ -890,20 +890,26 @@ public abstract class Host {
 	
 	/** unzips .ZIP file into base_dir
 	 * 
+	 * @param cm
 	 * @param zip_file
 	 * @param base_dir
 	 * @return
 	 */
-	public boolean unzip(String zip_file, String base_dir) {
-		mkdirs(base_dir);
-		return exec("unzip "+zip_file+" "+base_dir, ONE_HOUR).isSuccess();
+	public boolean unzip(ConsoleManager cm, String zip_file, String base_dir) {
+		try {
+			mkdirs(base_dir);
+			if (exec("unzip "+zip_file+" "+base_dir, ONE_HOUR).isSuccess())
+				return true;
+			else
+				cm.println(getClass(), "Unable to unzip: "+zip_file);
+		} catch ( Exception ex ) {
+			cm.printStackTrace(ex);
+		}
+		return false;
 	}
 	
-	public boolean unzip(ConsoleManager cm, String zip_file, String base_dir) {
-		if (unzip(zip_file, base_dir))
-			return true;
-		cm.println(getClass(), "Unable to unzip: "+zip_file);
-		return false;
+	public boolean unzip(String zip_file, String base_dir) {
+		return unzip(null, zip_file, base_dir);
 	}
 
 	/** ensures that name is unique by adding a number to the end of it if

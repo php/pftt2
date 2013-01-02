@@ -8,14 +8,13 @@ public abstract class ZipApplication extends ApplicationScenario {
 	
 	@Override
 	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
-		if (!scenario_set.contains(AbstractWebServerScenario.class)) {
+		AbstractWebServerScenario web = AbstractWebServerScenario.getWebServerScenario(scenario_set);
+		if (web == null) {
 			cm.println(getClass(), "add a web server (ex: apache) to -config console option and try again");
 			return false;
 		}
 		
 		String zip_file = getZipAppFileName();
-		
-		AbstractWebServerScenario web;
 		
 		String app_dir = host.joinIntoOnePath(web.getDefaultDocroot(host, build), Host.removeFileExt(Host.basename(zip_file)));
 		

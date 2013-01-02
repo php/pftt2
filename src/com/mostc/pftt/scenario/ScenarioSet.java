@@ -164,28 +164,16 @@ public class ScenarioSet extends ArrayList<Scenario> {
 		return true;
 	}
 	
-	/** finds the SAPI Scenario in the ScenarioSet or returns the default SAPI scenario (CLI) in case the ScenarioSet doesn't specify one.
-	 * 
-	 * @see AbstractSAPIScenario
-	 * @param set
-	 * @return
-	 */
-	public static AbstractSAPIScenario getSAPIScenario(ScenarioSet set) {
-		for (Scenario s:set) {
-			if (s instanceof AbstractSAPIScenario) {
-				return (AbstractSAPIScenario) s;
-			}
-		}
-		return Scenario.DEFAULT_SAPI_SCENARIO;
+	public <S extends Scenario> S getScenario(Class<S> clazz) {
+		return getScenario(clazz, null);
 	}
 	
-	public static AbstractFileSystemScenario getFileSystemScenario(ScenarioSet set) {
-		for (Scenario s:set) {
-			if (s instanceof AbstractFileSystemScenario) {
-				return (AbstractFileSystemScenario) s;
-			}
+	public <S extends Scenario> S getScenario(Class<S> clazz, S def) {
+		for (Scenario scen : this) {
+			if (clazz.isAssignableFrom(scen.getClass()))
+				return (S) scen;
 		}
-		return Scenario.DEFAULT_FILESYSTEM_SCENARIO;
+		return def;
 	}
 
 	/** determines if this set of scenarios can be executed on the given host
@@ -208,7 +196,9 @@ public class ScenarioSet extends ArrayList<Scenario> {
 		return (ScenarioSet) super.clone();
 	}
 	
-	/**
+	/** checks if Scenario or Scenario class is contained in set.
+	 * 
+	 * if class given, checks for superclasses, inheritance, etc... of Scenario class.
 	 * 
 	 */
 	@Override
@@ -218,7 +208,7 @@ public class ScenarioSet extends ArrayList<Scenario> {
 			for ( Object a : this ) {
 				if (clazz.isAssignableFrom(a.getClass()))
 					return true;
-			}	
+			}
 		}
 		return super.contains(o);
 	}

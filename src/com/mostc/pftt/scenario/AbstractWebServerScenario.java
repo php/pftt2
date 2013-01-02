@@ -32,6 +32,10 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 	public final WebServerManager smgr; // TODO protected
 	protected final PhptHttpClient http_client;
 	
+	public static AbstractWebServerScenario getWebServerScenario(ScenarioSet scenario_set) {
+		return scenario_set.getScenario(AbstractWebServerScenario.class, null);
+	}
+	
 	protected AbstractWebServerScenario(WebServerManager smgr) {
 		this.smgr = smgr;
 		

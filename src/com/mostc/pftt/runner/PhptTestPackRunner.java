@@ -89,8 +89,8 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 		//
 		
 		runner_state.set(ETestPackRunnerState.RUNNING);
-		sapi_scenario = ScenarioSet.getSAPIScenario(scenario_set);
-		file_scenario = ScenarioSet.getFileSystemScenario(scenario_set);
+		sapi_scenario = AbstractSAPIScenario.getSAPIScenario(scenario_set);
+		file_scenario = AbstractFileSystemScenario.getFileSystemScenario(scenario_set);
 		
 		// ensure all scenarios are implemented
 		if (!scenario_set.isImplemented()) {

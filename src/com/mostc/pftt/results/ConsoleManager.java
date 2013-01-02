@@ -5,6 +5,7 @@ import java.awt.Container;
 import javax.swing.JFrame;
 
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.model.phpt.PhpDebugPack;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
 import com.mostc.pftt.runner.PhptTestPackRunner;
@@ -13,10 +14,11 @@ import com.mostc.pftt.util.ErrorUtil;
 
 public class ConsoleManager {
 	protected final boolean force, windebug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place;
-	protected String source_pack, debug_pack;
+	protected String source_pack;
+	protected PhpDebugPack debug_pack;
 	protected PhptDebuggerFrame gui;
 		
-	public ConsoleManager(String source_pack, String debug_pack, boolean force, boolean windebug, boolean results_only, boolean show_gui, boolean disable_debug_prompt, boolean dont_cleanup_test_pack, boolean phpt_not_in_place) {
+	public ConsoleManager(String source_pack, PhpDebugPack debug_pack, boolean force, boolean windebug, boolean results_only, boolean show_gui, boolean disable_debug_prompt, boolean dont_cleanup_test_pack, boolean phpt_not_in_place) {
 		this.source_pack = source_pack;
 		this.debug_pack = debug_pack;
 		this.force = force;
@@ -106,7 +108,7 @@ public class ConsoleManager {
 		return phpt_not_in_place;
 	}
 
-	public String getDebugPack() {
+	public PhpDebugPack getDebugPack() {
 		return debug_pack;
 	}
 

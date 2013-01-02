@@ -47,6 +47,8 @@ final class WindowsSnapshotDownloadUtil {
 		if (local_path==null) {
 			// fallback: store in directory named after URL: php-sdk/<url>/<build>
 			local_path = url.getHost()+"_"+url.getPath().replaceAll("/", "_");
+		} else if (local_path.toLowerCase().endsWith(".zip")) {
+			local_path = local_path.substring(0, local_path.length()-".zip".length());
 		}
 		return new File(host.getPhpSdkDir()+"/"+local_path);
 	}
@@ -84,14 +86,14 @@ final class WindowsSnapshotDownloadUtil {
 		String xml_str = new SimpleXmlSerializer(cleaner.getProperties()).getXmlAsString(node);
 		
 		def root = new XmlSlurper(false, false).parseText(xml_str);
-		def build_url = null, test_pack_url = null;
+		def build_url = null, test_pack_url = null, debug_pack_url = null;
 		root.depthFirst().findAll { 
 				if (it.name() == 'a') {
 					if (it.text().endsWith(".zip")&&it.text().toLowerCase().contains("-test-")) {
 						test_pack_url = it['@href']
+					} else if (it.text().endsWith(".zip")&&it.text().toLowerCase().contains("-"+build_type.toString().toLowerCase()+"-")&&it.text().toLowerCase().contains("-debug-")) {
+						debug_pack_url = it['@href']
 					} else if (it.text().toLowerCase().contains("-devel-")) {
-						// ignore
-					} else if (it.text().toLowerCase().contains("-debug-")) {
 						// ignore
 					} else if (it.text().endsWith(".zip")&&it.text().toLowerCase().contains("-"+build_type.toString().toLowerCase()+"-")) {
 						build_url = it['@href'];
@@ -106,11 +108,13 @@ final class WindowsSnapshotDownloadUtil {
 			pair.build = new URL("http://"+snap_url.getHost()+"/"+build_url);
 		if (test_pack_url!=null)
 			pair.test_pack = new URL("http://"+snap_url.getHost()+"/"+test_pack_url);
+		if (test_pack_url!=null)
+			pair.debug_pack = new URL("http://"+snap_url.getHost()+"/"+debug_pack_url);
 		return pair;
 	}
 		
 	static class FindBuildTestPackPair {
-		URL build, test_pack;
+		URL build, test_pack, debug_pack;
 		EBuildType build_type;
 		EBuildBranch branch;
 	}	

@@ -27,6 +27,10 @@ import com.mostc.pftt.runner.PhptTestPackRunner.PhptThread;
 
 public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 
+	public static AbstractSAPIScenario getSAPIScenario(ScenarioSet scenario_set) {
+		return scenario_set.getScenario(AbstractSAPIScenario.class, DEFAULT_SAPI_SCENARIO);
+	}
+	
 	@Override
 	public Class<?> getSerialKey() {
 		return AbstractSAPIScenario.class;

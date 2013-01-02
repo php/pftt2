@@ -4,6 +4,11 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.results.ConsoleManager;
 
 public abstract class AbstractFileSystemScenario extends AbstractSerialScenario {
+	
+	public static AbstractFileSystemScenario getFileSystemScenario(ScenarioSet scenario_set) {
+		return scenario_set.getScenario(AbstractFileSystemScenario.class, DEFAULT_FILESYSTEM_SCENARIO);
+	}
+	
 	@Override
 	public Class<?> getSerialKey() {
 		return AbstractFileSystemScenario.class;

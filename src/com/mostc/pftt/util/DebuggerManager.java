@@ -60,13 +60,13 @@ public abstract class DebuggerManager {
 		if (!host.isWindows()) {
 			// only PHP on Windows has standard conventions for naming/locating source and debug packs
 			this.src_path = cm.getSourcePack();
-			this.debug_path = cm.getDebugPack();
+			this.debug_path = cm.getDebugPack().getPath();
 			return;
 		}
 		
 		// use any source and debug packs given on command line
 		String def_source_path = cm.getSourcePack();
-		String def_debug_path = cm.getDebugPack();
+		String def_debug_path = cm.getDebugPack().getPath();
 		
 		// (in addition to )guessing the source pack and debug pack from the build (PHP-on-Windows follows conventions that allow this)
 		try {
