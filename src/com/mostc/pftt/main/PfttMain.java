@@ -522,7 +522,7 @@ public class PfttMain {
 		
 		// execute 'git pull' in c:\php-sdk\PFTT\current
 		try {
-			host.execElevated("git pull", Host.NO_TIMEOUT, host.getPfttDir()).printOutputIfCrash(PfttMain.class.getSimpleName(), cm);
+			host.execElevated("git pull", Host.FOUR_HOURS, host.getPfttDir()).printOutputIfCrash(PfttMain.class.getSimpleName(), cm);
 		} catch ( Exception ex ) {
 			cm.printStackTrace(ex);
 			cm.println("upgrade", "error upgrading PFTT");

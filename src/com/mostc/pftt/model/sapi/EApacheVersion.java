@@ -54,11 +54,26 @@ public enum EApacheVersion {
 			else if (APACHE_2_2.isSupportedEx(cm, host, build))
 				return APACHE_2_2;
 			else
-				return null;
+				return FALLBACK;
+		}
+	},
+	OLDEST_SUPPORTED {
+		public boolean isSupportedEx(ConsoleManager cm, Host host, PhpBuild build) throws Exception {
+			return APACHE_2_4.isSupportedEx(cm, host, build) || APACHE_2_2.isSupportedEx(cm, host, build);
+		}
+		@Override
+		public EApacheVersion getApacheVersion(ConsoleManager cm, Host host, PhpBuild build) throws Exception {
+			if (APACHE_2_2.isSupportedEx(cm, host, build))
+				return APACHE_2_2;
+			else if (APACHE_2_4.isSupportedEx(cm, host, build))
+				return APACHE_2_4;
+			else
+				return FALLBACK;
 		}
 	};
 	
 	public static final EApacheVersion DEFAULT = NEWEST_SUPPORTED;
+	public static final EApacheVersion FALLBACK = APACHE_2_2;
 	
 	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build) throws Exception {
 		try {

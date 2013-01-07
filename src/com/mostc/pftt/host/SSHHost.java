@@ -182,10 +182,10 @@ public class SSHHost extends RemoteHost {
 				// ensure empty
 				if (isWindows()) {
 					path = toWindowsPath(path);
-					cmd("RMDIR /Q /S \""+path+"\"", NO_TIMEOUT);
+					cmd("RMDIR /Q /S \""+path+"\"", FOUR_HOURS);
 				} else {
 					path = toUnixPath(path);
-					exec("rm -rf \""+path+"\"", NO_TIMEOUT);
+					exec("rm -rf \""+path+"\"", FOUR_HOURS);
 				}
 			} else {
 				ensureSftpOpen();
@@ -218,11 +218,11 @@ public class SSHHost extends RemoteHost {
 			if (isDirectory(src))
 				// ensure xcopy sees destination is supposed to be a directory, or xcopy will ask/block forever
 				dst += "\\"; 
-			exec("xcopy /Q /Y /S /E \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
+			exec("xcopy /Q /Y /S /E \""+src+"\" \""+dst+"\"", FOUR_HOURS);
 		} else {
 			src = toUnixPath(src);
 			dst = toUnixPath(dst);
-			exec("cp \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
+			exec("cp \""+src+"\" \""+dst+"\"", FOUR_HOURS);
 		}
 	}
 
@@ -360,7 +360,7 @@ public class SSHHost extends RemoteHost {
 		//
 		final AtomicBoolean run = new AtomicBoolean(true);
 		final SessionChannelClient session = do_exec(cmd, env, chdir, stdin_post, out);
-		if (timeout>NO_TIMEOUT) {
+		if (timeout>FOUR_HOURS) {
 			timer.schedule(new TimerTask() {
 					public void run() {
 						try {
@@ -373,7 +373,7 @@ public class SSHHost extends RemoteHost {
 					}
 				}, timeout*1000);
 		}
-		if (thread != null && thread_slow_sec>NO_TIMEOUT) {
+		if (thread != null && thread_slow_sec>FOUR_HOURS) {
 			timer.schedule(new TimerTask() {
 					public void run() {
 						thread.notifySlowTest();
@@ -500,7 +500,7 @@ public class SSHHost extends RemoteHost {
 
 	@Override
 	public ExecOutput exec(String cmd, int timeout, Map<String, String> env, byte[] stdin_post, Charset charset, String chdir) throws Exception {
-		return exec(cmd, timeout, env, stdin_post, charset, chdir, null, NO_TIMEOUT);
+		return exec(cmd, timeout, env, stdin_post, charset, chdir, null, FOUR_HOURS);
 	}
 
 	@Override
@@ -511,7 +511,7 @@ public class SSHHost extends RemoteHost {
 			return os_name_long = getOSNameOnWindows();
 		String v;
 		try {
-			v = " "+exec("uname -a", NO_TIMEOUT).output;
+			v = " "+exec("uname -a", FOUR_HOURS).output;
 		} catch ( Exception ex ) {
 			ex.printStackTrace();
 			v = ""; // don't try again

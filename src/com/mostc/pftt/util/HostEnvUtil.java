@@ -99,7 +99,7 @@ public final class HostEnvUtil {
 					host.upload(local_file, remote_file);
 				}
 				cm.println(HostEnvUtil.class, "Installing VC9 Runtime");
-				host.execElevated(remote_file+" /Q", Host.NO_TIMEOUT);
+				host.execElevated(remote_file+" /Q", Host.FOUR_HOURS);
 				if (remote_file!=null)
 					host.delete(remote_file);
 			}

@@ -71,10 +71,6 @@ public abstract class WebServerInstance extends SAPIInstance {
 	 * @param exit_code - exit code that was returned
 	 */
 	public void notifyCrash(String output, int exit_code) {
-		/*new Exception(output).printStackTrace();
-		if (true)
-			return;*/
-		// make sure it gets closed!!
 		synchronized(sync_lock) {
 			//
 			if (crashed) {

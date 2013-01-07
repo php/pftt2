@@ -28,10 +28,10 @@ public class PhpBuild extends Build {
 	private WeakHashMap<PhpIni,WeakHashMap<String,Boolean>> ext_enable_map;
 	private WeakReference<String> php_info;
 	private WeakReference<PhpIni> php_ini;
-	private String version_str, release;
+	private String version_str, revision;
 	private EBuildBranch branch;
 	private WeakReference<String[]> module_list;
-	private int major, minor;
+	private int major, minor, release;
 	
 	public PhpBuild(String build_path) {
 		this.build_path = build_path;
@@ -309,23 +309,34 @@ public class PhpBuild extends Build {
 		String b = Host.basename(build_path).toLowerCase();
 		
 		// naming convention php-5.3-[optionally ts|nts]-[compiler]-[optionally rNNNNNNN]
-		if (b.contains("php-5.3"))
+		if (b.contains("php-5.3")) {
 			branch = EBuildBranch.PHP_5_3;
-		else if (b.contains("php-5.4"))
+			major = 5;
+			minor = 3;
+		} else if (b.contains("php-5.4")) {
 			branch = EBuildBranch.PHP_5_4;
-		else if (b.contains("php-5.5"))
+			major = 5;
+			minor = 4;
+		} else if (b.contains("php-5.5")) {
 			branch = EBuildBranch.PHP_5_5;
-		else if (b.contains("php-5.6"))
+			major = 5;
+			minor = 5;
+		} else if (b.contains("php-5.6")) {
 			branch = EBuildBranch.PHP_5_6;
-		else if (b.contains("php-master"))
+			major = 5;
+			minor = 6;
+		} else if (b.contains("php-master")) {
 			branch = EBuildBranch.MASTER;
+			major = 5;
+			minor = 6;
+		}
 		
 		// custom dev builds may not have a revision number
 		if (branch!=null) {
 			String[] split = b.split("\\-");
 			String last = split[split.length-1];
 			if (last.startsWith("r")) {
-				release = last;
+				revision = last;
 			}
 		}
 		
@@ -339,7 +350,7 @@ public class PhpBuild extends Build {
 					String[] split = version_str.split("[\\.|\\-]");
 					major = Integer.parseInt(split[0]);
 					minor = Integer.parseInt(split[1]);
-					release = split[2];
+					revision = split[2];
 					if (major==5) {
 						switch(minor) {
 						case 3:
@@ -361,6 +372,13 @@ public class PhpBuild extends Build {
 				}
 			}
 		}
+		if (revision!=null) {
+			if (revision.startsWith("r")) {
+				release = Integer.parseInt(revision.substring(1), 16);
+			} else {
+				release = Integer.parseInt(revision);
+			}
+		}
 		return null; // shouldn't happen
 	}
 	
@@ -376,12 +394,12 @@ public class PhpBuild extends Build {
 	
 	public int getVersionRelease(ConsoleManager cm, Host host) throws Exception {
 		getVersionString(cm, host);
-		return Integer.parseInt(release);
+		return release;
 	}
 	
 	public String getVersionRevision(ConsoleManager cm, Host host) throws Exception {
 		getVersionString(cm, host);
-		return release;
+		return revision;
 	}
 	
 	public EBuildBranch getVersionBranch(ConsoleManager cm, Host host) throws Exception {
@@ -526,7 +544,7 @@ public class PhpBuild extends Build {
 	 * @see PHPOutput#cleanup
 	 */
 	public PHPOutput eval(Host host, PhpIni ini, String code, boolean auto_cleanup) throws Exception {
-		return eval(host, ini, code, Host.NO_TIMEOUT, auto_cleanup);
+		return eval(host, ini, code, Host.FOUR_HOURS, auto_cleanup);
 	}
 	
 	public PHPOutput eval(Host host, String code, boolean auto_cleanup) throws Exception {

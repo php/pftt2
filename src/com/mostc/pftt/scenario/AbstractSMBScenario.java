@@ -75,7 +75,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		
 		try {
 			if (remote_host.isWindows()) {
-				if (!createShareWindows())
+				if (!createShareWindows(cm))
 					return false;
 			} else if (!createShareSamba()) {
 				return false;
@@ -93,10 +93,10 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		return true;
 	} // end public boolean createShare
 	
-	protected boolean createShareWindows() throws Exception {
+	protected boolean createShareWindows(ConsoleManager cm) throws Exception {
 		remote_host.mkdirs(file_path);
 		
-		return remote_host.exec("NET SHARE "+share_name+"="+file_path+" /Grant:"+remote_host.getUsername()+",Full", Host.NO_TIMEOUT).isSuccess();
+		return remote_host.exec("NET SHARE "+share_name+"="+file_path+" /Grant:"+remote_host.getUsername()+",Full", Host.FOUR_HOURS).printOutputIfCrash(getClass(), cm).isSuccess();
 	}
 	
 	protected boolean createShareSamba() {
@@ -108,7 +108,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		if (remote_host.isRemote()) {
 			try {
 				if (remote_host.isWindows())
-					return connectFromWindows(host);
+					return connectFromWindows(cm, host);
 				else
 					return connectFromSamba();
 			} catch ( Exception ex ) {
@@ -123,8 +123,8 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		}
 	} // end public boolean connect
 	
-	static final String[] DRIVES = new String[]{"H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y"}; // 18
-	protected boolean connectFromWindows(Host host) throws Exception {
+	protected static final String[] DRIVES = new String[]{"H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y"}; // 18
+	protected boolean connectFromWindows(ConsoleManager cm, Host host) throws Exception {
 		local_drive = null;
 		for ( int i=0 ; i < DRIVES.length ; i++ ) {
 			if (remote_host.exists(DRIVES[i] + ":\\")) {
@@ -135,7 +135,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		if (local_drive==null)
 			return false;
 		
-		return host.exec("NET USE "+unc_path+" "+local_drive+" /user:"+remote_host.getUsername()+" /password:"+remote_host.getPassword(), Host.NO_TIMEOUT).isSuccess();
+		return host.exec("NET USE "+unc_path+" "+local_drive+" /user:"+remote_host.getUsername()+" /password:"+remote_host.getPassword(), Host.FOUR_HOURS).printOutputIfCrash(getClass(), cm).isSuccess();
 	}
 	
 	protected boolean connectFromSamba() {
@@ -150,7 +150,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 	
 	public boolean deleteShare(ConsoleManager cm, Host host) {
 		try {
-			if (host.execElevated("NET SHARE "+file_path+" /DELETE", Host.ONE_MINUTE).isSuccess()) {
+			if (host.execElevated("NET SHARE "+file_path+" /DELETE", Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).isSuccess()) {
 				host.delete(file_path);
 			
 				return true;
@@ -163,7 +163,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 	
 	public boolean disconnect(ConsoleManager cm, Host host) {
 		try {
-			return host.exec("NET USE "+local_drive+" /DELETE", Host.ONE_MINUTE).isSuccess();
+			return host.exec("NET USE "+local_drive+" /DELETE", Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).isSuccess();
 		} catch ( Exception ex ) {
 			cm.printStackTrace(ex);
 		}

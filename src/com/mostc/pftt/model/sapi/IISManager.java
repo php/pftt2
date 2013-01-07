@@ -51,7 +51,7 @@ public class IISManager extends WebServerManager {
 	@Override
 	public boolean start(ConsoleManager cm, Host host, PhpBuild build) {
 		try {
-			return do_start(host).isSuccess();
+			return do_start(host).printOutputIfCrash(getClass(), cm).isSuccess();
 		} catch ( Exception ex ) {
 			cm.printStackTrace(ex);
 			return false;
@@ -61,7 +61,7 @@ public class IISManager extends WebServerManager {
 	@Override
 	public boolean stop(ConsoleManager cm, Host host, PhpBuild build) {
 		try {
-			return host.execElevated("net stop w3svc", Host.ONE_MINUTE*2).isSuccess();
+			return host.execElevated("net stop w3svc", Host.ONE_MINUTE*2).printOutputIfCrash(getClass(), cm).isSuccess();
 		} catch ( Exception ex ) {
 			if (cm==null)
 				ex.printStackTrace();
@@ -130,8 +130,8 @@ public class IISManager extends WebServerManager {
 		String c_section = "section:system.webServer";
 		
 		try {
-			return appcmd(host, "clear config /"+c_section+"/fastCGI").isSuccess() &&
-					appcmd(host, "set config /"+c_section+"/handlers /-[name='PHP_via_FastCGI']").isSuccess();
+			return appcmd(host, "clear config /"+c_section+"/fastCGI").printOutputIfCrash(getClass(), cm).isSuccess() &&
+					appcmd(host, "set config /"+c_section+"/handlers /-[name='PHP_via_FastCGI']").printOutputIfCrash(getClass(), cm).isSuccess();
 		} catch ( Exception ex ) {
 			if (cm==null)
 				ex.printStackTrace();
@@ -286,7 +286,7 @@ public class IISManager extends WebServerManager {
 			}
 			
 			try {
-				if (host.execElevated("pkgmgr /iu:IIS-WebServerRole;IIS-WebServer;IIS-StaticContent;IIS-WebServerManagementTools;IIS-ManagementConsole;IIS-CGI", Host.ONE_HOUR).isSuccess()) {
+				if (host.execElevated("pkgmgr /iu:IIS-WebServerRole;IIS-WebServer;IIS-StaticContent;IIS-WebServerManagementTools;IIS-ManagementConsole;IIS-CGI", Host.ONE_HOUR).printOutputIfCrash(getClass(), cm).isSuccess()) {
 					cm.println(getClass(), "IIS installed");
 					
 					return true;

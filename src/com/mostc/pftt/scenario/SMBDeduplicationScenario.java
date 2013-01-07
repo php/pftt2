@@ -85,7 +85,7 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 			remote_host.saveTextFile(tmp_file, ps_sb.toString());
 			
 			// 
-			if (remote_host.execElevated("powershell -File "+tmp_file, Host.ONE_MINUTE * 10).isSuccess()) {
+			if (remote_host.execElevated("powershell -File "+tmp_file, Host.ONE_MINUTE * 10).printOutputIfCrash(getClass(), cm).isSuccess()) {
 				// don't delete tmp_file if it failed to help user see why
 				remote_host.delete(tmp_file);
 			}
@@ -112,7 +112,7 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 		try {
 			// run deduplication job (on test-pack) -wait for completion
 			cm.println(getName(), "Running deduplication job...");
-			if (remote_host.exec("powershell -Command {Start-Dedupjob -Volume "+volume+" -Type Optimization -Wait}", Host.NO_TIMEOUT).isSuccess()) {
+			if (remote_host.exec("powershell -Command {Start-Dedupjob -Volume "+volume+" -Type Optimization -Wait}", Host.FOUR_HOURS).printOutputIfCrash(getClass(), cm).isSuccess()) {
 				cm.println(getName(), "Deduplication completed successfully.");
 				return true;
 			}

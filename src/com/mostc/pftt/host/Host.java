@@ -40,13 +40,14 @@ public abstract class Host {
 	 * this allows for running development versions of PFTT on same host as production(Current) version
 	 */
 	public static final int DEV = 0;
-	public static final int NO_TIMEOUT = 0;
 	public static final int ONE_HOUR = 3600;
+	/** should always have a timeout... should NOT let something run forever */
+	public static final int FOUR_HOURS = 0;// TODO ONE_HOUR * 4;
 	public static final int ONE_MINUTE = 60;
 	
 	/** removes the file extension from file.
 	 * 
-	 * for filenames like A.B returns a
+	 * for filenames like A.B returns A
 	 * for all others (if . not found), path
 	 * 
 	 * if path is a relative or absolute path (if path has directory|ies), the
@@ -268,7 +269,7 @@ public abstract class Host {
 	public abstract ByLineReader readFileDetectCharset(String file, CharsetDeciderDecoder cdd) throws IllegalStateException, FileNotFoundException, IOException;
 	/** executes the given program
 	 * 
-	 * @see #NO_TIMEOUT
+	 * @see #FOUR_HOURS
 	 * @param cmd - program to run
 	 * @param timeout_sec - maximum number of seconds program is allowed to run - terminated if it goes over
 	 * @param env - map of environment variables to use
@@ -434,13 +435,13 @@ public abstract class Host {
 	 * @throws Exception
 	 */
 	public ExecOutput execElevated(String cmd, int timeout_sec) throws Exception {
-		return execElevated(cmd, timeout_sec, null, null, null, null, null, NO_TIMEOUT);
+		return execElevated(cmd, timeout_sec, null, null, null, null, null, FOUR_HOURS);
 	}
 	public ExecOutput execElevated(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset) throws Exception {
-		return execElevated(cmd, timeout_sec, env, stdin_data, charset, null, null, NO_TIMEOUT);
+		return execElevated(cmd, timeout_sec, env, stdin_data, charset, null, null, FOUR_HOURS);
 	}
 	public ExecOutput execElevated(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String chdir) throws Exception {
-		return execElevated(cmd, timeout_sec, env, stdin_data, charset, chdir, null, NO_TIMEOUT);
+		return execElevated(cmd, timeout_sec, env, stdin_data, charset, chdir, null, FOUR_HOURS);
 	}
 	public ExecOutput execElevated(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread test_thread, int slow_timeout_sec) throws Exception {
 		if (isWindows())
@@ -450,13 +451,13 @@ public abstract class Host {
 		return exec(cmd, timeout_sec, env, stdin_data, charset, chdir, test_thread, slow_timeout_sec);
 	}
 	public ExecOutput execElevated(String cmd, int timeout_sec, Map<String, String> env, Charset charset) throws Exception {
-		return execElevated(cmd, timeout_sec, env, null, charset, null, null, NO_TIMEOUT);
+		return execElevated(cmd, timeout_sec, env, null, charset, null, null, FOUR_HOURS);
 	}
 	public ExecOutput execElevated(String cmd, int timeout_sec, Map<String, String> env, Charset charset, String chdir) throws Exception {
-		return execElevated(cmd, timeout_sec, env, null, charset, chdir, null, NO_TIMEOUT);
+		return execElevated(cmd, timeout_sec, env, null, charset, chdir, null, FOUR_HOURS);
 	}
 	public ExecOutput execElevated(String cmd, int timeout_sec, String chdir) throws Exception {
-		return execElevated(cmd, timeout_sec, null, null, null, chdir, null, NO_TIMEOUT);
+		return execElevated(cmd, timeout_sec, null, null, null, chdir, null, FOUR_HOURS);
 	}
 	@ThreadSafe
 	public static abstract class ExecHandle {
@@ -898,7 +899,7 @@ public abstract class Host {
 	public boolean unzip(ConsoleManager cm, String zip_file, String base_dir) {
 		try {
 			mkdirs(base_dir);
-			if (exec("unzip "+zip_file+" "+base_dir, ONE_HOUR).isSuccess())
+			if (exec("unzip "+zip_file+" "+base_dir, ONE_HOUR).printOutputIfCrash(getClass(), cm).isSuccess())
 				return true;
 			else
 				cm.println(getClass(), "Unable to unzip: "+zip_file);

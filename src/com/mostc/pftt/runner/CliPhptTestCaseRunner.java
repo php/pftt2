@@ -335,7 +335,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		
 		if (!host.isWindows()) {
 			// make shell script executable on linux
-			host.exec("chmod +x \""+shell_file+"\"", Host.NO_TIMEOUT, null, null, active_test_pack.getDirectory());
+			host.exec("chmod +x \""+shell_file+"\"", Host.FOUR_HOURS, null, null, active_test_pack.getDirectory());
 		}
 	} // end protected void createShellScript
 

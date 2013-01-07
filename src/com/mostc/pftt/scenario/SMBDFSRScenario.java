@@ -45,7 +45,7 @@ public class SMBDFSRScenario extends AbstractSMBScenario {
 		try {
 			host.saveTextFile(tmp_file, ps_sb.toString());
 					
-			if (host.exec("Powershell -File "+tmp_file, Host.NO_TIMEOUT).isSuccess()) {
+			if (host.exec("Powershell -File "+tmp_file, Host.FOUR_HOURS).printOutputIfCrash(getClass(), cm).isSuccess()) {
 				host.delete(tmp_file);
 				
 				if (super.setup(cm, host, build, scenario_set)) {

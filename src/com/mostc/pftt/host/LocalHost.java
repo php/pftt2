@@ -116,10 +116,10 @@ public class LocalHost extends Host {
 			try {
 				if (isWindows()) {
 					path = toWindowsPath(path);
-					cmd("RMDIR /Q /S \""+path+"\"", NO_TIMEOUT);
+					cmd("RMDIR /Q /S \""+path+"\"", FOUR_HOURS);
 				} else {
 					path = toUnixPath(path);
-					exec("rm -rf \""+path+"\"", NO_TIMEOUT);
+					exec("rm -rf \""+path+"\"", FOUR_HOURS);
 				}
 			} catch ( Exception ex ) {
 				ex.printStackTrace();
@@ -170,16 +170,16 @@ public class LocalHost extends Host {
 
 	@Override
 	public ExecOutput exec(String commandline, int timeout, Map<String,String> env, byte[] stdin, Charset charset, String chdir) throws Exception {
-		return exec(commandline, timeout, env, stdin, charset, chdir, null, NO_TIMEOUT);
+		return exec(commandline, timeout, env, stdin, charset, chdir, null, FOUR_HOURS);
 	}
 	@Override
 	public LocalExecHandle execThread(String commandline, Map<String,String> env, String chdir, byte[] stdin_data) throws Exception {
-		return exec_impl(splitCmdString(commandline), env, chdir, NO_TIMEOUT, stdin_data);
+		return exec_impl(splitCmdString(commandline), env, chdir, FOUR_HOURS, stdin_data);
 	}
 	@Override
 	public ExecOutput exec(String commandline, int timeout, Map<String,String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread thread, int thread_slow_sec) throws Exception {
 		ThreadSlowTask task = null;
-		if (thread!=null && thread_slow_sec>NO_TIMEOUT) {
+		if (thread!=null && thread_slow_sec>FOUR_HOURS) {
 			task = new ThreadSlowTask(thread);
 			timer.schedule(task, thread_slow_sec * 1000);
 		}
@@ -244,11 +244,11 @@ public class LocalHost extends Host {
 			}
 			String cmd = "xcopy /Q /Y /S /E \""+src+"\" \""+dst+"\"";
 			
-			exec(cmd, NO_TIMEOUT);
+			exec(cmd, FOUR_HOURS);
 		} else {
 			src = toUnixPath(src);
 			dst = toUnixPath(dst);
-			exec("cp \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
+			exec("cp \""+src+"\" \""+dst+"\"", FOUR_HOURS);
 		}
 	}
 
@@ -573,7 +573,7 @@ public class LocalHost extends Host {
 
 	    LocalExecHandle h = new LocalExecHandle(process, stdin, stdout, stderr, cmd_array);
 	    
-	    if (timeout>NO_TIMEOUT) {
+	    if (timeout>FOUR_HOURS) {
 	    	h.task = new ExitMonitorTask(h);
 			timer.schedule(h.task, 5*1000);
 	    }

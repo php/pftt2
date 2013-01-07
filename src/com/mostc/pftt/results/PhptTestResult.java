@@ -92,7 +92,6 @@ public class PhptTestResult {
 	}
 	
 	public String getSAPIOutput() {
-		// TODO should store this once for all test cases run under the same instance of a SAPI
 		return sapi_output;
 	}
 	

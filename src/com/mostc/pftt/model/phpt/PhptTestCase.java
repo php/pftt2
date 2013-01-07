@@ -61,6 +61,7 @@ public class PhptTestCase extends TestCase {
 			new String[]{"ext/standard/tests/file/symlink_"},
 			new String[]{"ext/standard/tests/file/file_get_contents_"},
 			new String[]{"ext/standard/tests/file/include_"},
+			new String[]{"ext/standard/tests/file/stream_"},
 			// note: this array is processed in order, so this entry will catch any remaining /file/ phpts
 			new String[]{"ext/standard/tests/file"},
 			new String[]{"ext/standard/tests/dir"},

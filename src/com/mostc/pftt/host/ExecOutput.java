@@ -36,13 +36,19 @@ public class ExecOutput {
 	public boolean isCrashed() {
 		return exit_code != 0;
 	}
+	public ExecOutput printOutputIfCrash(Class<?> ctx, ConsoleManager cm) {
+		return printOutputIfCrash(ctx.getSimpleName(), cm);
+	}
 	public ExecOutput printOutputIfCrash(String ctx, ConsoleManager cm) {
 		if (cm==null||cm.isResultsOnly())
 			return this;
 		return printOutputIfCrash(ctx, System.err);
 	}
+	public ExecOutput printOutputIfCrash(Class<?> ctx, PrintStream ps) {
+		return printOutputIfCrash(ctx.getSimpleName(), ps);
+	}
 	public ExecOutput printOutputIfCrash(String ctx, PrintStream ps) {
-		if (isCrashed())
+		if (ps!=null && isCrashed())
 			ps.println(ctx+": "+output.trim());
 		return this;
 	}
