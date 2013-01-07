@@ -50,7 +50,12 @@ public abstract class PhptResultPack {
 	}
 	
 	public static float round1(float value) {
-		return (float) Math.round( ( value  * 10000.0d)/100.0d );
+		float ret = (float) Math.round( ( value  * 10000.0d)/100.0d );
+		if (ret==100.0f && value!=100.0f)
+			// only show 100% if its really 100%
+			return 99.99f;
+		else
+			return ret;
 	}
 	
 } // end public abstract class PhptTelemetry

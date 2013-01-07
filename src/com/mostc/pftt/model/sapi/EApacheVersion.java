@@ -13,6 +13,10 @@ public enum EApacheVersion {
 			return build.getVersionMajor(cm, host) == 5 &&
 					build.getVersionMinor(cm, host) >= 3;
 		}
+		@Override
+		public EApacheVersion getApacheVersion(ConsoleManager cm, Host host, PhpBuild build) {
+			return this;
+		}
 	},
 	APACHE_2_4 {
 		public boolean isSupportedEx(ConsoleManager cm, Host host, PhpBuild build) throws Exception {
@@ -27,16 +31,34 @@ public enum EApacheVersion {
 					// Apache 2.4 support always in 5.5
 					return true;
 				else
-					// 5.0 5.1 5.2 5.3 5.4.0-5.4.9
+					// 5.0 5.1 5.2 5.3 5.4.0-5.4.9 (not supported)
 					return false;
 			} else {
 				// old or future php?
 				return false;
 			}
 		}
+		@Override
+		public EApacheVersion getApacheVersion(ConsoleManager cm, Host host, PhpBuild build) {
+			return this;
+		}
+	},
+	NEWEST_SUPPORTED {
+		public boolean isSupportedEx(ConsoleManager cm, Host host, PhpBuild build) throws Exception {
+			return APACHE_2_4.isSupportedEx(cm, host, build) || APACHE_2_2.isSupportedEx(cm, host, build);
+		}
+		@Override
+		public EApacheVersion getApacheVersion(ConsoleManager cm, Host host, PhpBuild build) throws Exception {
+			if (APACHE_2_4.isSupportedEx(cm, host, build))
+				return APACHE_2_4;
+			else if (APACHE_2_2.isSupportedEx(cm, host, build))
+				return APACHE_2_2;
+			else
+				return null;
+		}
 	};
 	
-	public static final EApacheVersion DEFAULT = APACHE_2_4;
+	public static final EApacheVersion DEFAULT = NEWEST_SUPPORTED;
 	
 	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build) throws Exception {
 		try {
@@ -49,5 +71,6 @@ public enum EApacheVersion {
 	
 	
 	public abstract boolean isSupportedEx(ConsoleManager cm, Host host, PhpBuild build) throws Exception;
+	public abstract EApacheVersion getApacheVersion(ConsoleManager cm, Host host, PhpBuild build) throws Exception;
 	
 } // end public enum EApacheVersion

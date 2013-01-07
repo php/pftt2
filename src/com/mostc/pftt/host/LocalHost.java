@@ -658,11 +658,13 @@ public class LocalHost extends Host {
 		if (this.addr!=null)
 			return this.addr;
 		try {
-			Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+			Enumeration<NetworkInterface> interfaces;
 			Enumeration<InetAddress> addrs;
 			NetworkInterface ni;
 			InetAddress addr;
 			String addr_str;
+			interfaces = NetworkInterface.getNetworkInterfaces();
+			// try to get an IPv4 address first (its shorter, easier for people to work with)
 			while (interfaces.hasMoreElements()) {
 				ni = interfaces.nextElement();
 				addrs = ni.getInetAddresses();
@@ -670,16 +672,33 @@ public class LocalHost extends Host {
 					addr = addrs.nextElement();
 					addr_str = addr.getHostAddress();
 					if (addr_str.equals("127.0.0.1"))
+						// loopback address, which is not bindable on Windows
 						continue;
-					if (addr_str.split("\\.").length==4)
+					else if (addr_str.split("\\.").length==4)
 						// IPv4 address
 						return this.addr = addr_str;
+				}
+			}
+			// fallback on an IPv6 address
+			interfaces = NetworkInterface.getNetworkInterfaces();
+			while (interfaces.hasMoreElements()) {
+				ni = interfaces.nextElement();
+				addrs = ni.getInetAddresses();
+				while (addrs.hasMoreElements()) {
+					addr = addrs.nextElement();
+					addr_str = addr.getHostAddress();
+					if (addr_str.equals("0:0:0:0:0:0:0:1")||addr_str.equals("0:0:0:0:0:0:0:0"))
+						// loopback address, which is not bindable on Windows
+						continue;
+					else if (addr_str.contains(":")&&!addr_str.contains("%"))
+						// ex: 2001:0:4137:9e76:3cb8:730:3f57:feaf
+						return this.addr = "["+addr_str+"]";
 				}
 			}
 		} catch (SocketException ex) {
 			ex.printStackTrace();
 		}
-		// no network interfaces
+		// no network interfaces!
 		return null;
 	} // end public String getAddress
 

@@ -59,6 +59,11 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
  * 
  */
 
+// TODO restarting_and_retrying
+// TODO 7zip result-pack
+// TODO upload result-pack
+// TODO fbc report gen
+
 public class PfttMain {
 	protected Host host;
 	
@@ -228,6 +233,10 @@ public class PfttMain {
 	}
 	
 	/* -------------------------------------------------- */
+	
+	protected static void cmd_report_gen() {
+		// TODO - generate report without running tests, generate from result-packs
+	}
 	
 	protected static void cmd_help() {
 		System.out.println("Usage: pftt <optional options> <command>");

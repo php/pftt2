@@ -49,7 +49,7 @@ public class IISManager extends WebServerManager {
 	}
 	
 	@Override
-	public boolean start(ConsoleManager cm, Host host) {
+	public boolean start(ConsoleManager cm, Host host, PhpBuild build) {
 		try {
 			return do_start(host).isSuccess();
 		} catch ( Exception ex ) {
@@ -59,7 +59,7 @@ public class IISManager extends WebServerManager {
 	}
 	
 	@Override
-	public boolean stop(ConsoleManager cm, Host host) {
+	public boolean stop(ConsoleManager cm, Host host, PhpBuild build) {
 		try {
 			return host.execElevated("net stop w3svc", Host.ONE_MINUTE*2).isSuccess();
 		} catch ( Exception ex ) {
@@ -174,7 +174,7 @@ public class IISManager extends WebServerManager {
 			try {
 				eo = do_start(host);
 				if (eo.isSuccess()) {
-					return new IISWebServerInstance(this, StringUtil.EMPTY_ARRAY, ini, env, host, listen_address, listen_port);
+					return new IISWebServerInstance(this, StringUtil.EMPTY_ARRAY, ini, env, host, build, listen_address, listen_port);
 				} else {
 					err_str = eo.output;
 				}
@@ -188,13 +188,15 @@ public class IISManager extends WebServerManager {
 	
 	public class IISWebServerInstance extends WebServerInstance {
 		protected final Host host;
+		protected final PhpBuild build;
 		protected final String hostname;
 		protected final int port;
 		protected boolean running = true;
 
-		public IISWebServerInstance(WebServerManager ws_mgr, String[] cmd_array, PhpIni ini, Map<String,String> env, Host host, String hostname, int port) {
+		public IISWebServerInstance(WebServerManager ws_mgr, String[] cmd_array, PhpIni ini, Map<String,String> env, Host host, PhpBuild build, String hostname, int port) {
 			super(ws_mgr, cmd_array, ini, env);
 			this.host = host;
+			this.build = build;
 			this.hostname = hostname;
 			this.port = port;
 		}
@@ -219,7 +221,7 @@ public class IISManager extends WebServerManager {
 			if (!running)
 				return;
 			
-			stop(null, host);
+			stop(null, host, build);
 			undoConfigure(null, host);
 			running = false;
 		}
@@ -269,7 +271,7 @@ public class IISManager extends WebServerManager {
 	}
 
 	@Override
-	public boolean setup(ConsoleManager cm, Host host) {
+	public boolean setup(ConsoleManager cm, Host host, PhpBuild build) {
 		if (!host.isWindows()) {
 			cm.println(IISManager.class, "Only supported OS is Windows");
 			return false;

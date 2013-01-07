@@ -29,7 +29,8 @@ import com.mostc.pftt.util.StringUtil;
 @ThreadSafe
 public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 	/** URL to ApacheLounge's Windows Build (as a .ZIP file) */
-	public static final String APACHE_2_4_WINDOWS_ZIP_URL = "http://www.apachelounge.com/download/win32/binaries/httpd-2.4.3-win32.zip";
+	// NOTE: use this apachelounge 2.4.3 build b/c it uses the same openssl version as PHP
+	public static final String APACHE_2_4_WINDOWS_ZIP_URL = "http://www.apachelounge.com/download/win32/binaries/httpd-2.4.3-win32-ssl_0.9.8.zip";
 	public static final String APACHE_2_2_WINDOWS_ZIP_URL = "http://www.apachelounge.com/download/win32/binaries/httpd-2.2.3-win32.zip";
 	//
 	protected final EApacheVersion apache_version; 
@@ -139,9 +140,6 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			env = new HashMap<String,String>(2);
 		// tell apache mod_php where to find php.ini
 		env.put("PHPRC", php_conf_file);
-		// these vars are needed by some PHPTs
-		env.put("TEST_PHP_EXECUTABLE", build.getPhpExe());
-		env.put("TEST_PHP_CGI_EXECUTABLE", build.getPhpCgiExe());
 		
 		// apache configuration (also tells where to find php.ini. see PHPIniDir directive)
 		String conf_str = writeConfigurationFile(host, dll, conf_dir, error_log, listen_address, port, docroot);
@@ -199,7 +197,9 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 				log = log_ref.get();
 			if (log==null) {
 				log = host.getContents(error_log);
-				log_ref = new WeakReference<String>(log);
+				if (StringUtil.isNotEmpty(log)) {
+					log_ref = new WeakReference<String>(log);
+				}
 			}
 			return log;
 		}
@@ -234,7 +234,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 	} // end public class ApacheWebServerInstance
 
 	@Override
-	public boolean setup(ConsoleManager cm, Host host) {
+	public boolean setup(ConsoleManager cm, Host host, PhpBuild build) {
 		if (host.exists(httpd(host)))
 			// already installed
 			return true;
@@ -286,15 +286,31 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		sb.append("LoadModule log_config_module modules/mod_log_config.so\n");
 		sb.append("LoadModule mime_module modules/mod_mime.so\n");
 		sb.append("ServerAdmin administrator@"+listen_address+"\n");
+		// CRITICAL: ServerName critical on apache 2.2 (2.4?)
 		sb.append("ServerName "+listen_address+":"+port+"\n");
+		// ServerName fails if listen_address is IPv6, ex: [2001:0:4137:9e76:3cb8:730:3f57:feaf]:40086
 		sb.append("Listen "+listen_address+":"+port+"\n");
+		if (apache_version==EApacheVersion.APACHE_2_4 && host.isWindows()) {
+			// may get this error (in log): "winnt_accept: Asynchronous AcceptEx failed"
+			// solution: @see http://www.mydigitallife.info/winnt_accept-asynchronous-acceptex-failed-error-in-apache-log/
+			// also: @see http://www.apachelounge.com/viewtopic.php?p=21369
+			sb.append("AcceptFilter http none\n");
+			sb.append("AcceptFilter https none\n");
+			// NOTE: Win32DisableAcceptEx was removed in apache 2.4
+			// NOTE: including directive on apachelounge 2.2 causes failure
+			//sb.append("Win32DisableAcceptEx\n");
+			sb.append("EnableMMAP off\n");
+			sb.append("EnableSendfile off\n");
+		}
 		sb.append("<Directory />\n");
 		sb.append("    AllowOverride none\n");
+		//sb.append("    Require all denied\n");
 		sb.append("</Directory>\n");
 		sb.append("DocumentRoot \""+host.fixPath(docroot)+"\"\n");
 		sb.append("<Directory \""+host.fixPath(docroot)+"\">\n");
 		sb.append("    Options Indexes FollowSymLinks\n");
 		sb.append("    AllowOverride None\n");
+		//sb.append("    Require all granted\n");
 		sb.append("</Directory>\n");
 		sb.append("ErrorLog \""+host.fixPath(error_log)+"\"\n");
 		sb.append("LogLevel warn\n");
@@ -310,7 +326,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 	} // end public String writeConfigurationFile
 
 	@Override
-	public boolean start(ConsoleManager cm, Host host) {
+	public boolean start(ConsoleManager cm, Host host, PhpBuild build) {
 		try {
 			if (host.isWindows())
 				return host.exec(httpd(host)+" -k start", Host.ONE_MINUTE).isSuccess();
@@ -323,7 +339,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 	}
 
 	@Override
-	public boolean stop(ConsoleManager cm, Host host) {
+	public boolean stop(ConsoleManager cm, Host host, PhpBuild build) {
 		try {
 			if (host.isWindows())
 				return host.exec(httpd(host)+" -k stop", Host.ONE_MINUTE).isSuccess();
@@ -337,7 +353,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 
 	@Override
 	public String getDefaultDocroot(Host host, PhpBuild build) {
-		return host.isWindows() ? host.getSystemDrive() + "\\Apache24\\htdocs" : "/var/www/localhost/htdocs";
+		return host.isWindows() ? apache_version==EApacheVersion.APACHE_2_2 ? host.getSystemDrive() + "\\Apache2\\htdocs" : host.getSystemDrive() + "\\Apache24\\htdocs" : "/var/www/localhost/htdocs";
 	}
 	
 } // end public class ApacheManager

@@ -32,13 +32,14 @@ public abstract class WebServerManager extends SAPIManager {
 	 * 
 	 * @param cm
 	 * @param host
+	 * @param build TODO
 	 * @return TRUE if web server was setup ok, or if already setup. FALSE only if web server is NOT setup
 	 */
-	public abstract boolean setup(ConsoleManager cm, Host host);
+	public abstract boolean setup(ConsoleManager cm, Host host, PhpBuild build);
 	
-	public abstract boolean start(ConsoleManager cm, Host host);
+	public abstract boolean start(ConsoleManager cm, Host host, PhpBuild build);
 	
-	public abstract boolean stop(ConsoleManager cm, Host host);
+	public abstract boolean stop(ConsoleManager cm, Host host, PhpBuild build);
 	
 	public abstract String getName();
 	

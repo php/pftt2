@@ -123,7 +123,7 @@ public abstract class AbstractPhptTestCaseRunner {
 	} // end public static boolean willSkip
 	
 	static boolean a(PhptTestCase test_case) {
-		return false; // TODO test_case.isNamed(a);
+		return test_case.isNamed(a);
 	}
 	
 	private static String[] a = new String[] {

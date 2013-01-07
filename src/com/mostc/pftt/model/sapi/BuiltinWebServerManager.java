@@ -66,18 +66,18 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 	}
 
 	@Override
-	public boolean setup(ConsoleManager cm, Host host) {
+	public boolean setup(ConsoleManager cm, Host host, PhpBuild build) {
 		// don't need to install anything, part of PHP 5.4+ builds
 		return true;
 	}
 
 	@Override
-	public boolean start(ConsoleManager cm, Host host) {
+	public boolean start(ConsoleManager cm, Host host, PhpBuild build) {
 		return false; // nothing to start
 	}
 
 	@Override
-	public boolean stop(ConsoleManager cm, Host host) {
+	public boolean stop(ConsoleManager cm, Host host, PhpBuild build) {
 		return false; // nothing to stop
 	}
 

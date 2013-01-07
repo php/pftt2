@@ -37,9 +37,9 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 	protected TextDisplayPanel expected_display, diff_display, actual_display, test_display;
 	protected DefaultTableModel env_table_model;
 	protected JTable env_table;
-	protected JTextArea ini_textarea, stdin_data_textarea, shell_script_textarea, expectf_textarea, pre_override_textarea, sapi_output_textarea;
+	protected JTextArea http_request_textarea, http_response_textarea, ini_textarea, stdin_data_textarea, shell_script_textarea, expectf_textarea, pre_override_textarea, sapi_output_textarea;
 	protected PhptTestResult test_result;
-	protected JScrollPane expectf_jsp, pre_override_jsp, sapi_output_jsp, ini_jsp, stdin_data_jsp, shell_script_jsp, env_table_jsp;
+	protected JScrollPane http_request_jsp, http_response_jsp, expectf_jsp, pre_override_jsp, sapi_output_jsp, ini_jsp, stdin_data_jsp, shell_script_jsp, env_table_jsp;
 			
 	public ExpectedActualDiffPHPTDisplay() {
 		super(JScrollPane.VERTICAL_SCROLLBAR_NEVER, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
@@ -72,13 +72,21 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 		expectf_textarea.setToolTipText("EXPECTF section after regular expression patterns are added");
 		vertical_panel.add(expectf_jsp = new JScrollPane(expectf_textarea));
 		
-		pre_override_textarea = new JTextArea();
-		pre_override_textarea.setToolTipText("Actual test output before any OS specific overrides applied");
-		vertical_panel.add(pre_override_jsp = new JScrollPane(pre_override_textarea));
+		http_request_textarea = new JTextArea();
+		http_request_textarea.setToolTipText("HTTP Request(s)");
+		vertical_panel.add(http_request_jsp = new JScrollPane(http_request_textarea));
+		
+		http_response_textarea = new JTextArea();
+		http_response_textarea.setToolTipText("HTTP Response(s)");
+		vertical_panel.add(http_response_jsp = new JScrollPane(http_response_textarea));
 		
 		sapi_output_textarea = new JTextArea();
 		sapi_output_textarea.setToolTipText("Output from SAPI - did web server crash? etc...");
 		vertical_panel.add(sapi_output_jsp = new JScrollPane(sapi_output_textarea));
+		
+		pre_override_textarea = new JTextArea();
+		pre_override_textarea.setToolTipText("Actual test output before any OS specific overrides applied");
+		vertical_panel.add(pre_override_jsp = new JScrollPane(pre_override_textarea));
 		
 		ini_textarea = new JTextArea();
 		ini_textarea.setToolTipText("entire INI used for this test case");
@@ -108,8 +116,10 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 		horizontal_button_panel.add(expected_display.button_panel);
 		horizontal_button_panel.add(diff_display.button_panel);
 		horizontal_button_panel.add(new JPanel()); // placeholder: expectf
-		horizontal_button_panel.add(new JPanel()); // placeholder: pre-override
+		horizontal_button_panel.add(new JPanel()); // placeholder: http-request
+		horizontal_button_panel.add(new JPanel()); // placeholder: http-response
 		horizontal_button_panel.add(new JPanel()); // placeholder: sapi-output
+		horizontal_button_panel.add(new JPanel()); // placeholder: pre-override
 		horizontal_button_panel.add(new JPanel()); // placeholder: ini
 		horizontal_button_panel.add(new JPanel()); // placeholder: stdin
 		horizontal_button_panel.add(new JPanel()); // placeholder: shell-script
@@ -152,6 +162,18 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 		} else {
 			shell_script_jsp.setVisible(true);
 			shell_script_textarea.setText(result.shell_script);
+		}
+		if (StringUtil.isEmpty(result.http_request)) {
+			http_request_jsp.setVisible(false);
+		} else {
+			http_request_jsp.setVisible(true);
+			http_request_textarea.setText(result.http_request);
+		}
+		if (StringUtil.isEmpty(result.http_response)) {
+			http_response_jsp.setVisible(false);
+		} else {
+			http_response_jsp.setVisible(true);
+			http_response_textarea.setText(result.http_response);
 		}
 		
 		// TODO temp

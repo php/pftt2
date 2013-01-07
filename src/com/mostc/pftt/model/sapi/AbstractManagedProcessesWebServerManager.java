@@ -3,7 +3,6 @@ package com.mostc.pftt.model.sapi;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.SocketAddress;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -93,8 +92,9 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 			try {
 				// provide a ManagedProcessWebServerInstance to handle the running web server instance
 				final ManagedProcessWebServerInstance web = createManagedProcessWebServerInstance(cm, host, build, ini, env, docroot, listen_address, port);
+				if (web==null)
+					break; // fall through to returning CrashedWebServerInstance
 				
-				//System.err.println(web.getCmdString());
 				handle = host.execThread(web.getCmdString(), web.getEnv(), docroot);
 				
 				final Host.ExecHandle handlef = handle;
@@ -102,25 +102,29 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 				// ensure server can be connected to
 				{
 					Socket sock = null;
+					boolean connected = false;
 					for ( int i=0 ; i < 3 ; i++ ) {
+						connected = false;
 						try {
 							sock = new Socket();
-							sock.setSoTimeout(10);
+							sock.setSoTimeout(100*(i+1));
 							sock.connect(new InetSocketAddress(listen_address, port));
-							if (sock.isConnected())
+							if (sock.isConnected()) {
+								connected = true;
 								break;
+							}
 						} catch ( IOException ex ) {
-							
+							cm.printStackTrace(ex);
 						} finally {
 							sock.close();
 						}
 					}
-					if (!sock.isConnected())
+					if (!connected) {
 						// kill server and try again
 						throw new IOException("socket not connected");
+					}
 				}
 				//
-				
 				//
 				// if -windebug console option, run web server with windebug
 				if (cm.isWinDebug() && host.isWindows() && handle instanceof LocalHost.LocalExecHandle)

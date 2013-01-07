@@ -310,7 +310,9 @@ public class PhptResultPackWriter extends PhptResultPack {
 			a.put(this_scenario_set, b);
 			
 			for(EPhptTestStatus status:EPhptTestStatus.values()) {
-				PrintWriter pw = new PrintWriter(new FileWriter(this_telem_dir+"/"+status+".txt"));
+				File file = new File(this_telem_dir+"/"+status+".txt");
+				file.getParentFile().mkdirs(); // TODO shouldn't have to do this every time
+				PrintWriter pw = new PrintWriter(new FileWriter(file));
 				
 				switch(status) {
 				case XSKIP:
