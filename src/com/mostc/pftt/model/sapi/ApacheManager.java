@@ -7,6 +7,7 @@ import java.util.Map;
 
 import javax.annotation.concurrent.ThreadSafe;
 
+import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
 import com.mostc.pftt.model.phpt.PhpBuild;
@@ -26,7 +27,6 @@ import com.mostc.pftt.util.VisualStudioUtil;
  *
  */
 
-// TODO check that apache's version of OpenSSL == PHP's version of OpenSSL
 @ThreadSafe
 public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 	/** URL to ApacheLounge's Windows Builds (as a .ZIP file) */
@@ -42,6 +42,35 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 	
 	public ApacheManager() {
 		this(EApacheVersion.DEFAULT);
+	}
+	
+	/** Both PHP and Apache MUST be built with same version of OpenSSL or some openssl functions (and PHPTs) will crash.
+	 * 
+	 * @param cm
+	 * @param host
+	 * @param build
+	 * @param apache_version
+	 * @param apache_dir
+	 * @return
+	 */
+	public static boolean checkOpenSSLVersion(ConsoleManager cm, Host host, PhpBuild build, EApacheVersion apache_version, String apache_dir) {
+		try {
+			if (!host.isWindows() || apache_version == EApacheVersion.APACHE_2_2 )
+				return true;
+			String os = apache_dir + "\\bin\\openssl.exe";
+			if (!host.exists(os)) {
+				// can't check
+				cm.println(ApacheManager.class, "Can't find OpenSSL.exe (can't check OpenSSL version, assuming its ok)");
+				return true;
+			}
+		
+			ExecOutput eo = host.exec("\""+os+"\" version", Host.ONE_MINUTE);
+			System.err.println(eo.output);
+			return eo.output.contains("0.9.8");
+		} catch ( Exception ex ) {
+			cm.addGlobalException(ApacheManager.class, "checkOpenSSLVersion", ex, "Error determining OpenSSL version");
+			return true;
+		}
 	}
 	
 	public static String httpd(EApacheVersion apache_version, Host host) {
@@ -97,7 +126,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			if (cm==null)
 				ex.printStackTrace();
 			else
-				cm.printStackTrace(ex);
+				cm.addGlobalException(ApacheManager.class, "decideApacheVersion", ex, "");
 			return EApacheVersion.FALLBACK;
 		}
 	}
@@ -136,6 +165,13 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			if (host!=this.cache_host||this.cache_httpd==null||this.cache_httpd.equals(httpd)) {
 				// do this once
 				VisualStudioUtil.setExeStackSize(cm, host, httpd, VisualStudioUtil.SIXTEEN_MEGABYTES);
+				
+				// check OpenSSL version
+				if (!checkOpenSSLVersion(cm, host, build, apache_version, Host.dirname(Host.dirname(httpd)))) {
+					cm.println(getClass(), "Apache built with different version of OpenSSL than the version PHP is built with. Can't use this Apache build!");
+					return null;
+				}
+				
 				this.cache_host = host;
 				this.cache_httpd = httpd;
 			}
@@ -181,15 +217,13 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		try {
 			host.saveTextFile(php_conf_file, ini.toString());
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
-			cm.println(getName(), "Unable to save PhpIni: "+php_conf_file);
+			cm.addGlobalException(getClass(), "createManagedProcessWebServerInstance", ex, "Unable to save PhpIni: "+php_conf_file);
 			return null;
 		}
 		try {
 			host.saveTextFile(apache_conf_file, conf_str);
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
-			cm.println(getName(), "Unable to save Apache configuration: "+apache_conf_file);
+			cm.addGlobalException(getClass(), "createManagedProcessWebServerInstance", ex, "Unable to save Apache configuration: "+apache_conf_file);
 			return null;
 		}
 		
@@ -262,7 +296,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			try {
 				return host.exec(httpd(apache_version, host)+" -V", Host.ONE_MINUTE).output;
 			} catch ( Exception ex ) {
-				cm.printStackTrace(ex);
+				cm.addGlobalException(getClass(), "getInstanceInfo", ex, "");
 				return StringUtil.EMPTY;
 			}
 		}
@@ -284,7 +318,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 				return true;
 			}
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
+			cm.addGlobalException(getClass(), "setup", ex, "");
 		}
 		return false;
 	}
@@ -373,7 +407,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			else
 				return host.exec("/etc/init.d/apache start", Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).isSuccess();
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
+			cm.addGlobalException(getClass(), "start", ex, "");
 		}
 		return false;
 	}
@@ -388,7 +422,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			else
 				return host.exec("/etc/init.d/apache stop", Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).isSuccess();
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
+			cm.addGlobalException(getClass(), "stop", ex, "");
 		}
 		return false;
 	}

@@ -93,7 +93,7 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 			}
 			return ESmokeTestStatus.PASS;
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
+			cm.addGlobalException(getClass(), "test", ex, "");
 			return ESmokeTestStatus.INTERNAL_EXCEPTION;
 		}
 	} // end public ESmokeTestStatus test

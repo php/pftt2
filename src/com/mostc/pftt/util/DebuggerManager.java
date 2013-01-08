@@ -75,7 +75,7 @@ public abstract class DebuggerManager {
 			else
 				this.src_path = host.joinMultiplePaths(def_source_path, build.guessSourcePackPath(cm, host));
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
+			cm.addGlobalException(getClass(), "ensureFindSourceAndDebugPack", ex, "");
 		}
 		try {
 			if (StringUtil.isEmpty(def_debug_path))
@@ -83,7 +83,7 @@ public abstract class DebuggerManager {
 			else
 				this.debug_path = host.joinMultiplePaths(def_debug_path, build.guessDebugPackPath(cm, host));
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
+			cm.addGlobalException(getClass(), "ensureFindSourceAndDebugPack", ex, "");
 		}
 	} // end protected void ensureFindSourceAndDebugPack
 	

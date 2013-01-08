@@ -30,7 +30,7 @@ public abstract class AbstractINIScenario extends AbstractSerialScenario {
 				return true;
 			}
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
+			cm.addGlobalException(getClass(), "setup", ex, "");
 		}
 		return false;
 	} // end public boolean setup

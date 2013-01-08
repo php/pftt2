@@ -96,8 +96,7 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 				return true;
 			}
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
-			cm.println(getName(), "Unable to enable deduplication");
+			cm.addGlobalException(getClass(), "notifyPrepareStorageDir", ex, "Unable to enable deduplication");
 		}
 		return false;
 	} // end public boolean notifyPrepareStorageDir
@@ -115,11 +114,12 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 			if (remote_host.exec("powershell -Command {Start-Dedupjob -Volume "+volume+" -Type Optimization -Wait}", Host.FOUR_HOURS).printOutputIfCrash(getClass(), cm).isSuccess()) {
 				cm.println(getName(), "Deduplication completed successfully.");
 				return true;
+			} else {
+				cm.println(getName(), "Deduplication failed");
 			}
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
+			cm.addGlobalException(getClass(), "notifyTestPackInstalled", ex, "Deduplication failed");
 		}
-		cm.println(getName(), "Deduplication failed");
 		return false;
 	}
 	

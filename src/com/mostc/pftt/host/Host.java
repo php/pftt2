@@ -42,7 +42,7 @@ public abstract class Host {
 	public static final int DEV = 0;
 	public static final int ONE_HOUR = 3600;
 	/** should always have a timeout... should NOT let something run forever */
-	public static final int FOUR_HOURS = 0;// TODO ONE_HOUR * 4;
+	public static final int FOUR_HOURS = ONE_HOUR * 4;
 	public static final int ONE_MINUTE = 60;
 	
 	/** removes the file extension from file.
@@ -904,7 +904,7 @@ public abstract class Host {
 			else
 				cm.println(getClass(), "Unable to unzip: "+zip_file);
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
+			cm.addGlobalException(getClass(), "unzip", ex, "");
 		}
 		return false;
 	}
@@ -929,6 +929,24 @@ public abstract class Host {
 			} 
 		}
 		return base;
+	}
+
+	/** counts the number of parent directories from from to to (its parent, parent of its parent, etc...)
+	 * 
+	 * countUp('a/b/c', 'a') => 2
+	 * 
+	 * @param from
+	 * @param to
+	 * @return
+	 */
+	public static int countUp(String from, String to) {
+		from = toUnixPath(from);
+		to = toUnixPath(to);
+		if (from.equals(to))
+			return 0;
+		else if (from.startsWith(to))
+			from = from.substring(to.length());
+		return from.split("/").length+1;
 	}
 	
 } // end public abstract class Host

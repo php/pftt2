@@ -40,7 +40,7 @@ public class PhptResultPackWriter extends PhptResultPack {
 	private File telem_dir;
 	protected final HashMap<Host,HashMap<ScenarioSet,HashMap<EPhptTestStatus,PrintWriter>>> status_list_map;
 	protected Host host;
-	protected PrintWriter exception_writer;
+	protected PrintWriter global_exception_writer;
 	protected int total_count = 0;
 	protected ConsoleManager cm;
 	protected final HashMap<Host,HashMap<ScenarioSet,HashMap<EPhptTestStatus,AtomicInteger>>> counts;
@@ -53,9 +53,9 @@ public class PhptResultPackWriter extends PhptResultPack {
 	
 	protected static File makeName(ConsoleManager cm, Host host, File base, PhpBuild build, int i) throws Exception {
 		StringBuilder sb = new StringBuilder();
-		sb.append("/PFTT-Result-Pack-");
+		sb.append("/");
 		sb.append(build.getVersionBranch(cm, host));
-		sb.append("-");
+		sb.append("-Result-Pack-");
 		sb.append(build.getBuildType(host));
 		sb.append("-");
 		sb.append(build.getVersionRevision(cm, host));
@@ -95,7 +95,7 @@ public class PhptResultPackWriter extends PhptResultPack {
 		serial.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
 		//
 		
-		
+		cm.w = this;
 		
 		this.host = host;
 		this.cm = cm;
@@ -107,7 +107,7 @@ public class PhptResultPackWriter extends PhptResultPack {
 		
 		results = new LinkedBlockingQueue<ResultQueueEntry>();
 		
-		exception_writer = new PrintWriter(new FileWriter(this.telem_dir+"/GLOBAL_EXCEPTIONS.txt"));
+		global_exception_writer = new PrintWriter(new FileWriter(this.telem_dir+"/GLOBAL_EXCEPTIONS.txt"));
 		
 		new Thread() {
 				@Override
@@ -151,15 +151,26 @@ public class PhptResultPackWriter extends PhptResultPack {
 			ex.printStackTrace();
 		}
 		
-		/* TODO for(EPhptTestStatus status:EPhptTestStatus.values()) {
-			PrintWriter pw = status_list_map.get(status);
-			pw.close();
-		}*/
+		try {
+			PhptTestResultStylesheetWriter.writeStylesheet(telem_dir + "/phptresult.xsl");
+		} catch ( Exception ex ) {
+			ex.printStackTrace();
+		}
 		
-		// TODO store phpinfo
+		try {
+			for (Host h:status_list_map.keySet()) {
+				for (ScenarioSet s:status_list_map.get(h).keySet()) {
+					for (PrintWriter pw:status_list_map.get(h).get(s).values()) {
+						pw.close();
+					}
+				}
+			}
+		} catch ( Exception ex ) {
+			ex.printStackTrace();
+		}
 		
 		// store systeminfo
-		/* TODO try {
+		/* TODO store per host try {
 			FileWriter fw = new FileWriter(new File(telem_dir, "system_info.txt"));
 			fw.write(host.getSystemInfo());
 			fw.close();
@@ -235,26 +246,19 @@ public class PhptResultPackWriter extends PhptResultPack {
 		return pass / (pass+fail);
 	}
 	
-	public void show_exception(Host this_host, ScenarioSet this_scenario_set, PhptTestCase test_file, Throwable ex) {
-		show_exception(this_host, this_scenario_set, test_file, ex, null);
+	public void addTestException(Host this_host, ScenarioSet this_scenario_set, PhptTestCase test_file, Throwable ex, Object a) {
+		addTestException(this_host, this_scenario_set, test_file, ex, a, null);
 	}
-	public void show_exception(Host this_host, ScenarioSet this_scenario_set, PhptTestCase test_file, Throwable ex, Object a) {
-		show_exception(this_host, this_scenario_set, test_file, ex, a, null);
-	}
-	public void show_exception(Host this_host, ScenarioSet this_scenario_set, PhptTestCase test_case, Throwable ex, Object a, Object b) {
+	public void addTestException(Host this_host, ScenarioSet this_scenario_set, PhptTestCase test_case, Throwable ex, Object a, Object b) {
 		String ex_str = ErrorUtil.toString(ex);
 		if (a!=null)
 			ex_str += " a="+a;
 		if (b!=null)
 			ex_str += " b="+b;
 		
-		/*synchronized(exception_writer) {
-			exception_writer.println("EXCEPTION "+test_case);
-			exception_writer.println(ex_str);
-			exception_writer.flush(); // CRITICAL
-		}*/
-		
-		System.err.println(ex_str);
+		if (!cm.isResultsOnly()) {
+			System.err.println(ex_str);
+		}
 		
 		// count exceptions as a result (the worst kind of failure, a pftt failure)
 		addResult(this_host, this_scenario_set, new PhptTestResult(host, EPhptTestStatus.TEST_EXCEPTION, test_case, ex_str, null, null, null, null, null, null, null, null, null, null, null));
@@ -367,14 +371,15 @@ public class PhptResultPackWriter extends PhptResultPack {
 			
 			// write result info in XML format
 			serial.startDocument(null, null);
-			result.serialize(serial, store_all);
+			// write result and reference to the XSL stylesheet
+			result.serialize(serial, store_all, StringUtil.repeat("../", Host.countUp(test_case_base_name, telem_dir.getAbsolutePath()))+"/phptresult.xsl");
 			serial.endDocument();
 			
 			serial.flush();
 			out.close();
 			
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
+			cm.addGlobalException(getClass(), "handleResult", ex, "");
 		}
 		
 		//
@@ -389,7 +394,7 @@ public class PhptResultPackWriter extends PhptResultPack {
 				fw.write(result.shell_script);
 				fw.close();
 			} catch ( Exception ex ) {
-				cm.printStackTrace(ex);
+				cm.addGlobalException(getClass(), "handleResult", ex, "");
 			}
 			
 			try {
@@ -397,7 +402,7 @@ public class PhptResultPackWriter extends PhptResultPack {
 				fw.write(result.test_case.get(EPhptSection.FILE));
 				fw.close();
 			} catch ( Exception ex ) {
-				cm.printStackTrace(ex);
+				cm.addGlobalException(getClass(), "handleResult", ex, "");
 			}
 		}
 		//

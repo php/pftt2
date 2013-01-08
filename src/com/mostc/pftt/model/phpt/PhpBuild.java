@@ -64,7 +64,7 @@ public class PhpBuild extends Build {
 				php_cgi_exe = null; // mark as not found
 			return true;
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
+			cm.addGlobalException(getClass(), "open", ex, "");
 		}
 		return false;
 	} // end public boolean open

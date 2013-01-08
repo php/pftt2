@@ -380,7 +380,7 @@ public class PhptTestCase extends TestCase {
 			
 			// provide the regular expression and the original section from the PHPT test
 			
-			twriter.show_exception(host, scenario_set, this, ex, expected_str, oexpected_str);
+			twriter.addTestException(host, scenario_set, this, ex, expected_str, oexpected_str);
 			expected_re = new RE(); // marker to avoid trying again
 			this.expected_re = new WeakReference<RE>(expected_re);
 			return expected_re;

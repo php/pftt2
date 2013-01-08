@@ -57,7 +57,7 @@ public class SMBDFSRScenario extends AbstractSMBScenario {
 				cm.println(getName(), "can't exec powershell script: "+tmp_file);
 			}
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
+			cm.addGlobalException(getClass(), "setup", ex, "");
 		}
 		return false;
 	}
@@ -67,4 +67,4 @@ public class SMBDFSRScenario extends AbstractSMBScenario {
 		return true;
 	}
 
-}
+} // end public class SMBDFSRScenario

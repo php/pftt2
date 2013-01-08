@@ -96,7 +96,9 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			try {
 				return do_http_execute(path, section, false);
 			} catch ( IOException ex1 ) { // SocketTimeoutException or ConnectException
-				twriter.getConsoleManager().printStackTrace(ex1);
+				if (twriter.getConsoleManager().isPfttDebug()) {
+					ex1.printStackTrace();
+				}
 				
 				// notify of crash so it gets reported everywhere
 				web.notifyCrash("PFTT: timeout during test("+section+" SECTION): "+test_case.getName()+"\n"+ErrorUtil.toString(ex1), 0);

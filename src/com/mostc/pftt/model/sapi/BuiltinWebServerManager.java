@@ -47,7 +47,7 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 			try {
 				return build.getPhpInfo(cm, host);
 			} catch ( Exception ex ) {
-				cm.printStackTrace(ex);
+				cm.addGlobalException(getClass(), "getInstanceInfo", ex, "");
 				return StringUtil.EMPTY;
 			}
 		}

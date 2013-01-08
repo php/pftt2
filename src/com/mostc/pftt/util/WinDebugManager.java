@@ -44,7 +44,7 @@ public class WinDebugManager extends DebuggerManager {
 			try {
 				return new WinDebug(host, win_dbg_exe, toServerName(server_name), src_path, debug_path, build.getBuildPath(), process_id);
 			} catch ( Exception ex ) {
-				cm.printStackTrace(ex);
+				cm.addGlobalException(getClass(), "newDebugger", ex, "");
 			}
 		}
 		return null;

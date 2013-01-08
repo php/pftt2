@@ -152,10 +152,14 @@ public class PhptTestResult {
 	}
 	
 	public void serialize(XmlSerializer serial) throws IllegalArgumentException, IllegalStateException, IOException {
-		serialize(serial, shouldStoreAllInfo(status));
+		serialize(serial, shouldStoreAllInfo(status), null);
 	}
 	
-	public void serialize(XmlSerializer serial, boolean include_all) throws IllegalArgumentException, IllegalStateException, IOException {
+	public void serialize(XmlSerializer serial, boolean include_all, String stylesheet) throws IllegalArgumentException, IllegalStateException, IOException {
+		if (StringUtil.isNotEmpty(stylesheet)) {
+			serial.processingInstruction("xml-stylesheet type=\"text/xsl\" href=\""+stylesheet+"\"");
+		}
+		
 		serial.startTag(null, "phptResult");
 		if (status!=null)
 			serial.attribute(null, "status", status.toString());

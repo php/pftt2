@@ -31,10 +31,9 @@ public abstract class SMBCSCOptionScenario extends AbstractOptionScenario {
 				return true;
 			}
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
-			cm.println(getName(), "Unable to "+(isEnable()?"enable":"disable")+" CSC");
+			cm.addGlobalException(getClass(), "setup", ex, "Unable to "+(isEnable()?"enable":"disable")+" CSC");
 		}
 		return false;
-	}
+	} // end public boolean setup
 	
-}
+} // end public abstract class SMBCSCOptionScenario

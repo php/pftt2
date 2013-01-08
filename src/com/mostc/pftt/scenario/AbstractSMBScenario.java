@@ -81,7 +81,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 				return false;
 			}
 		} catch (Exception ex ) {
-			cm.printStackTrace(ex);
+			cm.addGlobalException(getClass(), "createShare", ex, "");
 			return false;
 		}
 		
@@ -112,7 +112,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 				else
 					return connectFromSamba();
 			} catch ( Exception ex ) {
-				cm.printStackTrace(ex);
+				cm.addGlobalException(getClass(), "connect", ex, "");
 				return false;
 			}
 		} else {
@@ -156,7 +156,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 				return true;
 			}
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
+			cm.addGlobalException(getClass(), "deleteShare", ex, "");
 		}
 		return false;
 	}
@@ -165,7 +165,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		try {
 			return host.exec("NET USE "+local_drive+" /DELETE", Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).isSuccess();
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
+			cm.addGlobalException(getClass(), "disconnect", ex, "");
 		}
 		return false;
 	}

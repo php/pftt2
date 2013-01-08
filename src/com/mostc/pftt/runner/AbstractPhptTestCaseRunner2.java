@@ -416,7 +416,7 @@ request = "Content-Disposition: form-data; name=\"PHPSESSID\"\r\n" +
 			try {
 				expected_re_match = test_case.getExpectedCompiled(host, scenario_set, twriter).match(output_trim); 
 			} catch (Throwable ex) {
-				twriter.show_exception(host, scenario_set, test_case, ex, expected);
+				twriter.addTestException(host, scenario_set, test_case, ex, expected);
 				throw ex;
 			}
 			if (expected_re_match||a(test_case)||output_trim.contains("<html>")) {
@@ -438,7 +438,7 @@ request = "Content-Disposition: form-data; name=\"PHPSESSID\"\r\n" +
 				try {
 					expected_re_match = test_case.getExpectedCompiled(host, scenario_set, twriter).match(output_trim); 
 				} catch (Throwable ex) {
-					twriter.show_exception(host, scenario_set, test_case, ex, expected);
+					twriter.addTestException(host, scenario_set, test_case, ex, expected);
 					throw ex;
 				}
 				if (expected_re_match) {

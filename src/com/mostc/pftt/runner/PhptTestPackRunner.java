@@ -141,7 +141,7 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 				// copy test-pack onto (remote) file system
 				active_test_pack = src_test_pack.install(host, test_pack_dir);
 		} catch (Exception ex ) {
-			twriter.getConsoleManager().printStackTrace(ex);
+			twriter.getConsoleManager().addGlobalException(getClass(), "runTestList", ex, "");
 		}
 		if (active_test_pack==null) {
 			twriter.getConsoleManager().println(getClass(), "unable to install test-pack, giving up!");
@@ -245,7 +245,7 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 					continue;
 				}
 			} catch ( Exception ex ) {
-				twriter.getConsoleManager().printStackTrace(ex);
+				twriter.getConsoleManager().addGlobalException(getClass(), "groupTestCases", ex, "");
 				
 				continue;
 			}
@@ -362,7 +362,7 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 				// execute any remaining thread safe jobs
 				runThreadSafe();
 			} catch ( Exception ex ) {
-				twriter.getConsoleManager().printStackTrace(ex);
+				twriter.getConsoleManager().addGlobalException(getClass(), "run", ex, "");
 			} finally {
 				if (run_thread.get())
 					// if #stopThisThread not called
@@ -445,7 +445,7 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 						sapi_scenario.createPhptTestCaseRunner(this, group_key, test_case, twriter, host, scenario_set, build, src_test_pack, active_test_pack)
 							.runTest();
 					} catch ( Throwable ex ) {
-						twriter.show_exception(host, scenario_set, test_case, ex, sa);
+						twriter.addTestException(host, scenario_set, test_case, ex, sa);
 					}
 					
 					test_count.incrementAndGet();

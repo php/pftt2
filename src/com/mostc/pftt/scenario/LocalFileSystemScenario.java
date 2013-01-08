@@ -32,7 +32,7 @@ public class LocalFileSystemScenario extends AbstractFileSystemScenario {
 			host.mkdirs(getTestPackStorageDir(host));
 			return true;
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
+			cm.addGlobalException(LocalFileSystemScenario.class, "notifyPrepareStorageDir", ex, "");
 			return false;
 		}
 	}

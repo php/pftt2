@@ -348,8 +348,13 @@ public final class StringUtil {
 		return false;
 	}
 	
-	private StringUtil() {}
-
+	public static String repeat(String patt, int count) {
+		StringBuilder sb = new StringBuilder(patt.length()*count);
+		for ( int i=0 ; i < count ; i++ )
+			sb.append(patt);
+		return sb.toString();
+	}
 	
+	private StringUtil() {}
 	
 } // end public class StringUtil

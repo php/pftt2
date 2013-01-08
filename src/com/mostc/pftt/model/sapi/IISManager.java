@@ -53,7 +53,7 @@ public class IISManager extends WebServerManager {
 		try {
 			return do_start(host).printOutputIfCrash(getClass(), cm).isSuccess();
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
+			cm.addGlobalException(getClass(), "start", ex, "");
 			return false;
 		}
 	}
@@ -66,7 +66,7 @@ public class IISManager extends WebServerManager {
 			if (cm==null)
 				ex.printStackTrace();
 			else
-				cm.printStackTrace(ex);
+				cm.addGlobalException(getClass(), "stop", ex, "");
 			return false;
 		}
 	}
@@ -121,7 +121,7 @@ public class IISManager extends WebServerManager {
 			// set docroot to the location of the installed test-pack
 			return appcmd(host, "set vdir /vdir.name:\""+site_name+"/"+app_name+"\" /physicalPath:\""+doc_root+"\"");
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
+			cm.addGlobalException(getClass(), "configure", ex, "");
 		}
 		return null;
 	} // end public ExecOutput configure
@@ -136,7 +136,7 @@ public class IISManager extends WebServerManager {
 			if (cm==null)
 				ex.printStackTrace();
 			else
-				cm.printStackTrace(ex);
+				cm.addGlobalException(getClass(), "undoConfigure", ex, "");
 		}
 		return false;
 	}
@@ -253,7 +253,7 @@ public class IISManager extends WebServerManager {
 			try {
 				return appcmd(host, "-v").output;
 			} catch ( Exception ex ) {
-				cm.printStackTrace(ex);
+				cm.addGlobalException(getClass(), "getInstanceInfo", ex, "");
 				return StringUtil.EMPTY;
 			}
 		}
@@ -294,9 +294,7 @@ public class IISManager extends WebServerManager {
 					cm.println(getClass(), "IIS install failed");
 				}
 			} catch ( Exception ex ) {
-				cm.printStackTrace(ex);
-				
-				cm.println(getClass(), "exception during IIS install.");
+				cm.addGlobalException(getClass(), "setup", ex, "exception during IIS install.");
 			}
 			return false;
 		}

@@ -79,7 +79,7 @@ public enum EApacheVersion {
 		try {
 			return isSupportedEx(cm, host, build);
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
+			cm.addGlobalException(getClass(), "isSupported", ex, "");
 			return false;
 		}
 	}

@@ -37,7 +37,7 @@ public class DownloadUtil {
 		try {
 			return downloadAndUnzip(cm, host, new URL(remote_url), local_dir);
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
+			cm.addGlobalException(DownloadUtil.class, "downloadAndUnzip", ex, "");
 			return false;
 		}
 	}
@@ -89,15 +89,14 @@ public class DownloadUtil {
 			
 			out_file.close();
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
-			cm.println(DownloadUtil.class, "error downloading file: "+remote_url);
+			cm.addGlobalException(DownloadUtil.class, "downloadAndUnzip", ex, "error downloading file: "+remote_url);
 			return false;
 		} finally {
 			if ( response == null || !connStrategy.keepAlive(response, context)) {
 				try {
 					conn.close();
 				} catch ( Exception ex ) {
-					cm.printStackTrace(ex);
+					cm.addGlobalException(DownloadUtil.class, "downloadAndUnzip", ex, "");
 				}
 			}
 		}
@@ -113,9 +112,9 @@ public class DownloadUtil {
 			
 			return true;
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
+			cm.addGlobalException(DownloadUtil.class, "downloadAndUnzip", ex, "");
 			return false;
 		}
-	}
+	} // end public static boolean downloadAndUnzip
 
-}
+} // end public class DownloadUtil

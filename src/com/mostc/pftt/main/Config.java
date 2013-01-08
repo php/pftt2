@@ -100,7 +100,7 @@ public final class Config {
 			if (cm==null)
 				ex.printStackTrace();
 			else
-				cm.printStackTrace(ex);
+				cm.addGlobalException(getClass(), "configureSMTP", ex, "");
 		}
 		return false;
 	}
@@ -120,7 +120,7 @@ public final class Config {
 			if (cm==null)
 				ex.printStackTrace();
 			else
-				cm.printStackTrace(ex);
+				cm.addGlobalException(getClass(), "configureFTPClient", ex, "");
 		}
 		return false;
 	}

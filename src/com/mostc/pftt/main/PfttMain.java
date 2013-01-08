@@ -59,11 +59,6 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
  * 
  */
 
-// TODO restarting_and_retrying
-// TODO 7zip result-pack
-// TODO upload result-pack
-// TODO fbc report gen
-
 public class PfttMain {
 	protected Host host;
 	
@@ -180,8 +175,7 @@ public class PfttMain {
 		try {
 			Desktop.getDesktop().browse(new File(html_file).toURI());
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
-			cm.println("Report", "unable to show HTML file: "+html_file);
+			cm.addGlobalException(getClass(), "show_report", ex, "unable to show HTML file: "+html_file);
 		}
 	}
 
@@ -272,6 +266,7 @@ public class PfttMain {
 		System.out.println("-stress_each <0+> - runs each test-case N times consecutively");
 		System.out.println("-stress_all <0+> - runs all tests N times in loop");
 		System.out.println("-results_only - displays only test results and no other information (for automation).");
+		System.out.println("-pftt-debug - shows additional information to help debug problems with PFTT itself");
 		System.out.println("-disable_debug_prompt - disables asking you if you want to debug PHP crashes (for automation. default=enabled)");
 		System.out.println("-phpt-not-in-place - copies PHPTs to a temporary dir and runs PHPTs from there (default=disabled, test in-place)");
 		System.out.println("-dont-cleanup-test-pack - doesn't delete temp dir created by -phpt-not-in-place or SMB scenario (default=delete)");
@@ -524,8 +519,7 @@ public class PfttMain {
 		try {
 			host.execElevated("git pull", Host.FOUR_HOURS, host.getPfttDir()).printOutputIfCrash(PfttMain.class.getSimpleName(), cm);
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
-			cm.println("upgrade", "error upgrading PFTT");
+			cm.addGlobalException(PfttMain.class, "cmd_upgrade", ex, "error upgrading PFTT");
 		}
 	}
 	
@@ -583,7 +577,7 @@ public class PfttMain {
 		int args_i = 0;
 		
 		Config config = null;
-		boolean is_uac = false, windebug = false, show_gui = false, force = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false;
+		boolean is_uac = false, windebug = false, pftt_debug = false, show_gui = false, force = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false;
 		String source_pack = null;
 		PhpDebugPack debug_pack = null;
 		LinkedList<File> config_files = new LinkedList<File>();
@@ -693,6 +687,8 @@ public class PfttMain {
 			} else if (args[args_i].startsWith("-uac")) {
 				// ignore: intercepted and handled by bin/pftt.cmd batch script
 				is_uac = true;
+			} else if (args[args_i].startsWith("-pftt-debug")) {
+				pftt_debug = true;
 			} else if (args[args_i].startsWith("-windebug")) {
 				// also intercepted and handled by bin/pftt.cmd batch script
 				windebug = true;
@@ -728,7 +724,7 @@ public class PfttMain {
 			System.err.println("PFTT: not implemented: stress_each="+stress_each+" stress_all="+stress_all+" ignored");
 		}
 		
-		ConsoleManager cm = new ConsoleManager(source_pack, debug_pack, force, windebug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place);
+		ConsoleManager cm = new ConsoleManager(source_pack, debug_pack, force, windebug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug);
 		
 		if (config_files.size()>0) {
 			config = Config.loadConfigFromFiles(cm, (File[])config_files.toArray(new File[config_files.size()]));

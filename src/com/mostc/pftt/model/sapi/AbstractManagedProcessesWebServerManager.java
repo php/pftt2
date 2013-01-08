@@ -114,13 +114,8 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 								break;
 							}
 						} catch ( IOException ex ) {
-							cm.printStackTrace(ex);
 						} finally {
-							try {
-								sock.close();
-							} catch ( Exception ex1 ) {
-								cm.printStackTrace(ex1); // TODO
-							}
+							sock.close();
 						}
 					}
 					if (!connected) {

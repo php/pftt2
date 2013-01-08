@@ -1228,7 +1228,7 @@ public class RequiredFeaturesSmokeTest extends SmokeTest {
 			}
 			return status;
 		} catch ( Exception ex ) {
-			cm.printStackTrace(ex);
+			cm.addGlobalException(getClass(), "test", ex, "");
 			return ESmokeTestStatus.INTERNAL_EXCEPTION;
 		}
 	} // end public ESmokeTestStatus test
