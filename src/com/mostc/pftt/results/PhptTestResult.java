@@ -109,33 +109,60 @@ public class PhptTestResult {
 	 */
 	public static String toString(String[] actual_lines, Diff<String> diff, String[] expected_lines) {
 		List<Difference> list = diff.diff();
-		StringBuilder sb = new StringBuilder(list.size()*64);
-		int i;
+		StringBuilder sb = new StringBuilder(list.size()*80);
+		int i = 0;
 		for (Difference d:list) {
 			if (d.addEnd!=-1) {
+				addPre(i, d.addStart, sb, actual_lines);
 				for (i=d.addStart;i<=d.addEnd;i++) {
 					if (i>=actual_lines.length) {
 						continue;
 					}
 					
-					sb.append("+ ");//+i+" "+actual_lines.length);
+					addSection(i, d.addStart, d.addEnd, sb);
+					sb.append("+ ");
 					sb.append(actual_lines[i]);
 					sb.append('\n');
 				}
 			} else if (d.delEnd!=-1) {
+				addPre(i, d.delStart, sb, actual_lines);
 				for (i=d.delStart;i<=d.delEnd;i++) {
 					if (i>=expected_lines.length) {
 						continue;
 					}
 					
-					sb.append("- ");//+i+" "+expected_lines.length);
+					addSection(i, d.delStart, d.delEnd, sb);
+					sb.append("- ");
 					sb.append(expected_lines[i]);
 					sb.append('\n');
 				}
 			}
+		} // end for
+		for ( ; i < actual_lines.length ; i++ ) {
+			sb.append(actual_lines[i]);
+			sb.append('\n');
 		}
 		return sb.toString();
 	} // end public static String toString
+	
+	private static void addSection(int original_start, int new_start, int new_end, StringBuilder sb) {
+		sb.append("@@ -");
+		sb.append(original_start);
+		sb.append(',');
+		sb.append(original_start+(new_end-new_start));
+		sb.append(" +");
+		sb.append(new_start);
+		sb.append(',');
+		sb.append(new_end+(new_end-new_start));
+		sb.append(" @@\n");
+	}
+	
+	private static void addPre(int i, int until, StringBuilder sb, String[] actual_lines) {
+		for ( ; i < until && i < actual_lines.length ; i++ ) {
+			sb.append(actual_lines[i]);
+			sb.append('\n');
+		}
+	}
 	
 	public static List<String> listANotInB(List<String> a, List<String> b) {
 		if (a==null) {

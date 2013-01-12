@@ -82,23 +82,62 @@ public class ConsoleManager {
 			gui.showResult(host, totalCount, completed, result);
 	}
 	
-	public void println(String ctx_str, String string) {
+	public void println(EPrintType type, String ctx_str, String string) {
 		if (results_only)
 			return;
 		
-		System.out.println("PFTT: "+ctx_str+": "+string);
+		switch(type) {
+		case SKIP_OPERATION: // TODO UNABLE_TO_START_OPERATION
+		case CANT_CONTINUE:
+		case OPERATION_FAILED_CONTINUING:
+			System.err.println(type+": "+ctx_str+": "+string);
+			break;
+		case CLUE:
+			System.out.println(type+": "+ctx_str+": "+string);
+			break;
+		default:
+			System.out.println("PFTT: "+ctx_str+": "+string);
+		}
+		// TODO record in result-pack
+	}
+	public static enum EPrintType {
+		SKIP_OPERATION,
+		XSKIP_OPERATION, 
+		SKIP_OPTIONAL,
+		CLUE,
+		CANT_CONTINUE,
+		IN_PROGRESS,
+		COMPLETED_OPERATION,
+		OPERATION_FAILED_CONTINUING
+	}
+	public void println(EPrintType type, Class<?> clazz, String string) {
+		println(type, clazz.getSimpleName(), string);
 	}
 	
-	public void println(Class<?> clazz, String string) {
-		println(clazz.getSimpleName(), string);
+	public void addGlobalException(EPrintType type, Class<?> clazz, String method_name, Exception ex, String msg) {
+		addGlobalException(type, clazz, method_name, ex, msg, null);
 	}
-	
-	public void addGlobalException(Class<?> clazz, String method_name, Exception ex, String msg) {
-		addGlobalException(clazz.getSimpleName()+"#"+method_name, ex, msg);
+	public void addGlobalException(EPrintType type, Class<?> clazz, String method_name, Exception ex, String msg, Object a) {
+		addGlobalException(type, clazz, method_name, ex, msg, a, null);
+	}
+	public void addGlobalException(EPrintType type, Class<?> clazz, String method_name, Exception ex, String msg, Object a, Object b) {
+		addGlobalException(type, clazz, method_name, ex, msg, a, b, null);
+	}
+	public void addGlobalException(EPrintType type, Class<?> clazz, String method_name, Exception ex, String msg, Object a, Object b, Object c) {
+		addGlobalException(type, clazz.getSimpleName()+"#"+method_name, ex, msg, a, b, c);
 	}
 
 	protected PhptResultPackWriter w;
-	public void addGlobalException(String ctx_str, Exception ex, String msg) {
+	public void addGlobalException(EPrintType type, String ctx_str, Exception ex, String msg) {
+		addGlobalException(type, ctx_str, ex, msg, null);
+	}
+	public void addGlobalException(EPrintType type, String ctx_str, Exception ex, String msg, Object a) {
+		addGlobalException(type, ctx_str, ex, msg, a, null);
+	}
+	public void addGlobalException(EPrintType type, String ctx_str, Exception ex, String msg, Object a, Object b) {
+		addGlobalException(type, ctx_str, ex, msg, a, b, null);
+	}
+	public void addGlobalException(EPrintType type, String ctx_str, Exception ex, String msg, Object a, Object b, Object c) {
 		String ex_str = ErrorUtil.toString(ex);
 		if (!results_only) {
 			System.err.println(ex_str);

@@ -4,6 +4,7 @@ import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
 /** Utilities for setting up the test environment and convenience settings on Hosts
  * 
@@ -38,15 +39,15 @@ public final class HostEnvUtil {
 	 * @throws Exception
 	 */
 	public static void prepareWindows(Host host, ConsoleManager cm, boolean enable_debug_prompt) throws Exception {
-		cm.println(HostEnvUtil.class, "preparing Windows host to run PHP...");
+		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "preparing Windows host to run PHP...");
 		// have to fix Windows Error Reporting from popping up and blocking execution:
 		
 		String value;
 		if (enable_debug_prompt) {
-			cm.println(HostEnvUtil.class, "enabling Windows Error Reporting...");
+			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "enabling Windows Error Reporting...");
 			value = "0x0";
 		} else {
-			cm.println(HostEnvUtil.class, "disabling Windows Error Reporting...");
+			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "disabling Windows Error Reporting...");
 			value = "0x1";
 		}
 		
@@ -57,7 +58,7 @@ public final class HostEnvUtil {
 			// (avoid doing this if possible because it requires user to approve elevation)
 			
 			
-			cm.println(HostEnvUtil.class, "disabling Windows Firewall...");
+			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "disabling Windows Firewall...");
 			
 			// LATER edit firewall rules instead (what if on public network, ex: Azure)
 			host.execElevated("netsh firewall set opmode disable", Host.ONE_MINUTE);
@@ -68,7 +69,7 @@ public final class HostEnvUtil {
 				//
 				// reminder: can PHPTs with WinDebug using -windebug console option
 				if (StringUtil.isNotEmpty(win_dbg_exe)) {
-					cm.println(HostEnvUtil.class, "Enabling WinDebug as the default debugger...");
+					cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Enabling WinDebug as the default debugger...");
 					
 					// make windebug the default debugger, otherwise, it probably won't even be an option in the WER popup
 					//  1. windebug is easier to setup for a php build than VS (will have lots of builds)
@@ -80,7 +81,7 @@ public final class HostEnvUtil {
 			}
 			//
 			
-			cm.println(HostEnvUtil.class, "creating File Share for "+host.getPhpSdkDir()+"...");
+			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "creating File Share for "+host.getPhpSdkDir()+"...");
 			// share PHP-SDK over network. this also will share C$, G$, etc...
 			host.execElevated("NET SHARE PHP_SDK="+host.getPhpSdkDir()+" /Grant:"+host.getUsername()+",Full", Host.ONE_MINUTE);
 		}
@@ -88,23 +89,23 @@ public final class HostEnvUtil {
 		if (host.isVistaOrBefore()) {
 			// install VC9 runtime (win7+ don't need this)
 			if (host.dirContainsFragment(host.getSystemRoot()+"\\WinSxS", "vc9")) {
-				cm.println(HostEnvUtil.class, "VC9 Runtime alread installed");
+				cm.println(EPrintType.CLUE, HostEnvUtil.class, "VC9 Runtime alread installed");
 			} else {
 				String local_file = LocalHost.getLocalPfttDir()+"/bin/vc9_vcredist_x86.exe";
 				String remote_file = null;
 				if (host.isRemote()) {
 					remote_file = host.mktempname(HostEnvUtil.class, ".exe");
 					
-					cm.println(HostEnvUtil.class, "Uploading VC9 Runtime");
+					cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Uploading VC9 Runtime");
 					host.upload(local_file, remote_file);
 				}
-				cm.println(HostEnvUtil.class, "Installing VC9 Runtime");
+				cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Installing VC9 Runtime");
 				host.execElevated(remote_file+" /Q", Host.FOUR_HOURS);
 				if (remote_file!=null)
 					host.delete(remote_file);
 			}
 		}
-		cm.println(HostEnvUtil.class, "Windows host prepared to run PHP.");
+		cm.println(EPrintType.COMPLETED_OPERATION, HostEnvUtil.class, "Windows host prepared to run PHP.");
 	} // end public static void prepareWindows
 	
 	public static final String REG_DWORD = "REG_DWORD";

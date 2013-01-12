@@ -3716,10 +3716,16 @@ class CharsetMBCS extends CharsetICU {
 
             stage12 = (CharBuffer) ARRAY(cx, EXT_FROM_U_STAGE_12_INDEX, char.class);
             stage3 = (CharBuffer) ARRAY(cx, EXT_FROM_U_STAGE_3_INDEX, char.class);
+            try {
             index = FROM_U(stage12, stage3, index, firstCP);
+            } catch ( IndexOutOfBoundsException ex ) {}
 
             stage3b = (IntBuffer) ARRAY(cx, EXT_FROM_U_STAGE_3B_INDEX, int.class);
+            try {
             value = stage3b.get(stage3b.position() + index);
+            } catch ( IndexOutOfBoundsException ex ) {
+            	return 0;
+            }
             if (value == 0) {
                 return 0;
             }
@@ -3744,7 +3750,11 @@ class CharsetMBCS extends CharsetICU {
                     fromUSectionUChars = ((CharBuffer) fromUTableUChars.position(index)).slice();
                     fromUTableUChars.position(oldpos);
                     oldpos = fromUTableValues.position();
-                    fromUSectionValues = ((IntBuffer) fromUTableValues.position(index)).slice();
+                    try {
+                    	fromUSectionValues = ((IntBuffer) fromUTableValues.position(index)).slice();
+                    } catch ( IllegalArgumentException ex ) {
+                    	continue;
+                    }
                     fromUTableValues.position(oldpos);
 
                     /* read first pair of the section */

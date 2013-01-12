@@ -30,8 +30,8 @@ public class TestCaseGroupKey {
 			return true;
 		} else if (o instanceof TestCaseGroupKey) {
 			TestCaseGroupKey c = (TestCaseGroupKey) o;
-			return (this.env==null?c.env==null:this.env.equals(c.env)) &&
-					(this.ini==null?c.ini==null:this.ini.equals(c.ini));
+			return (this.env==null?c.env==null||c.env.isEmpty():this.env.equals(c.env)) &&
+					(this.ini==null?c.ini==null||c.ini.isEmpty():this.ini.equals(c.ini));
 		} else {
 			return false;
 		}

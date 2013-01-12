@@ -3,6 +3,7 @@ package com.mostc.pftt.model.smoke;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
 /** tests that a build has all required features
  * 
@@ -1220,7 +1221,7 @@ public class RequiredFeaturesSmokeTest extends SmokeTest {
 			for ( String part : parts ) {
 				j = info.indexOf(part, i);
 				if (j==-1) {
-					cm.println(getName(), "Missing required info: `"+part+"`");
+					cm.println(EPrintType.COMPLETED_OPERATION, getName(), "Missing required info: `"+part+"`");
 					status = ESmokeTestStatus.FAIL;
 				} else {
 					i = j+1;
@@ -1228,7 +1229,7 @@ public class RequiredFeaturesSmokeTest extends SmokeTest {
 			}
 			return status;
 		} catch ( Exception ex ) {
-			cm.addGlobalException(getClass(), "test", ex, "");
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "test", ex, "");
 			return ESmokeTestStatus.INTERNAL_EXCEPTION;
 		}
 	} // end public ESmokeTestStatus test

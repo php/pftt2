@@ -49,29 +49,30 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 	}
 	
 	protected final HttpParams params;
-protected final HttpProcessor httpproc;
-protected final HttpRequestExecutor httpexecutor;
+	protected final HttpProcessor httpproc;
+	protected final HttpRequestExecutor httpexecutor;
 
-protected AbstractWebServerScenario(WebServerManager smgr) {
-this.smgr = smgr;
-
-params = new SyncBasicHttpParams();
-HttpProtocolParams.setVersion(params, HttpVersion.HTTP_1_1);
-HttpProtocolParams.setContentCharset(params, "UTF-8");
-HttpProtocolParams.setUserAgent(params, "Mozilla/5.0 (Windows NT 6.1; rv:12.0) Gecko/20120405 Firefox/14.0.1");
-HttpProtocolParams.setUseExpectContinue(params, true);
-
-httpproc = new ImmutableHttpProcessor(new HttpRequestInterceptor[] {
-// Required protocol interceptors
-new RequestContent(),
-new RequestTargetHost(),
-// Recommended protocol interceptors
-new RequestConnControl(),
-new RequestUserAgent(),
-new RequestExpectContinue()});
-
-httpexecutor = new HttpRequestExecutor();
-}
+	protected AbstractWebServerScenario(WebServerManager smgr) {
+		this.smgr = smgr;
+		
+		params = new SyncBasicHttpParams();
+		HttpProtocolParams.setVersion(params, HttpVersion.HTTP_1_1);
+		HttpProtocolParams.setContentCharset(params, "UTF-8");
+		HttpProtocolParams.setUserAgent(params, "Mozilla/5.0 (Windows NT 6.1; rv:12.0) Gecko/20120405 Firefox/14.0.1");
+		HttpProtocolParams.setUseExpectContinue(params, true);
+		
+		httpproc = new ImmutableHttpProcessor(new HttpRequestInterceptor[] {
+				// Required protocol interceptors
+				new RequestContent(),
+				new RequestTargetHost(),
+				// Recommended protocol interceptors
+				new RequestConnControl(),
+				new RequestUserAgent(),
+				new RequestExpectContinue()
+			});
+		
+		httpexecutor = new HttpRequestExecutor();
+	}
 	
 	
 	/**
@@ -106,11 +107,8 @@ httpexecutor = new HttpRequestExecutor();
 	
 	@Override
 	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
-		return new HttpTestCaseRunner(params, httpproc, httpexecutor, smgr, (WebServerInstance) ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance(), thread, test_case, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
+		return new HttpTestCaseRunner(group_key.getPhpIni(), group_key.getEnv(), params, httpproc, httpexecutor, smgr, (WebServerInstance) ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance(), thread, test_case, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 	}
-	/*public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
-		return new HttpTestCaseRunner(http_client, smgr, (WebServerInstance) ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance(), thread, test_case, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
-	}*/
 	
 	public TestCaseGroupKey createTestGroupKey(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack active_test_pack, PhptTestCase test_case, TestCaseGroupKey group_key) throws Exception {
 		Map<String,String> env = null;

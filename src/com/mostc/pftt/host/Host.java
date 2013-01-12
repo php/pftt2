@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.charset.CharsetEncoder;
 import java.util.Map;
 import java.util.Random;
 import java.util.regex.Pattern;
@@ -14,6 +15,7 @@ import javax.annotation.concurrent.ThreadSafe;
 import com.github.mattficken.io.ByLineReader;
 import com.github.mattficken.io.CharsetDeciderDecoder;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
 import com.mostc.pftt.util.StringUtil;
 
@@ -44,6 +46,7 @@ public abstract class Host {
 	/** should always have a timeout... should NOT let something run forever */
 	public static final int FOUR_HOURS = ONE_HOUR * 4;
 	public static final int ONE_MINUTE = 60;
+	protected static final int NO_TIMEOUT = 0;
 	
 	/** removes the file extension from file.
 	 * 
@@ -189,7 +192,7 @@ public abstract class Host {
 	 * @throws IOException
 	 */
 	public abstract void saveTextFile(String filename, String text) throws IllegalStateException, IOException;
-	public abstract void saveTextFile(String filename, String text, Charset charset) throws IllegalStateException, IOException;
+	public abstract void saveTextFile(String filename, String text, CharsetEncoder ce) throws IllegalStateException, IOException;
 	public abstract void delete(String path) throws IllegalStateException, IOException;
 	public void deleteIfExists(String path) {
 		try {
@@ -902,9 +905,9 @@ public abstract class Host {
 			if (exec("unzip "+zip_file+" "+base_dir, ONE_HOUR).printOutputIfCrash(getClass(), cm).isSuccess())
 				return true;
 			else
-				cm.println(getClass(), "Unable to unzip: "+zip_file);
+				cm.println(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "Unable to unzip: "+zip_file);
 		} catch ( Exception ex ) {
-			cm.addGlobalException(getClass(), "unzip", ex, "");
+			cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "unzip", ex, "", this, zip_file, base_dir);
 		}
 		return false;
 	}

@@ -1,6 +1,7 @@
 package com.mostc.pftt.model.smoke;
 
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.results.PhptResultPackWriter;
 
 /** compares the count of tests completed to the total of each test status and the total number of
@@ -48,7 +49,7 @@ public class PhptTestCountsMatchSmokeTest extends SmokeTest {
 				sb.append(tmgr.count(status));
 			}
 			
-			tmgr.getConsoleManager().println(getName(), sb.toString());
+			tmgr.getConsoleManager().println(EPrintType.COMPLETED_OPERATION, getName(), sb.toString());
 			
 			return ESmokeTestStatus.FAIL;
 		}

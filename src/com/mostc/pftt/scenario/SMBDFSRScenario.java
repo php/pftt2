@@ -4,6 +4,7 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.RemoteHost;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
 /** Tests PHP with PHP build and test pack being stored remotely on a group of DFS-R SMB Shares. (NOT IMPLEMENTED)
  * 
@@ -49,15 +50,15 @@ public class SMBDFSRScenario extends AbstractSMBScenario {
 				host.delete(tmp_file);
 				
 				if (super.setup(cm, host, build, scenario_set)) {
-					cm.println(getName(), "DFSR setup successfully on "+unc_path+" "+smb_path);
+					cm.println(EPrintType.COMPLETED_OPERATION, getName(), "DFSR setup successfully on "+unc_path+" "+smb_path);
 					
 					return true;
 				}
 			} else {
-				cm.println(getName(), "can't exec powershell script: "+tmp_file);
+				cm.println(EPrintType.OPERATION_FAILED_CONTINUING, getName(), "can't exec powershell script: "+tmp_file);
 			}
 		} catch ( Exception ex ) {
-			cm.addGlobalException(getClass(), "setup", ex, "");
+			cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "setup", ex, "", host, tmp_file, unc_path);
 		}
 		return false;
 	}

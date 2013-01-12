@@ -3,7 +3,6 @@ package com.mostc.pftt.runner;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.zip.Deflater;
@@ -181,23 +180,17 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		if (test_case.containsSection(EPhptSection.FILE_EXTERNAL)) {
 			// open external file and copy to test_file (binary, no char conversion - which could break it - often this is a PHAR file - which will be broken if charset coversion is done)
 			
+			// @see run-test.php:1281
+			String src_file = host.joinIntoOnePath(
+					src_test_pack.getSourceDirectory(), 
+					Host.dirname(test_case.getName()), 
+					test_case.getTrim(EPhptSection.FILE_EXTERNAL).replaceAll("\\.\\.", "")
+				);
+			host.copy(src_file, test_file);
 			
-			String src_file = host.joinIntoOnePath(src_test_pack.getSourceDirectory(), Host.dirname(test_case.getName()), test_case.getTrim(EPhptSection.FILE_EXTERNAL));
-			test_file = host.joinIntoOnePath(test_dir, Host.dirname(base_file_name), test_case.getTrim(EPhptSection.FILE_EXTERNAL));
-			
-			if (!test_case.getName().contains("frontcontroller12.php")) { // TODO
-				host.copy(src_file, test_file);
-			}
 		} else {
-			host.saveTextFile(test_file, test_case.get(EPhptSection.FILE), test_case.getCommonCharset());
+			host.saveTextFile(test_file, test_case.get(EPhptSection.FILE), test_case.getCommonCharsetEncoder());
 		}
-		
-		// important: some tests need these to work
-		if (env==null)
-			env = new HashMap<String,String>(2);
-		env.put(ENV_TEST_PHP_EXECUTABLE, build.getPhpExe());
-		if (build.hasPhpCgiExe())
-			env.put(ENV_TEST_PHP_CGI_EXECUTABLE, build.getPhpCgiExe());
 		//
 		
 		// copy STDIN to pass (POST, POST_RAW, STDIN, etc...)
@@ -218,6 +211,8 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 
 						setContentType(content_type);
 						first_ct = false;
+						if (this instanceof HttpTestCaseRunner)
+							continue; // TODO 
 					} else if (first_ct) {
 						// content type may look like this:
 						// "multipart/form-data" or "application/x-www-urlencoded"
@@ -225,14 +220,10 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 
 						setContentType(content_type);
 						first_ct = false;
-					}/* TODO 258f else {
-						request_sb.append(line);
-						request_sb.append('\n');	
-					}*/
-				}// else {
-					request_sb.append(line);
-					request_sb.append('\n');
-				//}
+					}
+				}
+				request_sb.append(line);
+				request_sb.append('\n');
 			}
 			
 			String request = request_sb.toString();
@@ -241,24 +232,6 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			if (request.endsWith("\n"))
 				request = request.substring(0, request.length()-1);
 			
-			// TODO temp
-			if (test_case.isNamed("ext/session/tests/rfc1867_sid_get_2.phpt")) {
-request = "Content-Disposition: form-data; name=\"PHPSESSID\"\r\n" +
-"\r\n" +
-"rfc1867-tests-post\r\n" +
-"-----------------------------20896060251896012921717172737\r\n" +
-"Content-Disposition: form-data; name=\"PHP_SESSION_UPLOAD_PROGRESS\"\r\n" +
-"\r\n" +
-"rfc1867_sid_get_2.php\r\n" +
-"-----------------------------20896060251896012921717172737\r\n" +
-"Content-Disposition: form-data; name=\"file1\"; filename=\"file1.txt\"\r\n" +
-"\r\n" +
-"1\r\n" +
-"-----------------------------20896060251896012921717172737\r\n" +
-"Content-Disposition: form-data; name=\"file2\"; filename=\"file2.txt\"\r\n" +
-"\r\n" +
-"2\r\n";
-			}
 	
 			setContentLength(request.length());
 			setRequestMethod("POST");
@@ -501,7 +474,7 @@ request = "Content-Disposition: form-data; name=\"PHPSESSID\"\r\n" +
 			
 			// generate a diff
 			String[] actual_lines = StringUtil.splitLines(output);
-			String[] expected_lines = StringUtil.splitEqualsSign(test_case.getExpected());
+			String[] expected_lines = StringUtil.splitLines(test_case.getExpected());
 			Diff<String> diff = new Diff<String>(actual_lines, expected_lines);
 	
 			String expectf;
@@ -579,7 +552,7 @@ request = "Content-Disposition: form-data; name=\"PHPSESSID\"\r\n" +
 		return true; // a and b match
 	}
 	
-	private static boolean hasNonWhitespace(String a, int i) {
+	private static final boolean hasNonWhitespace(String a, int i) {
 		for ( ; i < a.length() ; i++ ) {
 			if (!Character.isWhitespace(a.charAt(i)))
 				return true;

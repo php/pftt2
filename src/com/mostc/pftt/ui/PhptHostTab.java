@@ -288,7 +288,7 @@ public class PhptHostTab extends JSplitPane {
 		jsp.setDividerLocation(0.75d);
 	}
 	
-	protected int crash, pass, fail, xfail, xfail_works, skip, xskip, bork, unsupported, exceptions; // XXX duplicates functionality from PhptTelemetry
+	protected int crash, pass, fail, xfail, xfail_works, skip, xskip, bork, unsupported, test_exceptions; // XXX duplicates functionality from PhptTelemetry
 	
 	public void showResult(final int total, final int completed, final PhptTestResult result) {
 		SwingUtilities.invokeLater(new Runnable() {
@@ -344,8 +344,8 @@ public class PhptHostTab extends JSplitPane {
 						bork_list_model.addElement(result);
 						break;
 					case TEST_EXCEPTION:
-						exceptions++;
-						test_exceptions_label.setText(Integer.toString(exceptions));
+						test_exceptions++;
+						test_exceptions_label.setText(Integer.toString(test_exceptions));
 						
 						test_exceptions_list_model.addElement(result);
 						break;

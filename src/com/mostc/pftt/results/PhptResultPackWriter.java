@@ -25,6 +25,7 @@ import com.mostc.pftt.model.phpt.EPhptTestStatus;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.model.phpt.PhptSourceTestPack;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.ErrorUtil;
 import com.mostc.pftt.util.StringUtil;
@@ -379,7 +380,7 @@ public class PhptResultPackWriter extends PhptResultPack {
 			out.close();
 			
 		} catch ( Exception ex ) {
-			cm.addGlobalException(getClass(), "handleResult", ex, "");
+			cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "handleResult", ex, "", this_telem_dir, test_case_base_name);
 		}
 		
 		//
@@ -394,7 +395,7 @@ public class PhptResultPackWriter extends PhptResultPack {
 				fw.write(result.shell_script);
 				fw.close();
 			} catch ( Exception ex ) {
-				cm.addGlobalException(getClass(), "handleResult", ex, "");
+				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "handleResult", ex, "", this_telem_dir, test_case_base_name);
 			}
 			
 			try {
@@ -402,7 +403,7 @@ public class PhptResultPackWriter extends PhptResultPack {
 				fw.write(result.test_case.get(EPhptSection.FILE));
 				fw.close();
 			} catch ( Exception ex ) {
-				cm.addGlobalException(getClass(), "handleResult", ex, "");
+				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "handleResult", ex, "", this_telem_dir, test_case_base_name);
 			}
 		}
 		//

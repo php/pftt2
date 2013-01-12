@@ -116,10 +116,10 @@ public class LocalHost extends Host {
 			try {
 				if (isWindows()) {
 					path = toWindowsPath(path);
-					cmd("RMDIR /Q /S \""+path+"\"", FOUR_HOURS);
+					cmd("RMDIR /Q /S \""+path+"\"", NO_TIMEOUT);
 				} else {
 					path = toUnixPath(path);
-					exec("rm -rf \""+path+"\"", FOUR_HOURS);
+					exec("rm -rf \""+path+"\"", NO_TIMEOUT);
 				}
 			} catch ( Exception ex ) {
 				ex.printStackTrace();
@@ -145,20 +145,26 @@ public class LocalHost extends Host {
 	}
 
 	@Override
-	public void saveTextFile(String filename, String text, Charset charset) throws IOException {
+	public void saveTextFile(String filename, String text, CharsetEncoder ce) throws IOException {
 		if (text==null)
 			text = "";
 		FileOutputStream fos = new FileOutputStream(filename);
 		try {
-			if (charset==null) {
+			if (ce==null) {
 				fos.write(text.getBytes());
 			} else {
 				
 				
 				//fos.write(text.getBytes(charset));
 			
-				CharsetEncoder ce = charset.newEncoder(); // TODO share
-				ByteBuffer bbuf = ce.encode(CharBuffer.wrap(text.toCharArray()));
+				ByteBuffer bbuf = ByteBuffer.allocate(50+text.length()*2);
+				//try {
+				//CharsetEncoder ce = charset.newEncoder(); // TODO share
+				ce.encode(CharBuffer.wrap(text.toCharArray()), bbuf, true);
+				/*} catch ( Exception ex ) {
+					//ex.printStackTrace(); // TODO
+					return;
+				}*/
 				fos.getChannel().write(bbuf);
 			
 			
@@ -170,16 +176,16 @@ public class LocalHost extends Host {
 
 	@Override
 	public ExecOutput exec(String commandline, int timeout, Map<String,String> env, byte[] stdin, Charset charset, String chdir) throws Exception {
-		return exec(commandline, timeout, env, stdin, charset, chdir, null, FOUR_HOURS);
+		return exec(commandline, timeout, env, stdin, charset, chdir, null, NO_TIMEOUT);
 	}
 	@Override
 	public LocalExecHandle execThread(String commandline, Map<String,String> env, String chdir, byte[] stdin_data) throws Exception {
-		return exec_impl(splitCmdString(commandline), env, chdir, FOUR_HOURS, stdin_data);
+		return exec_impl(splitCmdString(commandline), env, chdir, NO_TIMEOUT, stdin_data);
 	}
 	@Override
 	public ExecOutput exec(String commandline, int timeout, Map<String,String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread thread, int thread_slow_sec) throws Exception {
 		ThreadSlowTask task = null;
-		if (thread!=null && thread_slow_sec>FOUR_HOURS) {
+		if (thread!=null && thread_slow_sec>NO_TIMEOUT) {
 			task = new ThreadSlowTask(thread);
 			timer.schedule(task, thread_slow_sec * 1000);
 		}
@@ -234,21 +240,30 @@ public class LocalHost extends Host {
 		if (isWindows()) {
 			src = toWindowsPath(src);
 			dst = toWindowsPath(dst);
+			
+			String cmd = null;
 			if (isDirectory(src)) {
 				// ensure xcopy sees destination is supposed to be a directory, or xcopy will ask/block forever
 				dst += "\\";
+				
+				cmd = "xcopy /Q /Y /S /E \""+src+"\" \""+dst+"\"";
 			} else {
 				mkdirs(dirname(dst));
-				if (basename(src).equals(basename(dst)))
+				if (basename(src).equals(basename(dst))) {
 					dst = dirname(dst);
+					
+					cmd = "xcopy /Q /Y /S /E \""+src+"\" \""+dst+"\"";
+				}
 			}
-			String cmd = "xcopy /Q /Y /S /E \""+src+"\" \""+dst+"\"";
+			if (cmd==null)
+				cmd = "cmd /C copy \""+src+"\" \""+dst+"\"";
 			
-			exec(cmd, FOUR_HOURS);
+			
+			exec(cmd, NO_TIMEOUT);
 		} else {
 			src = toUnixPath(src);
 			dst = toUnixPath(dst);
-			exec("cp \""+src+"\" \""+dst+"\"", FOUR_HOURS);
+			exec("cp \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
 		}
 	}
 
@@ -573,7 +588,7 @@ public class LocalHost extends Host {
 
 	    LocalExecHandle h = new LocalExecHandle(process, stdin, stdout, stderr, cmd_array);
 	    
-	    if (timeout>FOUR_HOURS) {
+	    if (timeout>NO_TIMEOUT) {
 	    	h.task = new ExitMonitorTask(h);
 			timer.schedule(h.task, 5*1000);
 	    }

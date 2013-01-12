@@ -14,6 +14,7 @@ import org.columba.ristretto.smtp.SMTPProtocol;
 import com.github.mattficken.io.IOUtil;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 
@@ -63,6 +64,7 @@ public final class Config {
 	protected final LinkedList<Host> hosts;
 	protected final LinkedList<ScenarioSet> scenario_sets;
 	protected GroovyObject configure_smtp_method, configure_ftp_client_method;
+	protected String configure_smtp_file, configure_ftp_client_file;
 	
 	protected Config() {
 		hosts = new LinkedList<Host>();
@@ -100,7 +102,7 @@ public final class Config {
 			if (cm==null)
 				ex.printStackTrace();
 			else
-				cm.addGlobalException(getClass(), "configureSMTP", ex, "");
+				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "configureSMTP", ex, "", configure_smtp_file);
 		}
 		return false;
 	}
@@ -120,7 +122,7 @@ public final class Config {
 			if (cm==null)
 				ex.printStackTrace();
 			else
-				cm.addGlobalException(getClass(), "configureFTPClient", ex, "");
+				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "configureFTPClient", ex, "", configure_ftp_client_file);
 		}
 		return false;
 	}
@@ -200,10 +202,10 @@ public final class Config {
 		if (cm!=null) {
 			// report progress
 			if (config.hosts.size()>0) {
-				cm.println(Config.class, "Loaded "+config.hosts.size()+" hosts");
+				cm.println(EPrintType.CLUE, Config.class, "Loaded "+config.hosts.size()+" hosts");
 			}
 			if (config.scenario_sets.size()>0) {
-				cm.println(Config.class, "Loaded "+config.scenario_sets.size()+" Scenario-Sets");
+				cm.println(EPrintType.CLUE, Config.class, "Loaded "+config.scenario_sets.size()+" Scenario-Sets");
 			}
 		}
 		
@@ -221,11 +223,11 @@ public final class Config {
 						if (!config.hosts.contains(o))
 							config.hosts.add((Host)o);
 					} else {
-						cm.println("Config", "List returned by hosts() must only contain Host objects, not: "+o.getClass()+" see: "+file_name);
+						cm.println(EPrintType.OPERATION_FAILED_CONTINUING, "Config", "List returned by hosts() must only contain Host objects, not: "+o.getClass()+" see: "+file_name);
 					}
 				}
 			} else {
-				cm.println("Config", "hosts() must return List of Hosts, not: "+(ret==null?"null":ret.getClass())+" see: "+file_name);
+				cm.println(EPrintType.OPERATION_FAILED_CONTINUING, "Config", "hosts() must return List of Hosts, not: "+(ret==null?"null":ret.getClass())+" see: "+file_name);
 			}
 		} catch ( Exception ex ) {
 		}
@@ -237,11 +239,11 @@ public final class Config {
 						if (!config.scenario_sets.contains(o))
 							config.scenario_sets.add((ScenarioSet)o);
 					} else {
-						cm.println("Config", "List returned by scenario_sets() must only contain ScenarioSet objects, not: "+o.getClass()+" see: "+file_name);
+						cm.println(EPrintType.OPERATION_FAILED_CONTINUING, "Config", "List returned by scenario_sets() must only contain ScenarioSet objects, not: "+o.getClass()+" see: "+file_name);
 					}
 				}
 			} else {
-				cm.println("Config", "scenario_sets() must return List of ScenarioSets, not: "+(ret==null?"null":ret.getClass())+" see: "+file_name);
+				cm.println(EPrintType.OPERATION_FAILED_CONTINUING, "Config", "scenario_sets() must return List of ScenarioSets, not: "+(ret==null?"null":ret.getClass())+" see: "+file_name);
 			}
 		} catch ( Exception ex ) {
 		}
@@ -253,27 +255,29 @@ public final class Config {
 						if (!scenarios.contains(o))
 							scenarios.add((Scenario)o);
 					} else {
-						cm.println("Config", "List returned by scenarios() must only contain Scenario objects, not: "+o.getClass()+" see: "+file_name);
+						cm.println(EPrintType.OPERATION_FAILED_CONTINUING, "Config", "List returned by scenarios() must only contain Scenario objects, not: "+o.getClass()+" see: "+file_name);
 					}
 				}
 			} else {
-				cm.println("Config", "scenarios() must return List of Scenarios, not: "+(ret==null?"null":ret.getClass())+" see: "+file_name);
+				cm.println(EPrintType.OPERATION_FAILED_CONTINUING, "Config", "scenarios() must return List of Scenarios, not: "+(ret==null?"null":ret.getClass())+" see: "+file_name);
 			}
 		} catch ( Exception ex ) {
 		}
 		try {
 			if (go.getProperty(CONFIGURE_SMTP_METHOD)!=null) {
 				if (config.configure_smtp_method!=null)
-					cm.println("Config", CONFIGURE_SMTP_METHOD+"() overriden by : "+file_name);
+					cm.println(EPrintType.OPERATION_FAILED_CONTINUING, "Config", CONFIGURE_SMTP_METHOD+"("+config.configure_smtp_file+") overriden by : "+file_name);
 				config.configure_smtp_method = go;
+				config.configure_smtp_file = file_name;
 			}
 		} catch ( Exception ex ) {
 		}
 		try {
 			if (go.getProperty(CONFIGURE_FTP_CLIENT_METHOD)!=null) {
 				if (config.configure_ftp_client_method!=null)
-					cm.println("Config", CONFIGURE_FTP_CLIENT_METHOD+"() overriden by : "+file_name);
+					cm.println(EPrintType.OPERATION_FAILED_CONTINUING, "Config", CONFIGURE_FTP_CLIENT_METHOD+"("+config.configure_ftp_client_file+") overriden by : "+file_name);
 				config.configure_ftp_client_method = go;
+				config.configure_ftp_client_file = file_name;
 			}
 		} catch ( Exception ex ) {
 		}

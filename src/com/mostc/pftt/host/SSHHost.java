@@ -13,6 +13,7 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.charset.Charset;
+import java.nio.charset.CharsetEncoder;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -266,7 +267,7 @@ public class SSHHost extends RemoteHost {
 		return new MultiCharsetByLineReader(scp.get(normalizePath(file)), cdd);
 	}
 	
-	@Override
+	/*@Override
 	public void saveTextFile(String filename, String text, Charset charset) throws IOException {
 		if (text==null)
 			text = "";
@@ -274,6 +275,8 @@ public class SSHHost extends RemoteHost {
 		byte[] bytes = charset == null ? text.getBytes() : text.getBytes(charset);
 		scp.put(new ByteArrayInputStream(bytes), bytes.length, filename, normalizePath(filename));
 	}
+	TODO
+	*/
 
 	@Override
 	public void saveTextFile(String filename, String text) throws IOException {
@@ -601,6 +604,13 @@ public class SSHHost extends RemoteHost {
 			throws IllegalStateException, FileNotFoundException, IOException {
 		// TODO Auto-generated method stub
 		return null;
+	}
+
+	@Override
+	public void saveTextFile(String filename, String text, CharsetEncoder ce)
+			throws IllegalStateException, IOException {
+		// TODO Auto-generated method stub
+		
 	}
 
 } // end public class SSHHost

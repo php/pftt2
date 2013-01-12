@@ -39,6 +39,7 @@ import com.mostc.pftt.report.FBCReportGen;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.PhptResultPackReader;
 import com.mostc.pftt.results.PhptResultPackWriter;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.runner.PhpUnitTestPackRunner;
 import com.mostc.pftt.runner.PhptTestPackRunner;
 import com.mostc.pftt.scenario.AbstractSAPIScenario;
@@ -111,14 +112,14 @@ public class PfttMain {
 				// @see PhpBuild#getExtensionList
 				if (test.test(build, cm, host, AbstractSAPIScenario.getSAPIScenario(scenario_set).getSAPIType())==ESmokeTestStatus.FAIL) {
 					// if this test fails, RequiredFeaturesSmokeTest will fail for sure
-					cm.println("Main", "Failed smoke test: "+test.getName());
+					cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
 					break;
 				}
 			}
 			{
 				RequiredFeaturesSmokeTest test = new RequiredFeaturesSmokeTest();
 				if (test.test(build, cm, host)==ESmokeTestStatus.FAIL) {
-					cm.println("Main", "Failed smoke test: "+test.getName());
+					cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
 					break;
 				}
 			}
@@ -129,9 +130,9 @@ public class PfttMain {
 				test_cases = new ArrayList<PhptTestCase>(12600);
 				
 				test_pack.cleanup();
-				cm.println("PhptSourceTestPack", "enumerating test cases from test-pack...");
+				cm.println(EPrintType.IN_PROGRESS, "PhptSourceTestPack", "enumerating test cases from test-pack...");
 				test_pack.read(test_cases, tmgr, build);
-				cm.println("PhptSourceTestPack", "enumerated test cases.");
+				cm.println(EPrintType.IN_PROGRESS, "PhptSourceTestPack", "enumerated test cases.");
 			}
 			PhptTestPackRunner test_pack_runner = new PhptTestPackRunner(tmgr, test_pack, scenario_set, build, host);
 			cm.showGUI(test_pack_runner);
@@ -146,7 +147,7 @@ public class PfttMain {
 			{
 				PhptTestCountsMatchSmokeTest test = new PhptTestCountsMatchSmokeTest();
 				if (test.test(tmgr)==ESmokeTestStatus.FAIL) {
-					cm.println("Main", "Failed smoke test: "+test.getName());
+					cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
 				}
 			}
 			//
@@ -175,7 +176,7 @@ public class PfttMain {
 		try {
 			Desktop.getDesktop().browse(new File(html_file).toURI());
 		} catch ( Exception ex ) {
-			cm.addGlobalException(getClass(), "show_report", ex, "unable to show HTML file: "+html_file);
+			cm.addGlobalException(EPrintType.SKIP_OPTIONAL, getClass(), "show_report", ex, "unable to show HTML file: "+html_file);
 		}
 	}
 
@@ -185,14 +186,14 @@ public class PfttMain {
 			{
 				RequiredExtensionsSmokeTest test = new RequiredExtensionsSmokeTest();
 				if (test.test(build, cm, host, AbstractSAPIScenario.getSAPIScenario(scenario_set).getSAPIType())==ESmokeTestStatus.FAIL) {
-					cm.println("Main", "Failed smoke test: "+test.getName());
+					cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
 					break;
 				}
 			}
 			{
 				RequiredFeaturesSmokeTest test = new RequiredFeaturesSmokeTest();
 				if (test.test(build, cm, host)==ESmokeTestStatus.FAIL) {
-					cm.println("Main", "Failed smoke test: "+test.getName());
+					cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
 					break;
 				}
 			}
@@ -202,9 +203,9 @@ public class PfttMain {
 			
 			PhptResultPackWriter tmgr = new PhptResultPackWriter(host, cm, telem_dir(), build, test_pack, scenario_set);
 			test_pack.cleanup();
-			cm.println("PhptSourceTestPack", "enumerating test cases from test-pack...");
+			cm.println(EPrintType.IN_PROGRESS, "PhptSourceTestPack", "enumerating test cases from test-pack...");
 			test_pack.read(test_cases, names, tmgr, build);
-			cm.println("PhptSourceTestPack", "enumerated test cases.");
+			cm.println(EPrintType.IN_PROGRESS, "PhptSourceTestPack", "enumerated test cases.");
 			
 			PhptTestPackRunner test_pack_runner = new PhptTestPackRunner(tmgr, test_pack, scenario_set, build, host);
 			cm.showGUI(test_pack_runner);
@@ -217,7 +218,7 @@ public class PfttMain {
 			{
 				PhptTestCountsMatchSmokeTest test = new PhptTestCountsMatchSmokeTest();
 				if (test.test(tmgr)==ESmokeTestStatus.FAIL) {
-					cm.println("Main", "Failed smoke test: "+test.getName());
+					cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
 				}
 			}
 			//
@@ -435,9 +436,9 @@ public class PfttMain {
 		System.out.println("PFTT: release_get: downloading "+url+"...");
 		
 		if (DownloadUtil.downloadAndUnzip(cm, host, url, local_dir.getAbsolutePath())) {
-			cm.println("release_get", download_type+" INSTALLED: "+local_dir);
+			cm.println(EPrintType.COMPLETED_OPERATION, "release_get", download_type+" INSTALLED: "+local_dir);
 		} else {
-			cm.println("release_get", "unable to decompress "+download_type);
+			cm.println(EPrintType.CANT_CONTINUE, "release_get", "unable to decompress "+download_type);
 		}
 	} // end protected static void download_release_and_decompress
 
@@ -511,7 +512,7 @@ public class PfttMain {
 	
 	protected static void cmd_upgrade(ConsoleManager cm, Host host) {
 		if (!host.hasCmd("git")) {
-			cm.println("upgrade", "please install 'git' first");
+			cm.println(EPrintType.CANT_CONTINUE, "upgrade", "please install 'git' first");
 			return;
 		}
 		
@@ -519,7 +520,7 @@ public class PfttMain {
 		try {
 			host.execElevated("git pull", Host.FOUR_HOURS, host.getPfttDir()).printOutputIfCrash(PfttMain.class.getSimpleName(), cm);
 		} catch ( Exception ex ) {
-			cm.addGlobalException(PfttMain.class, "cmd_upgrade", ex, "error upgrading PFTT");
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, PfttMain.class, "cmd_upgrade", ex, "error upgrading PFTT");
 		}
 	}
 	
@@ -567,7 +568,7 @@ public class PfttMain {
 		if (is_uac||!req_uac)
 			return;
 		
-		cm.println("Note", "run pftt with -uac to avoid getting lots of UAC Dialog boxes (see -help)");
+		cm.println(EPrintType.CLUE, "Note", "run pftt with -uac to avoid getting lots of UAC Dialog boxes (see -help)");
 	}
 
 	public static void main(String[] args) throws Throwable {
@@ -577,7 +578,7 @@ public class PfttMain {
 		int args_i = 0;
 		
 		Config config = null;
-		boolean is_uac = false, windebug = false, pftt_debug = false, show_gui = false, force = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false;
+		boolean is_uac = false, windebug = false, pftt_debug = false, show_gui = false, force = false, disable_debug_prompt = true, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false;
 		String source_pack = null;
 		PhpDebugPack debug_pack = null;
 		LinkedList<File> config_files = new LinkedList<File>();
@@ -777,8 +778,8 @@ public class PfttMain {
 				for ( ; args_i < args.length ; args_i++) 
 					names.add(args[args_i]);
 				
-				cm.println("Build", build.toString());
-				cm.println("Test-Pack", test_pack.toString());
+				cm.println(EPrintType.IN_PROGRESS, "Build", build.toString());
+				cm.println(EPrintType.IN_PROGRESS, "Test-Pack", test_pack.toString());
 				
 				HostEnvUtil.prepareHostEnv(rt.host, cm, !cm.isDisableDebugPrompt());
 				cmd_phpt_named(rt, cm, config, build, test_pack, names);
@@ -816,10 +817,10 @@ public class PfttMain {
 				
 				checkUAC(is_uac, false, config, cm);
 				
-				cm.println("Build", build.toString());
-				cm.println("Test-Pack", test_pack.toString());
+				cm.println(EPrintType.IN_PROGRESS, "Build", build.toString());
+				cm.println(EPrintType.IN_PROGRESS, "Test-Pack", test_pack.toString());
 				
-				HostEnvUtil.prepareHostEnv(rt.host, cm, !disable_debug_prompt);
+				HostEnvUtil.prepareHostEnv(rt.host, cm, !cm.isDisableDebugPrompt());
 				cmd_phpt_list(rt, cm, config, build, test_pack, list_file);		
 				
 				System.out.println("PFTT: finished");
@@ -850,14 +851,14 @@ public class PfttMain {
 					return;
 				}
 				
-				cm.println("Main", "Testing all PHPTs in test pack...");
-				cm.println("Build", build.toString());
-				cm.println("Test-Pack", test_pack.toString());
+				cm.println(EPrintType.IN_PROGRESS, "Main", "Testing all PHPTs in test pack...");
+				cm.println(EPrintType.IN_PROGRESS, "Build", build.toString());
+				cm.println(EPrintType.IN_PROGRESS, "Test-Pack", test_pack.toString());
 				
 				checkUAC(is_uac, false, config, cm);
 				
 				// run all tests
-				HostEnvUtil.prepareHostEnv(rt.host, cm, !disable_debug_prompt);
+				HostEnvUtil.prepareHostEnv(rt.host, cm, !!cm.isDisableDebugPrompt());
 				cmd_phpt_all(rt, cm, config, build, test_pack);
 				
 				System.out.println("PFTT: finished");
@@ -883,13 +884,13 @@ public class PfttMain {
 					for ( Scenario scenario : set ) {
 						if (scenario.isImplemented()) {
 							if (scenario.setup(cm, rt.host, build, set)) {
-								cm.println("Setup", "setup successful: "+scenario);
+								cm.println(EPrintType.COMPLETED_OPERATION, "Setup", "setup successful: "+scenario);
 								switch(scenario.start(cm, rt.host, build, set)) {
 								case STARTED:
-									cm.println("Setup", "Started: "+scenario);
+									cm.println(EPrintType.COMPLETED_OPERATION, "Setup", "Started: "+scenario);
 									break;
 								case FAILED_TO_START:
-									cm.println("Setup", "Error starting: "+scenario);
+									cm.println(EPrintType.CANT_CONTINUE, "Setup", "Error starting: "+scenario);
 									break;
 								case SKIP:
 									break;
@@ -897,17 +898,17 @@ public class PfttMain {
 									break;
 								}
 							} else {
-								cm.println("Setup", "setup failed: "+scenario);
+								cm.println(EPrintType.CANT_CONTINUE, "Setup", "setup failed: "+scenario);
 							}
 						} else {
-							cm.println("Setup", "Skipping scenario, not implemented: "+scenario);
+							cm.println(EPrintType.CANT_CONTINUE, "Setup", "Skipping scenario, not implemented: "+scenario);
 						}
 					} // end for
 				}
 			} else if (command.equals("list")||command.equals("ls")) {
 				checkUAC(is_uac, false, config, cm);
 				for ( ScenarioSet set : getScenarioSets(config) ) {
-					cm.println("List", set.toString());
+					cm.println(EPrintType.IN_PROGRESS, "List", set.toString());
 				}
 			} else if (command.equals("aut")) {
 				

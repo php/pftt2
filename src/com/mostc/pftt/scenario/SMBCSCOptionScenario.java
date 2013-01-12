@@ -3,6 +3,7 @@ package com.mostc.pftt.scenario;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
 public abstract class SMBCSCOptionScenario extends AbstractOptionScenario {
 
@@ -31,7 +32,7 @@ public abstract class SMBCSCOptionScenario extends AbstractOptionScenario {
 				return true;
 			}
 		} catch ( Exception ex ) {
-			cm.addGlobalException(getClass(), "setup", ex, "Unable to "+(isEnable()?"enable":"disable")+" CSC");
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "setup", ex, "Unable to "+(isEnable()?"enable":"disable")+" CSC", host, ps_file);
 		}
 		return false;
 	} // end public boolean setup

@@ -20,6 +20,7 @@ import com.mostc.pftt.model.sapi.SharedSAPIInstanceTestCaseGroupKey;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.model.sapi.WebServerInstance;
 import com.mostc.pftt.results.PhptResultPackWriter;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.scenario.AbstractFileSystemScenario;
 import com.mostc.pftt.scenario.AbstractSAPIScenario;
 import com.mostc.pftt.scenario.AbstractWebServerScenario;
@@ -47,27 +48,26 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 	HashMap<String[],NonThreadSafeExt> non_thread_safe_tests = new HashMap<String[],NonThreadSafeExt>();
 	protected AbstractSAPIScenario sapi_scenario;
 	protected AbstractFileSystemScenario file_scenario;
-	//protected LinkedBlockingQueue<TestCaseGroupKey> group_keys;
 	
-	LinkedBlockingQueue<NonThreadSafeExt> non_thread_safe_exts = new LinkedBlockingQueue<NonThreadSafeExt>();
-	LinkedBlockingQueue<TestCaseGroup> thread_safe_groups = new LinkedBlockingQueue<TestCaseGroup>();
+	protected LinkedBlockingQueue<NonThreadSafeExt> non_thread_safe_exts = new LinkedBlockingQueue<NonThreadSafeExt>();
+	protected LinkedBlockingQueue<TestCaseGroup> thread_safe_groups = new LinkedBlockingQueue<TestCaseGroup>();
 	
-	class NonThreadSafeExt {
-		String[] ext_names;
-		LinkedBlockingQueue<TestCaseGroup> test_groups;
-		HashMap<TestCaseGroupKey,TestCaseGroup> test_groups_by_key = new HashMap<TestCaseGroupKey,TestCaseGroup>();
+	protected static class NonThreadSafeExt {
+		protected String[] ext_names;
+		protected LinkedBlockingQueue<TestCaseGroup> test_groups;
+		protected HashMap<TestCaseGroupKey,TestCaseGroup> test_groups_by_key = new HashMap<TestCaseGroupKey,TestCaseGroup>();
 		
-		public NonThreadSafeExt(String[] ext_names) {
+		protected NonThreadSafeExt(String[] ext_names) {
 			this.ext_names = ext_names;
 			test_groups = new LinkedBlockingQueue<TestCaseGroup>(); 
 		}
 	}
 	
-	class TestCaseGroup {
-		TestCaseGroupKey group_key;
-		LinkedBlockingQueue<PhptTestCase> test_cases;
+	protected static class TestCaseGroup {
+		protected TestCaseGroupKey group_key;
+		protected LinkedBlockingQueue<PhptTestCase> test_cases;
 		
-		TestCaseGroup(TestCaseGroupKey group_key) {
+		protected TestCaseGroup(TestCaseGroupKey group_key) {
 			this.group_key = group_key;
 			test_cases = new LinkedBlockingQueue<PhptTestCase>();
 		}
@@ -94,7 +94,7 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 		
 		// ensure all scenarios are implemented
 		if (!scenario_set.isImplemented()) {
-			twriter.getConsoleManager().println(getClass(), "Scenario Set not implemented: "+scenario_set);
+			twriter.getConsoleManager().println(EPrintType.SKIP_OPERATION, getClass(), "Scenario Set not implemented: "+scenario_set);
 			return;
 		}
 		//
@@ -102,12 +102,12 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 		////////////////// install test-pack onto the storage it will be run from
 		// for local file system, this is just a file copy. for other scenarios, its more complicated (let the filesystem scenario deal with it)
 		
-		twriter.getConsoleManager().println(getClass(), "loaded tests: "+test_cases.size());
-		twriter.getConsoleManager().println(getClass(), "preparing storage for test-pack...");
+		twriter.getConsoleManager().println(EPrintType.IN_PROGRESS, getClass(), "loaded tests: "+test_cases.size());
+		twriter.getConsoleManager().println(EPrintType.IN_PROGRESS, getClass(), "preparing storage for test-pack...");
 		
 		// prepare storage
 		if (!file_scenario.notifyPrepareStorageDir(twriter.getConsoleManager(), host)) {
-			twriter.getConsoleManager().println(getClass(), "unable to prepare storage for test-pack, giving up!");
+			twriter.getConsoleManager().println(EPrintType.CANT_CONTINUE, getClass(), "unable to prepare storage for test-pack, giving up!");
 			close();
 			return;
 		}
@@ -129,7 +129,7 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 		//
 		
 		
-		twriter.getConsoleManager().println(getClass(), "installing... test-pack onto storage: "+test_pack_dir);
+		twriter.getConsoleManager().println(EPrintType.IN_PROGRESS, getClass(), "installing... test-pack onto storage: "+test_pack_dir);
 		
 		// copy
 		active_test_pack = null;
@@ -141,10 +141,10 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 				// copy test-pack onto (remote) file system
 				active_test_pack = src_test_pack.install(host, test_pack_dir);
 		} catch (Exception ex ) {
-			twriter.getConsoleManager().addGlobalException(getClass(), "runTestList", ex, "");
+			twriter.getConsoleManager().addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "runTestList", ex, "", host, file_scenario, active_test_pack);
 		}
 		if (active_test_pack==null) {
-			twriter.getConsoleManager().println(getClass(), "unable to install test-pack, giving up!");
+			twriter.getConsoleManager().println(EPrintType.CANT_CONTINUE, getClass(), "unable to install test-pack, giving up!");
 			close();
 			return;
 		}
@@ -152,18 +152,18 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 		
 		// notify storage
 		if (!file_scenario.notifyTestPackInstalled(twriter.getConsoleManager(), host)) {
-			twriter.getConsoleManager().println(getClass(), "unable to prepare storage for test-pack, giving up!(2)");
+			twriter.getConsoleManager().println(EPrintType.CANT_CONTINUE, getClass(), "unable to prepare storage for test-pack, giving up!(2)");
 			close();
 			return;
 		}
 		
-		twriter.getConsoleManager().println(getClass(), "installed tests("+test_cases.size()+") from test-pack onto storage: "+test_pack_dir);
+		twriter.getConsoleManager().println(EPrintType.IN_PROGRESS, getClass(), "installed tests("+test_cases.size()+") from test-pack onto storage: "+test_pack_dir);
 		
 		//
 		for ( Scenario scenario : scenario_set ) {
 			if (scenario!=file_scenario) {
 				if (!scenario.setup(twriter.getConsoleManager(), host, build, scenario_set)) {
-					twriter.getConsoleManager().println(getClass(), "Scenario setup failed: "+scenario);
+					twriter.getConsoleManager().println(EPrintType.CANT_CONTINUE, getClass(), "Scenario setup failed: "+scenario);
 					return;
 				}
 			}
@@ -180,7 +180,7 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 			});
 		//
 		
-		twriter.getConsoleManager().println(getClass(), "ready to go!    scenario_set="+scenario_set);
+		twriter.getConsoleManager().println(EPrintType.IN_PROGRESS, getClass(), "ready to go!    scenario_set="+scenario_set);
 		
 		/////////////////// installed test-pack, ready to go
 		
@@ -198,7 +198,7 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 	
 			// if not -dont-cleanup-test-pack and if successful, delete test-pack (otherwise leave it behind for user to analyze the internal exception(s))
 			if (!twriter.getConsoleManager().isDontCleanupTestPack() && !active_test_pack.getDirectory().equals(src_test_pack.getSourceDirectory())) {
-				twriter.getConsoleManager().println(getClass(), "deleting/cleaning-up active test-pack: "+active_test_pack);
+				twriter.getConsoleManager().println(EPrintType.IN_PROGRESS, getClass(), "deleting/cleaning-up active test-pack: "+active_test_pack);
 				host.delete(active_test_pack.getDirectory());
 				
 				// cleanup, disconnect storage, etc...
@@ -245,7 +245,7 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 					continue;
 				}
 			} catch ( Exception ex ) {
-				twriter.getConsoleManager().addGlobalException(getClass(), "groupTestCases", ex, "");
+				twriter.getConsoleManager().addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "groupTestCases", ex, "", host, test_case, sapi_scenario);
 				
 				continue;
 			}
@@ -325,7 +325,7 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 		test_count = new AtomicInteger(0);
 		active_thread_count = new AtomicInteger(thread_count);
 		
-		for ( int i=0 ; i < thread_count ; i++ ) { // TODO 
+		for ( int i=0 ; i < thread_count ; i++ ) { 
 			start_thread(parallel);
 		}
 		
@@ -362,7 +362,7 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 				// execute any remaining thread safe jobs
 				runThreadSafe();
 			} catch ( Exception ex ) {
-				twriter.getConsoleManager().addGlobalException(getClass(), "run", ex, "");
+				twriter.getConsoleManager().addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "run", ex, "", host, build, scenario_set);
 			} finally {
 				if (run_thread.get())
 					// if #stopThisThread not called
@@ -462,6 +462,8 @@ public class PhptTestPackRunner extends AbstractTestPackRunner {
 					//}
 				}
 			} // end try
+			
+			Thread.yield();
 		} // end protected void exec_jobs
 
 		@Override

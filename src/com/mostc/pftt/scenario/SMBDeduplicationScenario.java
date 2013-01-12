@@ -4,6 +4,7 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.RemoteHost;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
 /** Tests the new Remote Data Deduplication feature of Windows 2012 using SMB. (NOT IMPLEMENTED)
  * 
@@ -53,17 +54,17 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 	 * 
 	 * @see #notifyTestPackInstalled
 	 * @param cm
-	 * @param host
+	 * @param local_host
 	 * @return TRUE if success, FALSE if falure
 	 */
 	@Override
-	public boolean notifyPrepareStorageDir(ConsoleManager cm, Host host) {
+	public boolean notifyPrepareStorageDir(ConsoleManager cm, Host local_host) {
 		// check that its win8
 		if (!remote_host.isWin8OrLater()) {
-			cm.println(getName(), "Scenario can only be run against a Windows 8/2012+ host");
+			cm.println(EPrintType.XSKIP_OPERATION, getName(), "Scenario can only be run against a Windows 8/2012+ host");
 			return false;
 		} else if (volume.equals("C:")||remote_host.getSystemDrive().equalsIgnoreCase(volume)) {
-			cm.println(getName(), "Can not use Deduplication on a Windows System Drive (ex: C:\\)");
+			cm.println(EPrintType.XSKIP_OPERATION, getName(), "Can not use Deduplication on a Windows System Drive (ex: C:\\)");
 			return false;
 		}
 		
@@ -91,12 +92,12 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 			}
 			
 			// create share on volume
-			if (super.notifyPrepareStorageDir(cm, host)) {
-				cm.println(getName(), "Deduplication enabled on share: "+unc_path+" "+smb_path);
+			if (super.notifyPrepareStorageDir(cm, local_host)) {
+				cm.println(EPrintType.COMPLETED_OPERATION, getName(), "Deduplication enabled on share: "+unc_path+" "+smb_path);
 				return true;
 			}
 		} catch ( Exception ex ) {
-			cm.addGlobalException(getClass(), "notifyPrepareStorageDir", ex, "Unable to enable deduplication");
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "notifyPrepareStorageDir", ex, "Unable to enable deduplication", remote_host, tmp_file);
 		}
 		return false;
 	} // end public boolean notifyPrepareStorageDir
@@ -104,21 +105,21 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 	/** runs a deduplication job after the test-pack is installed, blocking until the deduplication job is done.
 	 * 
 	 * @param cm
-	 * @param host
+	 * @param local_host
 	 */
 	@Override
-	public boolean notifyTestPackInstalled(ConsoleManager cm, Host host) {
+	public boolean notifyTestPackInstalled(ConsoleManager cm, Host local_host) {
 		try {
 			// run deduplication job (on test-pack) -wait for completion
-			cm.println(getName(), "Running deduplication job...");
+			cm.println(EPrintType.IN_PROGRESS, getName(), "Running deduplication job...");
 			if (remote_host.exec("powershell -Command {Start-Dedupjob -Volume "+volume+" -Type Optimization -Wait}", Host.FOUR_HOURS).printOutputIfCrash(getClass(), cm).isSuccess()) {
-				cm.println(getName(), "Deduplication completed successfully.");
+				cm.println(EPrintType.COMPLETED_OPERATION, getName(), "Deduplication completed successfully.");
 				return true;
 			} else {
-				cm.println(getName(), "Deduplication failed");
+				cm.println(EPrintType.OPERATION_FAILED_CONTINUING, getName(), "Deduplication failed");
 			}
 		} catch ( Exception ex ) {
-			cm.addGlobalException(getClass(), "notifyTestPackInstalled", ex, "Deduplication failed");
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "notifyTestPackInstalled", ex, "Deduplication failed", remote_host, local_host, volume);
 		}
 		return false;
 	}

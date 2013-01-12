@@ -4,6 +4,7 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.ESAPIType;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
 /** Smoke test that verifies a PHP Build has all the required extensions.
  * 
@@ -87,13 +88,13 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 			for ( String ext_name : windows_required_extensions ) {
 				// this will timeout in .DLL is missing on Windows - must fail test in that case
 				if (!build.isExtensionEnabled(cm, host, type, ext_name)) {
-					cm.println(getName(), "Missing Required Extension: "+ext_name);
+					cm.println(EPrintType.COMPLETED_OPERATION, getName(), "Missing Required Extension: "+ext_name);
 					return ESmokeTestStatus.FAIL;
 				}
 			}
 			return ESmokeTestStatus.PASS;
 		} catch ( Exception ex ) {
-			cm.addGlobalException(getClass(), "test", ex, "");
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "test", ex, "");
 			return ESmokeTestStatus.INTERNAL_EXCEPTION;
 		}
 	} // end public ESmokeTestStatus test

@@ -5,6 +5,7 @@ import com.mostc.pftt.model.phpt.ESAPIType;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
 /** edits/adds to the INI used to run a PhptTestCase.
  * 
@@ -30,7 +31,7 @@ public abstract class AbstractINIScenario extends AbstractSerialScenario {
 				return true;
 			}
 		} catch ( Exception ex ) {
-			cm.addGlobalException(getClass(), "setup", ex, "");
+			cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "setup", ex, "", host, build, scenario_set);
 		}
 		return false;
 	} // end public boolean setup

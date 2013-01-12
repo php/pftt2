@@ -132,23 +132,14 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				sb.append(StringUtil.removeLineEnding(test_case.getTrim(EPhptSection.ARGS)));
 			} else if (test_case.containsSection(EPhptSection.GET)) {
 				query_string = test_case.getTrim(EPhptSection.GET);
-				if (!test_case.isNamed("ext/filter/tests/007.phpt", "ext/filter/tests/011.phpt")) { // TODO
-					sb.append(" -- ");
-					// include query string in php command too
-					for ( String kv_pair : query_string.split("\\&") ) {
-						sb.append(' ');
-						sb.append(kv_pair);
-					}
+				sb.append(" -- ");
+				// include query string in php command too
+				for ( String kv_pair : query_string.split("\\&") ) {
+					sb.append(' ');
+					sb.append(kv_pair);
 				}
 			}	
 			test_cmd = sb.toString();
-			
-			// TODO
-			if (test_case.isNamed("ext/session/tests/rfc1867_sid_get_2.phpt")) {
-				test_cmd = "C:\\php-sdk\\php-5.4-ts-windows-vc9-x86-r811cd76\\php-cgi.exe -C    -d \"output_handler=\" -d \"open_basedir=\" -d \"safe_mode=0\" -d \"disable_functions=\" -d \"output_buffering=Off\" -d \"error_reporting=E_ALL&~E_NOTICE\" -d \"display_errors=1\" -d \"display_startup_errors=1\" -d \"log_errors=0\" -d \"html_errors=0\" -d \"track_errors=1\" -d \"report_memleaks=1\" -d \"report_zend_debug=0\" -d \"docref_root=\" -d \"docref_ext=.html\" -d \"error_prepend_string=\" -d \"error_append_string=\" -d \"auto_prepend_file=\" -d \"auto_append_file=\" -d \"magic_quotes_runtime=0\" -d \"ignore_repeated_errors=0\" -d \"precision=14\" -d \"memory_limit=128M\" -d \"session.auto_start=0\" -d \"zlib.output_compression=Off\" -d \"file_uploads=1\" -d \"comment=debug builds show some additional E_NOTICE errors\" -d \"upload_max_filesize=1024\" -d \"session.save_path=\" -d \"session.name=PHPSESSID\" -d \"session.use_cookies=0\" -d \"session.use_only_cookies=0\" -d \"session.upload_progress.enabled=1\" -d \"session.upload_progress.cleanup=0\" -d \"session.upload_progress.prefix=upload_progress_\" -d \"session.upload_progress.name=PHP_SESSION_UPLOAD_PROGRESS\" -d \"session.upload_progress.freq=0\" -f \"C:\\php-sdk\\php-test-pack-5.4-ts-windows-vc9-x86-r811cd76\\ext\\session\\tests\\rfc1867_sid_get_2.php\"";
-			} else if (test_case.getName().contains("frontcontroller12.php")) {
-				test_cmd = "C:\\php-sdk\\php-5.4-ts-windows-vc9-x86-r811cd76\\php-cgi.exe -C    -d \"output_handler=\" -d \"open_basedir=\" -d \"safe_mode=0\" -d \"disable_functions=\" -d \"output_buffering=Off\" -d \"error_reporting=32767\" -d \"display_errors=1\" -d \"display_startup_errors=1\" -d \"log_errors=0\" -d \"html_errors=0\" -d \"track_errors=1\" -d \"report_memleaks=1\" -d \"report_zend_debug=0\" -d \"docref_root=\" -d \"docref_ext=.html\" -d \"error_prepend_string=\" -d \"error_append_string=\" -d \"auto_prepend_file=\" -d \"auto_append_file=\" -d \"magic_quotes_runtime=0\" -d \"ignore_repeated_errors=0\" -d \"precision=14\" -d \"memory_limit=128M\" -d \"session.auto_start=0\" -d \"zlib.output_compression=Off\" -d \"default_charset=UTF-8\" -d \"phar.cache_list=ext/phar/tests/cache_list/frontcontroller12.php\" -f \"C:\\php-sdk\\php-test-pack-5.4-ts-windows-vc9-x86-r811cd76\\ext\\phar\\tests\\cache_list\\frontcontroller12.php\"";
-			}
 		}
 		//
 		
@@ -183,13 +174,17 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		
 		// 0 => for memory debugging
 		env.put(ENV_USE_ZEND_ALLOC, "1");
+		// important: some tests need these to work
+		env.put(ENV_TEST_PHP_EXECUTABLE, build.getPhpExe());
+		if (build.hasPhpCgiExe())
+			env.put(ENV_TEST_PHP_CGI_EXECUTABLE, build.getPhpCgiExe());
 		
-		// TODO
-		env.put(ENV_CONTENT_TYPE, "application/x-www-form-urlencoded");
+		
+		//env.put(ENV_CONTENT_TYPE, "application/x-www-form-urlencoded");
 		
 		prepareSTDIN();
 		createShellScript();
-	}
+	} // end protected void prepareTest
 	
 	@Override
 	protected boolean hasContentType() {
@@ -243,11 +238,6 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected String executeTest() throws Exception { 
 		// execute PHP to execute the TEST code ... allow up to 60 seconds for execution
 		//      if test is taking longer than 40 seconds to run, spin up an additional thread to compensate (so other non-slow tests can be executed)
-		// TODO
-		if (test_case.getName().contains("frontcontroller")||test_case.isNamed("ext/filter/tests/007.phpt", "ext/filter/tests/040.phpt", "ext/session/tests/rfc1867_sid_get_2.phpt")) {
-			env = null;
-		}
-		
 		output = host.exec(shell_file, Host.ONE_MINUTE, env, stdin_post, test_case.isNon8BitCharset()?test_case.getCommonCharset():null, active_test_pack.getDirectory(), thread, 40);
 		
 		return output.output;
@@ -302,10 +292,6 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			fw.println("#!/bin/sh");
 		}
 		fw.println("cd "+host.fixPath(test_dir));
-		// TODO
-		if (test_case.getName().contains("frontcontroller")||test_case.isNamed("ext/filter/tests/007.phpt", "ext/filter/tests/011.phpt", "ext/filter/tests/040.phpt", "ext/session/tests/rfc1867_sid_get_2.phpt")) {
-			env.clear();
-		}
 		for ( String name : env.keySet()) {
 			String value = env.get(name);
 			if (value==null)

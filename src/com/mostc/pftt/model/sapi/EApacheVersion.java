@@ -3,6 +3,7 @@ package com.mostc.pftt.model.sapi;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
 public enum EApacheVersion {
 	APACHE_2_2 {
@@ -24,9 +25,9 @@ public enum EApacheVersion {
 				return true;
 			} else if (build.getVersionMajor(cm, host) == 5) {
 				int minor = build.getVersionMinor(cm, host);
-				if (minor==4)
+				if (minor==4) 
 					// Apache 2.4 support was added in: 5.4.10
-					return build.getVersionRelease(cm, host) < 10;
+					return build.getVersionRelease(cm, host) >= 10;
 				else if (minor>4)
 					// Apache 2.4 support always in 5.5
 					return true;
@@ -79,7 +80,7 @@ public enum EApacheVersion {
 		try {
 			return isSupportedEx(cm, host, build);
 		} catch ( Exception ex ) {
-			cm.addGlobalException(getClass(), "isSupported", ex, "");
+			cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "isSupported", ex, "");
 			return false;
 		}
 	}

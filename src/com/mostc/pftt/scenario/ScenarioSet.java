@@ -64,10 +64,15 @@ public class ScenarioSet extends ArrayList<Scenario> {
 		sorted = true;
 		
 		StringBuilder sb = new StringBuilder(40);
+		String str;
 		for ( Scenario s : this ) {
 			if (sb.length()>0)
 				sb.append('_');
-			sb.append(s);
+			str = s.toString();
+			if (str.startsWith("No-"))
+				// ignore these scenarios, they're placeholders
+				continue;
+			sb.append(str);
 		}
 		str = sb.toString();
 	}
@@ -168,6 +173,7 @@ public class ScenarioSet extends ArrayList<Scenario> {
 		return getScenario(clazz, null);
 	}
 	
+	@SuppressWarnings("unchecked")
 	public <S extends Scenario> S getScenario(Class<S> clazz, S def) {
 		for (Scenario scen : this) {
 			if (clazz.isAssignableFrom(scen.getClass()))

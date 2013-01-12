@@ -4,6 +4,7 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.Host.ExecHandle;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
 /** handles integrating with WinDebug.
  * 
@@ -30,7 +31,7 @@ public class WinDebugManager extends DebuggerManager {
 		this.win_dbg_exe = findWinDebugExe(host);
 		
 		if (StringUtil.isEmpty(this.win_dbg_exe))
-			cm.println(getClass(), "WinDebug not found. Install WinDebug to any: "+StringUtil.toString(getWinDebugPaths(host)));
+			cm.println(EPrintType.SKIP_OPERATION, getClass(), "WinDebug not found. Install WinDebug to any: "+StringUtil.toString(getWinDebugPaths(host)));
 		else
 			this.win_dbg_exe = StringUtil.ensureQuoted(this.win_dbg_exe);
 	}
@@ -44,7 +45,7 @@ public class WinDebugManager extends DebuggerManager {
 			try {
 				return new WinDebug(host, win_dbg_exe, toServerName(server_name), src_path, debug_path, build.getBuildPath(), process_id);
 			} catch ( Exception ex ) {
-				cm.addGlobalException(getClass(), "newDebugger", ex, "");
+				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "newDebugger", ex, "", host, win_dbg_exe);
 			}
 		}
 		return null;

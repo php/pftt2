@@ -4,10 +4,13 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.AdjustmentEvent;
+import java.awt.event.AdjustmentListener;
 import java.io.ByteArrayInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -40,6 +43,7 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 	protected JTextArea http_request_textarea, http_response_textarea, ini_textarea, stdin_data_textarea, shell_script_textarea, expectf_textarea, pre_override_textarea, sapi_output_textarea;
 	protected PhptTestResult test_result;
 	protected JScrollPane http_request_jsp, http_response_jsp, expectf_jsp, pre_override_jsp, sapi_output_jsp, ini_jsp, stdin_data_jsp, shell_script_jsp, env_table_jsp;
+	protected ScrollbarSyncManager scrollbar_sync_mgr;
 			
 	public ExpectedActualDiffPHPTDisplay() {
 		super(JScrollPane.VERTICAL_SCROLLBAR_NEVER, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
@@ -56,13 +60,15 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 		horizontal_panel.add("p left hfill vfill", vertical_panel);//, BorderLayout.CENTER);
 		horizontal_panel.add("p left hfill", horizontal_button_panel = new JPanel(new InvisibleGridLayout(1, 12, 2, 2)));//, BorderLayout.PAGE_END);
 		
+		scrollbar_sync_mgr = new ScrollbarSyncManager();
+		
 		actual_display = new TextDisplayPanel();
 		actual_display.text_area.setToolTipText("Actual test output");
-		vertical_panel.add(new JScrollPane(actual_display.text_area));
+		vertical_panel.add(scrollbar_sync_mgr.add(new JScrollPane(actual_display.text_area)));
 		
 		expected_display = new TextDisplayPanel();
 		expected_display.text_area.setToolTipText("Expected test output");
-		vertical_panel.add(new JScrollPane(expected_display.text_area));
+		vertical_panel.add(scrollbar_sync_mgr.add(new JScrollPane(expected_display.text_area)));
 		
 		diff_display = new TextDisplayPanel();
 		diff_display.text_area.setToolTipText("Diff");
@@ -70,7 +76,7 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 		
 		expectf_textarea = new JTextArea();
 		expectf_textarea.setToolTipText("EXPECTF section after regular expression patterns are added");
-		vertical_panel.add(expectf_jsp = new JScrollPane(expectf_textarea));
+		vertical_panel.add(scrollbar_sync_mgr.add(expectf_jsp = new JScrollPane(expectf_textarea)));
 		
 		http_request_textarea = new JTextArea();
 		http_request_textarea.setToolTipText("HTTP Request(s)");
@@ -78,7 +84,7 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 		
 		http_response_textarea = new JTextArea();
 		http_response_textarea.setToolTipText("HTTP Response(s)");
-		vertical_panel.add(http_response_jsp = new JScrollPane(http_response_textarea));
+		vertical_panel.add(scrollbar_sync_mgr.add(http_response_jsp = new JScrollPane(http_response_textarea)));
 		
 		sapi_output_textarea = new JTextArea();
 		sapi_output_textarea.setToolTipText("Output from SAPI - did web server crash? etc...");
@@ -86,7 +92,7 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 		
 		pre_override_textarea = new JTextArea();
 		pre_override_textarea.setToolTipText("Actual test output before any OS specific overrides applied");
-		vertical_panel.add(pre_override_jsp = new JScrollPane(pre_override_textarea));
+		vertical_panel.add(scrollbar_sync_mgr.add(pre_override_jsp = new JScrollPane(pre_override_textarea)));
 		
 		ini_textarea = new JTextArea();
 		ini_textarea.setToolTipText("entire INI used for this test case");
@@ -312,5 +318,29 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 			}
 		} // end public void caretUpdate
 	}
+	
+	protected static class ScrollbarSyncManager implements AdjustmentListener {
+		protected ArrayList<JScrollPane> jsps;
+		
+		public ScrollbarSyncManager() {
+			jsps = new ArrayList<JScrollPane>(5);
+		}
+		
+		public JScrollPane add(JScrollPane jsp) {
+			jsp.getVerticalScrollBar().addAdjustmentListener(this);
+			jsps.add(jsp);
+			return jsp;
+		}
+
+		@Override
+		public void adjustmentValueChanged(AdjustmentEvent e) {
+			for (JScrollPane jsp:jsps) {
+				if (jsp.getVerticalScrollBar()==e.getAdjustable())
+					continue;
+				
+				jsp.getVerticalScrollBar().setValue(e.getValue());
+			}
+		}
+	} // end protected static class ScrollbarSyncManager
 
 } // end public class ExpectedActualDiffPHPTDisplay

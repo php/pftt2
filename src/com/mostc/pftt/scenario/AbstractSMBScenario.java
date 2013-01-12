@@ -4,6 +4,7 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.RemoteHost;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.util.StringUtil;
 
 /** Scenarios that test PHP using builds and test packs that are stored remotely and accessed using SMB.
@@ -56,8 +57,8 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 	 * @return TRUE on success, FALSE on failure (can't use this storage if failure)
 	 */
 	@Override
-	public boolean notifyPrepareStorageDir(ConsoleManager cm, Host host) {
-		return createShare(cm) && connect(cm, host);
+	public boolean notifyPrepareStorageDir(ConsoleManager cm, Host local_host) {
+		return createShare(cm) && connect(cm, local_host);
 	}
 	
 	@Override
@@ -81,14 +82,14 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 				return false;
 			}
 		} catch (Exception ex ) {
-			cm.addGlobalException(getClass(), "createShare", ex, "");
+			cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "createShare", ex, "", remote_host, file_path, share_name);
 			return false;
 		}
 		
 		unc_path = "\\\\"+remote_host.getHostname()+"\\"+share_name; // for Windows
 		smb_path = "smb://"+remote_host.getHostname()+"/"+share_name; // for linux
 		
-		cm.println(getName(), "Share created: "+unc_path+" "+smb_path);
+		cm.println(EPrintType.COMPLETED_OPERATION, getName(), "Share created: "+unc_path+" "+smb_path);
 		
 		return true;
 	} // end public boolean createShare
@@ -104,15 +105,15 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		return false;
 	}
 	
-	public boolean connect(ConsoleManager cm, Host host) {
+	public boolean connect(ConsoleManager cm, Host local_host) {
 		if (remote_host.isRemote()) {
 			try {
 				if (remote_host.isWindows())
-					return connectFromWindows(cm, host);
+					return connectFromWindows(cm, local_host);
 				else
 					return connectFromSamba();
 			} catch ( Exception ex ) {
-				cm.addGlobalException(getClass(), "connect", ex, "");
+				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "connect", ex, "", remote_host, local_host);
 				return false;
 			}
 		} else {
@@ -124,7 +125,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 	} // end public boolean connect
 	
 	protected static final String[] DRIVES = new String[]{"H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y"}; // 18
-	protected boolean connectFromWindows(ConsoleManager cm, Host host) throws Exception {
+	protected boolean connectFromWindows(ConsoleManager cm, Host local_host) throws Exception {
 		local_drive = null;
 		for ( int i=0 ; i < DRIVES.length ; i++ ) {
 			if (remote_host.exists(DRIVES[i] + ":\\")) {
@@ -135,7 +136,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		if (local_drive==null)
 			return false;
 		
-		return host.exec("NET USE "+unc_path+" "+local_drive+" /user:"+remote_host.getUsername()+" /password:"+remote_host.getPassword(), Host.FOUR_HOURS).printOutputIfCrash(getClass(), cm).isSuccess();
+		return local_host.exec("NET USE "+unc_path+" "+local_drive+" /user:"+remote_host.getUsername()+" /password:"+remote_host.getPassword(), Host.FOUR_HOURS).printOutputIfCrash(getClass(), cm).isSuccess();
 	}
 	
 	protected boolean connectFromSamba() {
@@ -156,7 +157,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 				return true;
 			}
 		} catch ( Exception ex ) {
-			cm.addGlobalException(getClass(), "deleteShare", ex, "");
+			cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "deleteShare", ex, "", host, file_path);
 		}
 		return false;
 	}
@@ -165,7 +166,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		try {
 			return host.exec("NET USE "+local_drive+" /DELETE", Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).isSuccess();
 		} catch ( Exception ex ) {
-			cm.addGlobalException(getClass(), "disconnect", ex, "");
+			cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "disconnect", ex, "", host, local_drive);
 		}
 		return false;
 	}

@@ -24,7 +24,7 @@ public abstract class AbstractDetectingCharsetReader extends AbstractReader {
 	public Charset cs; // TODO
 	WeakHashMap<Charset,CharsetDecoderICU> cd_map = new WeakHashMap<Charset,CharsetDecoderICU>();
 	WeakHashMap<Charset,CharsetEncoder> ce_map = new WeakHashMap<Charset,CharsetEncoder>();
-	CharsetEncoder ce;
+	public CharsetEncoder ce;
 	CharsetDecoderICU cd;
 	public CharsetRecognizer[] recogs = CharsetDeciderDecoder.EXPRESS_RECOGNIZERS;//.ALL_RECOGNIZERS; // TODO
 	CharsetRec hc_cm = null; // TODO usually start over for each #detectCharset call

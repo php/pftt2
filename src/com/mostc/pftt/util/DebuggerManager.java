@@ -5,6 +5,7 @@ import com.mostc.pftt.host.LocalHost.LocalExecHandle;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
 /** handles using a debugger on a build that has a test case run against it
  * 
@@ -75,7 +76,7 @@ public abstract class DebuggerManager {
 			else
 				this.src_path = host.joinMultiplePaths(def_source_path, build.guessSourcePackPath(cm, host));
 		} catch ( Exception ex ) {
-			cm.addGlobalException(getClass(), "ensureFindSourceAndDebugPack", ex, "");
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "ensureFindSourceAndDebugPack", ex, "");
 		}
 		try {
 			if (StringUtil.isEmpty(def_debug_path))
@@ -83,7 +84,7 @@ public abstract class DebuggerManager {
 			else
 				this.debug_path = host.joinMultiplePaths(def_debug_path, build.guessDebugPackPath(cm, host));
 		} catch ( Exception ex ) {
-			cm.addGlobalException(getClass(), "ensureFindSourceAndDebugPack", ex, "");
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "ensureFindSourceAndDebugPack", ex, "");
 		}
 	} // end protected void ensureFindSourceAndDebugPack
 	

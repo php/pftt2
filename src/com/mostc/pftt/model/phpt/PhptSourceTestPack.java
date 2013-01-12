@@ -68,6 +68,8 @@ public class PhptSourceTestPack extends SourceTestPack {
 		host.deleteIfExists(test_pack+"/ext/standard/tests/file/windows_links/directory");
 		host.deleteIfExists(test_pack+"/ext/standard/tests/file/windows_links/mounted_volume");
 		host.deleteIfExists(test_pack+"/ext/standard/tests/file/windows_links/mnt");
+		host.deleteIfExists(test_pack+"/tests/security/globtest1");
+		host.deleteIfExists(test_pack+"/tests/security/globtest2");
 	}
 	
 	public void read(List<PhptTestCase> test_files, List<String> names, PhptResultPackWriter twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {

@@ -14,6 +14,7 @@ import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.results.PhptResultPackWriter;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.scenario.ScenarioSet;
@@ -55,20 +56,20 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 	 */
 	public static boolean checkOpenSSLVersion(ConsoleManager cm, Host host, PhpBuild build, EApacheVersion apache_version, String apache_dir) {
 		try {
-			if (!host.isWindows() || apache_version == EApacheVersion.APACHE_2_2 )
+			if (!host.isWindows())
 				return true;
 			String os = apache_dir + "\\bin\\openssl.exe";
 			if (!host.exists(os)) {
 				// can't check
-				cm.println(ApacheManager.class, "Can't find OpenSSL.exe (can't check OpenSSL version, assuming its ok)");
+				cm.println(EPrintType.SKIP_OPTIONAL, ApacheManager.class, "Can't find OpenSSL.exe (can't check OpenSSL version, assuming its ok)");
 				return true;
 			}
 		
 			ExecOutput eo = host.exec("\""+os+"\" version", Host.ONE_MINUTE);
-			System.err.println(eo.output);
-			return eo.output.contains("0.9.8");
+			
+			return build.checkOpenSSLVersion(eo.output);
 		} catch ( Exception ex ) {
-			cm.addGlobalException(ApacheManager.class, "checkOpenSSLVersion", ex, "Error determining OpenSSL version");
+			cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, ApacheManager.class, "checkOpenSSLVersion", ex, "Error determining OpenSSL version");
 			return true;
 		}
 	}
@@ -88,12 +89,12 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		// ApacheLounge build requires VC10 runtime
 		if (host.dirContainsFragment(host.getSystemRoot()+"\\WinSxS", "x86_microsoft.windows.common-controls_6595b64144ccf1df_6.0.7600.16385_none_421189da2b7fabfc")) {
 			// vc10rt doesn't seem to create an obvious folder here, like vc9, but SysInternals procmon found this folder
-			cm.println(getClass(), "VC10 seems to be installed already");
+			cm.println(EPrintType.COMPLETED_OPERATION, getClass(), "VC10 seems to be installed already");
 		} else {
 			if (host.execElevated(host.getPfttDir()+"/bin/vc10_vcredist_x86.exe /Q", Host.ONE_MINUTE*5).printOutputIfCrash(getClass(), cm).isSuccess())
-				cm.println(getClass(), "VC10 Installed");
+				cm.println(EPrintType.COMPLETED_OPERATION, getClass(), "VC10 Installed");
 			else
-				cm.println(getClass(), "VC10 Install was not successful, trying to continue with Apache install anyway...");
+				cm.println(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "VC10 Install was not successful, trying to continue with Apache install anyway...");
 		}
 		
 		// download ApacheLoung build and unzip
@@ -110,7 +111,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 	
 	public static boolean isSupported(PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptTestCase test_case) {
 		if (build.isNTS(host)) {
-			twriter.getConsoleManager().println(ApacheManager.class, "Error Apache requires TS Php Build. NTS Php Builds aren't supported with Apache mod_php.");
+			twriter.getConsoleManager().println(EPrintType.SKIP_OPERATION, ApacheManager.class, "Error Apache requires TS Php Build. NTS Php Builds aren't supported with Apache mod_php.");
 			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "NTS Build not supported", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return false;
@@ -126,7 +127,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			if (cm==null)
 				ex.printStackTrace();
 			else
-				cm.addGlobalException(ApacheManager.class, "decideApacheVersion", ex, "");
+				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, ApacheManager.class, "decideApacheVersion", ex, "");
 			return EApacheVersion.FALLBACK;
 		}
 	}
@@ -142,7 +143,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		String dll;
 		if (host.isWindows()) {
 			if (build.isNTS(host)) {
-				cm.println(getName(), "Error Apache requires TS PHP Build. NTS PHP Builds aren't supported with Apache mod_php.");
+				cm.println(EPrintType.SKIP_OPERATION, getName(), "Error Apache requires TS PHP Build. NTS PHP Builds aren't supported with Apache mod_php.");
 				return null;
 			}
 			if (apache_version==EApacheVersion.APACHE_2_4)
@@ -151,9 +152,9 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 				dll = build.getBuildPath() + "/php5apache2_2.dll";
 			if (!host.exists(dll)) {
 				if (apache_version==EApacheVersion.APACHE_2_4)
-					cm.println(getName(), "Error Apache 2.4 DLL not found with PHP Build");
+					cm.println(EPrintType.SKIP_OPERATION, getName(), "Error Apache 2.4 DLL not found with PHP Build");
 				else
-					cm.println(getName(), "Error Apache 2.2 DLL not found with PHP Build");
+					cm.println(EPrintType.SKIP_OPERATION, getName(), "Error Apache 2.2 DLL not found with PHP Build");
 				return null;
 			}
 			
@@ -164,16 +165,18 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			// NOTE: this returns false (no exception) if apache binary can't be edited (already running, UAC privileges not elevated)
 			if (host!=this.cache_host||this.cache_httpd==null||this.cache_httpd.equals(httpd)) {
 				// do this once
-				VisualStudioUtil.setExeStackSize(cm, host, httpd, VisualStudioUtil.SIXTEEN_MEGABYTES);
-				
-				// check OpenSSL version
-				if (!checkOpenSSLVersion(cm, host, build, apache_version, Host.dirname(Host.dirname(httpd)))) {
-					cm.println(getClass(), "Apache built with different version of OpenSSL than the version PHP is built with. Can't use this Apache build!");
-					return null;
+				synchronized(host) {
+					VisualStudioUtil.setExeStackSize(cm, host, httpd, VisualStudioUtil.SIXTEEN_MEGABYTES);
+					
+					// check OpenSSL version
+					if (!checkOpenSSLVersion(cm, host, build, apache_version, Host.dirname(Host.dirname(httpd)))) {
+						cm.println(EPrintType.SKIP_OPERATION, getClass(), "Apache built with different version of OpenSSL than the version PHP is built with. Can't use this Apache build!");
+						return null;
+					}
+					
+					this.cache_host = host;
+					this.cache_httpd = httpd;
 				}
-				
-				this.cache_host = host;
-				this.cache_httpd = httpd;
 			}
 		} else {
 			dll = "modules/mod_php.so";
@@ -187,7 +190,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		try {
 			host.mkdirs(conf_dir);
 		} catch ( Exception ex ) {
-			cm.println(getName(), "Can't create temporary dir to run Apache");
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "createManagedProcessWebServerInstance", ex, "Can't create temporary dir to run Apache", host, conf_dir);
 			return null;
 		}
 		
@@ -208,7 +211,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		// tell apache mod_php where to find php.ini
 		env.put("PHPRC", php_conf_file);
 		// these 2 env vars are needed for some phpts
-		env.put("TEST_PHP_EXECUTABLE", build.getPhpExe());
+		env.put("TEST_PHP_EXECUTABLE", httpd);
 		env.put("TEST_PHP_CGI_EXECUTABLE", build.getPhpCgiExe());
 		
 		// apache configuration (also tells where to find php.ini. see PHPIniDir directive)
@@ -217,13 +220,13 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		try {
 			host.saveTextFile(php_conf_file, ini.toString());
 		} catch ( Exception ex ) {
-			cm.addGlobalException(getClass(), "createManagedProcessWebServerInstance", ex, "Unable to save PhpIni: "+php_conf_file);
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "createManagedProcessWebServerInstance", ex, "Unable to save PhpIni: "+php_conf_file, host, php_conf_file);
 			return null;
 		}
 		try {
 			host.saveTextFile(apache_conf_file, conf_str);
 		} catch ( Exception ex ) {
-			cm.addGlobalException(getClass(), "createManagedProcessWebServerInstance", ex, "Unable to save Apache configuration: "+apache_conf_file);
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "createManagedProcessWebServerInstance", ex, "Unable to save Apache configuration: "+apache_conf_file, host, apache_conf_file);
 			return null;
 		}
 		
@@ -276,18 +279,23 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		
 		@Override
 		protected void do_close() {
-			super.do_close();
-			
-			if (!isCrashed()) {
-				// don't delete temp dir if crashed so user can analyze
-				try {
-					if (StringUtil.isEmpty(error_log)) {
-						// cache log in memory before deleting on disk in case its still needed after #close call
-						readLogCache();
+			// do this several times to make sure it gets done
+			final boolean c = process.isCrashed();
+			for ( int i=0; i <3;i++) {
+				super.do_close();
+				
+				if (!c) {
+					// don't delete temp dir if crashed so user can analyze
+					try {
+						if (StringUtil.isEmpty(error_log)) {
+							// cache log in memory before deleting on disk in case its still needed after #close call
+							readLogCache();
+						}
+						
+						host.delete(conf_dir);
+					} catch ( Exception ex ) {
 					}
-					
-					host.delete(conf_dir);
-				} catch ( Exception ex ) {}
+				}
 			}
 		}
 		
@@ -296,7 +304,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			try {
 				return host.exec(httpd(apache_version, host)+" -V", Host.ONE_MINUTE).output;
 			} catch ( Exception ex ) {
-				cm.addGlobalException(getClass(), "getInstanceInfo", ex, "");
+				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "getInstanceInfo", ex, "");
 				return StringUtil.EMPTY;
 			}
 		}
@@ -313,12 +321,12 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		
 		try {
 			if (host.isWindows() ? installWindows(apache_version, cm, host, build) : installLinux(cm, host)) {
-				cm.println(getClass(), "");
+				cm.println(EPrintType.COMPLETED_OPERATION, getClass(), "");
 				
 				return true;
 			}
 		} catch ( Exception ex ) {
-			cm.addGlobalException(getClass(), "setup", ex, "");
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "setup", ex, "");
 		}
 		return false;
 	}
@@ -407,7 +415,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			else
 				return host.exec("/etc/init.d/apache start", Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).isSuccess();
 		} catch ( Exception ex ) {
-			cm.addGlobalException(getClass(), "start", ex, "");
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "start", ex, "");
 		}
 		return false;
 	}
@@ -422,7 +430,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			else
 				return host.exec("/etc/init.d/apache stop", Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).isSuccess();
 		} catch ( Exception ex ) {
-			cm.addGlobalException(getClass(), "stop", ex, "");
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "stop", ex, "");
 		}
 		return false;
 	}

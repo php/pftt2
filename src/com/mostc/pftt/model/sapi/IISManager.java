@@ -9,6 +9,7 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.util.ErrorUtil;
 import com.mostc.pftt.util.StringUtil;
 
@@ -53,7 +54,7 @@ public class IISManager extends WebServerManager {
 		try {
 			return do_start(host).printOutputIfCrash(getClass(), cm).isSuccess();
 		} catch ( Exception ex ) {
-			cm.addGlobalException(getClass(), "start", ex, "");
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "start", ex, "");
 			return false;
 		}
 	}
@@ -66,7 +67,7 @@ public class IISManager extends WebServerManager {
 			if (cm==null)
 				ex.printStackTrace();
 			else
-				cm.addGlobalException(getClass(), "stop", ex, "");
+				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "stop", ex, "");
 			return false;
 		}
 	}
@@ -121,7 +122,7 @@ public class IISManager extends WebServerManager {
 			// set docroot to the location of the installed test-pack
 			return appcmd(host, "set vdir /vdir.name:\""+site_name+"/"+app_name+"\" /physicalPath:\""+doc_root+"\"");
 		} catch ( Exception ex ) {
-			cm.addGlobalException(getClass(), "configure", ex, "");
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "configure", ex, "");
 		}
 		return null;
 	} // end public ExecOutput configure
@@ -136,7 +137,7 @@ public class IISManager extends WebServerManager {
 			if (cm==null)
 				ex.printStackTrace();
 			else
-				cm.addGlobalException(getClass(), "undoConfigure", ex, "");
+				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "undoConfigure", ex, "");
 		}
 		return false;
 	}
@@ -253,7 +254,7 @@ public class IISManager extends WebServerManager {
 			try {
 				return appcmd(host, "-v").output;
 			} catch ( Exception ex ) {
-				cm.addGlobalException(getClass(), "getInstanceInfo", ex, "");
+				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "getInstanceInfo", ex, "");
 				return StringUtil.EMPTY;
 			}
 		}
@@ -273,28 +274,28 @@ public class IISManager extends WebServerManager {
 	@Override
 	public boolean setup(ConsoleManager cm, Host host, PhpBuild build) {
 		if (!host.isWindows()) {
-			cm.println(IISManager.class, "Only supported OS is Windows");
+			cm.println(EPrintType.SKIP_OPERATION, IISManager.class, "Only supported OS is Windows");
 			return false;
 		} else if (host.isBeforeVista()) {
-			cm.println(IISManager.class, "Only Windows Vista/2008/7/2008r2/8/2012+ are supported. Upgrade Windows and try again.");
+			cm.println(EPrintType.SKIP_OPERATION, IISManager.class, "Only Windows Vista/2008/7/2008r2/8/2012+ are supported. Upgrade Windows and try again.");
 			return false;
 		} else {
 			if (host.exists(appcmd_path(host))) {
-				cm.println(getClass(), "IIS already installed");
+				cm.println(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "IIS already installed");
 				
 				return true;
 			}
 			
 			try {
 				if (host.execElevated("pkgmgr /iu:IIS-WebServerRole;IIS-WebServer;IIS-StaticContent;IIS-WebServerManagementTools;IIS-ManagementConsole;IIS-CGI", Host.ONE_HOUR).printOutputIfCrash(getClass(), cm).isSuccess()) {
-					cm.println(getClass(), "IIS installed");
+					cm.println(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "IIS installed");
 					
 					return true;
 				} else {
-					cm.println(getClass(), "IIS install failed");
+					cm.println(EPrintType.CANT_CONTINUE, getClass(), "IIS install failed");
 				}
 			} catch ( Exception ex ) {
-				cm.addGlobalException(getClass(), "setup", ex, "exception during IIS install.");
+				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "setup", ex, "exception during IIS install.", host);
 			}
 			return false;
 		}

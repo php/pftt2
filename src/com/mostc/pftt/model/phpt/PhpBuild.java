@@ -13,6 +13,7 @@ import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.Build;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.util.StringUtil;
 
 /** represents a single build of PHP.
@@ -36,6 +37,15 @@ public class PhpBuild extends Build {
 	public PhpBuild(String build_path) {
 		this.build_path = build_path;
 		ext_enable_map = new WeakHashMap<PhpIni,WeakHashMap<String,Boolean>>();
+	}
+	
+	/** checks if given OpenSSL version is compatible with this PHP Build
+	 * 
+	 * @param str
+	 * @return
+	 */
+	public boolean checkOpenSSLVersion(String str) {
+		return str.contains("0.9.8");
 	}
 	
 	@Override
@@ -64,7 +74,7 @@ public class PhpBuild extends Build {
 				php_cgi_exe = null; // mark as not found
 			return true;
 		} catch ( Exception ex ) {
-			cm.addGlobalException(getClass(), "open", ex, "");
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "open", ex, "", host, build_path);
 		}
 		return false;
 	} // end public boolean open

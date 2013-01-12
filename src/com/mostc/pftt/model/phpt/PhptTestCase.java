@@ -4,6 +4,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.nio.charset.Charset;
+import java.nio.charset.CharsetEncoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Set;
@@ -50,45 +51,40 @@ import com.mostc.pftt.util.apache.regexp.REProgram;
 public class PhptTestCase extends TestCase {
 	/** extensions (& name fragments) that have non-thread-safe tests (only 1 test of an NTS extension will be run at a time) processed in order*/
 	public static final String[][] NON_THREAD_SAFE_EXTENSIONS = new String[][]{
-			new String[]{"ext/fileinfo"},
 			// split up the ext/standard/tests/file PHPTs
 			// they can be run in 1 thread, but split them into several threads so they'll all finish faster
-			new String[]{"ext/standard/tests/file/mkdir_"},
+			new String[]{"ext/standard/tests/file/mkdir_", "ext/standard/tests/file/mkdir-"},
 			new String[]{"ext/standard/tests/file/lstat_", "ext/standard/tests/file/stat_"},
 			new String[]{"ext/standard/tests/file/fgets_"},
+			new String[]{"ext/standard/tests/file/fgetcsv_", "ext/standard/tests/file/fputcsv_"},
 			new String[]{"ext/standard/tests/file/tempnam_"},
 			new String[]{"ext/standard/tests/file/touch_"},
 			new String[]{"ext/standard/tests/file/symlink_"},
-			new String[]{"ext/standard/tests/file/file_get_contents_"},
-			new String[]{"ext/standard/tests/file/include_"},
-			new String[]{"ext/standard/tests/file/stream_"},
+			new String[]{"ext/standard/tests/file/file_get_contents_", "ext/standard/tests/file/file_put_contents_"},
+			new String[]{"ext/standard/tests/file/windows_acls/", "ext/standard/tests/file/windows_links/"},
+			//new String[]{"ext/standard/tests/file/0"},
 			// note: this array is processed in order, so this entry will catch any remaining /file/ phpts
-			new String[]{"ext/standard/tests/file"},
-			new String[]{"ext/standard/tests/dir"},
-			new String[]{"ext/standard/tests/sockets", "ext/sockets"},
-			new String[]{"ext/xsl"},
-			new String[]{"tests/security"},
-			new String[]{"ext/zip/"}, // TODO needed?
-			new String[]{"ext/zlib/"}, // TODO needed?
-			new String[]{"ext/xml"}, // TODO needed?
-			new String[]{"ext/dom"}, // TODO needed?
-			new String[]{"ext/standard/tests/network"},
-			new String[]{"ext/standard/tests/strings"},
+			//new String[]{"ext/standard/tests/file/"},
+			new String[]{"ext/standard/tests/dir/"},
+			new String[]{"ext/standard/tests/sockets/", "ext/sockets/"},
+			new String[]{"tests/security/"},
+			new String[]{"ext/standard/tests/network/"},
 			new String[]{"ext/session", "tests/basic/bug20539.phpt"},
-			new String[]{"ext/mysql", "ext/pdo_mysql"},
-			new String[]{"ext/pgsql", "ext/pdo_pgsql"},
-			new String[]{"sapi/cli/php_cli_server"},
-			new String[]{"sapi/cgi"},
-			new String[]{"ext/firebird", "ext/pdo_firebird"},
-			new String[]{"ext/sybase"},
-			new String[]{"ext/interbase", "ext/pdo_interbase"},
-			new String[]{"ext/mssql", "ext/pdo_mssql"},
-			new String[]{"ext/odbc", "ext/pdo_odbc"},
-			new String[]{"ext/pdo"}, // for any remaining pdo tests
-			new String[]{"ext/xmlrpc"},
-			new String[]{"ext/soap"},
-			// TODO test for some ext/spl phpts
-			new String[]{"csv"}
+			new String[]{"ext/mysql/", "ext/pdo_mysql/"},
+			new String[]{"ext/pgsql/", "ext/pdo_pgsql/"},
+			new String[]{"sapi/cli/php_cli_server_"},
+			new String[]{"sapi/cgi/"},
+			new String[]{"ext/firebird/", "ext/pdo_firebird/"},
+			new String[]{"ext/sybase/"},
+			new String[]{"ext/interbase/", "ext/pdo_interbase/"},
+			new String[]{"ext/mssql/", "ext/pdo_mssql/"},
+			new String[]{"ext/odbc/", "ext/pdo_odbc/"},
+			new String[]{"ext/pdo/"}, // for any remaining pdo tests
+			new String[]{"ext/xmlrpc/"},
+			new String[]{"ext/soap/"},
+			new String[]{"ext/fileinfo/"},
+			new String[]{"ext/ldap/"},
+			new String[]{"ext/spl/tests/splfileobject_fputcsv_", "ext/spl/tests/splfileobject_fgetcsv_"}
 		};
 	// PHPT test files end with .phpt
 	public static final String PHPT_FILE_EXTENSION = ".phpt";
@@ -103,6 +99,7 @@ public class PhptTestCase extends TestCase {
 	private WeakReference<RE> expected_re;
 	private PhptSourceTestPack test_pack;
 	private CharsetICU common_charset;
+	private CharsetEncoder ce;
 	
 	/** loads the named PHPT test from the given PhptSourceTestPack
 	 * 
@@ -145,14 +142,7 @@ public class PhptTestCase extends TestCase {
 		test_case.parent = parent;
 		
 		DefaultCharsetDeciderDecoder cdd = newCharsetDeciderDecoder();
-		ByLineReader reader;
-		// TODO temp
-		if (test_case.name.equals("ext/iconv/tests/iconv_substr.phpt"))
-			reader = host.readFile(file, test_case.common_charset = (CharsetICU) CharsetICU.forNameICU("ISO-2022-JP"));
-		else if (test_case.name.startsWith("ext/mbstring/tests/mb_output_handler_pattern"))
-			reader = host.readFile(file, test_case.common_charset = (CharsetICU) CharsetICU.forNameICU("EUC-JP"));
-		else
-			reader = PhptTestCase.isNon8BitCharset(test_case.name) ? host.readFileDetectCharset(file, cdd) : host.readFile(file);
+		ByLineReader reader = PhptTestCase.isNon8BitCharset(test_case.name) ? host.readFileDetectCharset(file, cdd) : host.readFile(file);
 			
 		
 		String line = reader.readLine();
@@ -230,8 +220,10 @@ public class PhptTestCase extends TestCase {
 		}
 		reader.close();
 		
-		if (reader instanceof AbstractDetectingCharsetReader)
+		if (reader instanceof AbstractDetectingCharsetReader) {
 			test_case.common_charset = (CharsetICU) ((AbstractDetectingCharsetReader)reader).cs;//cdd.getCommonCharset();
+			test_case.ce = ((AbstractDetectingCharsetReader)reader).ce;
+		}
 		
 		return test_case;
 	} // end public static PhptTestCase load
@@ -709,9 +701,9 @@ public class PhptTestCase extends TestCase {
 			if (env_str.contains("return") && env_str.contains("<<<")) {
 				// is executable PHP code (must execute to get values
 				
-				env_str = env_str.replaceAll("\\$this->conf\\['TEST_PHP_EXECUTABLE'\\]", build.getPhpExe());
+				env_str = env_str.replaceAll("\\$this->conf\\['TEST_PHP_EXECUTABLE'\\]", build.getPhpExe().replaceAll("\\\\", "\\\\\\\\"));
 				if (build.hasPhpCgiExe())
-					env_str = env_str.replaceAll("\\$this->conf\\['TEST_PHP_CGI_EXECUTABLE'\\]", build.getPhpCgiExe());
+					env_str = env_str.replaceAll("\\$this->conf\\['TEST_PHP_CGI_EXECUTABLE'\\]", build.getPhpCgiExe().replaceAll("\\\\", "\\\\\\\\"));
 				
 				String code = "<?php function a() {\n"+env_str+" \n}\n $a=a(); echo $a.\"\\n\"; ?>";
 				
@@ -972,6 +964,10 @@ public class PhptTestCase extends TestCase {
 	 */
 	public Charset getCommonCharset() {
 		return common_charset;
+	}
+	
+	public CharsetEncoder getCommonCharsetEncoder() {
+		return ce;
 	}
 
 	public void serialize(XmlSerializer serial) throws IllegalArgumentException, IllegalStateException, IOException {

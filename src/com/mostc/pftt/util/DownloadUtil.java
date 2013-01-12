@@ -30,6 +30,7 @@ import org.apache.http.protocol.RequestUserAgent;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
 public class DownloadUtil {
 
@@ -37,7 +38,7 @@ public class DownloadUtil {
 		try {
 			return downloadAndUnzip(cm, host, new URL(remote_url), local_dir);
 		} catch ( Exception ex ) {
-			cm.addGlobalException(DownloadUtil.class, "downloadAndUnzip", ex, "");
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, DownloadUtil.class, "downloadAndUnzip", ex, "");
 			return false;
 		}
 	}
@@ -89,14 +90,14 @@ public class DownloadUtil {
 			
 			out_file.close();
 		} catch ( Exception ex ) {
-			cm.addGlobalException(DownloadUtil.class, "downloadAndUnzip", ex, "error downloading file: "+remote_url);
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, DownloadUtil.class, "downloadAndUnzip", ex, "error downloading file: "+remote_url);
 			return false;
 		} finally {
 			if ( response == null || !connStrategy.keepAlive(response, context)) {
 				try {
 					conn.close();
 				} catch ( Exception ex ) {
-					cm.addGlobalException(DownloadUtil.class, "downloadAndUnzip", ex, "");
+					cm.addGlobalException(EPrintType.CANT_CONTINUE, DownloadUtil.class, "downloadAndUnzip", ex, "");
 				}
 			}
 		}
@@ -112,7 +113,7 @@ public class DownloadUtil {
 			
 			return true;
 		} catch ( Exception ex ) {
-			cm.addGlobalException(DownloadUtil.class, "downloadAndUnzip", ex, "");
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, DownloadUtil.class, "downloadAndUnzip", ex, "");
 			return false;
 		}
 	} // end public static boolean downloadAndUnzip

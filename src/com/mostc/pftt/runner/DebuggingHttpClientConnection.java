@@ -16,25 +16,17 @@ import org.apache.http.io.SessionOutputBuffer;
 import org.apache.http.params.HttpParams;
 
 public class DebuggingHttpClientConnection extends DefaultHttpClientConnection {
-	protected final ByteArrayOutputStream bin, bout;
+	protected final ByteArrayOutputStream response, request;
 	
-	public DebuggingHttpClientConnection() {
-		bin = new ByteArrayOutputStream();
-		bout = new ByteArrayOutputStream();
-	}
-	
-	public byte[] getRequestByteArray() {
-		return bin.toByteArray();
-	}
-	
-	public byte[] getResponseByteArray() {
-		return bout.toByteArray();
+	public DebuggingHttpClientConnection(ByteArrayOutputStream request, ByteArrayOutputStream response) {
+		this.request = request;
+		this.response = response;
 	}
 	
 	@Override
 	protected SessionInputBuffer createSessionInputBuffer(final Socket socket, int buffersize, final HttpParams params) throws IOException {
 		InputStream in = socket.getInputStream();
-		DebuggingInputStream din = new DebuggingInputStream(bin, in);
+		DebuggingInputStream din = new DebuggingInputStream(response, in);
 		
 		return new DebugSocketInputBuffer(socket, din, buffersize, params);
 	}
@@ -42,7 +34,7 @@ public class DebuggingHttpClientConnection extends DefaultHttpClientConnection {
 	@Override
 	protected SessionOutputBuffer createSessionOutputBuffer(final Socket socket, int buffersize, final HttpParams params) throws IOException {
 		OutputStream out = socket.getOutputStream();
-		DebuggingOutputStream dout = new DebuggingOutputStream(bout, out);
+		DebuggingOutputStream dout = new DebuggingOutputStream(request, out);
 		
 		return new DebugSocketOutputBuffer(socket, dout, buffersize, params);
 	}

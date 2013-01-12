@@ -2,6 +2,7 @@ package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
 /** Placeholder scenario for storing a PHP build and its test pack on the local file system as opposed to remotely somewhere.
  * 
@@ -32,7 +33,7 @@ public class LocalFileSystemScenario extends AbstractFileSystemScenario {
 			host.mkdirs(getTestPackStorageDir(host));
 			return true;
 		} catch ( Exception ex ) {
-			cm.addGlobalException(LocalFileSystemScenario.class, "notifyPrepareStorageDir", ex, "");
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, LocalFileSystemScenario.class, "notifyPrepareStorageDir", ex, "");
 			return false;
 		}
 	}
