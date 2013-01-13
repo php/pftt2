@@ -64,6 +64,8 @@ public class PhptTestResult {
 	public String http_request;
 	/** the whole http response, headers and body (utf-8 encoded) */
 	public String http_response;
+	public String regex_debug_dump;
+	public String regex_output;
 	
 	public PhptTestResult(Host host, EPhptTestStatus status, PhptTestCase test_case, String actual, String[] actual_lines, String[] expected_lines, Charset actual_cs, PhpIni ini, Map<String,String> env, String[] cmd_array, byte[] stdin_data, String shell_script, Diff<String> diff, String expectf_output, String preoverride_actual) {
 		this(host, status, test_case, actual, actual_lines, expected_lines, actual_cs, ini, env, cmd_array, stdin_data, shell_script, diff, expectf_output, preoverride_actual, null);
@@ -286,8 +288,19 @@ public class PhptTestResult {
 				serial.endTag(null, "httpResponse");
 			}
 			
+			if (StringUtil.isNotEmpty(regex_debug_dump)) {
+				serial.startTag(null, "regexDebugDump");
+				serial.text(regex_debug_dump);
+				serial.endTag(null, "regexDebugDump");
+			}
+			
+			if (StringUtil.isNotEmpty(regex_output)) {
+				serial.startTag(null, "regexOutput");
+				serial.text(regex_output);
+				serial.endTag(null, "regexOutput");
+			}
+			
 		} // end if (status==FAIL, etc...)
-		
 		
 		// include the exact test case that was run
 		test_case.serialize(serial);

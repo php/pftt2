@@ -2,6 +2,7 @@ package com.mostc.pftt.model.phpt;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.ref.WeakReference;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
@@ -29,6 +30,7 @@ import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.StringUtil;
 import com.mostc.pftt.util.apache.regexp.RE;
 import com.mostc.pftt.util.apache.regexp.RECompiler;
+import com.mostc.pftt.util.apache.regexp.REDebugCompiler;
 import com.mostc.pftt.util.apache.regexp.REProgram;
 
 /** A Single PHPT Test Case.
@@ -378,6 +380,52 @@ public class PhptTestCase extends TestCase {
 			return expected_re;
 		}
 	} // end public RE getExpectedCompiled
+
+	/** tries matching actual output String against EXPECTF or EXPECTREGEX section and
+	 * writes debugging information and output to the given PrintWriters.
+	 * 
+	 * @param host
+	 * @param scenario_set
+	 * @param twriter
+	 * @param actual_str
+	 * @param dump_pw
+	 * @param output_pw
+	 */
+	public void debugExpectedRegularExpression(Host host, ScenarioSet scenario_set, PhptResultPackWriter twriter, String actual_str, PrintWriter dump_pw, PrintWriter output_pw) {
+		String expected_str;		
+		if (containsSection(EPhptSection.EXPECTREGEX)) {
+			expected_str = getTrim(EPhptSection.EXPECTREGEX);
+		} else if (containsSection(EPhptSection.EXPECTF)) {
+			//
+			// EXPECTF has special strings (ex: %s) that are replaced by builtin regular expressions
+			// after that replacement, it is treated just like EXPECTREGEX
+			//
+			expected_str = getTrim(EPhptSection.EXPECTF);
+			
+			expected_str = prepareExpectF(expected_str);			
+		} else {
+			return;
+		}
+		
+		{
+			String override_expected_str = PhptOverrideManager.replaceWithRegexOverrides(host, expected_str);
+			if (override_expected_str!=null) {
+				expected_str = override_expected_str;
+			}
+		}
+		
+		REDebugCompiler re = new REDebugCompiler();
+		REProgram rp = re.compile(expected_str);
+		
+		re.dumpProgram(dump_pw);
+		
+		RE r = new RE(rp);
+		r.match(actual_str);
+		
+		for (int i = 0; i < r.getParenCount(); i++) {
+			output_pw.println("$" + i + " = " + r.getParen(i));
+		}
+	} // end public void debugExpectedRegularExpression
 	
 	/** prepares the EXPECTF section, transforming it into a regular expression
 	 * 

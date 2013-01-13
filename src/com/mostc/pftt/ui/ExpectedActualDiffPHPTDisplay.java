@@ -1,5 +1,6 @@
 package com.mostc.pftt.ui;
 
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
@@ -40,11 +41,11 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 	protected TextDisplayPanel expected_display, diff_display, actual_display, test_display;
 	protected DefaultTableModel env_table_model;
 	protected JTable env_table;
-	protected JTextArea http_request_textarea, http_response_textarea, ini_textarea, stdin_data_textarea, shell_script_textarea, expectf_textarea, pre_override_textarea, sapi_output_textarea;
+	protected JTextArea regex_debug_dump_textarea, regex_output_textarea, http_request_textarea, http_response_textarea, ini_textarea, stdin_data_textarea, shell_script_textarea, expectf_textarea, pre_override_textarea, sapi_output_textarea;
 	protected PhptTestResult test_result;
-	protected JScrollPane http_request_jsp, http_response_jsp, expectf_jsp, pre_override_jsp, sapi_output_jsp, ini_jsp, stdin_data_jsp, shell_script_jsp, env_table_jsp;
+	protected JScrollPane regex_debug_dump_jsp, regex_output_jsp, http_request_jsp, http_response_jsp, expectf_jsp, pre_override_jsp, sapi_output_jsp, ini_jsp, stdin_data_jsp, shell_script_jsp, env_table_jsp;
 	protected ScrollbarSyncManager scrollbar_sync_mgr;
-			
+	
 	public ExpectedActualDiffPHPTDisplay() {
 		super(JScrollPane.VERTICAL_SCROLLBAR_NEVER, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 		horizontal_panel = new JPanel(new RiverLayout(2, 2)) {
@@ -64,58 +65,81 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 		
 		actual_display = new TextDisplayPanel();
 		actual_display.text_area.setToolTipText("Actual test output");
+		actual_display.text_area.setBackground(new Color(220, 255, 150));
 		vertical_panel.add(scrollbar_sync_mgr.add(new JScrollPane(actual_display.text_area)));
 		
 		expected_display = new TextDisplayPanel();
 		expected_display.text_area.setToolTipText("Expected test output");
+		expected_display.text_area.setBackground(new Color(220, 220, 150));
 		vertical_panel.add(scrollbar_sync_mgr.add(new JScrollPane(expected_display.text_area)));
 		
 		diff_display = new TextDisplayPanel();
 		diff_display.text_area.setToolTipText("Diff");
+		diff_display.text_area.setBackground(new Color(220, 255, 255));
 		vertical_panel.add(new JScrollPane(diff_display.text_area));
 		
 		expectf_textarea = new JTextArea();
 		expectf_textarea.setToolTipText("EXPECTF section after regular expression patterns are added");
+		expectf_textarea.setBackground(new Color(220, 150, 150));
 		vertical_panel.add(scrollbar_sync_mgr.add(expectf_jsp = new JScrollPane(expectf_textarea)));
+		
+		regex_debug_dump_textarea = new JTextArea();
+		regex_debug_dump_textarea.setToolTipText("Debug dump from Regular Expression engine");
+		regex_debug_dump_textarea.setBackground(new Color(255, 255, 150));
+		vertical_panel.add(scrollbar_sync_mgr.add(regex_debug_dump_jsp = new JScrollPane(regex_debug_dump_textarea)));
+		
+		regex_output_textarea = new JTextArea();
+		regex_output_textarea.setToolTipText("Matches between actual output and EXPECTF section");
+		regex_output_textarea.setBackground(new Color(255, 220, 150));
+		vertical_panel.add(scrollbar_sync_mgr.add(regex_output_jsp = new JScrollPane(regex_output_textarea)));
 		
 		http_request_textarea = new JTextArea();
 		http_request_textarea.setToolTipText("HTTP Request(s)");
+		http_request_textarea.setBackground(new Color(220, 150, 220));
 		vertical_panel.add(http_request_jsp = new JScrollPane(http_request_textarea));
 		
 		http_response_textarea = new JTextArea();
 		http_response_textarea.setToolTipText("HTTP Response(s)");
+		http_response_textarea.setBackground(new Color(220, 150, 255));
 		vertical_panel.add(scrollbar_sync_mgr.add(http_response_jsp = new JScrollPane(http_response_textarea)));
 		
 		sapi_output_textarea = new JTextArea();
 		sapi_output_textarea.setToolTipText("Output from SAPI - did web server crash? etc...");
+		sapi_output_textarea.setBackground(new Color(255, 255, 255));
 		vertical_panel.add(sapi_output_jsp = new JScrollPane(sapi_output_textarea));
 		
 		pre_override_textarea = new JTextArea();
 		pre_override_textarea.setToolTipText("Actual test output before any OS specific overrides applied");
+		pre_override_textarea.setBackground(new Color(255, 150, 150));
 		vertical_panel.add(scrollbar_sync_mgr.add(pre_override_jsp = new JScrollPane(pre_override_textarea)));
 		
 		ini_textarea = new JTextArea();
 		ini_textarea.setToolTipText("entire INI used for this test case");
+		ini_textarea.setBackground(new Color(255, 150, 220));
 		vertical_panel.add(ini_jsp = new JScrollPane(ini_textarea));
 		
 		stdin_data_textarea = new JTextArea();
 		stdin_data_textarea.setLineWrap(true);
 		stdin_data_textarea.setToolTipText("STDIN");
+		stdin_data_textarea.setBackground(new Color(255, 150, 255));
 		vertical_panel.add(stdin_data_jsp = new JScrollPane(stdin_data_textarea));
 		
 		shell_script_textarea = new JTextArea();
 		shell_script_textarea.setLineWrap(true);
 		shell_script_textarea.setToolTipText("Shell Script");
+		shell_script_textarea.setBackground(new Color(150, 255, 150));
 		vertical_panel.add(shell_script_jsp = new JScrollPane(shell_script_textarea));
 		
 		env_table = new JTable(env_table_model = new DefaultTableModel());
 		env_table.setToolTipText("ENV vars");
 		env_table_model.addColumn("Name");
 		env_table_model.addColumn("Value");
+		env_table.setBackground(new Color(150, 220, 150));
 		vertical_panel.add(env_table_jsp = new JScrollPane(env_table));
 		
 		test_display = new TextDisplayPanel();
 		test_display.text_area.setToolTipText("PHPT");
+		test_display.text_area.setBackground(new Color(150, 255, 255));
 		vertical_panel.add(new JScrollPane(test_display.text_area));
 		
 		horizontal_button_panel.add(actual_display.button_panel);
@@ -168,6 +192,18 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 		} else {
 			shell_script_jsp.setVisible(true);
 			shell_script_textarea.setText(result.shell_script);
+		}
+		if (StringUtil.isEmpty(result.regex_debug_dump)) {
+			regex_debug_dump_jsp.setVisible(false);
+		} else {
+			regex_debug_dump_jsp.setVisible(true);
+			regex_debug_dump_textarea.setText(result.regex_debug_dump);
+		}
+		if (StringUtil.isEmpty(result.regex_output)) {
+			regex_output_jsp.setVisible(false);
+		} else {
+			regex_output_jsp.setVisible(true);
+			regex_output_textarea.setText(result.regex_output);
 		}
 		if (StringUtil.isEmpty(result.http_request)) {
 			http_request_jsp.setVisible(false);

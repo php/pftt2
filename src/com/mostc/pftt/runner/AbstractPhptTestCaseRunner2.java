@@ -2,6 +2,8 @@ package com.mostc.pftt.runner;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -392,7 +394,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 				twriter.addTestException(host, scenario_set, test_case, ex, expected);
 				throw ex;
 			}
-			if (expected_re_match||a(test_case)||output_trim.contains("<html>")) {
+			if (expected_re_match||a(test_case)) {
 
 				twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
 						
@@ -484,8 +486,30 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			} else {
 				expectf = null;
 			}
+
+			PhptTestResult result = notifyFail(new PhptTestResult(host, EPhptTestStatus.FAIL, test_case, output, actual_lines, expected_lines, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), diff, expectf, preoverride_actual, getCrashedSAPIOutput()));
 			
-			twriter.addResult(host, scenario_set, notifyFail(new PhptTestResult(host, EPhptTestStatus.FAIL, test_case, output, actual_lines, expected_lines, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), diff, expectf, preoverride_actual, getCrashedSAPIOutput())));
+			//
+			if (test_case.containsSection(EPhptSection.EXPECTF) || test_case.containsSection(EPhptSection.EXPECTREGEX)) {
+				// test may be failing due to a bad regular expression in test or bug in regular expression engine
+				//
+				// get a debug dump from the regular expression engine to save with the result
+				//
+				// (this is an expensive operation so it shouldn't be done for every test. there shouldn't be
+				//  very many FAIL tests so this shouldn't be done very much)
+				StringWriter dump_sw = new StringWriter(1024);
+				StringWriter output_sw = new StringWriter(2048);
+				PrintWriter dump_pw = new PrintWriter(dump_sw);
+				PrintWriter output_pw = new PrintWriter(output_sw);
+				
+				test_case.debugExpectedRegularExpression(host, scenario_set, twriter, result.actual, dump_pw, output_pw);
+				
+				result.regex_debug_dump = dump_sw.toString();
+				result.regex_output = output_sw.toString();
+			}
+			//
+			
+			twriter.addResult(host, scenario_set, result);
 		}
 	} // end void evalTest
 	
