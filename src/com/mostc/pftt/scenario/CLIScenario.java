@@ -10,10 +10,10 @@ import com.mostc.pftt.model.phpt.PhptSourceTestPack;
 import com.mostc.pftt.model.phpt.PhptActiveTestPack;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.PhptResultPackWriter;
+import com.mostc.pftt.results.IPhptTestResultReceiver;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
 import com.mostc.pftt.runner.CliPhptTestCaseRunner;
-import com.mostc.pftt.runner.PhptTestPackRunner.PhptThread;
+import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 
 /** Tests the Command Line Interface(CLI) for running PHP.
  * 
@@ -36,9 +36,9 @@ public class CliScenario extends AbstractSAPIScenario {
 	@Override
 	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(
 			PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case,
-			PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set,
+			ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set,
 			PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
-		return new CliPhptTestCaseRunner(group_key.getPhpIni(), thread, test_case, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
+		return new CliPhptTestCaseRunner(group_key.getPhpIni(), thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 	}
 	
 	@Override
@@ -73,8 +73,8 @@ public class CliScenario extends AbstractSAPIScenario {
 	} // end public TestCaseGroupKey createTestGroupKey
 	
 	@Override
-	public boolean willSkip(PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
-		return CliPhptTestCaseRunner.willSkip(twriter, host, scenario_set, type, build, test_case);
+	public boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+		return CliPhptTestCaseRunner.willSkip(cm, twriter, host, scenario_set, type, build, test_case);
 	}
 
 } // end public class CliScenario

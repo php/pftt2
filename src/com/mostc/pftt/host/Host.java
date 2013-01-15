@@ -3,6 +3,8 @@ package com.mostc.pftt.host;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 import java.util.Map;
@@ -464,6 +466,8 @@ public abstract class Host {
 	}
 	@ThreadSafe
 	public static abstract class ExecHandle {
+		public abstract InputStream getSTDOUT();
+		public abstract OutputStream getSTDIN();
 		/** KILLs process
 		 * 
 		 * @param force - on Windows, if the process crashed and Windows Error Reporting(WER) is enabled (default=enabled),
@@ -499,7 +503,7 @@ public abstract class Host {
 		 * @return
 		 */
 		public abstract int getExitCode();
-	}
+	} // end public static abstract class ExecHandle
 	public ExecHandle execThread(String commandline) throws Exception {
 		return execThread(commandline, null, null, null);
 	}
@@ -950,6 +954,22 @@ public abstract class Host {
 		else if (from.startsWith(to))
 			from = from.substring(to.length());
 		return from.split("/").length+1;
+	}
+
+	/** returns part of path separating to from from.
+	 * 
+	 *  ex: pathFrom(/a/b, /a/b/c/d) => /c/d
+	 * 
+	 * @param from
+	 * @param to
+	 * @return
+	 */
+	public static String pathFrom(String from, String to) {
+		if (to.startsWith(from)) {
+			return to.substring(from.length());
+		} else {
+			return to;
+		}
 	}
 	
 } // end public abstract class Host

@@ -25,7 +25,7 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.TestCase;
 import com.mostc.pftt.model.phpt.PhpBuild.PHPOutput;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.PhptResultPackWriter;
+import com.mostc.pftt.results.IPhptTestResultReceiver;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.StringUtil;
 import com.mostc.pftt.util.apache.regexp.RE;
@@ -113,7 +113,7 @@ public class PhptTestCase extends TestCase {
 	 * @throws FileNotFoundException
 	 * @throws IOException
 	 */
-	public static PhptTestCase load(Host host, PhptSourceTestPack test_pack, String test_name, PhptResultPackWriter twriter) throws FileNotFoundException, IOException {
+	public static PhptTestCase load(Host host, PhptSourceTestPack test_pack, String test_name, IPhptTestResultReceiver twriter) throws FileNotFoundException, IOException {
 		return load(host, test_pack, false, test_name, twriter);
 	}
 	
@@ -132,12 +132,12 @@ public class PhptTestCase extends TestCase {
 	 * @throws FileNotFoundException
 	 * @throws IOException
 	 */
-	public static PhptTestCase load(Host host, PhptSourceTestPack test_pack, boolean keep_all, String test_name, PhptResultPackWriter twriter) throws FileNotFoundException, IOException {
+	public static PhptTestCase load(Host host, PhptSourceTestPack test_pack, boolean keep_all, String test_name, IPhptTestResultReceiver twriter) throws FileNotFoundException, IOException {
 		return load(host, test_pack, keep_all, test_name, twriter, null);
 	}
 		
 	static final Pattern PATTERN_AZ = Pattern.compile("^--([_A-Z]+)--");
-	public static PhptTestCase load(Host host, PhptSourceTestPack test_pack, boolean keep_all, String test_name, PhptResultPackWriter twriter, PhptTestCase parent) throws FileNotFoundException, IOException {
+	public static PhptTestCase load(Host host, PhptSourceTestPack test_pack, boolean keep_all, String test_name, IPhptTestResultReceiver twriter, PhptTestCase parent) throws FileNotFoundException, IOException {
 		String file = host.fixPath(test_pack.getSourceDirectory()+host.dirSeparator()+test_name); 
 		
 		PhptTestCase test_case = new PhptTestCase(test_pack, test_name);
@@ -165,7 +165,7 @@ public class PhptTestCase extends TestCase {
 			// Match the beginning of a section.
 			// important to require all uppercase letters only
 			// some sections(POST_RAW) on some PHPTs will have some text like --BVoyv--
-			String[] r = StringUtil.getMatches(PATTERN_AZ, line.trim(), twriter);
+			String[] r = StringUtil.getMatches(PATTERN_AZ, line.trim());
 			if (StringUtil.isNotEmpty(r)) {
 				section_str = r[0];
 				// BN: some tests (ex: Zend/tests/019.phpt) will have lines that start and end with "--" but are not sections, they"re part of the EXPECT* section
@@ -333,7 +333,7 @@ public class PhptTestCase extends TestCase {
 	 * @param twriter
 	 * @return
 	 */
-	public RE getExpectedCompiled(Host host, ScenarioSet scenario_set, PhptResultPackWriter twriter) {
+	public RE getExpectedCompiled(Host host, ScenarioSet scenario_set, IPhptTestResultReceiver twriter) {
 		RE expected_re;
 		if (this.expected_re!=null) {
 			expected_re = this.expected_re.get();
@@ -351,7 +351,8 @@ public class PhptTestCase extends TestCase {
 			//
 			expected_str = oexpected_str = getTrim(EPhptSection.EXPECTF);
 			
-			expected_str = prepareExpectF(expected_str);			
+			expected_str = prepareExpectF(expected_str);
+			//expected_str = expected_str.replace("\r\n", ".").replace("\r", ".").replace("\n", "."); // TODO test
 		} else {
 			return null;
 		}
@@ -367,6 +368,7 @@ public class PhptTestCase extends TestCase {
 			REProgram wanted_re_prog = new RECompiler().compile(expected_str);
 			
 			expected_re = new RE(wanted_re_prog);
+			expected_re.setMatchFlags(RE.MATCH_MULTILINE); // TODO test
 			this.expected_re = new WeakReference<RE>(expected_re);
 			return expected_re;
 		} catch ( Throwable ex ) {
@@ -391,7 +393,7 @@ public class PhptTestCase extends TestCase {
 	 * @param dump_pw
 	 * @param output_pw
 	 */
-	public void debugExpectedRegularExpression(Host host, ScenarioSet scenario_set, PhptResultPackWriter twriter, String actual_str, PrintWriter dump_pw, PrintWriter output_pw) {
+	public void debugExpectedRegularExpression(Host host, ScenarioSet scenario_set, IPhptTestResultReceiver twriter, String actual_str, PrintWriter dump_pw, PrintWriter output_pw) {
 		String expected_str;		
 		if (containsSection(EPhptSection.EXPECTREGEX)) {
 			expected_str = getTrim(EPhptSection.EXPECTREGEX);
@@ -402,7 +404,9 @@ public class PhptTestCase extends TestCase {
 			//
 			expected_str = getTrim(EPhptSection.EXPECTF);
 			
-			expected_str = prepareExpectF(expected_str);			
+			expected_str = prepareExpectF(expected_str);
+			
+			//expected_str = expected_str.replace("\r\n", ".").replace("\r", ".").replace("\n", "."); // TODO test
 		} else {
 			return;
 		}
@@ -420,7 +424,8 @@ public class PhptTestCase extends TestCase {
 		re.dumpProgram(dump_pw);
 		
 		RE r = new RE(rp);
-		r.match(actual_str);
+		r.setMatchFlags(RE.MATCH_MULTILINE); // TODO test
+		r.matchDump(actual_str, output_pw);
 		
 		for (int i = 0; i < r.getParenCount(); i++) {
 			output_pw.println("$" + i + " = " + r.getParen(i));
@@ -436,6 +441,11 @@ public class PhptTestCase extends TestCase {
 	 * @return
 	 */
 	public static String prepareExpectF(String expected_str) {
+		/*System.err.println(expected_str);
+		expected_str = expected_str.replace("\\n", "");//\\\\n"); // TODO
+		System.err.println("===");
+		System.err.println(expected_str);*/
+		
 		// do preg_quote, but miss out any %r delimited sections
 		int start, end;
 		String temp = "";
@@ -491,6 +501,8 @@ public class PhptTestCase extends TestCase {
 		expected_str = StringUtil.replaceAll(PAT_double_c, "%c", expected_str);
 		expected_str = StringUtil.replaceAll(PAT_c, ".", expected_str);
 		
+		//expected_str = expected_str.replace("\r\n", ".").replace("\r", ".").replace("\n", "."); // TODO test
+		//expected_str = expected_str.replace("\\r", "\\\\r");
 		return expected_str;
 	} // end public static String prepareExpectF
 	static final Pattern PAT_s = Pattern.compile("%s");

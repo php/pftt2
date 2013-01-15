@@ -23,15 +23,17 @@ import com.mostc.pftt.model.phpt.PhptOverrideManager;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.model.phpt.PhptSourceTestPack;
 import com.mostc.pftt.model.phpt.PhptActiveTestPack;
-import com.mostc.pftt.results.PhptResultPackWriter;
+import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.IPhptTestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
-import com.mostc.pftt.runner.PhptTestPackRunner.PhptThread;
+import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.GZIPOutputStreamLevel;
 import com.mostc.pftt.util.StringUtil;
 
 public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRunner {
-	protected final PhptResultPackWriter twriter;
+	protected final ConsoleManager cm;
+	protected final IPhptTestResultReceiver twriter;
 	protected final Host host;
 	protected final PhpBuild build;
 	protected final PhptSourceTestPack src_test_pack;
@@ -68,10 +70,11 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		}
 	}
 	
-	public AbstractPhptTestCaseRunner2(PhpIni ini, PhptThread thread, PhptTestCase test_case, PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+	public AbstractPhptTestCaseRunner2(PhpIni ini, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
 		this.ini = ini;
 		this.thread = thread;
 		this.test_case = test_case;
+		this.cm = cm;
 		this.twriter = twriter;
 		this.host = host;
 		this.scenario_set = scenario_set;
@@ -255,7 +258,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	
 			for (String line : raw_lines) {
 				if (hasContentType()) {
-					String[] res = StringUtil.getMatches(PATTERN_CONTENT_TYPE, line, twriter);
+					String[] res = StringUtil.getMatches(PATTERN_CONTENT_TYPE, line);
 					if (StringUtil.isNotEmpty(res)) {
 						setContentType(res[1].trim());
 						continue;
@@ -385,6 +388,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 					
 			boolean expected_re_match;
 			
+			output = output.replace("\\n", ""); // TODO test
 			output = remove_header_from_output(output);
 			String output_trim = output.trim();
 			
@@ -465,19 +469,17 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		
 		// if here, test failed!
 
-		if (test_case.isXFail()) {
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XFAIL, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual));
-		} else if (StringUtil.isNotEmpty(getCrashedSAPIOutput())) {
+		if (StringUtil.isNotEmpty(getCrashedSAPIOutput())) {
 			// TODO 
 			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, getCrashedSAPIOutput(), null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual));
 			
 		} else {
-			// test is FAIL
+			// test is FAIL or XFAIL_WORKS
 			
 			// generate a diff
 			String[] actual_lines = StringUtil.splitLines(output);
 			String[] expected_lines = StringUtil.splitLines(test_case.getExpected());
-			Diff<String> diff = new Diff<String>(actual_lines, expected_lines);
+			Diff<String> diff = new Diff<String>(expected_lines, actual_lines);
 	
 			String expectf;
 			// generate the EXPECTF section to show the user the regular expression that was actually used (generated from EXPECTF section) to evaluate test output
@@ -487,9 +489,15 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 				expectf = null;
 			}
 
-			PhptTestResult result = notifyFail(new PhptTestResult(host, EPhptTestStatus.FAIL, test_case, output, actual_lines, expected_lines, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), diff, expectf, preoverride_actual, getCrashedSAPIOutput()));
+			PhptTestResult result;
+			if (test_case.isXFail()) {
+				result = new PhptTestResult(host, EPhptTestStatus.XFAIL, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual);
+			} else {
+				result = notifyFail(new PhptTestResult(host, EPhptTestStatus.FAIL, test_case, output, actual_lines, expected_lines, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), diff, expectf, preoverride_actual, getCrashedSAPIOutput()));
+			}
 			
 			//
+			// set result#regex_compiler_dump and result#regex_output dump if test result is FAIL or XFAIL_WORKS and test has an EXPECTF or EXPECTREGEX section
 			if (test_case.containsSection(EPhptSection.EXPECTF) || test_case.containsSection(EPhptSection.EXPECTREGEX)) {
 				// test may be failing due to a bad regular expression in test or bug in regular expression engine
 				//
@@ -504,7 +512,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 				
 				test_case.debugExpectedRegularExpression(host, scenario_set, twriter, result.actual, dump_pw, output_pw);
 				
-				result.regex_debug_dump = dump_sw.toString();
+				result.regex_compiler_dump = dump_sw.toString();
 				result.regex_output = output_sw.toString();
 			}
 			//

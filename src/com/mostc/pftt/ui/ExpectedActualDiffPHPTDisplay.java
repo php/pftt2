@@ -41,9 +41,9 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 	protected TextDisplayPanel expected_display, diff_display, actual_display, test_display;
 	protected DefaultTableModel env_table_model;
 	protected JTable env_table;
-	protected JTextArea regex_debug_dump_textarea, regex_output_textarea, http_request_textarea, http_response_textarea, ini_textarea, stdin_data_textarea, shell_script_textarea, expectf_textarea, pre_override_textarea, sapi_output_textarea;
+	protected JTextArea regex_compiler_dump_textarea, regex_output_textarea, http_request_textarea, http_response_textarea, ini_textarea, stdin_data_textarea, shell_script_textarea, expectf_textarea, pre_override_textarea, sapi_output_textarea;
 	protected PhptTestResult test_result;
-	protected JScrollPane regex_debug_dump_jsp, regex_output_jsp, http_request_jsp, http_response_jsp, expectf_jsp, pre_override_jsp, sapi_output_jsp, ini_jsp, stdin_data_jsp, shell_script_jsp, env_table_jsp;
+	protected JScrollPane regex_compiler_dump_jsp, regex_output_jsp, http_request_jsp, http_response_jsp, expectf_jsp, pre_override_jsp, sapi_output_jsp, ini_jsp, stdin_data_jsp, shell_script_jsp, env_table_jsp;
 	protected ScrollbarSyncManager scrollbar_sync_mgr;
 	
 	public ExpectedActualDiffPHPTDisplay() {
@@ -83,15 +83,15 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 		expectf_textarea.setBackground(new Color(220, 150, 150));
 		vertical_panel.add(scrollbar_sync_mgr.add(expectf_jsp = new JScrollPane(expectf_textarea)));
 		
-		regex_debug_dump_textarea = new JTextArea();
-		regex_debug_dump_textarea.setToolTipText("Debug dump from Regular Expression engine");
-		regex_debug_dump_textarea.setBackground(new Color(255, 255, 150));
-		vertical_panel.add(scrollbar_sync_mgr.add(regex_debug_dump_jsp = new JScrollPane(regex_debug_dump_textarea)));
-		
 		regex_output_textarea = new JTextArea();
 		regex_output_textarea.setToolTipText("Matches between actual output and EXPECTF section");
 		regex_output_textarea.setBackground(new Color(255, 220, 150));
-		vertical_panel.add(scrollbar_sync_mgr.add(regex_output_jsp = new JScrollPane(regex_output_textarea)));
+		vertical_panel.add(regex_output_jsp = new JScrollPane(regex_output_textarea));
+		
+		regex_compiler_dump_textarea = new JTextArea();
+		regex_compiler_dump_textarea.setToolTipText("Compile dump from Regular Expression engine");
+		regex_compiler_dump_textarea.setBackground(new Color(255, 255, 150));
+		vertical_panel.add(regex_compiler_dump_jsp = new JScrollPane(regex_compiler_dump_textarea));
 		
 		http_request_textarea = new JTextArea();
 		http_request_textarea.setToolTipText("HTTP Request(s)");
@@ -193,11 +193,11 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 			shell_script_jsp.setVisible(true);
 			shell_script_textarea.setText(result.shell_script);
 		}
-		if (StringUtil.isEmpty(result.regex_debug_dump)) {
-			regex_debug_dump_jsp.setVisible(false);
+		if (StringUtil.isEmpty(result.regex_compiler_dump)) {
+			regex_compiler_dump_jsp.setVisible(false);
 		} else {
-			regex_debug_dump_jsp.setVisible(true);
-			regex_debug_dump_textarea.setText(result.regex_debug_dump);
+			regex_compiler_dump_jsp.setVisible(true);
+			regex_compiler_dump_textarea.setText(result.regex_compiler_dump);
 		}
 		if (StringUtil.isEmpty(result.regex_output)) {
 			regex_output_jsp.setVisible(false);

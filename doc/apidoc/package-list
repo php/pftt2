@@ -4,7 +4,6 @@ com.mostc.pftt.host
 com.mostc.pftt.main
 com.mostc.pftt.model
 com.mostc.pftt.model.app
-com.mostc.pftt.model.perf
 com.mostc.pftt.model.phpt
 com.mostc.pftt.model.smoke
 com.mostc.pftt.report

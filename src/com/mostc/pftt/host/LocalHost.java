@@ -479,6 +479,16 @@ public class LocalHost extends Host {
 		public int getProcessID() {
 			return isLocalhostWindows() ? getWindowsProcessID(process) : 0;
 		}
+
+		@Override
+		public InputStream getSTDOUT() {
+			return process.getInputStream();
+		}
+
+		@Override
+		public OutputStream getSTDIN() {
+			return process.getOutputStream();
+		}
 		
 	} // end public class LocalExecHandle
 	

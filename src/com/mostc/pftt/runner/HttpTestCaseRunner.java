@@ -30,9 +30,10 @@ import com.mostc.pftt.model.phpt.PhptSourceTestPack;
 import com.mostc.pftt.model.phpt.PhptActiveTestPack;
 import com.mostc.pftt.model.sapi.WebServerInstance;
 import com.mostc.pftt.model.sapi.WebServerManager;
-import com.mostc.pftt.results.PhptResultPackWriter;
+import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.IPhptTestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
-import com.mostc.pftt.runner.PhptTestPackRunner.PhptThread;
+import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.ErrorUtil;
 import com.mostc.pftt.util.StringUtil;
@@ -52,8 +53,8 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected WebServerInstance web = null;
 	protected String cookie_str;
 
-	public HttpTestCaseRunner(PhpIni ini, Map<String,String> env, HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web, PhptThread thread, PhptTestCase test_case, PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
-		super(ini, thread, test_case, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
+	public HttpTestCaseRunner(PhpIni ini, Map<String,String> env, HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+		super(ini, thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 		this.params = params;
 		this.httpproc = httpproc;
 		this.httpexecutor = httpexecutor;
@@ -77,8 +78,8 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	 * @return
 	 * @throws Exception
 	 */
-	public static boolean willSkip(PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
-		if (AbstractPhptTestCaseRunner.willSkip(twriter, host, scenario_set, type, build, test_case)) {
+	public static boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+		if (AbstractPhptTestCaseRunner.willSkip(cm, twriter, host, scenario_set, type, build, test_case)) {
 			return true;
 		} else if (test_case.containsSection(EPhptSection.STDIN)) {
 			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "STDIN section not supported for testing against web servers", null, null, null, null, null, null, null, null, null, null, null));
@@ -88,7 +89,7 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "ARGS section not supported for testing against web servers", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return true;
-		} else if (twriter.getConsoleManager().isDisableDebugPrompt()&&test_case.isNamed(
+		} else if (cm.isDisableDebugPrompt()&&test_case.isNamed(
 					// causes a blocking winpopup msg about a few php_*.dll DLLs that couldn't be loaded
 					// (ignore these for automated testing, but still show them for manual testing)
 					"ext/zlib/tests/008.phpt",
@@ -145,7 +146,7 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			try {
 				return do_http_execute(path, section, false);
 			} catch ( IOException ex1 ) { // SocketTimeoutException or ConnectException
-				if (twriter.getConsoleManager().isPfttDebug()) {
+				if (cm.isPfttDebug()) {
 					ex1.printStackTrace();
 				}
 				
@@ -155,7 +156,7 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				// the user to enter Visual Studio, WinDbg or GDB
 				web.close(); 
 				
-				twriter.getConsoleManager().restartingAndRetryingTest(test_case);
+				cm.restartingAndRetryingTest(test_case);
 				
 				// get #do_http_execute to make a new server
 				// this will make a new WebServerInstance that will only be used to run this 1 test
@@ -202,7 +203,7 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		try {
 			if (web!=null) {
 				synchronized(web) {
-					WebServerInstance _web = smgr.getWebServerInstance(twriter.getConsoleManager(), host, build, ini, env, active_test_pack.getDirectory(), web, test_case);
+					WebServerInstance _web = smgr.getWebServerInstance(cm, host, build, ini, env, active_test_pack.getDirectory(), web, test_case);
 					if (_web!=web) {
 						this.web = _web;
 						is_replacement = true;
@@ -239,7 +240,7 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			
 				if (web.isCrashed())
 					markTestAsCrash();
-				if (is_replacement && (twriter.getConsoleManager().isDisableDebugPrompt()||!web.isCrashed()||!host.isWindows())) {
+				if (is_replacement && (cm.isDisableDebugPrompt()||!web.isCrashed()||!host.isWindows())) {
 					// CRITICAL: if this WebServerInstance is a replacement, then it exists only within this specific HttpTestCaseRunner
 					// instance. if it is not terminated here, it will keep running forever!
 					//

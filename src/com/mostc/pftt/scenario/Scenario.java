@@ -1,6 +1,11 @@
 package com.mostc.pftt.scenario;
 
+import java.io.IOException;
 import java.util.Map;
+
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
+import org.xmlpull.v1.XmlSerializer;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
@@ -101,5 +106,61 @@ public abstract class Scenario {
 				LOCALFILESYSTEM_SCENARIO
 			};
 	} // end public static Scenario[] getAllDefaultScenarios
+	
+	/** writes Scenario to XML
+	 * 
+	 * @param serial
+	 * @throws IllegalArgumentException
+	 * @throws IllegalStateException
+	 * @throws IOException
+	 */
+	public void serialize(XmlSerializer serial) throws IllegalArgumentException, IllegalStateException, IOException {
+		serial.startTag(null, "scenario");
+		serial.attribute(null, "name", getClass().getSimpleName());
+		serial.endTag(null, "scenario");
+	}
+	
+	public void parseCustom(XmlPullParser parser) {
+		
+	}
+	
+	/** parses a Scenario or Scenario subclass from xml
+	 * 
+	 * @param parser
+	 * @return
+	 * @throws XmlPullParserException
+	 * @throws ClassNotFoundException
+	 * @throws InstantiationException
+	 * @throws IllegalAccessException
+	 * @throws IOException
+	 */
+	public static Scenario parse(XmlPullParser parser) throws XmlPullParserException, ClassNotFoundException, InstantiationException, IllegalAccessException, IOException {
+		main_loop:
+		while(true) {
+			parser.next();
+			switch(parser.getEventType()) {
+			case XmlPullParser.START_TAG:
+				if (parser.getName().equals("scenario")) {
+					String name = parser.getAttributeValue(null, "name");
+					
+					Class<?> clazz = Class.forName(Scenario.class.getPackage().getName()+"."+name);
+					
+					Scenario scenario = (Scenario) clazz.newInstance();
+					scenario.parseCustom(parser);
+					return scenario;
+				}
+				
+				break;
+			case XmlPullParser.END_TAG:
+				break main_loop;
+			case XmlPullParser.END_DOCUMENT:
+				break main_loop;
+			case XmlPullParser.TEXT:
+				break;
+			default:
+			} // end switch
+		} // end while
+		return null;
+	} // end public static Scenario parse
 	
 } // end public abstract class Scenario

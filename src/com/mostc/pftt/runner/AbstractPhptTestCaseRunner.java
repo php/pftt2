@@ -11,7 +11,7 @@ import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.model.phpt.PhptActiveTestPack;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.PhptResultPackWriter;
+import com.mostc.pftt.results.IPhptTestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.scenario.AbstractINIScenario;
 import com.mostc.pftt.scenario.Scenario;
@@ -73,7 +73,7 @@ public abstract class AbstractPhptTestCaseRunner {
 	 * @return
 	 * @throws Exception
 	 */
-	public static boolean willSkip(PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+	public static boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
 		if (host.isWindows()) {
 			if (test_case.getName().contains("sysvmsg")||test_case.getName().contains("sysvshm")||test_case.getName().contains("gettext")||test_case.getName().contains("exif")||test_case.getName().contains("readline")||test_case.getName().contains("posix")) {
 				// extensions not supported on Windows
@@ -90,8 +90,6 @@ public abstract class AbstractPhptTestCaseRunner {
 			return true;
 		}
 		if (test_case.isNamed(
-			// charset problems to fix TODO
-			"ext/json/tests/002.phpt",
 			// these tests randomly fail (ignore them)
 			"ext/standard/tests/network/gethostbyname_error006.phpt",
 			"ext/standard/tests/php_ini_loaded_file.phpt", 
@@ -111,8 +109,8 @@ public abstract class AbstractPhptTestCaseRunner {
 		}
 	} // end public static boolean willSkip
 	
-	public static boolean willSkip(PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpIni ini, PhpBuild build, PhptTestCase test_case) throws Exception {
-		if (test_case.isExtensionTest() && !build.isExtensionEnabled(twriter.getConsoleManager(), host, type, ini, test_case.getExtensionName())) {
+	public static boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpIni ini, PhpBuild build, PhptTestCase test_case) throws Exception {
+		if (test_case.isExtensionTest() && !build.isExtensionEnabled(cm, host, type, ini, test_case.getExtensionName())) {
 			// if extension-under-test is not loaded, don't bother running test since it'll just be skipped (or false fail)
 			
 			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.SKIP, test_case, "Extension not loaded", null, null, null, ini, null, null, null, null, null, null, null));

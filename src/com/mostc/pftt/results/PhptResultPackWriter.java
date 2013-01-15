@@ -16,6 +16,7 @@ import org.kxml2.io.KXmlSerializer;
 import org.xmlpull.v1.XmlSerializer;
 
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.RemoteHost;
 import com.mostc.pftt.model.phpt.EBuildBranch;
 import com.mostc.pftt.model.phpt.EBuildSourceType;
 import com.mostc.pftt.model.phpt.ECPUArch;
@@ -37,13 +38,13 @@ import com.mostc.pftt.util.StringUtil;
  *
  */
  
-public class PhptResultPackWriter extends PhptResultPack {
+public class PhptResultPackWriter extends PhptResultPack implements IPhptTestResultReceiver {
 	private File telem_dir;
 	protected final HashMap<Host,HashMap<ScenarioSet,HashMap<EPhptTestStatus,PrintWriter>>> status_list_map;
 	protected Host host;
 	protected PrintWriter global_exception_writer;
 	protected int total_count = 0;
-	protected ConsoleManager cm;
+	protected LocalConsoleManager cm;
 	protected final HashMap<Host,HashMap<ScenarioSet,HashMap<EPhptTestStatus,AtomicInteger>>> counts;
 	protected PhpBuild build;
 	protected PhptSourceTestPack test_pack;
@@ -85,7 +86,7 @@ public class PhptResultPackWriter extends PhptResultPack {
 		return new File(base.getAbsolutePath() + sb);
 	}
 	
-	public PhptResultPackWriter(Host host, ConsoleManager cm, File telem_base_dir, PhpBuild build, PhptSourceTestPack test_pack, ScenarioSet scenario_set) throws Exception {
+	public PhptResultPackWriter(Host host, LocalConsoleManager cm, File telem_base_dir, PhpBuild build, PhptSourceTestPack test_pack, ScenarioSet scenario_set) throws Exception {
 		super(host);
 		
 		status_list_map = new HashMap<Host,HashMap<ScenarioSet,HashMap<EPhptTestStatus,PrintWriter>>>(16);
@@ -134,6 +135,10 @@ public class PhptResultPackWriter extends PhptResultPack {
 	
 	public ConsoleManager getConsoleManager() {
 		return cm;
+	}
+	
+	public void close(Host host) {
+		// TODO
 	}
 	
 	@Override
@@ -265,6 +270,7 @@ public class PhptResultPackWriter extends PhptResultPack {
 		addResult(this_host, this_scenario_set, new PhptTestResult(host, EPhptTestStatus.TEST_EXCEPTION, test_case, ex_str, null, null, null, null, null, null, null, null, null, null, null));
 	}
 	int completed = 0; 
+	@Override
 	public void addResult(Host this_host, ScenarioSet this_scenario_set, PhptTestResult result) {
 		// enqueue result to be handled by another thread to avoid interrupting every phpt thread
 		results.add(new ResultQueueEntry(this_host, this_scenario_set, result));
@@ -424,6 +430,14 @@ public class PhptResultPackWriter extends PhptResultPack {
 
 	public void setTotalCount(int total_count) {
 		this.total_count = total_count;
+	}
+
+	public void addGlobalException(RemoteHost remote_host, String text) {
+		synchronized (global_exception_writer) {
+			global_exception_writer.println("Host: "+remote_host);
+			global_exception_writer.println(text);
+			global_exception_writer.flush();
+		}
 	}
 	
 } // end public class PhptTelemetryWriter

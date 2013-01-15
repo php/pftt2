@@ -238,6 +238,39 @@ public class PhpBuild extends Build {
 		return php_exe;
 	}
 	
+	/** returns different executable files contained in this build
+	 * 
+	 * @param type
+	 * @return
+	 */
+	public String getPhpExe(EExecutableType type) {
+		switch(type) {
+		case CGI:
+			return getPhpCgiExe();
+		case WIN:
+			// normally php-win.exe isn't used, so its only calculated here
+			return Host.dirname(php_exe) + "\\php-win.exe";
+		case CLI:
+		default:
+			return getPhpExe();
+		}
+	}
+	
+	/** a php build usually has several executables. this tells what type of executable
+	 * the given file is.
+	 * 
+	 * @param exe_file - executable file
+	 * @return EExecutableType of exe_file
+	 */
+	public EExecutableType getExecutableType(String exe_file) {
+		if (Host.basename(php_cgi_exe).equalsIgnoreCase(Host.basename(exe_file)))
+			return EExecutableType.CGI;
+		else if (Host.basename(exe_file).equalsIgnoreCase("php-win.exe"))
+			return EExecutableType.WIN;
+		else
+			return EExecutableType.CLI;
+	}
+	
 	/** returns the path to this build's php-cgi executable
 	 * 
 	 * @return

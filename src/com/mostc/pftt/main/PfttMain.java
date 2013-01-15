@@ -37,10 +37,12 @@ import com.mostc.pftt.report.AUTReportGen;
 import com.mostc.pftt.report.AbstractReportGen;
 import com.mostc.pftt.report.FBCReportGen;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.LocalConsoleManager;
 import com.mostc.pftt.results.PhptResultPackReader;
 import com.mostc.pftt.results.PhptResultPackWriter;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.runner.PhpUnitTestPackRunner;
+import com.mostc.pftt.runner.LocalPhptTestPackRunner;
 import com.mostc.pftt.runner.PhptTestPackRunner;
 import com.mostc.pftt.scenario.AbstractSAPIScenario;
 import com.mostc.pftt.scenario.Scenario;
@@ -94,9 +96,7 @@ public class PfttMain {
 		return last_file == null ? null : PhptResultPackReader.open(host, last_file);
 	}
 
-	public void run_all(ConsoleManager cm, PhpBuild build, PhptSourceTestPack test_pack, List<ScenarioSet> scenario_sets) throws Exception {
-		ArrayList<PhptTestCase> test_cases = null;
-		
+	public void run_all(LocalConsoleManager cm, PhpBuild build, PhptSourceTestPack test_pack, List<ScenarioSet> scenario_sets) throws Exception {
 		for ( ScenarioSet scenario_set : scenario_sets ) {
 			/* TODO for ( Host host : config.getHosts() ) {
 				if (host.isRemote()) {
@@ -126,18 +126,10 @@ public class PfttMain {
 			//
 			
 			PhptResultPackWriter tmgr = new PhptResultPackWriter(host, cm, telem_dir(), build, test_pack, scenario_set);
-			if (test_cases==null) {
-				test_cases = new ArrayList<PhptTestCase>(12600);
-				
-				test_pack.cleanup();
-				cm.println(EPrintType.IN_PROGRESS, "PhptSourceTestPack", "enumerating test cases from test-pack...");
-				test_pack.read(test_cases, tmgr, build);
-				cm.println(EPrintType.IN_PROGRESS, "PhptSourceTestPack", "enumerated test cases.");
-			}
-			PhptTestPackRunner test_pack_runner = new PhptTestPackRunner(tmgr, test_pack, scenario_set, build, host);
+			PhptTestPackRunner test_pack_runner = new LocalPhptTestPackRunner(tmgr.getConsoleManager(), tmgr, scenario_set, build, host);
 			cm.showGUI(test_pack_runner);
 			
-			test_pack_runner.runTestList(test_cases);
+			test_pack_runner.runAllTests(test_pack);
 			
 			// TODO archive telemetry into 7zip file
 			// TODO upload (if in config file)
@@ -180,7 +172,7 @@ public class PfttMain {
 		}
 	}
 
-	public void run_named_tests(ConsoleManager cm, PhpBuild build, PhptSourceTestPack test_pack, List<ScenarioSet> scenario_sets, List<String> names) throws Exception {
+	public void run_named_tests(LocalConsoleManager cm, PhpBuild build, PhptSourceTestPack test_pack, List<ScenarioSet> scenario_sets, List<String> names) throws Exception {
 		for ( ScenarioSet scenario_set : scenario_sets ) {
 			//
 			{
@@ -204,13 +196,13 @@ public class PfttMain {
 			PhptResultPackWriter tmgr = new PhptResultPackWriter(host, cm, telem_dir(), build, test_pack, scenario_set);
 			test_pack.cleanup();
 			cm.println(EPrintType.IN_PROGRESS, "PhptSourceTestPack", "enumerating test cases from test-pack...");
-			test_pack.read(test_cases, names, tmgr, build);
+			test_pack.read(test_cases, names, tmgr.getConsoleManager(), tmgr, build);
 			cm.println(EPrintType.IN_PROGRESS, "PhptSourceTestPack", "enumerated test cases.");
 			
-			PhptTestPackRunner test_pack_runner = new PhptTestPackRunner(tmgr, test_pack, scenario_set, build, host);
+			PhptTestPackRunner test_pack_runner = new LocalPhptTestPackRunner(tmgr.getConsoleManager(), tmgr, scenario_set, build, host);
 			cm.showGUI(test_pack_runner);
 			
-			test_pack_runner.runTestList(test_cases);
+			test_pack_runner.runTestList(test_pack, test_cases);
 			
 			tmgr.close();
 			
@@ -342,11 +334,11 @@ public class PfttMain {
 		return config==null?ScenarioSet.getDefaultScenarioSets():config.getScenarioSets();
 	}
 	
-	protected static void cmd_phpt_all(PfttMain rt, ConsoleManager cm, Config config, PhpBuild build, PhptSourceTestPack test_pack) throws Exception {
+	protected static void cmd_phpt_all(PfttMain rt, LocalConsoleManager cm, Config config, PhpBuild build, PhptSourceTestPack test_pack) throws Exception {
 		rt.run_all(cm, build, test_pack, getScenarioSets(config));
 	}
 	
-	protected static void cmd_phpt_list(PfttMain rt, ConsoleManager cm, Config config, PhpBuild build, PhptSourceTestPack test_pack, File list_file) throws Exception {
+	protected static void cmd_phpt_list(PfttMain rt, LocalConsoleManager cm, Config config, PhpBuild build, PhptSourceTestPack test_pack, File list_file) throws Exception {
 		BufferedReader fr = new BufferedReader(new FileReader(list_file));
 		LinkedList<String> tests = new LinkedList<String>();
 		String line;
@@ -362,7 +354,7 @@ public class PfttMain {
 		rt.run_named_tests(cm, build, test_pack, getScenarioSets(config), tests);
 	}
 	
-	protected static void cmd_phpt_named(PfttMain rt, ConsoleManager cm, Config config, PhpBuild build, PhptSourceTestPack test_pack, List<String> names) throws Exception {
+	protected static void cmd_phpt_named(PfttMain rt, LocalConsoleManager cm, Config config, PhpBuild build, PhptSourceTestPack test_pack, List<String> names) throws Exception {
 		rt.run_named_tests(cm, build, test_pack, getScenarioSets(config), names);
 	}
 
@@ -725,7 +717,7 @@ public class PfttMain {
 			System.err.println("PFTT: not implemented: stress_each="+stress_each+" stress_all="+stress_all+" ignored");
 		}
 		
-		ConsoleManager cm = new ConsoleManager(source_pack, debug_pack, force, windebug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug);
+		LocalConsoleManager cm = new LocalConsoleManager(source_pack, debug_pack, force, windebug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug);
 		
 		if (config_files.size()>0) {
 			config = Config.loadConfigFromFiles(cm, (File[])config_files.toArray(new File[config_files.size()]));

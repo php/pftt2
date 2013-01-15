@@ -65,6 +65,12 @@ final class PhptTestResultStylesheetWriter {
 </xsl:for-each>
 </table>
 
+<h2>EXPECTF/EXPECTREGEX match debug</h2>
+<pre><xsl:value-of select="//phptResult/regexOutput" /></pre>
+
+<h2>EXPECTF/EXPECTREGEX compiler output</h2>
+<pre><xsl:value-of select="//phptResult/regexCompilerDump" /></pre>
+
 </body>
 </html>
 

@@ -17,6 +17,7 @@
 
 package com.mostc.pftt.util.apache.regexp;
 
+import java.io.PrintWriter;
 import java.io.Serializable;
 import java.util.Vector;
 
@@ -801,8 +802,8 @@ public class RE implements Serializable
      * @param idxStart  Starting position in character array
      * @return Final input array index if match succeeded.  -1 if not.
      */
-    protected int matchNodes(int firstNode, int lastNode, int idxStart, int stack_depth)
-    {
+    protected int matchNodes(int firstNode, int lastNode, int idxStart, int stack_depth, PrintWriter debug_pw)
+    {	
     	// guard against StackOverflowError
     	if (stack_depth>5)
     		return 0; // assume it maches
@@ -820,6 +821,14 @@ public class RE implements Serializable
             next   = node + (short) instruction[node + offsetNext];
             opdata = instruction[node + offsetOpdata];
 
+            if (debug_pw!=null) {
+            	debug_pw.print(node);
+            	debug_pw.print(". ");
+            	debug_pw.print(REDebugCompiler.opcodeToString(opcode));
+            	debug_pw.print(' ');
+            	REDebugCompiler.a(opcode, debug_pw, (char)opdata, node, instruction);
+            	debug_pw.println();
+            }
             switch (opcode)
             {
                 case OP_MAYBE:
@@ -828,7 +837,7 @@ public class RE implements Serializable
                         // Try to match the following subexpr. If it matches:
                         //   MAYBE:  Continues matching rest of the expression
                         //    STAR:  Points back here to repeat subexpr matching
-                        if ((idxNew = matchNodes(node + nodeSize, maxNode, idx, stack_depth+1)) != -1)
+                        if ((idxNew = matchNodes(node + nodeSize, maxNode, idx, stack_depth+1, debug_pw)) != -1)
                         {
                             return idxNew;
                         }
@@ -840,7 +849,7 @@ public class RE implements Serializable
                 case OP_PLUS:
                     {
                         // Try to match the subexpr again (and again (and ...
-                    	if ((idxNew = matchNodes(next, maxNode, idx, stack_depth+1)) != -1 )
+                    	if ((idxNew = matchNodes(next, maxNode, idx, stack_depth+1, debug_pw)) != -1 )
                         {
                             return idxNew;
                         }
@@ -856,7 +865,7 @@ public class RE implements Serializable
                 case OP_RELUCTANTSTAR:
                     {
                         // Try to match the rest without using the reluctant subexpr
-                        if ((idxNew = matchNodes(next, maxNode, idx, stack_depth+1)) != -1)
+                        if ((idxNew = matchNodes(next, maxNode, idx, stack_depth+1, debug_pw)) != -1)
                         {
                             return idxNew;
                         }
@@ -864,13 +873,13 @@ public class RE implements Serializable
                         // Try reluctant subexpr. If it matches:
                         //   RELUCTANTMAYBE: Continues matching rest of the expression
                         //    RELUCTANTSTAR: Points back here to repeat reluctant star matching
-                        return matchNodes(node + nodeSize, next, idx, stack_depth+1);
+                        return matchNodes(node + nodeSize, next, idx, stack_depth+1, debug_pw);
                     }
 
                 case OP_RELUCTANTPLUS:
                     {
                         // Continue matching the rest without using the reluctant subexpr
-                        if ((idxNew = matchNodes(next + (short) instruction[next + offsetNext], maxNode, idx, stack_depth+1)) != -1)
+                        if ((idxNew = matchNodes(next + (short) instruction[next + offsetNext], maxNode, idx, stack_depth+1, debug_pw)) != -1)
                         {
                             return idxNew;
                         }
@@ -886,7 +895,7 @@ public class RE implements Serializable
                     {
                         startBackref[opdata] = idx;
                     }
-                    if ((idxNew = matchNodes(next, maxNode, idx, stack_depth+1)) != -1)
+                    if ((idxNew = matchNodes(next, maxNode, idx, stack_depth+1, debug_pw)) != -1)
                     {
                         // Increase valid paren count
                         if (opdata >= parenCount)
@@ -909,7 +918,7 @@ public class RE implements Serializable
                     {
                         endBackref[opdata] = idx;
                     }
-                    if ((idxNew = matchNodes(next, maxNode, idx, stack_depth+1)) != -1)
+                    if ((idxNew = matchNodes(next, maxNode, idx, stack_depth+1, debug_pw)) != -1)
                     {
                         // Increase valid paren count
                         if (opdata  >= parenCount)
@@ -1314,7 +1323,7 @@ public class RE implements Serializable
                     do
                     {
                         // Try matching the branch against the string
-                    	if ((idxNew = matchNodes(node + nodeSize, maxNode, idx, stack_depth+1)) != -1 )// || true ) // TODO temp
+                    	if ((idxNew = matchNodes(node + nodeSize, maxNode, idx, stack_depth+1, debug_pw)) != -1 )// || true ) // TODO temp
                         {
                             return idxNew;
                         }
@@ -1374,7 +1383,7 @@ public class RE implements Serializable
      * @param i The input string index to start matching at
      * @return True if the input matched the expression
      */
-    protected boolean matchAt(int i)
+    protected boolean matchAt(int i, PrintWriter debug_pw)
     {
         // Initialize start pointer, paren cache and paren count
         start0 = -1;
@@ -1397,7 +1406,7 @@ public class RE implements Serializable
 
         // Match against string
         int idx;
-        if ((idx = matchNodes(0, maxNode, i, 0)) != -1)
+        if ((idx = matchNodes(0, maxNode, i, 0, debug_pw)) != -1)
         {
             setParenEnd(0, idx);
             return true;
@@ -1420,6 +1429,11 @@ public class RE implements Serializable
     {
         return match(new StringCharacterIterator(search), i);
     }
+    
+    public boolean matchDump(String search, int i, PrintWriter pw) {
+    	return matchDump(new StringCharacterIterator(search), i, pw);
+    }
+    
 
     /**
      * Matches the current regular expression program against a character array,
@@ -1429,8 +1443,11 @@ public class RE implements Serializable
      * @param i Index to start searching at
      * @return True if string matched
      */
-    public boolean match(CharacterIterator search, int i)
-    {
+    public boolean match(CharacterIterator search, int i) {
+    	return matchDump(search, i, null);
+    }
+    
+    public boolean matchDump(CharacterIterator search, int i, PrintWriter debug_pw) {
         // There is no compiled program to search with!
         if (program == null)
         {
@@ -1448,7 +1465,7 @@ public class RE implements Serializable
             // Non multi-line matching with BOL: Must match at '0' index
             if ((matchFlags & MATCH_MULTILINE) == 0)
             {
-                return i == 0 && matchAt(i);
+                return i == 0 && matchAt(i, debug_pw);
             }
 
             // Multi-line matching with BOL: Seek to next line
@@ -1461,7 +1478,7 @@ public class RE implements Serializable
                 }
 
                 // Match at the beginning of the line
-                if (matchAt(i))
+                if (matchAt(i, debug_pw))
                 {
                     return true;
                 }
@@ -1486,7 +1503,7 @@ public class RE implements Serializable
             for ( ;! search.isEnd(i - 1); i++)
             {
                 // Try a match at index i
-                if (matchAt(i))
+                if (matchAt(i, debug_pw))
                 {
                     return true;
                 }
@@ -1513,7 +1530,7 @@ public class RE implements Serializable
                 if (k == prefix.length)
                 {
                     // We matched the full prefix at firstChar, so try it
-                    if (matchAt(i))
+                    if (matchAt(i, debug_pw))
                     {
                         return true;
                     }
@@ -1532,6 +1549,10 @@ public class RE implements Serializable
     public boolean match(String search)
     {
         return match(search, 0);
+    }
+    
+    public boolean matchDump(String search, PrintWriter pw) {
+    	return matchDump(search, 0, pw);
     }
 
     /**

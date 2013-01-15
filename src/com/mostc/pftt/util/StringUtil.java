@@ -3,7 +3,6 @@ package com.mostc.pftt.util;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.mostc.pftt.results.PhptResultPackWriter;
 import com.mostc.pftt.util.apache.regexp.RE;
 import com.mostc.pftt.util.apache.regexp.RECompiler;
 import com.mostc.pftt.util.apache.regexp.REProgram;
@@ -71,8 +70,8 @@ public final class StringUtil {
 	public static String[] splitLines(String str) {
 		if (str==null)
 			return EMPTY_ARRAY;
-		str = replaceAll(PATTERN_R, "", str);
-		return PATTERN_N.split(str);  
+		else
+			return PATTERN_RN.split(str);
 	}
 	
 	public static String[] splitEqualsSign(String str) {
@@ -92,7 +91,7 @@ public final class StringUtil {
 	static final Pattern PATTERN_WS = Pattern.compile("[\\w]+");
 	static final Pattern PATTERN_R_N = Pattern.compile("\\r\\n");
 	static final Pattern PATTERN_R = Pattern.compile("\\r");
-	static final Pattern PATTERN_N = Pattern.compile("\\n");
+	static final Pattern PATTERN_RN = Pattern.compile("[\\r]?\\n");
 	static final Pattern PATTERN_EQ = Pattern.compile("\\=");
 	public static String normalizeLineEnding(String str) {
 		if (str==null)
@@ -238,18 +237,15 @@ public final class StringUtil {
 		return a == null || b == null ? false : a.equals(b);
 	}
 	
-	public static boolean match(Pattern pat, String text, PhptResultPackWriter twriter) {
-		// TODO log in telemetry that match found or not
+	public static boolean match(Pattern pat, String text) {
 		return pat.matcher(text).matches();
 	}
 
-	public static String[] getMatches(Pattern pat, String text, PhptResultPackWriter twriter) {
+	public static String[] getMatches(Pattern pat, String text) {
 		Matcher m = pat.matcher(text);
 		
 		if (!m.matches())
 			return null;
-		
-		// TODO log in telemetry that match found or not
 		
 		final int c = m.groupCount();
 		String[] out = new String[c];

@@ -19,9 +19,10 @@ import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.model.phpt.PhptSourceTestPack;
 import com.mostc.pftt.model.phpt.PhptActiveTestPack;
-import com.mostc.pftt.results.PhptResultPackWriter;
+import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.IPhptTestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
-import com.mostc.pftt.runner.PhptTestPackRunner.PhptThread;
+import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.StringUtil;
 
@@ -37,10 +38,10 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected ExecOutput output;
 	protected String selected_php_exe, shell_script, test_cmd, skip_cmd, ini_settings, shell_file;
 	
-	public static boolean willSkip(PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
-		if (AbstractPhptTestCaseRunner2.willSkip(twriter, host, scenario_set, type, build, test_case)) {
+	public static boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+		if (AbstractPhptTestCaseRunner2.willSkip(cm, twriter, host, scenario_set, type, build, test_case)) {
 			return true;
-		} else if (twriter.getConsoleManager().isDisableDebugPrompt()&&test_case.isNamed(
+		} else if (cm.isDisableDebugPrompt()&&test_case.isNamed(
 				// these ext/session tests, on CLI sapi, cause a blocking winpopup msg about some mystery 'Syntax Error'
 				//  (ignore these for automated testing, but still show them for manual testing)
 				"sapi/cgi/tests/apache_request_headers.phpt",
@@ -82,8 +83,8 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		return false;
 	}
 	
-	public CliPhptTestCaseRunner(PhpIni ini, PhptThread thread, PhptTestCase test_case, PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
-		super(ini, thread, test_case, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
+	public CliPhptTestCaseRunner(PhpIni ini, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+		super(ini, thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 	}
 	
 	@Override
@@ -105,7 +106,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				}
 			}
 			
-			env = generateENVForTestCase(twriter.getConsoleManager(), host, build, scenario_set, test_case);
+			env = generateENVForTestCase(cm, host, build, scenario_set, test_case);
 			
 			return true;
 		}
@@ -282,7 +283,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			shell_file = shell_file.substring(active_test_pack.getDirectory().length());
 			if (shell_file.startsWith("/")||shell_file.startsWith("\\"))
 				shell_file = shell_file.substring(1);
-			shell_file = twriter.getTelemetryDir()+"/"+shell_file;
+			shell_file = this.active_test_pack.getDirectory()+"/"+shell_file;
 		}
 		StringWriter sw = new StringWriter();
 		PrintWriter fw = new PrintWriter(sw);
@@ -331,7 +332,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			stdin_file = stdin_file.substring(active_test_pack.getDirectory().length());
 			if (stdin_file.startsWith("/")||stdin_file.startsWith("\\"))
 				stdin_file = stdin_file.substring(1);
-			stdin_file = twriter.getTelemetryDir()+"/"+stdin_file;
+			stdin_file = this.active_test_pack.getDirectory()+"/"+stdin_file;
 		}
 		new File(stdin_file).getParentFile().mkdirs();
 		if (stdin_post!=null) {

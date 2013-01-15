@@ -66,7 +66,20 @@ public class REDebugCompiler extends RECompiler
      * @param opcode Opcode to convert to a string
      * @return Description of opcode
      */
-    String opcodeToString(char opcode)
+    static String opcodeToString(char opcode)
+    {
+        // Get string for opcode
+        String ret = (String) hashOpcode.get(new Integer(opcode));
+
+        // Just in case we have a corrupt program
+        if (ret == null)
+        {
+            ret = "OP_????";
+        }
+        return ret;
+    }
+    
+    static String opcodeToString(int opcode)
     {
         // Get string for opcode
         String ret = (String) hashOpcode.get(new Integer(opcode));
@@ -85,7 +98,7 @@ public class REDebugCompiler extends RECompiler
      * @param c Character to convert to a printable representation
      * @return String representation of character
      */
-    String charToString(char c)
+    static String charToString(char c)
     {
         // If it's unprintable, convert to '\###'
         if (c < ' ' || c > 127)
@@ -203,54 +216,59 @@ public class REDebugCompiler extends RECompiler
             // Move past node
             i += RE.nodeSize;
 
-            // If character class
-            if (opcode == RE.OP_ANYOF)
-            {
-                // Opening bracket for start of char class
-                p.print(", [");
-
-                // Show each range in the char class
-                // int rangeCount = opdata;
-                for (int r = 0; r < opdata; r++)
-                {
-                    // Get first and last chars in range
-                    char charFirst = instruction[i++];
-                    char charLast  = instruction[i++];
-
-                    // Print range as X-Y, unless range encompasses only one char
-                    if (charFirst == charLast)
-                    {
-                        p.print(charToString(charFirst));
-                    }
-                    else
-                    {
-                        p.print(charToString(charFirst) + "-" + charToString(charLast));
-                    }
-                }
-
-                // Annotate the end of the char class
-                p.print("]");
-            }
-
-            // If atom
-            if (opcode == RE.OP_ATOM)
-            {
-                // Open quote
-                p.print(", \"");
-
-                // Print each character in the atom
-                for (int len = opdata; len-- != 0; )
-                {
-                    p.print(charToString(instruction[i++]));
-                }
-
-                // Close quote
-                p.print("\"");
-            }
+            i = a(opcode, p, opdata, i, instruction);
 
             // Print a newline
             p.println("");
         }
+    }
+    
+    static int a(int opcode, PrintWriter p, char opdata, int i, char[] instruction) {
+    	// If character class
+    	if (opcode == RE.OP_ANYOF)
+        {
+            // Opening bracket for start of char class
+            p.print(", [");
+
+            // Show each range in the char class
+            // int rangeCount = opdata;
+            for (int r = 0; r < opdata; r++)
+            {
+                // Get first and last chars in range
+                char charFirst = instruction[i++];
+                char charLast  = instruction[i++];
+
+                // Print range as X-Y, unless range encompasses only one char
+                if (charFirst == charLast)
+                {
+                    p.print(charToString(charFirst));
+                }
+                else
+                {
+                    p.print(charToString(charFirst) + "-" + charToString(charLast));
+                }
+            }
+
+            // Annotate the end of the char class
+            p.print("]");
+        }
+
+        // If atom
+        if (opcode == RE.OP_ATOM)
+        {
+            // Open quote
+            p.print(", \"");
+
+            // Print each character in the atom
+            for (int len = opdata; len-- != 0; )
+            {
+                p.print(charToString(instruction[i++]));
+            }
+
+            // Close quote
+            p.print("\"");
+        }
+        return i;
     }
 
     /**

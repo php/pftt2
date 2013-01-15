@@ -71,7 +71,7 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 		StringBuilder ps_sb = new StringBuilder(128);
 		// install deduplication feature
 		ps_sb.append("Import-Module ServerManager\n");
-		ps_sb.append("Add-WindowsFeature -name File-Services\n");  
+		ps_sb.append("Add-WindowsFeature -name File-Services\n");
 		ps_sb.append("Add-WindowsFeature -name FS-Data-Deduplication\n");
 		ps_sb.append("Import-Module Deduplication\n");
 		// enable deduplication for volume

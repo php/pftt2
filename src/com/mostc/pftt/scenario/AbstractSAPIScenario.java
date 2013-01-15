@@ -9,9 +9,9 @@ import com.mostc.pftt.model.phpt.PhptSourceTestPack;
 import com.mostc.pftt.model.phpt.PhptActiveTestPack;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.PhptResultPackWriter;
+import com.mostc.pftt.results.IPhptTestResultReceiver;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
-import com.mostc.pftt.runner.PhptTestPackRunner.PhptThread;
+import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 
 /** Different scenarios for how PHP can be run
  * 
@@ -41,6 +41,7 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 	 * @param thread
 	 * @param group_key
 	 * @param test_case
+	 * @param cm
 	 * @param twriter
 	 * @param host
 	 * @param scenario_set
@@ -49,12 +50,12 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 	 * @param active_test_pack
 	 * @return
 	 */
-	public abstract AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack);
+	public abstract AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack);
 
-	public abstract boolean willSkip(PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception;
+	public abstract boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception;
 	
-	public boolean willSkip(PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpIni ini, PhpBuild build, PhptTestCase test_case) throws Exception {
-		return AbstractPhptTestCaseRunner.willSkip(twriter, host, scenario_set, type, ini, build, test_case);
+	public boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpIni ini, PhpBuild build, PhptTestCase test_case) throws Exception {
+		return AbstractPhptTestCaseRunner.willSkip(cm, twriter, host, scenario_set, type, ini, build, test_case);
 	}
 	
 	public void close(boolean debug) {

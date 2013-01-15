@@ -15,7 +15,7 @@ import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
-import com.mostc.pftt.results.PhptResultPackWriter;
+import com.mostc.pftt.results.IPhptTestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.DownloadUtil;
@@ -109,9 +109,9 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		return host.exec(httpd(apache_version, host)+" -V", Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).isSuccess();
 	}
 	
-	public static boolean isSupported(PhptResultPackWriter twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptTestCase test_case) {
+	public static boolean isSupported(ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptTestCase test_case) {
 		if (build.isNTS(host)) {
-			twriter.getConsoleManager().println(EPrintType.SKIP_OPERATION, ApacheManager.class, "Error Apache requires TS Php Build. NTS Php Builds aren't supported with Apache mod_php.");
+			cm.println(EPrintType.SKIP_OPERATION, ApacheManager.class, "Error Apache requires TS Php Build. NTS Php Builds aren't supported with Apache mod_php.");
 			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "NTS Build not supported", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return false;

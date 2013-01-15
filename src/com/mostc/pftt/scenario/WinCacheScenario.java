@@ -1,6 +1,7 @@
 package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.model.phpt.EAcceleratorType;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
@@ -27,6 +28,11 @@ public class WinCacheScenario extends AbstractCodeCacheScenario {
 	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
 		// TODO download and install wincache.dll
 		return false;
+	}
+
+	@Override
+	public EAcceleratorType getAcceleratorType() {
+		return EAcceleratorType.WINCACHE;
 	}
 
 }

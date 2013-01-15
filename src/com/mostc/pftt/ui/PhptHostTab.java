@@ -1,7 +1,6 @@
 package com.mostc.pftt.ui;
 
 import groovy.ui.ConsoleTextEditor;
-
 import java.awt.BorderLayout;
 import java.awt.GridLayout;
 import java.awt.Toolkit;
@@ -30,8 +29,8 @@ import javax.swing.event.ListSelectionListener;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.results.PhptResultPack;
 import com.mostc.pftt.results.PhptTestResult;
-import com.mostc.pftt.runner.PhptTestPackRunner;
 import com.mostc.pftt.runner.AbstractTestPackRunner.ETestPackRunnerState;
+import com.mostc.pftt.runner.PhptTestPackRunner;
 
 import se.datadosen.component.RiverLayout;
 
@@ -306,7 +305,7 @@ public class PhptHostTab extends JSplitPane {
 						fail++;
 						fail_label.setText(Integer.toString(fail));
 						
-						pass_bar.setString(Float.toString(PhptResultPack.round1( (float)( (double)pass / ((double)( pass + fail )) )))+"%"); // 1 decimal places nn.y
+						pass_bar.setString(Float.toString(PhptResultPack.round1( (float)( (double)pass / ((double)( pass + fail + crash )) )))+"%"); // 1 decimal places nn.y
 						pass_bar.setMaximum(fail+pass);
 						total_label.setText(""+(fail+pass));
 						

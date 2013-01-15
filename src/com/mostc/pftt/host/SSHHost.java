@@ -9,9 +9,12 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 import java.util.LinkedList;
@@ -24,6 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import com.github.mattficken.io.AbstractDetectingCharsetReader;
 import com.github.mattficken.io.ByLineReader;
 import com.github.mattficken.io.ByteArrayIOStream;
+import com.github.mattficken.io.CharsetByLineReader;
 import com.github.mattficken.io.CharsetDeciderDecoder;
 import com.github.mattficken.io.DefaultCharsetDeciderDecoder;
 import com.github.mattficken.io.IOUtil;
@@ -47,7 +51,26 @@ import com.sshtools.j2ssh.transport.publickey.SshPublicKey;
 
 /** represents a Remote Host accessed via SSH.
  * 
+ * TROUBLESHOOTING
+ * 
+ * If have problems logging in to OpenSSH (the default SSH server on Linux)
+ * 
+ * Check /etc/ssh/sshd_config for both:
+ * PasswordAuthentication yes
+ * PermitRootLogin yes
+ * 
+ * Then run `/etc/init.d/sshd restart` or `/etc/init.d/ssh restart`
+ * 
+ * 
+ * CONFIGURATION
+ * 
  * Doesn't connect to host until first call to a method that requires being connected to host.
+ * 
+ * This allows SSHHost to be instantiated in config files, etc... without actually creating a connection
+ * until one is actually needed.
+ * 
+ * 
+ * SERVER REQUIREMENTS
  * 
  * Remote Host must have an accessible SSH Server.
  * 
@@ -58,7 +81,7 @@ import com.sshtools.j2ssh.transport.publickey.SshPublicKey;
  * SSH Server must support SESSION, SFTP and SCP channels (most do).
  * 
  * @author Matt Ficken
- *
+ * 
  */
 
 public class SSHHost extends RemoteHost {
@@ -85,7 +108,7 @@ public class SSHHost extends RemoteHost {
 	}
 	
 	protected String normalizePath(String path) {
-		return "//"+path; // TODO temp
+		return path;
 	}
 	
 	protected void ensureSshOpen() throws IllegalStateException, IOException, UnknownHostException {
@@ -266,17 +289,6 @@ public class SSHHost extends RemoteHost {
 		ensureScpOpen();
 		return new MultiCharsetByLineReader(scp.get(normalizePath(file)), cdd);
 	}
-	
-	/*@Override
-	public void saveTextFile(String filename, String text, Charset charset) throws IOException {
-		if (text==null)
-			text = "";
-		ensureScpOpen();
-		byte[] bytes = charset == null ? text.getBytes() : text.getBytes(charset);
-		scp.put(new ByteArrayInputStream(bytes), bytes.length, filename, normalizePath(filename));
-	}
-	TODO
-	*/
 
 	@Override
 	public void saveTextFile(String filename, String text) throws IOException {
@@ -350,6 +362,16 @@ public class SSHHost extends RemoteHost {
 		public int getExitCode() {
 			Integer ec = session.getExitCode();
 			return ec == null ? -1 : ec.intValue();
+		}
+
+		@Override
+		public InputStream getSTDOUT() {
+			return session.getInputStream();
+		}
+
+		@Override
+		public OutputStream getSTDIN() {
+			return session.getOutputStream();
 		}
 		
 	} // end protected static class SSHExecHandle
@@ -595,22 +617,49 @@ public class SSHHost extends RemoteHost {
 
 	@Override
 	public long getSize(String file) {
-		// TODO Auto-generated method stub
+		try {
+			ensureSftpOpen();
+			FileAttributes fa = sftp.stat(normalizePath(file));
+			return fa.getSize().longValue();
+		} catch ( Exception ex ) {
+			ex.printStackTrace();
+		}
 		return 0;
 	}
 
 	@Override
-	public ByLineReader readFile(String file, Charset cs)
-			throws IllegalStateException, FileNotFoundException, IOException {
-		// TODO Auto-generated method stub
-		return null;
+	public ByLineReader readFile(String file, Charset cs) throws IllegalStateException, FileNotFoundException, IOException {
+		return new CharsetByLineReader(new FileInputStream(normalizePath(file)), cs);
 	}
 
 	@Override
-	public void saveTextFile(String filename, String text, CharsetEncoder ce)
-			throws IllegalStateException, IOException {
-		// TODO Auto-generated method stub
+	public void saveTextFile(String filename, String text, CharsetEncoder ce) throws IllegalStateException, IOException {
+		if (text==null)
+			text = "";
+		ensureScpOpen();
+		filename = normalizePath(filename);
 		
+		if (ce==null) {
+			byte[] text_bytes = text.getBytes();
+			scp.put(new ByteArrayInputStream(text_bytes), text_bytes.length, filename, filename);
+		} else {
+			ByteBuffer bbuf = ByteBuffer.allocate(50+text.length()*2);
+			ce.encode(CharBuffer.wrap(text.toCharArray()), bbuf, true);
+			scp.put(new ByteBufferInputStream(bbuf), bbuf.capacity() - bbuf.remaining(), filename, filename);
+		}
+	}
+	
+	protected static class ByteBufferInputStream extends InputStream {
+		protected final ByteBuffer bbuf;
+		
+		public ByteBufferInputStream(ByteBuffer bbuf) {
+			this.bbuf = bbuf;
+		}
+		
+		@Override
+		public int read() {
+			return bbuf.get();
+		}
 	}
 
 } // end public class SSHHost
