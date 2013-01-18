@@ -30,6 +30,7 @@ import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.GZIPOutputStreamLevel;
 import com.mostc.pftt.util.StringUtil;
+import com.mostc.pftt.util.StringUtil.LengthLimitStringWriter;
 
 public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRunner {
 	protected final ConsoleManager cm;
@@ -62,10 +63,16 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		if (skipif_file == null || !evalSkipIf(executeSkipIf())) {
 			// no SKIPIF section or executed SKIPIF says to execute the TEST section
 			prepareTest();
+			//
 			String test_output = executeTest();
 			if (not_crashed) {
+				//
 				evalTest(test_output, test_case.getCommonCharset());
-				executeClean();
+				
+				// some tests create files/dirs which, which will cause the test to fail again
+				// if its run in-place from the same test-pack
+				if (!cm.isPhptNotInPlace()&&test_clean!=null)
+					executeClean();
 			}
 		}
 	}
@@ -120,7 +127,12 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		//
 	
 		test_file = host.joinIntoOnePath(test_dir, base_file_name + ".php");
-		test_clean = host.joinIntoOnePath(test_dir, base_file_name + ".clean.php");
+		
+		if (test_case.containsSection(EPhptSection.CLEAN)) {
+			test_clean = host.joinIntoOnePath(test_dir, base_file_name + ".clean.php");
+			
+			host.saveTextFile(test_clean, test_case.get(EPhptSection.CLEAN));
+		} // else test_clean = null;
 		
 		
 		if (StringUtil.isEmpty(ini.getExtensionDir()))
@@ -388,7 +400,6 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 					
 			boolean expected_re_match;
 			
-			output = output.replace("\\n", ""); // TODO test
 			output = remove_header_from_output(output);
 			String output_trim = output.trim();
 			
@@ -505,8 +516,8 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 				//
 				// (this is an expensive operation so it shouldn't be done for every test. there shouldn't be
 				//  very many FAIL tests so this shouldn't be done very much)
-				StringWriter dump_sw = new StringWriter(1024);
-				StringWriter output_sw = new StringWriter(2048);
+				LengthLimitStringWriter dump_sw = new LengthLimitStringWriter();
+				LengthLimitStringWriter output_sw = new LengthLimitStringWriter();
 				PrintWriter dump_pw = new PrintWriter(dump_sw);
 				PrintWriter output_pw = new PrintWriter(output_sw);
 				

@@ -246,21 +246,9 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	
 	@Override
 	protected void executeClean() throws Exception {
-		if (test_case.containsSection(EPhptSection.CLEAN)) {
-			host.saveTextFile(test_clean, test_case.getTrim(EPhptSection.CLEAN), null);
-		
-			env.remove(ENV_REQUEST_METHOD);
-			env.remove(ENV_QUERY_STRING);
-			env.remove(ENV_PATH_TRANSLATED);
-			env.remove(ENV_SCRIPT_FILENAME);
-			env.remove(ENV_REQUEST_METHOD);
-			
-			// execute cleanup script
-			// FUTURE should cleanup script be ignored??
-			host.exec(selected_php_exe+" "+test_clean, Host.ONE_MINUTE, env, null, active_test_pack.getDirectory());
-
-			host.delete(test_clean);
-		}
+		// execute cleanup script
+		// FUTURE should cleanup script be ignored??
+		host.exec(selected_php_exe+" "+test_clean, Host.ONE_MINUTE, env, null, active_test_pack.getDirectory());
 	} // end void executeClean
 
 	@Override

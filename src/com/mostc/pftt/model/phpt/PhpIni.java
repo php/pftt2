@@ -63,7 +63,7 @@ public class PhpIni {
 	public static final String ISO_8859_1 = "ISO-8859-1";
 	public static final String U_INVALID_SUBSTITUTE = "U_INVALID_SUBSTITUTE";
 	public static final String DOT_HTML = ".html";
-	public static final String E_ALL_OR_E_STRICT = "E_ALL|E_STRICT|E_WARNING|E_PARSE|E_NOTICE|E_COMPILE_ERROR|E_RECOVERABLE_ERROR|E_ERROR|E_CORE_ERROR"; // TODO E_WARN
+	public static final String E_ALL_OR_E_STRICT = "E_ALL|E_STRICT";// TODO |E_WARNING|E_PARSE|E_NOTICE|E_COMPILE_ERROR|E_RECOVERABLE_ERROR|E_ERROR|E_CORE_ERROR"; // TODO E_WARN
 	//
 	private static String dllName(String name) {
 		// FUTURE macos x and solaris support
@@ -99,6 +99,7 @@ public class PhpIni {
 	public static final String EXT_XSL = dllName("xsl");
 	public static PhpIni createDefaultIniCopy(Host host, PhpBuild build) {
 		PhpIni ini = new PhpIni();
+		ini.putSingle("default_mimetype", "text/plain");
 		ini.putMulti(OUTPUT_HANDLER, StringUtil.EMPTY);
 		ini.putMulti(OPEN_BASEDIR, StringUtil.EMPTY);
 		ini.putMulti(SAFE_MODE, 0);

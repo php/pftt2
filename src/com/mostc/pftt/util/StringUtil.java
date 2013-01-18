@@ -1,8 +1,11 @@
 package com.mostc.pftt.util;
 
+import java.io.IOException;
+import java.io.Writer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.github.mattficken.io.IOUtil;
 import com.mostc.pftt.util.apache.regexp.RE;
 import com.mostc.pftt.util.apache.regexp.RECompiler;
 import com.mostc.pftt.util.apache.regexp.REProgram;
@@ -350,6 +353,54 @@ public final class StringUtil {
 			sb.append(patt);
 		return sb.toString();
 	}
+	
+	/** replacement for StringWriter that will silent ignore write requests if
+	 * too many chars have been written.
+	 * 
+	 * This avoids OutOfMemoryErrors.
+	 * 
+	 */
+	public static class LengthLimitStringWriter extends Writer {
+		protected final StringBuilder sb;
+		protected final int max;
+		
+		/**
+		 * 
+		 * @param cap - initial capacity
+		 * @param max - maximum capacity - will not exceed this
+		 */
+		public LengthLimitStringWriter(int cap, int max) {
+			this.sb = new StringBuilder(cap);
+			this.max = max;
+		}
+		
+		public LengthLimitStringWriter() {
+			this(512, IOUtil.QUARTER_MEGABYTE);
+		}
+
+		@Override
+		public void close() throws IOException {
+			
+		}
+
+		@Override
+		public void flush() throws IOException {
+			
+		}
+
+		@Override
+		public void write(char[] chars, int off, int len) throws IOException {
+			len = Math.min(len, max - sb.length());
+			if (len>0)
+				sb.append(chars, off, len);
+		}
+		
+		@Override
+		public String toString() {
+			return sb.toString();
+		}
+		
+	} // end public static class LengthLimitStringWriter
 	
 	private StringUtil() {}
 	

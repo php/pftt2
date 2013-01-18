@@ -70,10 +70,15 @@ public class PhptTestCase extends TestCase {
 			new String[]{"ext/standard/tests/dir/"},
 			new String[]{"ext/standard/tests/sockets/", "ext/sockets/"},
 			new String[]{"tests/security/"},
+			// the bug38450* tests fail randomly under apache if run on apache instance
+			// with other tests - run them (serially) on their own apache instance
+			new String[]{"ext/standard/tests/file/bug38450"},
 			new String[]{"ext/standard/tests/network/"},
 			new String[]{"ext/session", "tests/basic/bug20539.phpt"},
-			new String[]{"ext/mysql/", "ext/pdo_mysql/"},
+			new String[]{"ext/mysql/", "ext/pdo_mysql/", "ext/mysqli/"},
 			new String[]{"ext/pgsql/", "ext/pdo_pgsql/"},
+			// several 61367 tests that aren't thread-safe (temp files)
+			new String[]{"ext/libxml/tests/bug61367"},
 			new String[]{"sapi/cli/php_cli_server_"},
 			new String[]{"sapi/cgi/"},
 			new String[]{"ext/firebird/", "ext/pdo_firebird/"},
@@ -83,6 +88,7 @@ public class PhptTestCase extends TestCase {
 			new String[]{"ext/odbc/", "ext/pdo_odbc/"},
 			new String[]{"ext/pdo/"}, // for any remaining pdo tests
 			new String[]{"ext/xmlrpc/"},
+			new String[]{"ext/xmlwriter/"},
 			new String[]{"ext/soap/"},
 			new String[]{"ext/fileinfo/"},
 			new String[]{"ext/ldap/"},
@@ -352,7 +358,6 @@ public class PhptTestCase extends TestCase {
 			expected_str = oexpected_str = getTrim(EPhptSection.EXPECTF);
 			
 			expected_str = prepareExpectF(expected_str);
-			//expected_str = expected_str.replace("\r\n", ".").replace("\r", ".").replace("\n", "."); // TODO test
 		} else {
 			return null;
 		}
@@ -368,7 +373,6 @@ public class PhptTestCase extends TestCase {
 			REProgram wanted_re_prog = new RECompiler().compile(expected_str);
 			
 			expected_re = new RE(wanted_re_prog);
-			expected_re.setMatchFlags(RE.MATCH_MULTILINE); // TODO test
 			this.expected_re = new WeakReference<RE>(expected_re);
 			return expected_re;
 		} catch ( Throwable ex ) {
@@ -405,8 +409,6 @@ public class PhptTestCase extends TestCase {
 			expected_str = getTrim(EPhptSection.EXPECTF);
 			
 			expected_str = prepareExpectF(expected_str);
-			
-			//expected_str = expected_str.replace("\r\n", ".").replace("\r", ".").replace("\n", "."); // TODO test
 		} else {
 			return;
 		}
@@ -424,7 +426,6 @@ public class PhptTestCase extends TestCase {
 		re.dumpProgram(dump_pw);
 		
 		RE r = new RE(rp);
-		r.setMatchFlags(RE.MATCH_MULTILINE); // TODO test
 		r.matchDump(actual_str, output_pw);
 		
 		for (int i = 0; i < r.getParenCount(); i++) {
@@ -441,11 +442,6 @@ public class PhptTestCase extends TestCase {
 	 * @return
 	 */
 	public static String prepareExpectF(String expected_str) {
-		/*System.err.println(expected_str);
-		expected_str = expected_str.replace("\\n", "");//\\\\n"); // TODO
-		System.err.println("===");
-		System.err.println(expected_str);*/
-		
 		// do preg_quote, but miss out any %r delimited sections
 		int start, end;
 		String temp = "";
@@ -494,16 +490,16 @@ public class PhptTestCase extends TestCase {
 		expected_str = StringUtil.replaceAll(PAT_A, "(.|\\\\n|\\\\r)*", expected_str);
 		expected_str = StringUtil.replaceAll(PAT_w, "\\\\s*", expected_str);
 		expected_str = StringUtil.replaceAll(PAT_i, "[+-]?\\\\d+", expected_str);
-		expected_str = StringUtil.replaceAll(PAT_d, "\\\\d+", expected_str);
+		expected_str = StringUtil.replaceAll(PAT_d, "\\d+", expected_str);
 		expected_str = StringUtil.replaceAll(PAT_x, "[0-9a-fA-F]+", expected_str);
 		expected_str = StringUtil.replaceAll(PAT_f, "[+-]?\\.?\\\\d+\\.?\\\\d*(?:[Ee][+-]?\\\\d+)?", expected_str);
 		// 2 .. (produced by 2 %c) will be ignored... can only have 1 %c or 1 .
 		expected_str = StringUtil.replaceAll(PAT_double_c, "%c", expected_str);
 		expected_str = StringUtil.replaceAll(PAT_c, ".", expected_str);
 		
-		//expected_str = expected_str.replace("\r\n", ".").replace("\r", ".").replace("\n", "."); // TODO test
-		//expected_str = expected_str.replace("\\r", "\\\\r");
-		return expected_str;
+		// TODO
+		expected_str = expected_str.replace("\r\n", ".*\r\n").replace("\r", ".*\r").replace("\n", ".*\n");
+		return ".*"+expected_str+".*"; // TODO test
 	} // end public static String prepareExpectF
 	static final Pattern PAT_s = Pattern.compile("%s");
 	static final Pattern PAT_S = Pattern.compile("%S");

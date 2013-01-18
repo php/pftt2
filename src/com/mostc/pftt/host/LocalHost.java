@@ -153,21 +153,9 @@ public class LocalHost extends Host {
 			if (ce==null) {
 				fos.write(text.getBytes());
 			} else {
-				
-				
-				//fos.write(text.getBytes(charset));
-			
-				ByteBuffer bbuf = ByteBuffer.allocate(50+text.length()*2);
-				//try {
-				//CharsetEncoder ce = charset.newEncoder(); // TODO share
+				ByteBuffer bbuf = ByteBuffer.allocate(50+(text.length()*2));
 				ce.encode(CharBuffer.wrap(text.toCharArray()), bbuf, true);
-				/*} catch ( Exception ex ) {
-					//ex.printStackTrace(); // TODO
-					return;
-				}*/
-				fos.getChannel().write(bbuf);
-			
-			
+				fos.write(bbuf.array(), 0, bbuf.limit());
 			}
 		} finally {
 			fos.close();

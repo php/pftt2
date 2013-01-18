@@ -121,7 +121,7 @@ public abstract class AbstractPhptTestCaseRunner {
 	} // end public static boolean willSkip
 	
 	static boolean a(PhptTestCase test_case) {
-		return !test_case.getName().contains("csv");
+		return false;
 	}
 		
 } // end public abstract class AbstractPhptTestCaseRunner

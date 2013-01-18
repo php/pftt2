@@ -305,7 +305,7 @@ public class PhptHostTab extends JSplitPane {
 						fail++;
 						fail_label.setText(Integer.toString(fail));
 						
-						pass_bar.setString(Float.toString(PhptResultPack.round1( (float)( (double)pass / ((double)( pass + fail + crash )) )))+"%"); // 1 decimal places nn.y
+						pass_bar.setString(Float.toString(PhptResultPack.round1( (float)( ((float)pass) / ((float)( pass + fail + crash )) )))+"%"); // 1 decimal places nn.y
 						pass_bar.setMaximum(fail+pass);
 						total_label.setText(""+(fail+pass));
 						

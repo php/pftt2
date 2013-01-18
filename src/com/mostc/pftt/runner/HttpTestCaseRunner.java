@@ -3,6 +3,8 @@ package com.mostc.pftt.runner;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.net.URLEncoder;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.http.Header;
@@ -44,6 +46,7 @@ import com.mostc.pftt.util.StringUtil;
  *
  */
 
+// TODO error msg should tell how many times web server was restarted
 public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected final WebServerManager smgr;
 	protected final HttpParams params;
@@ -61,7 +64,17 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		this.smgr = smgr;
 		this.web = web;
 		// CRITICAL: need this to get ENV from this TestCaseGroup
-		this.env = env;
+		if (env!=null && ((env.containsKey("TEMP")&&env.get("TEMP").equals(".")) || (env.containsKey("TMP")&&env.get("TMP").equals(".")))) {
+			// checks for case like: ext/phar/commit/tar/phar_commitwrite.phpt
+			this.env = new HashMap<String,String>(7);
+			this.env.putAll(env);
+			// TODO
+			this.env.put("TEMP", active_test_pack.getDirectory()+"/"+Host.dirname(test_case.getName()));
+			this.env.put("TMP", active_test_pack.getDirectory()+"/"+Host.dirname(test_case.getName()));
+		} else {
+			this.env = env;
+		}
+		//
 		
 		this.request_bytes = new ByteArrayOutputStream(256);
 		this.response_bytes = new ByteArrayOutputStream(4096);
@@ -99,14 +112,85 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			
 			return true;
 		} else if (test_case.isNamed(
-				// fpassthru() doesn't run on Apache
+				// fpassthru() system() and exec() doesn't run on Apache
 				"ext/standard/tests/popen_pclose_basic-win32.phpt", 
+				"sapi/cli/tests/bug61546.phpt",
+				"ext/standard/tests/file/bug41874.phpt",
+				"ext/standard/tests/file/bug41874_1.phpt",
+				"ext/standard/tests/file/bug41874_2.phpt",
+				"ext/standard/tests/file/bug41874_3.phpt",
+				"ext/standard/tests/file/popen_pclose_basic-win32.phpt",
+				// changing memory limit under mod_php after script started is N/A
+				"tests/lang/bug45392.phpt",
 				// this test will return different output on apache/iis
 				"ext/standard/tests/general_functions/get_cfg_var_variation8.phpt",
 				"tests/basic/bug54514.phpt",
+				"sapi/tests/test005.phpt",
+				//////////////////
+				"ext/standard/tests/strings/004.phpt",
+				"ext/mbstring/tests/bug63447_001.phpt",
+				"ext/mbstring/tests/bug63447_002.phpt",
+				"ext/iconv/tests/ob_iconv_handler.phpt",
+				"ext/mbstring/tests/mb_strcut.phpt",
+				"ext/mbstring/tests/mb_decode_numericentity.phpt",
+				//////////////////
+				"ext/standard/tests/file/parse_ini_file.phpt",
+				"tests/basic/rfc1867_missing_boundary.phpt",
+				"ext/xml/tests/xml006.phpt",
+				"zend/tests/bug48930.phpt",
+				"ext/json/tests/002.phpt",
+				"ext/zlib/tests/bug55544-win.phpt",
+				"tests/basic/025.phpt",
+				"ext/standard/tests/array/bug34066_1.phpt",
+				"tests/basic/rfc1867_invalid_boundary.phpt",
+				"zend/tests/bug54268.phpt",
+				"tests/basic/rfc1867_post_max_size.phpt",
+				"ext/dom/tests/bug37456.phpt",
+				"ext/libxml/tests/bug61367-read.phpt",
+				"zend/tests/multibyte/multibyte_encoding_003.phpt",
+				"ext/standard/tests/general_functions/002.phpt",
+				"zend/tests/multibyte/multibyte_encoding_002.phpt",
+				"tests/basic/rfc1867_garbled_mime_headers.phpt",
+				"ext/standard/tests/array/bug34066.phpt",
+				"ext/standard/tests/general_functions/006.phpt",
+				"ext/libxml/tests/bug61367-write.phpt",
+				"ext/session/tests/rfc1867_invalid_settings-win.phpt",
+				"ext/session/tests/rfc1867_invalid_settings_2-win.phpt",
+				"ext/standard/tests/versioning/php_sapi_name_variation001.phpt",
+				"ext/standard/tests/math/rad2deg_variation.phpt",
+				"ext/standard/tests/strings/strtoupper.phpt",
+				"ext/standard/tests/strings/sprintf_variation47.phpt",
+				"ext/standard/tests/general_functions/bug41445_1.phpt",
+				"ext/standard/tests/strings/htmlentities.phpt",
+				"ext/standard/tests/strings/fprintf_variation_001.phpt",
+				"ext/standard/tests/general_functions/var_dump.phpt",
+				"ext/session/tests/003.phpt",
+				"ext/session/tests/023.phpt",
+				"ext/standard/tests/streams/stream_get_meta_data_socket_variation3.phpt",
+				"ext/standard/tests/streams/stream_get_meta_data_socket_variation4.phpt",
+				/////////////////
 				// getopt returns false under web server (ok)
-				"ext/standard/tests/general_functions/bug43293_2.phpt"
+				"ext/standard/tests/general_functions/bug43293_1.phpt",
+				"ext/standard/tests/general_functions/bug43293_2.phpt",
+				// fopen("stdout") not supported under apache
+				"tests/strings/002.phpt"
 				)) {
+			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on web servers", null, null, null, null, null, null, null, null, null, null, null));
+			
+			return true;
+		} else if (host.isWindows() && test_case.isNamed(
+			// on Windows/Apache, already start with output buffering
+			// so the expected output is different (but is not a bug)
+			"tests/output/ob_get_level_basic_001.phpt",
+			"tests/output/ob_get_length_basic_001.phpt",
+			"tests/output/ob_clean_basic_001.phpt",
+			"tests/output/ob_get_status.phpt",
+			"tests/output/ob_010.phpt",
+			"tests/output/ob_011.phpt",
+			"tests/output/bug60321.phpt",
+			"ext/phar/tests/phar_create_in_cwd.phpt",
+			"ext/phar/tests/phar_commitwrite.phpt",
+			"tests/output/ob_start_error_005.phpt")) {
 			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on web servers", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return true;
@@ -132,16 +216,6 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	 * @throws Exception
 	 */
 	protected String http_execute(String path, EPhptSection section) throws Exception {
-		if (test_case.containsSection(EPhptSection.GET)) {
-			String query_string = test_case.getTrim(EPhptSection.GET);
-			// query_string needs to be added to the GET path
-			if (StringUtil.isNotEmpty(query_string)) {
-				// tests like ext/filter/tests/004.skip.php put HTML tags in query_string 
-				// which are not legal in URLs
-				path = path + "?" + query_string.replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-			}
-		}
-		
 		try {
 			try {
 				return do_http_execute(path, section, false);
@@ -204,11 +278,11 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			if (web!=null) {
 				synchronized(web) {
 					WebServerInstance _web = smgr.getWebServerInstance(cm, host, build, ini, env, active_test_pack.getDirectory(), web, test_case);
-					if (_web!=web) {
+					if (_web!=this.web) {
 						this.web = _web;
 						is_replacement = true;
 					
-						if (web.isCrashed()) {
+						if (web==null||web.isCrashed()) {
 							markTestAsCrash();
 							
 							// test will fail (because this(`PFTT: server...`) is the actual output which won't match the expected output)
@@ -222,7 +296,13 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			if (web==null) {
 				// test should be a FAIL or CRASH
 				// its certainly the fault of a test (not PFTT) if not this test
-				return "PFTT: no web server available!\n";
+				this.web = smgr.getWebServerInstance(cm, host, build, ini, env, active_test_pack.getDirectory(), web, test_case);
+				
+				if (web==null||web.isCrashed()) {
+					markTestAsCrash();
+					
+					return "PFTT: no web server available!\n";
+				}
 			}
 				
 			// CRITICAL: keep track of test cases running on web server
@@ -284,6 +364,9 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			HttpGet request = new HttpGet(path);
 			if (cookie_str!=null)
 				request.setHeader("Cookie", cookie_str);
+			// CRITICAL: tell web server to return plain-text (not HTMl) 
+			// for some reason(w/o this), apache returns HTML formatted responses for tests like ext/standard/tests/array/rsort.phpt
+			request.setHeader("Accept", "text/plain");
 			request.setParams(params);
 			
 			httpexecutor.preProcess(request, httpproc, context);
@@ -379,9 +462,45 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		return http_execute(skipif_file, EPhptSection.SKIPIF);
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	protected String executeTest() throws Exception {
-		return http_execute(test_file, EPhptSection.TEST);
+		String request_uri = this.test_file;
+		
+		if (env!=null&&env.containsKey("REQUEST_URI")) {
+			// ex: ext/phar/tests/frontcontroller17.phpt
+			request_uri = Host.dirname(request_uri)+"/"+env.get("REQUEST_URI");
+		}
+		
+		if (test_case.containsSection(EPhptSection.GET)) {
+			String query_string = test_case.getTrim(EPhptSection.GET);
+			// query_string needs to be added to the GET path
+			if (StringUtil.isNotEmpty(query_string)) {
+				// a good, complex example for this is ext/filter/tests/004.skip.php
+				// it puts HTML tags and other illegal chars in query_string (uses both HTTP GET and POST)
+				//
+				// illegal chars need to be URL-Encoded (percent-encoding, escaped)... 
+				// this is NOT the same as escaping entities in HTML
+				//
+				// @see https://en.wikipedia.org/wiki/Percent-encoding
+				// @see https://en.wikipedia.org/wiki/List_of_XML_and_HTML_character_entity_references
+				//
+				String[] names_and_values = query_string.split("[&|\\=]");
+				StringBuilder query_string_sb = new StringBuilder();
+				for ( int i=0 ; i < names_and_values.length ; i+=2 ) {
+					if (query_string_sb.length()>0)
+						query_string_sb.append('&');
+					query_string_sb.append(names_and_values[i]);
+					query_string_sb.append('=');
+					if (names_and_values.length>i+1)
+						query_string_sb.append(URLEncoder.encode(names_and_values[i+1]));
+				}
+				
+				request_uri = test_file + "?" + query_string_sb;
+			}
+		} // end if containsSection(GET)
+		
+		return http_execute(request_uri, EPhptSection.TEST);
 	}
 
 	@Override

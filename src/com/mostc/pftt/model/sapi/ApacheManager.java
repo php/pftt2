@@ -230,8 +230,10 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			return null;
 		}
 		
+		final String cmdline = httpd+" -X -f "+host.fixPath(apache_conf_file);
+		
 		// @see #createWebServerInstance for where command is executed to create httpd.exe process
-		return new ApacheWebServerInstance(apache_version, this, httpd+" -X -f "+host.fixPath(apache_conf_file), ini, env, listen_address, port, host, conf_dir, apache_conf_file, error_log);
+		return new ApacheWebServerInstance(apache_version, this, cmdline, ini, env, listen_address, port, host, conf_dir, apache_conf_file, error_log);
 	} // end protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance
 	
 	public class ApacheWebServerInstance extends ManagedProcessWebServerInstance {
@@ -382,7 +384,11 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			sb.append("EnableMMAP off\n");
 			sb.append("EnableSendfile off\n");
 		}
+		// CRITICAL: for a few tests (ex: ext/standard/tests/file/bug/61637.phpt), make sure that response is NOT wrapped in html tags
+		//sb.append("DefaultType text/plain\n");
+		// TODO
 		sb.append("<Directory />\n");
+		//sb.append("    ForceType text/plain\n");
 		sb.append("    AllowOverride none\n");
 		//sb.append("    Require all denied\n");
 		sb.append("</Directory>\n");
