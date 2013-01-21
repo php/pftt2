@@ -3,7 +3,6 @@ package com.mostc.pftt.runner;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -325,7 +324,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			int content_length = post.length();
 			
 			setRequestMethod("POST");
-			if (!hasContentType())
+			// TODO if (!hasContentType())
 				setContentType("application/x-www-form-urlencoded");
 			// critical: php-cgi won"t read more bytes than this (thus some input can go missing)
 			setContentLength(content_length);
@@ -391,7 +390,6 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		String expected, preoverride_actual = null;
 	
 		if (test_case.containsSection(EPhptSection.EXPECTF) || test_case.containsSection(EPhptSection.EXPECTREGEX)) {
-	
 			if (test_case.containsSection(EPhptSection.EXPECTF)) {
 				expected = test_case.getTrim(EPhptSection.EXPECTF);
 			} else {
@@ -411,7 +409,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			}
 			if (expected_re_match||a(test_case)) {
 
-				twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
+				twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL_WORKS:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
 						
 				return;
 			} 
@@ -433,7 +431,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 				}
 				if (expected_re_match) {
 
-					twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
+					twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL_WORKS:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
 							
 					return;
 				}
@@ -445,7 +443,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			
 			if (equalsNoWS(output, expected)||a(test_case)||output.contains("<html>")) {
 				
-				twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
+				twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL_WORKS:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
 						
 				return;
 			}
@@ -462,7 +460,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 				// compare again
 				if (equalsNoWS(output, expected)) {
 					
-					twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
+					twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL_WORKS:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
 					
 					return;
 				} // end if
@@ -472,7 +470,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			String output_trim = output.trim();
 			
 			if (StringUtil.isEmpty(output_trim)||a(test_case)||output.contains("<html>")) {
-				twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
+				twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL_WORKS:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
 				
 				return;
 			}

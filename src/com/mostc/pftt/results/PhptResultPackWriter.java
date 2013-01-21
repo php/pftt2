@@ -393,23 +393,25 @@ public class PhptResultPackWriter extends PhptResultPack implements IPhptTestRes
 		if (store_all && StringUtil.isNotEmpty(result.shell_script)) {
 			// store .cmd|.sh and .php file
 			// (if no .cmd|.sh don't need a .php file; .php file needed for .cmd|.sh)
-			
-			FileWriter fw;
-			
-			try {
-				fw = new FileWriter(host.joinIntoOnePath(this_telem_dir.getAbsolutePath(), test_case_base_name+(host.isWindows()?".cmd":".sh")));
-				fw.write(result.shell_script);
-				fw.close();
-			} catch ( Exception ex ) {
-				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "handleResult", ex, "", this_telem_dir, test_case_base_name);
-			}
-			
-			try {
-				fw = new FileWriter(host.joinIntoOnePath(this_telem_dir.getAbsolutePath(), test_case_base_name+".php"));
-				fw.write(result.test_case.get(EPhptSection.FILE));
-				fw.close();
-			} catch ( Exception ex ) {
-				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "handleResult", ex, "", this_telem_dir, test_case_base_name);
+			String file_str = result.test_case.get(EPhptSection.FILE);
+			if (StringUtil.isNotEmpty(file_str)) {
+				FileWriter fw;
+				
+				try {
+					fw = new FileWriter(host.joinIntoOnePath(this_telem_dir.getAbsolutePath(), test_case_base_name+(host.isWindows()?".cmd":".sh")));
+					fw.write(result.shell_script);
+					fw.close();
+				} catch ( Exception ex ) {
+					cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "handleResult", ex, "", this_telem_dir, test_case_base_name);
+				}
+				
+				try {
+					fw = new FileWriter(host.joinIntoOnePath(this_telem_dir.getAbsolutePath(), test_case_base_name+".php"));
+					fw.write(file_str);
+					fw.close();
+				} catch ( Exception ex ) {
+					cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "handleResult", ex, "", this_telem_dir, test_case_base_name);
+				}
 			}
 		}
 		//

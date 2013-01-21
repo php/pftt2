@@ -417,6 +417,8 @@ public class LocalPhptTestPackRunner extends PhptTestPackRunner {
 					continue;
 				} else {
 					exec_jobs(group.group_key, group.test_cases, test_count);
+					if (group.test_cases.isEmpty())
+						thread_safe_groups.remove(group);
 				}
 			}
 		} // end protected void runThreadSafe
@@ -433,7 +435,8 @@ public class LocalPhptTestPackRunner extends PhptTestPackRunner {
 			try {
 				while ( ( 
 						test_case = jobs.poll() 
-						) != null && 
+						) != null 
+						&& 
 						shouldRun()
 						) {
 					completed_tests.add(test_case);
@@ -465,6 +468,7 @@ public class LocalPhptTestPackRunner extends PhptTestPackRunner {
 					}
 					
 					test_count.incrementAndGet();
+					Thread.yield();
 				} // end while
 			} finally {
 				if (parallel) {
@@ -478,8 +482,6 @@ public class LocalPhptTestPackRunner extends PhptTestPackRunner {
 					//}
 				}
 			} // end try
-			
-			Thread.yield();
 		} // end protected void exec_jobs
 
 		@Override

@@ -750,10 +750,18 @@ public class LocalHost extends Host {
 	}
 	
 	public static String getLocalPfttDir() {
-		if (DEV > 0) {
-			return isLocalhostWindows() ? "C:\\php-sdk\\PFTT\\Dev-"+DEV+"\\" : System.getenv("HOME")+"/php-sdk/PFTT/dev-"+DEV+"/";
+		if (isLocalhostWindows()) {
+			String sd = System.getenv("SYSTEMDRIVE");
+			if (StringUtil.isEmpty(sd))
+				sd = "C:";
+			if (DEV>0)
+				return sd+"\\php-sdk\\PFTT\\Dev-"+DEV+"\\";
+			else
+				return sd+"\\php-sdk\\PFTT\\Current\\";
+		} else if (DEV>0) {
+			return System.getenv("HOME")+"/php-sdk/PFTT/dev-"+DEV+"/";
 		} else {
-			return isLocalhostWindows() ? "C:\\php-sdk\\PFTT\\Current\\" : System.getenv("HOME")+"/php-sdk/PFTT/current/";
+			return System.getenv("HOME")+"/php-sdk/PFTT/current/";
 		}
 	}
 

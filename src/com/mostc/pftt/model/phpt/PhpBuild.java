@@ -11,7 +11,7 @@ import javax.annotation.Nullable;
 
 import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.Host;
-import com.mostc.pftt.model.Build;
+import com.mostc.pftt.model.sapi.SAPIManager;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.util.StringUtil;
@@ -24,7 +24,7 @@ import com.mostc.pftt.util.StringUtil;
  * 
  */
 
-public class PhpBuild extends Build {
+public class PhpBuild extends SAPIManager {
 	private String build_path, php_exe, php_cgi_exe;
 	private WeakHashMap<PhpIni,WeakHashMap<String,Boolean>> ext_enable_map;
 	private WeakReference<String> php_info;

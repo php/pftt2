@@ -68,19 +68,24 @@ public class PhptTestCase extends TestCase {
 			// note: this array is processed in order, so this entry will catch any remaining /file/ phpts
 			//new String[]{"ext/standard/tests/file/"},
 			new String[]{"ext/standard/tests/dir/"},
+			// TODO
+			new String[]{"ext/standard/tests/streams/stream_get_meta_data_socket_variation1.phpt"},
+			new String[]{"ext/standard/tests/streams/stream_get_meta_data_socket_variation2.phpt"},
+			new String[]{"ext/standard/tests/streams/stream_get_meta_data_socket_variation3.phpt"},
+			new String[]{"ext/standard/tests/streams/stream_get_meta_data_socket_variation4.phpt"},
 			new String[]{"ext/standard/tests/sockets/", "ext/sockets/"},
-			new String[]{"tests/security/"},
+			// TODO new String[]{"tests/security/"},
 			// the bug38450* tests fail randomly under apache if run on apache instance
 			// with other tests - run them (serially) on their own apache instance
 			new String[]{"ext/standard/tests/file/bug38450"},
 			new String[]{"ext/standard/tests/network/"},
-			new String[]{"ext/session", "tests/basic/bug20539.phpt"},
+			// TODO new String[]{"ext/session", "tests/basic/bug20539.phpt"},
 			new String[]{"ext/mysql/", "ext/pdo_mysql/", "ext/mysqli/"},
 			new String[]{"ext/pgsql/", "ext/pdo_pgsql/"},
 			// several 61367 tests that aren't thread-safe (temp files)
 			new String[]{"ext/libxml/tests/bug61367"},
-			new String[]{"sapi/cli/php_cli_server_"},
-			new String[]{"sapi/cgi/"},
+			new String[]{"sapi/cli/tests/php_cli_server_"},
+			// TODO new String[]{"sapi/cgi/"},
 			new String[]{"ext/firebird/", "ext/pdo_firebird/"},
 			new String[]{"ext/sybase/"},
 			new String[]{"ext/interbase/", "ext/pdo_interbase/"},
@@ -949,6 +954,7 @@ public class PhptTestCase extends TestCase {
 				"ext/oci8/tests/pecl_bug10194.phpt",
 				"ext/oci8/tests/pecl_bug10194_blob.phpt",
 				"ext/oci8/tests/pecl_bug10194_blob_64.phpt",
+				"ext/standard/tests/file/fgets_socket_variation1.phpt",
 				"ext/standard/tests/file/fgets_socket_variation2.phpt",
 				"ext/standard/tests/file/001.phpt",
 				"ext/standard/tests/file/005_variation.phpt",

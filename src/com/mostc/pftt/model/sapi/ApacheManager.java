@@ -169,10 +169,10 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 					VisualStudioUtil.setExeStackSize(cm, host, httpd, VisualStudioUtil.SIXTEEN_MEGABYTES);
 					
 					// check OpenSSL version
-					if (!checkOpenSSLVersion(cm, host, build, apache_version, Host.dirname(Host.dirname(httpd)))) {
+					/* TODO if (!checkOpenSSLVersion(cm, host, build, apache_version, Host.dirname(Host.dirname(httpd)))) {
 						cm.println(EPrintType.SKIP_OPERATION, getClass(), "Apache built with different version of OpenSSL than the version PHP is built with. Can't use this Apache build!");
 						return null;
-					}
+					}*/
 					
 					this.cache_host = host;
 					this.cache_httpd = httpd;

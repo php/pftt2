@@ -62,6 +62,7 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
  * 
  */
 
+// TODO phpt_all, etc... should display location of result-pack being written
 public class PfttMain {
 	protected Host host;
 	
@@ -723,7 +724,9 @@ public class PfttMain {
 			config = Config.loadConfigFromFiles(cm, (File[])config_files.toArray(new File[config_files.size()]));
 			System.out.println("PFTT: Config: loaded "+config_files);
 		} else {
-			System.out.println("PFTT: Config: no config files loaded... using defaults only");
+			File default_config_file = new File(rt.host.getPfttDir()+"/conf/default.groovy");
+			config = Config.loadConfigFromFiles(cm, default_config_file);
+			System.out.println("PFTT: Config: no config files loaded... using defaults only ("+default_config_file+")");
 		}
 
 		//

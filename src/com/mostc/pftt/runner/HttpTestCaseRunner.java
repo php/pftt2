@@ -49,12 +49,12 @@ import com.mostc.pftt.util.StringUtil;
 // TODO error msg should tell how many times web server was restarted
 public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected final WebServerManager smgr;
-	protected final HttpParams params;
-	protected final HttpProcessor httpproc;
-	protected final HttpRequestExecutor httpexecutor;
 	protected final ByteArrayOutputStream request_bytes, response_bytes;
 	protected WebServerInstance web = null;
 	protected String cookie_str;
+	protected final HttpParams params;
+	protected final HttpProcessor httpproc;
+	protected final HttpRequestExecutor httpexecutor;
 
 	public HttpTestCaseRunner(PhpIni ini, Map<String,String> env, HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
 		super(ini, thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
@@ -267,6 +267,7 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		}
 	} // end protected String http_execute
 	
+
 	protected String do_http_execute(String path, EPhptSection section, boolean is_replacement) throws Exception {
 		path = Host.toUnixPath(path);
 		if (path.startsWith(Host.toUnixPath(active_test_pack.getDirectory())))

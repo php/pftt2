@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Map;
 
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.model.phpt.EPhptSection;
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
 import com.mostc.pftt.model.phpt.ESAPIType;
 import com.mostc.pftt.model.phpt.PhpBuild;
@@ -34,7 +35,7 @@ public abstract class AbstractPhptTestCaseRunner {
 	public abstract void runTest() throws IOException, Exception, Throwable;
 	
 	public static PhpIni createIniForTest(ConsoleManager cm, Host host, PhpBuild build, PhptActiveTestPack active_test_pack, ScenarioSet scenario_set) {
-		PhpIni ini = PhpIni.createDefaultIniCopy(host, build);
+		PhpIni ini = PhpIni.createDefaultIniCopy(host, build); // TODO
 		//_ini.replaceAll(test_case.getINI(active_test_pack, host));
 		for ( Scenario scenario : scenario_set ) {
 			if (scenario instanceof AbstractINIScenario) {
@@ -89,7 +90,7 @@ public abstract class AbstractPhptTestCaseRunner {
 			
 			return true;
 		}
-		if (test_case.isNamed(
+		if (test_case.containsSection(EPhptSection.REQUEST)||test_case.isNamed(
 			// these tests randomly fail (ignore them)
 			"ext/standard/tests/network/gethostbyname_error006.phpt",
 			"ext/standard/tests/php_ini_loaded_file.phpt", 

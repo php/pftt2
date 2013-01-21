@@ -96,5 +96,19 @@ public final class IOUtil {
 	}*/
 	
 	private IOUtil() {}
+
+	/** merges the contents (in order) of 2 byte arrays into a new byte array and
+	 * returns the new byte array.
+	 * 
+	 * @param a
+	 * @param b
+	 * @return
+	 */
+	public static byte[] mergeBytes(byte[] a, byte[] b) {
+		byte[] c = new byte[a.length+b.length];
+		System.arraycopy(a, 0, c, 0, a.length);
+		System.arraycopy(b, 0, c, a.length, b.length);
+		return c;
+	}
 	
 } // end public final class IOUtil

@@ -15,6 +15,7 @@ import com.github.mattficken.io.IOUtil;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.scenario.ApplicationScenario;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 
@@ -178,6 +179,7 @@ public final class Config {
 		// a hack to import common classes for configuration files (XXX do this a better way)
 		StringBuilder sb = new StringBuilder(128+code.length());
 		// import all standard Scenarios and Host types
+		sb.append("import ");sb.append(ApplicationScenario.class.getPackage().getName());sb.append(".*;\n");
 		sb.append("import ");sb.append(Scenario.class.getPackage().getName());sb.append(".*;\n");
 		sb.append("import ");sb.append(Host.class.getPackage().getName());sb.append(".*;\n");
 		sb.append("import ");sb.append(SMTPProtocol.class.getName());sb.append(";\n");

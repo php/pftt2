@@ -7,10 +7,29 @@ import java.util.Map;
 
 import javax.annotation.concurrent.ThreadSafe;
 
+import org.apache.http.Header;
+import org.apache.http.HttpHost;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ByteArrayEntity;
+import org.apache.http.params.HttpParams;
+import org.apache.http.protocol.BasicHttpContext;
+import org.apache.http.protocol.ExecutionContext;
+import org.apache.http.protocol.HttpContext;
+import org.apache.http.protocol.HttpProcessor;
+import org.apache.http.protocol.HttpRequestExecutor;
+
+import com.github.mattficken.io.IOUtil;
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.model.phpt.EPhptSection;
+import com.mostc.pftt.model.phpt.EPhptTestStatus;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.PhptTestResult;
+import com.mostc.pftt.runner.DebuggingHttpClientConnection;
+import com.mostc.pftt.util.ErrorUtil;
 
 /** Manages a certain type of web server, such as PHP's builtin web server.
  * 

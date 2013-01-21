@@ -63,7 +63,7 @@ public class PhpIni {
 	public static final String ISO_8859_1 = "ISO-8859-1";
 	public static final String U_INVALID_SUBSTITUTE = "U_INVALID_SUBSTITUTE";
 	public static final String DOT_HTML = ".html";
-	public static final String E_ALL_OR_E_STRICT = "E_ALL|E_STRICT";// TODO |E_WARNING|E_PARSE|E_NOTICE|E_COMPILE_ERROR|E_RECOVERABLE_ERROR|E_ERROR|E_CORE_ERROR"; // TODO E_WARN
+	public static final String E_ALL_OR_E_STRICT = "E_ALL|E_STRICT";
 	//
 	private static String dllName(String name) {
 		// FUTURE macos x and solaris support
@@ -103,15 +103,26 @@ public class PhpIni {
 		ini.putMulti(OUTPUT_HANDLER, StringUtil.EMPTY);
 		ini.putMulti(OPEN_BASEDIR, StringUtil.EMPTY);
 		ini.putMulti(SAFE_MODE, 0);
-		ini.putMulti(DISABLE_DEFS, OFF); // TODO StringUtil.EMPTY);
-		ini.putMulti(OUTPUT_BUFFERING, ON); // TODO OFF);
-		ini.putMulti(ERROR_REPORTING, E_ALL_OR_E_STRICT);
-		ini.putMulti(DISPLAY_ERRORS, 1);
-		ini.putMulti(DISPLAY_STARTUP_ERRORS, 0);
-		ini.putMulti(LOG_ERRORS, 0);
-		ini.putMulti(HTML_ERRORS, 0);// TODO 1);
-		ini.putMulti(TRACK_ERRORS, 1);
-		ini.putMulti(REPORT_MEMLEAKS, 1);
+		ini.putMulti(DISABLE_DEFS, OFF);
+		ini.putMulti(OUTPUT_BUFFERING, ON);
+		ini.putMulti("engine", "On");
+		ini.putMulti("zend.enable_gc", "On");
+		ini.putMulti("expose_php ", "On");
+		//
+		// CRITICAL
+		ini.putMulti(ERROR_REPORTING, "E_ALL | E_NOTICE | E_WARNING"); // TODO E_ALL_OR_E_STRICT);
+		// CRITICAL
+		ini.putMulti(DISPLAY_ERRORS, "On");//1);
+		// CRITICAL
+		ini.putMulti(DISPLAY_STARTUP_ERRORS, "On");//0);
+		// CRITICAL
+		ini.putMulti(LOG_ERRORS, "On");//0);
+		// CRITICAL
+		ini.putMulti(HTML_ERRORS, "On");//0);
+		// CRITICAL
+		ini.putMulti(TRACK_ERRORS, "On");//1);
+		//
+		ini.putMulti(REPORT_MEMLEAKS, "On");
 		ini.putMulti(REPORT_ZEND_DEBUG, 0);
 		ini.putMulti(DOCREF_ROOT, StringUtil.EMPTY);
 		ini.putMulti(DOCREF_EXT, DOT_HTML);
@@ -133,7 +144,7 @@ public class PhpIni {
 		//       b/c that needs it for validation and its here because its in the default php.ini
 		if (host.isWindows()) {
 			ini.setExtensionDir(build.getDefaultExtensionDir());
-			ini.addExtensions(
+			/*ini.addExtensions(
 					EXT_BZ2,
 					EXT_COM_DOTNET,
 					EXT_CURL,
@@ -161,7 +172,7 @@ public class PhpIni {
 					EXT_TIDY,
 					EXT_XMLRPC,
 					EXT_XSL
-				);
+				);*/
 		}
 		
 		// TIMING: do this after all calls to #putMulti, etc... b/c that sets is_default = false
