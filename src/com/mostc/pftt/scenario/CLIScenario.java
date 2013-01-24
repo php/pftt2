@@ -50,11 +50,19 @@ public class CliScenario extends AbstractSAPIScenario {
 	public ESAPIType getSAPIType() {
 		return ESAPIType.CLI;
 	}
+	
+	@Override
+	public PhpIni createIniForTest(ConsoleManager cm, Host host, PhpBuild build, PhptActiveTestPack active_test_pack, ScenarioSet scenario_set) {
+		// default PhpIni will be given to php.exe using a file... @see CliPhptTestCaseRunner#prepare
+		//
+		// this is needed only to collect any custom directives that a test case provides
+		return new PhpIni();
+	}
 
 	@Override
 	public TestCaseGroupKey createTestGroupKey(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack active_test_pack, PhptTestCase test_case, TestCaseGroupKey group_key) {
 		if (test_case.containsSection(EPhptSection.INI)) {
-			PhpIni ini = AbstractPhptTestCaseRunner.createIniForTest(cm, host, build, active_test_pack, scenario_set);
+			PhpIni ini = createIniForTest(cm, host, build, active_test_pack, scenario_set);
 			ini.replaceAll(test_case.getINI(active_test_pack, host));
 			
 			// note: don't bother comparing test case's INI with existing group_key's INI, PhptTestPackRunner
@@ -68,7 +76,7 @@ public class CliScenario extends AbstractSAPIScenario {
 		} else if (group_key!=null && group_key.getPhpIni().isDefault()) {
 			return group_key;
 		} else {
-			return new TestCaseGroupKey(AbstractPhptTestCaseRunner.createIniForTest(cm, host, build, active_test_pack, scenario_set), null);
+			return new TestCaseGroupKey(createIniForTest(cm, host, build, active_test_pack, scenario_set), null);
 		}
 	} // end public TestCaseGroupKey createTestGroupKey
 	

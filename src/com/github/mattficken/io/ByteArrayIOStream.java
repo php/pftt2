@@ -29,6 +29,11 @@ public class ByteArrayIOStream extends OutputStream {
 		return new ByteArrayInStream();
 	}
 	
+	@Override
+	public String toString() {
+		return new String(buf, 0, count);
+	}
+	
 	public class ByteArrayInStream extends InputStream {
 		protected int pos;
 

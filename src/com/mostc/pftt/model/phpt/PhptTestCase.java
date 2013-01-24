@@ -64,28 +64,23 @@ public class PhptTestCase extends TestCase {
 			new String[]{"ext/standard/tests/file/symlink_"},
 			new String[]{"ext/standard/tests/file/file_get_contents_", "ext/standard/tests/file/file_put_contents_"},
 			new String[]{"ext/standard/tests/file/windows_acls/", "ext/standard/tests/file/windows_links/"},
-			//new String[]{"ext/standard/tests/file/0"},
 			// note: this array is processed in order, so this entry will catch any remaining /file/ phpts
-			//new String[]{"ext/standard/tests/file/"},
 			new String[]{"ext/standard/tests/dir/"},
-			// TODO
 			new String[]{"ext/standard/tests/streams/stream_get_meta_data_socket_variation1.phpt"},
 			new String[]{"ext/standard/tests/streams/stream_get_meta_data_socket_variation2.phpt"},
 			new String[]{"ext/standard/tests/streams/stream_get_meta_data_socket_variation3.phpt"},
 			new String[]{"ext/standard/tests/streams/stream_get_meta_data_socket_variation4.phpt"},
 			new String[]{"ext/standard/tests/sockets/", "ext/sockets/"},
-			// TODO new String[]{"tests/security/"},
 			// the bug38450* tests fail randomly under apache if run on apache instance
 			// with other tests - run them (serially) on their own apache instance
 			new String[]{"ext/standard/tests/file/bug38450"},
 			new String[]{"ext/standard/tests/network/"},
-			// TODO new String[]{"ext/session", "tests/basic/bug20539.phpt"},
 			new String[]{"ext/mysql/", "ext/pdo_mysql/", "ext/mysqli/"},
 			new String[]{"ext/pgsql/", "ext/pdo_pgsql/"},
 			// several 61367 tests that aren't thread-safe (temp files)
 			new String[]{"ext/libxml/tests/bug61367"},
 			new String[]{"sapi/cli/tests/php_cli_server_"},
-			// TODO new String[]{"sapi/cgi/"},
+			new String[]{"ext/standard/tests/strings/vprintf_"},
 			new String[]{"ext/firebird/", "ext/pdo_firebird/"},
 			new String[]{"ext/sybase/"},
 			new String[]{"ext/interbase/", "ext/pdo_interbase/"},
@@ -725,7 +720,7 @@ public class PhptTestCase extends TestCase {
 		ArrayList<String> test_names = new ArrayList<String>(2);
 		
 		if (!output.hasFatalError()) {
-			String base_dir = Host.dirname(output.php_filename);
+			String base_dir = Host.dirname(output.temp_file);
 			for (String line : output.getLines()) {
 				// code may use __DIR__ to get its current directory => strip off current directory(/tmp, etc...)
 				if (line.startsWith(base_dir)) {
@@ -737,6 +732,9 @@ public class PhptTestCase extends TestCase {
 					continue;
 				test_names.add(line);
 			}
+			
+			// delete temporary file
+			output.cleanup(host);
 		}
 		
 		return test_names.toArray(new String[test_names.size()]);

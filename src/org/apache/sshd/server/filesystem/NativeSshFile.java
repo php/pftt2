@@ -71,7 +71,7 @@ public class NativeSshFile implements SshFile {
 
         if (fileName.length() == 0) {
             throw new IllegalArgumentException("fileName can not be empty");
-        } else if (fileName.charAt(0) != '/') {
+        } else if (fileName.charAt(0) != '/' && (fileName.length()<2||!Character.isLetter(fileName.charAt(0))||fileName.charAt(1)!=':')) {
             throw new IllegalArgumentException("fileName must be an absolute path");
         }
 
@@ -552,7 +552,11 @@ public class NativeSshFile implements SshFile {
                 .length())) {
             resArg = normalizedRootDir;
         }
-
+        System.out.println("555 "+resArg);
+        int i = resArg.lastIndexOf(':');
+        if (i>0)
+        	resArg = resArg.substring(i-1);
+        System.out.println("559 "+resArg);
         return resArg;
     }
 

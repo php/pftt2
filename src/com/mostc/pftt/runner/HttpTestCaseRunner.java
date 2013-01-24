@@ -47,11 +47,13 @@ import com.mostc.pftt.util.StringUtil;
  */
 
 // TODO error msg should tell how many times web server was restarted
+// TODO restart a 2nd time before giving up
 public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected final WebServerManager smgr;
 	protected final ByteArrayOutputStream request_bytes, response_bytes;
 	protected WebServerInstance web = null;
 	protected String cookie_str;
+	protected DebuggingHttpClientConnection conn;
 	protected final HttpParams params;
 	protected final HttpProcessor httpproc;
 	protected final HttpRequestExecutor httpexecutor;
@@ -63,12 +65,12 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		this.httpexecutor = httpexecutor;
 		this.smgr = smgr;
 		this.web = web;
-		// CRITICAL: need this to get ENV from this TestCaseGroup
+		// IMPORTANT: need this to get ENV from this TestCaseGroup
 		if (env!=null && ((env.containsKey("TEMP")&&env.get("TEMP").equals(".")) || (env.containsKey("TMP")&&env.get("TMP").equals(".")))) {
 			// checks for case like: ext/phar/commit/tar/phar_commitwrite.phpt
 			this.env = new HashMap<String,String>(7);
 			this.env.putAll(env);
-			// TODO
+			
 			this.env.put("TEMP", active_test_pack.getDirectory()+"/"+Host.dirname(test_case.getName()));
 			this.env.put("TMP", active_test_pack.getDirectory()+"/"+Host.dirname(test_case.getName()));
 		} else {
@@ -166,8 +168,9 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				"ext/standard/tests/general_functions/var_dump.phpt",
 				"ext/session/tests/003.phpt",
 				"ext/session/tests/023.phpt",
-				"ext/standard/tests/streams/stream_get_meta_data_socket_variation3.phpt",
-				"ext/standard/tests/streams/stream_get_meta_data_socket_variation4.phpt",
+				"tests/basic/032.phpt",
+				"tests/basic/031.phpt",
+				"tests/basic/030.phpt",
 				/////////////////
 				// getopt returns false under web server (ok)
 				"ext/standard/tests/general_functions/bug43293_1.phpt",
@@ -204,6 +207,12 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		super.prepareTest();
 		
 		cookie_str = test_case.get(EPhptSection.COOKIE);
+	}
+	
+	protected void markTestAsCrash() {
+		not_crashed = false; // @see #runTest
+		
+		twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, null, null, null, null, ini, env, null, stdin_post, null, null, null, null, web==null?null:web.getSAPIOutput()));
 	}
 	
 	/** executes SKIPIF, TEST or CLEAN over http.
@@ -266,7 +275,6 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			return sb.toString();
 		}
 	} // end protected String http_execute
-	
 
 	protected String do_http_execute(String path, EPhptSection section, boolean is_replacement) throws Exception {
 		path = Host.toUnixPath(path);
@@ -334,13 +342,6 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		}
 	}
 	
-	protected void markTestAsCrash() {
-		not_crashed = false; // @see #runTest
-		
-		twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, null, null, null, null, ini, env, null, stdin_post, null, null, null, null, web==null?null:web.getSAPIOutput()));
-	}
-		
-	protected DebuggingHttpClientConnection conn;
 	protected String do_http_get(String path) throws Exception {
 		return do_http_get(path, 0);
 	}

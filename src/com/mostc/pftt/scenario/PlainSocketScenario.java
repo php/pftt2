@@ -14,6 +14,11 @@ import com.mostc.pftt.results.ConsoleManager;
 public class PlainSocketScenario extends AbstractSocketScenario {
 
 	@Override
+	public boolean isPlaceholder() {
+		return true;
+	}
+	
+	@Override
 	public String getName() {
 		return "Plain-Socket";
 	}

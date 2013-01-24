@@ -19,6 +19,15 @@ import com.mostc.pftt.util.apache.regexp.REProgram;
 public final class StringUtil {
 	public static final String EMPTY = "";
 	
+	public static String chomp(String in) {
+		if (in.endsWith("\r\n"))
+			return in.substring(0, in.length()-2);
+		else if (in.endsWith("\n"))
+			return in.substring(0, in.length()-1);
+		else
+			return in;
+	}
+	
 	public static String unquote(String in) {
 		if (isEmpty(in))
 			return in;
@@ -277,7 +286,7 @@ public final class StringUtil {
 		StringBuilder sb = new StringBuilder(256);
 		sb.append(parts[off]);
 		off++;
-		for ( int i=0 ; i < len ; i++, off++ ) {
+		for ( int i=0 ; i < len && off < parts.length ; i++, off++ ) {
 			sb.append(delim);
 			sb.append(parts[off]);
 		}
@@ -401,6 +410,19 @@ public final class StringUtil {
 		}
 		
 	} // end public static class LengthLimitStringWriter
+	
+	public static boolean isWhitespaceOrEmpty(String a) {
+		if (a==null)
+			return true;
+		final int a_len = a.length();
+		if (a_len==0)
+			return true;
+		for ( int i=0 ; i < a_len ; i++ ) {
+			if (!Character.isLetter(a.charAt(i)))
+				return false;
+		}
+		return true;
+	}
 	
 	private StringUtil() {}
 	

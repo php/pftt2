@@ -86,12 +86,12 @@ public class PhptHostTab extends JSplitPane {
 					stop_button.setEnabled(false);
 				}
 			});
-		panel.add("left", new JLabel("Pass"));
-		panel.add("left", pass_label = new JLabel("0"));
-		panel.add("left", pass_bar = new JProgressBar(0, 12000)); // #showResult updates pass_bar maximum
-		pass_bar.setStringPainted(true);
 		panel.add("left", new JLabel("Total"));
 		panel.add("left", total_label = new JLabel("0"));
+		panel.add("left", pass_bar = new JProgressBar(0, 12000)); // #showResult updates pass_bar maximum
+		pass_bar.setStringPainted(true);
+		panel.add("left", new JLabel("Pass"));
+		panel.add("left", pass_label = new JLabel("0"));
 		panel.add("left", new JLabel("Fail"));
 		panel.add("left", fail_label = new JLabel("0"));
 		panel.add(new JLabel("CRASH"));
@@ -305,9 +305,9 @@ public class PhptHostTab extends JSplitPane {
 						fail++;
 						fail_label.setText(Integer.toString(fail));
 						
-						pass_bar.setString(Float.toString(PhptResultPack.round1( (float)( ((float)pass) / ((float)( pass + fail + crash )) )))+"%"); // 1 decimal places nn.y
+						pass_bar.setString(Float.toString(PhptResultPack.round1( (float)( ( 100.0f * pass) / ((float)( pass + fail +crash )) )))+"%"); // 1 decimal place nn.y
 						pass_bar.setMaximum(fail+pass);
-						total_label.setText(""+(fail+pass));
+						total_label.setText(""+(fail+pass+crash));
 						
 						// show in list
 						fail_list_model.addElement(result);
@@ -350,7 +350,7 @@ public class PhptHostTab extends JSplitPane {
 						break;
 					case PASS:
 						pass++;
-						pass_bar.setString(Float.toString(PhptResultPack.round1( (float)( (double)pass / ((double)( pass + fail )) )))+"%"); // 1 decimal places nn.y
+						pass_bar.setString(Float.toString(PhptResultPack.round1( (float)( ( 100.0f * pass) / ((float)( pass + fail + crash )) )))+"%"); // 1 decimal place nn.y
 						
 						
 						pass_bar.setValue(pass);

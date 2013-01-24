@@ -22,6 +22,7 @@ import org.codehaus.groovy.tools.shell.IO;
 import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.LocalHost;
+import com.mostc.pftt.host.SSHHost;
 import com.mostc.pftt.model.app.PhpUnitAppTestPack;
 import com.mostc.pftt.model.phpt.EBuildBranch;
 import com.mostc.pftt.model.phpt.EBuildType;
@@ -45,6 +46,8 @@ import com.mostc.pftt.runner.PhpUnitTestPackRunner;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner;
 import com.mostc.pftt.runner.PhptTestPackRunner;
 import com.mostc.pftt.scenario.AbstractSAPIScenario;
+import com.mostc.pftt.scenario.SMBDFSRScenario;
+import com.mostc.pftt.scenario.SMBDeduplicationScenario;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.DownloadUtil;
@@ -571,7 +574,7 @@ public class PfttMain {
 		int args_i = 0;
 		
 		Config config = null;
-		boolean is_uac = false, windebug = false, pftt_debug = false, show_gui = false, force = false, disable_debug_prompt = true, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false;
+		boolean is_uac = false, windebug = false, pftt_debug = false, show_gui = false, force = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false;
 		String source_pack = null;
 		PhpDebugPack debug_pack = null;
 		LinkedList<File> config_files = new LinkedList<File>();
@@ -720,6 +723,23 @@ public class PfttMain {
 		
 		LocalConsoleManager cm = new LocalConsoleManager(source_pack, debug_pack, force, windebug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug);
 		
+		// TODO 
+		/*
+		SSHHost remote_host = new SSHHost("10.200.41.219", "administrator", "password01!");
+		System.out.println(remote_host.isWindows());
+		System.out.println("729");
+		remote_host.exec("systeminfo", Host.ONE_MINUTE);
+		System.out.println("731");
+		//SMBDeduplicationScenario d = new SMBDeduplicationScenario(remote_host, "F:");
+		SMBDFSRScenario d = new SMBDFSRScenario(remote_host);
+		System.out.println("731");
+		System.out.println(d.notifyPrepareStorageDir(cm, rt.host));
+		d.notifyTestPackInstalled(cm, rt.host);
+		
+		System.exit(0);
+		*/
+		//
+		
 		if (config_files.size()>0) {
 			config = Config.loadConfigFromFiles(cm, (File[])config_files.toArray(new File[config_files.size()]));
 			System.out.println("PFTT: Config: loaded "+config_files);
@@ -853,7 +873,7 @@ public class PfttMain {
 				checkUAC(is_uac, false, config, cm);
 				
 				// run all tests
-				HostEnvUtil.prepareHostEnv(rt.host, cm, !!cm.isDisableDebugPrompt());
+				HostEnvUtil.prepareHostEnv(rt.host, cm, !cm.isDisableDebugPrompt());
 				cmd_phpt_all(rt, cm, config, build, test_pack);
 				
 				System.out.println("PFTT: finished");

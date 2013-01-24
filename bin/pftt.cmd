@@ -5,7 +5,7 @@ REM set important env vars
 CALL set_env
 SET PFTT_LIB=%PFTT_HOME%\lib
 
-SET CLASSPATH=%PFTT_HOME%\build;%PFTT_LIB%\winp-1.14.jar;%PFTT_LIB%\htmlcleaner-2.2.jar;%PFTT_LIB%\groovy-1.8.6.jar;%PFTT_LIB%\icu4j-49_1.jar;%PFTT_LIB%\icudata.jar;%PFTT_LIB%\icutzdata.jar;%PFTT_LIB%\j2ssh-common-0.2.9.jar;%PFTT_LIB%\j2ssh-core-0.2.9.jar;%PFTT_LIB%\jansi-1.7.jar;%PFTT_LIB%\jline-0.9.94.jar;%PFTT_LIB%\jzlib-1.0.7.jar;%PFTT_LIB%\selenium-server-standalone-2.19.0.jar;%PFTT_LIB%\xercesImpl.jar;%PFTT_LIB%\xmlpull-1.1.3.1.jar;%PFTT_LIB%\commons-net-3.1.jar;%PFTT_LIB%\commons-cli-1.2.jar;%PFTT_LIB%\antlr-2.7.7.jar;%PFTT_LIB%\asm-3.2.jar;%PFTT_LIB%\asm-analysis-3.2.jar;%PFTT_LIB%\asm-commons-3.2.jar;%PFTT_LIB%\asm-tree-3.2.jar;%PFTT_LIB%\asm-util-3.2.jar
+SET CLASSPATH=%PFTT_HOME%\build;%PFTT_LIB%\htmlcleaner-2.2.jar;%PFTT_LIB%\groovy-1.8.6.jar;%PFTT_LIB%\icu4j-49_1.jar;%PFTT_LIB%\icudata.jar;%PFTT_LIB%\icutzdata.jar;%PFTT_LIB%\jansi-1.7.jar;%PFTT_LIB%\jline-0.9.94.jar;%PFTT_LIB%\selenium-server-standalone-2.19.0.jar;%PFTT_LIB%\xercesImpl.jar;%PFTT_LIB%\xmlpull-1.1.3.1.jar;%PFTT_LIB%\commons-cli-1.2.jar;%PFTT_LIB%\antlr-2.7.7.jar;%PFTT_LIB%\asm-3.2.jar;%PFTT_LIB%\asm-analysis-3.2.jar;%PFTT_LIB%\asm-commons-3.2.jar;%PFTT_LIB%\asm-tree-3.2.jar;%PFTT_LIB%\asm-util-3.2.jar;%PFTT_LIB%\winp-1.14.jar;%PFTT_LIB%\commons-net-3.1.jar;%PFTT_LIB%\commons-codec-1.6.jar;%PFTT_LIB%\commons-lang-2.6.jar;%PFTT_LIB%\commons-logging-1.1.1.jar;%PFTT_LIB%\jzlib-1.1.1.jar;%PFTT_LIB%\mina-core-2.0.7.jar;%PFTT_LIB%\mina-statemachine-2.0.7.jar;%PFTT_LIB%\slf4j-api-1.7.2.jar;%PFTT_LIB%\slf4j-log4j12-1.7.2.jar
 
 
 REM if user added -uac or -auto or -windebug console options, run elevated in UAC

@@ -63,7 +63,7 @@ public class PhpIni {
 	public static final String ISO_8859_1 = "ISO-8859-1";
 	public static final String U_INVALID_SUBSTITUTE = "U_INVALID_SUBSTITUTE";
 	public static final String DOT_HTML = ".html";
-	public static final String E_ALL_OR_E_STRICT = "E_ALL|E_STRICT";
+	public static final String E_ALL_NOTICE_WARNING = "E_ALL | E_NOTICE | E_WARNING";
 	//
 	private static String dllName(String name) {
 		// FUTURE macos x and solaris support
@@ -97,94 +97,12 @@ public class PhpIni {
 	public static final String EXT_TIDY = dllName("tidy");
 	public static final String EXT_XMLRPC = dllName("xmlrpc");
 	public static final String EXT_XSL = dllName("xsl");
-	public static PhpIni createDefaultIniCopy(Host host, PhpBuild build) {
-		PhpIni ini = new PhpIni();
-		ini.putSingle("default_mimetype", "text/plain");
-		ini.putMulti(OUTPUT_HANDLER, StringUtil.EMPTY);
-		ini.putMulti(OPEN_BASEDIR, StringUtil.EMPTY);
-		ini.putMulti(SAFE_MODE, 0);
-		ini.putMulti(DISABLE_DEFS, OFF);
-		ini.putMulti(OUTPUT_BUFFERING, ON);
-		ini.putMulti("engine", "On");
-		ini.putMulti("zend.enable_gc", "On");
-		ini.putMulti("expose_php ", "On");
-		//
-		// CRITICAL
-		ini.putMulti(ERROR_REPORTING, "E_ALL | E_NOTICE | E_WARNING"); // TODO E_ALL_OR_E_STRICT);
-		// CRITICAL
-		ini.putMulti(DISPLAY_ERRORS, "On");//1);
-		// CRITICAL
-		ini.putMulti(DISPLAY_STARTUP_ERRORS, "On");//0);
-		// CRITICAL
-		ini.putMulti(LOG_ERRORS, "On");//0);
-		// CRITICAL
-		ini.putMulti(HTML_ERRORS, "On");//0);
-		// CRITICAL
-		ini.putMulti(TRACK_ERRORS, "On");//1);
-		//
-		ini.putMulti(REPORT_MEMLEAKS, "On");
-		ini.putMulti(REPORT_ZEND_DEBUG, 0);
-		ini.putMulti(DOCREF_ROOT, StringUtil.EMPTY);
-		ini.putMulti(DOCREF_EXT, DOT_HTML);
-		ini.putMulti(ERROR_PREPEND_STRING, StringUtil.EMPTY);
-		ini.putMulti(ERROR_APPEND_STRING, StringUtil.EMPTY);
-		ini.putMulti(AUTO_PREPEND_FILE, StringUtil.EMPTY);
-		ini.putMulti(AUTO_APPEND_FILE, StringUtil.EMPTY);
-		ini.putMulti(MAGIC_QUOTES_RUNTIME, 0);
-		ini.putMulti(IGNORE_REPEATED_ERRORS, 0);
-		ini.putMulti(PRECISION, 14);
-		ini.putMulti(UNICODE_RUNTIME_ENCODING, ISO_8859_1);
-		ini.putMulti(UNICODE_SCRIPT_ENCODING, UTF_8);
-		ini.putMulti(UNICODE_OUTPUT_ENCODING, UTF_8);
-		ini.putMulti(UNICODE_FROM_ERROR_MODE, U_INVALID_SUBSTITUTE);
-		ini.putMulti(SESSION_AUTO_START, 0);
-		
-		// default php.ini has these extensions on Windows
-		// NOTE: this is validated by RequiredExtensionsSmokeTest. similar/same info is both there and here
-		//       b/c that needs it for validation and its here because its in the default php.ini
-		if (host.isWindows()) {
-			ini.setExtensionDir(build.getDefaultExtensionDir());
-			/*ini.addExtensions(
-					EXT_BZ2,
-					EXT_COM_DOTNET,
-					EXT_CURL,
-					EXT_FILEINFO,
-					EXT_GD2,
-					EXT_GETTEXT,
-					EXT_GMP,
-					EXT_INTL,
-					EXT_IMAP,
-					EXT_LDAP,
-					EXT_MBSTRING,
-					EXT_EXIF,
-					EXT_MYSQL,
-					EXT_MYSQLI,
-					EXT_OPENSSL,
-					EXT_PDO_MYSQL,
-					EXT_PDO_PGSQL,
-					EXT_PDO_SQLITE,
-					EXT_PDO_ODBC,
-					EXT_PGSQL,
-					EXT_SHMOP,
-					EXT_SOAP,
-					EXT_SOCKETS,
-					EXT_SQLITE3,
-					EXT_TIDY,
-					EXT_XMLRPC,
-					EXT_XSL
-				);*/
-		}
-		
-		// TIMING: do this after all calls to #putMulti, etc... b/c that sets is_default = false
-		ini.is_default = true;
-		return ini;
-	} // end public static PhpIni createDefaultIniCopy
 	//
 	//
 	private final HashMap<String, ArrayList<String>> ini_map;
 	private WeakReference<PhpIni> ext_ini;
 	private WeakReference<String> ini_str, cli_arg;
-	private boolean is_default = false;
+	public boolean is_default = false;
 	
 	public PhpIni() {
 		ini_map = new HashMap<String, ArrayList<String>>();
@@ -216,15 +134,9 @@ public class PhpIni {
 	public PhpIni(String ini_str, String pwd) {
 		this();
 		if (pwd!=null&&ini_str.contains("{PWD}")) {
-			// TODO important to use \\\\
-			if (pwd.contains("cache_list")) {
-				pwd="C:/php-sdk/php-test-pack-5.4-ts-windows-vc9-x86-r811cd76/ext/phar/tests/cache_list";
-			}
-			//pwd = "C:\\\\php-sdk\\\\php-test-pack-5.4-ts-windows-vc9-x86-r811cd76\\\\"; // TODO temp
 			ini_str = StringUtil.replaceAll(PAT_PWD, pwd, ini_str);
 			
-			// BN: ensure that correct \\s are used for paths on Windows
-			// TODO ini_str = StringUtil.replaceAll(PAT_FS, "\\\\", ini_str);
+			// CRITICAL: ensure that correct \\s are used for paths on Windows
 		}
 		// read ini string, line by line
 		for (String line : StringUtil.splitLines(ini_str)) {

@@ -258,7 +258,7 @@ public class RequiredFeaturesSmokeTest extends SmokeTest {
 "Collecting statistics => Yes%s" +
 "Collecting memory statistics => No%s" +
 "Tracing => n/a%s" +
-"Loaded plugins => mysqlnd,example,debug_trace,auth_plugin_mysql_native_password,auth_plugin_mysql_clear_password%s" +
+"Loaded plugins => %s" +
 "API Extensions => %s" +
 "%s" +
 "mysqlnd statistics =>%s" +  
@@ -422,10 +422,6 @@ public class RequiredFeaturesSmokeTest extends SmokeTest {
 "com_deamon => 0%s" +
 "bytes_received_real_data_normal => 0%s" +
 "bytes_received_real_data_ps => 0%s" +
-"%s" +
-"example statistics =>  %s" +
-"stat1 => 0%s" +
-"stat2 => 0%s" +
 "%s" +
 "odbc%s" +
 "%s" +
@@ -850,7 +846,7 @@ public class RequiredFeaturesSmokeTest extends SmokeTest {
 "Collecting statistics => Yes%s" +
 "Collecting memory statistics => No%s" +
 "Tracing => n/a%s" +
-"Loaded plugins => mysqlnd,example,debug_trace,auth_plugin_mysql_native_password,auth_plugin_mysql_clear_password%s" +
+"Loaded plugins => %s" +
 "API Extensions => %s" +
 "%s" +
 "mysqlnd statistics =>%s" +  
@@ -1014,10 +1010,6 @@ public class RequiredFeaturesSmokeTest extends SmokeTest {
 "com_deamon => 0%s" +
 "bytes_received_real_data_normal => 0%s" +
 "bytes_received_real_data_ps => 0%s" +
-"%s" +
-"example statistics =>  %s" +
-"stat1 => 0%s" +
-"stat2 => 0%s" +
 "%s" +
 "odbc%s" +
 "%s" +

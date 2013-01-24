@@ -3,8 +3,10 @@ package com.mostc.pftt.model.smoke;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.ESAPIType;
 import com.mostc.pftt.model.phpt.PhpBuild;
+import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.util.StringUtil;
 
 /** Smoke test that verifies a PHP Build has all the required extensions.
  * 
@@ -103,5 +105,93 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 	public String getName() {
 		return "Required-Extensions";
 	}
+
+	/** creates a PhpIni with default configuration, default extensions loaded etc...
+	 * 
+	 * A PhpBuild using this PhpIni should pass this test.
+	 * 
+	 * @param host
+	 * @param build
+	 * @return
+	 */
+	public static PhpIni createDefaultIniCopy(Host host, PhpBuild build) {
+		PhpIni ini = new PhpIni();
+		ini.putSingle("default_mimetype", "text/plain");
+		ini.putMulti(PhpIni.OUTPUT_HANDLER, StringUtil.EMPTY);
+		ini.putMulti(PhpIni.OPEN_BASEDIR, StringUtil.EMPTY);
+		ini.putMulti(PhpIni.SAFE_MODE, 0);
+		ini.putMulti(PhpIni.DISABLE_DEFS, PhpIni.OFF);
+		ini.putMulti(PhpIni.OUTPUT_BUFFERING, PhpIni.ON);
+		//
+		// CRITICAL
+		ini.putMulti(PhpIni.ERROR_REPORTING, PhpIni.E_ALL_NOTICE_WARNING);
+		// CRITICAL
+		ini.putMulti(PhpIni.DISPLAY_ERRORS, PhpIni.ON);
+		// CRITICAL
+		ini.putMulti(PhpIni.DISPLAY_STARTUP_ERRORS, PhpIni.OFF);
+		// CRITICAL
+		ini.putMulti(PhpIni.LOG_ERRORS, PhpIni.ON);
+		// CRITICAL
+		ini.putMulti(PhpIni.HTML_ERRORS, PhpIni.OFF);
+		// CRITICAL
+		ini.putMulti(PhpIni.TRACK_ERRORS, PhpIni.ON);
+		//
+		ini.putMulti(PhpIni.REPORT_MEMLEAKS, PhpIni.ON);
+		ini.putMulti(PhpIni.REPORT_ZEND_DEBUG, PhpIni.OFF);
+		ini.putMulti(PhpIni.DOCREF_ROOT, StringUtil.EMPTY);
+		ini.putMulti(PhpIni.DOCREF_EXT, PhpIni.DOT_HTML);
+		ini.putMulti(PhpIni.ERROR_PREPEND_STRING, StringUtil.EMPTY);
+		ini.putMulti(PhpIni.ERROR_APPEND_STRING, StringUtil.EMPTY);
+		ini.putMulti(PhpIni.AUTO_PREPEND_FILE, StringUtil.EMPTY);
+		ini.putMulti(PhpIni.AUTO_APPEND_FILE, StringUtil.EMPTY);
+		ini.putMulti(PhpIni.MAGIC_QUOTES_RUNTIME, PhpIni.OFF);
+		ini.putMulti(PhpIni.IGNORE_REPEATED_ERRORS, PhpIni.OFF);
+		ini.putMulti(PhpIni.PRECISION, 14);
+		ini.putMulti(PhpIni.UNICODE_RUNTIME_ENCODING, PhpIni.ISO_8859_1);
+		ini.putMulti(PhpIni.UNICODE_SCRIPT_ENCODING, PhpIni.UTF_8);
+		ini.putMulti(PhpIni.UNICODE_OUTPUT_ENCODING, PhpIni.UTF_8);
+		ini.putMulti(PhpIni.UNICODE_FROM_ERROR_MODE, PhpIni.U_INVALID_SUBSTITUTE);
+		ini.putMulti(PhpIni.SESSION_AUTO_START, PhpIni.OFF);
+		
+		// default php.ini has these extensions on Windows
+		// NOTE: this is validated by RequiredExtensionsSmokeTest. similar/same info is both there and here
+		//       b/c that needs it for validation and its here because its in the default php.ini
+		if (host.isWindows()) {
+			ini.setExtensionDir(build.getDefaultExtensionDir());
+			ini.addExtensions(
+					PhpIni.EXT_BZ2,
+					PhpIni.EXT_COM_DOTNET,
+					PhpIni.EXT_CURL,
+					PhpIni.EXT_FILEINFO,
+					PhpIni.EXT_GD2,
+					PhpIni.EXT_GETTEXT,
+					PhpIni.EXT_GMP,
+					PhpIni.EXT_INTL,
+					PhpIni.EXT_IMAP,
+					PhpIni.EXT_LDAP,
+					PhpIni.EXT_MBSTRING,
+					PhpIni.EXT_EXIF,
+					PhpIni.EXT_MYSQL,
+					PhpIni.EXT_MYSQLI,
+					PhpIni.EXT_OPENSSL,
+					PhpIni.EXT_PDO_MYSQL,
+					PhpIni.EXT_PDO_PGSQL,
+					PhpIni.EXT_PDO_SQLITE,
+					PhpIni.EXT_PDO_ODBC,
+					PhpIni.EXT_PGSQL,
+					PhpIni.EXT_SHMOP,
+					PhpIni.EXT_SOAP,
+					PhpIni.EXT_SOCKETS,
+					PhpIni.EXT_SQLITE3,
+					PhpIni.EXT_TIDY,
+					PhpIni.EXT_XMLRPC,
+					PhpIni.EXT_XSL
+				);
+		}
+		
+		// TIMING: do this after all calls to #putMulti, etc... b/c that sets is_default = false
+		ini.is_default = true;
+		return ini;
+	} // end public static PhpIni createDefaultIniCopy
 	
 } // end public class RequiredExtensionsSmokeTest

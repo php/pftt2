@@ -18,23 +18,25 @@ import com.mostc.pftt.util.StringUtil;
 public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenario {
 	protected final RemoteHost remote_host;
 	protected final String base_file_path, base_share_name;
-	protected String share_name, file_path, unc_path, smb_path, local_drive;
+	// file path is path on server where share is stored
+	// network path is in both UNC and URL format (UNC for Windows, URL for Linux)
+	protected String share_name, remote_path, unc_path, url_path, local_path;
 	
 	public AbstractSMBScenario(RemoteHost remote_host, String base_file_path, String base_share_name) {
 		this.remote_host = remote_host;
 		//
 		if (StringUtil.isEmpty(base_file_path))
-			// @see SMBDeduplicationScenario
-			base_file_path = "C:\\PFTT_Share";
+			// fallback to a default path, @see SMBDeduplicationScenario
+			base_file_path = remote_host.isWindows() ? "C:\\PFTT_Share" : "/var/data/PFTT_Share";
 		else if (StringUtil.isEmpty(Host.basename(base_file_path)))
 			// base_file_path ~= C:\
-			base_file_path += "PFTT_Share";
+			base_file_path += "\\PFTT_Share";
 		if (StringUtil.isNotEmpty(base_share_name))
 			base_share_name = base_share_name.trim();
 		if (StringUtil.isEmpty(base_share_name)) {
 			base_share_name = Host.basename(base_file_path);
 			if (StringUtil.isEmpty(base_share_name))
-				base_share_name = "PFTT_Share";
+				base_share_name = "\\PFTT_Share";
 		}
 		//
 		this.base_file_path = base_file_path;
@@ -66,13 +68,35 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		return createShare(cm);
 	}
 	
-	public boolean createShare(ConsoleManager cm) {
-		for ( int i=1 ; ; ) {
-			file_path = base_file_path + i;
-			share_name = base_share_name + i;
-			if (!remote_host.exists(file_path))
-				break;
+	public boolean shareExists(ConsoleManager cm, String share_name) {
+		if (!remote_host.isWindows())
+			return false; // XXX samba support
+		
+		try {
+			String output_str = remote_host.execElevated("NET SHARE", Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).output;
+			
+			return output_str.contains(share_name);
+		} catch ( Exception ex ) {
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, "shareExists", ex, "can't tell if share exists");
 		}
+		return false;
+	}
+	
+	public boolean createShare(ConsoleManager cm) {
+		// make a unique name for the share
+		for ( int i=1 ; i < 65535 ; i++ ) {
+			remote_path = base_file_path + i;
+			share_name = base_share_name + i;
+			if (!remote_host.exists(remote_path)) {
+				// share may still exist, but at a different remote file path (double check to avoid `net share` failure)
+				if (!shareExists(cm, share_name)) {
+					break;
+				}
+			}
+		}
+		//
+		
+		cm.println(EPrintType.IN_PROGRESS, getName(), "Selected share_name="+share_name+" remote_path="+remote_path+" (base: "+base_file_path+" "+base_share_name+")");
 		
 		try {
 			if (remote_host.isWindows()) {
@@ -82,22 +106,22 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 				return false;
 			}
 		} catch (Exception ex ) {
-			cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "createShare", ex, "", remote_host, file_path, share_name);
+			cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "createShare", ex, "", remote_host, remote_path, share_name);
 			return false;
 		}
 		
 		unc_path = "\\\\"+remote_host.getHostname()+"\\"+share_name; // for Windows
-		smb_path = "smb://"+remote_host.getHostname()+"/"+share_name; // for linux
+		url_path = "smb://"+remote_host.getHostname()+"/"+share_name; // for linux
 		
-		cm.println(EPrintType.COMPLETED_OPERATION, getName(), "Share created: "+unc_path+" "+smb_path);
+		cm.println(EPrintType.COMPLETED_OPERATION, getName(), "Share created: unc="+unc_path+" remote_file="+remote_path+" url="+url_path);
 		
 		return true;
 	} // end public boolean createShare
 	
 	protected boolean createShareWindows(ConsoleManager cm) throws Exception {
-		remote_host.mkdirs(file_path);
+		remote_host.mkdirs(remote_path);
 		
-		return remote_host.exec("NET SHARE "+share_name+"="+file_path+" /Grant:"+remote_host.getUsername()+",Full", Host.FOUR_HOURS).printOutputIfCrash(getClass(), cm).isSuccess();
+		return remote_host.execElevated("NET SHARE "+share_name+"="+remote_path+" /Grant:"+remote_host.getUsername()+",Full", Host.FOUR_HOURS).printOutputIfCrash(getClass(), cm).isSuccess();
 	}
 	
 	protected boolean createShareSamba() {
@@ -118,7 +142,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 			}
 		} else {
 			// host is local, try using a local drive, normal file system operations, not SMB, etc...
-			local_drive = file_path;
+			local_path = remote_path;
 			
 			return true;
 		}
@@ -126,17 +150,17 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 	
 	protected static final String[] DRIVES = new String[]{"H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y"}; // 18
 	protected boolean connectFromWindows(ConsoleManager cm, Host local_host) throws Exception {
-		local_drive = null;
+		local_path = null;
 		for ( int i=0 ; i < DRIVES.length ; i++ ) {
-			if (remote_host.exists(DRIVES[i] + ":\\")) {
-				local_drive = DRIVES[i] + ":";
+			if (!local_host.exists(DRIVES[i] + ":\\")) {
+				local_path = DRIVES[i] + ":";
 				break;
 			}
 		}
-		if (local_drive==null)
+		if (local_path==null)
 			return false;
 		
-		return local_host.exec("NET USE "+unc_path+" "+local_drive+" /user:"+remote_host.getUsername()+" /password:"+remote_host.getPassword(), Host.FOUR_HOURS).printOutputIfCrash(getClass(), cm).isSuccess();
+		return local_host.execElevated("NET USE "+unc_path+" "+local_path+" /user:"+remote_host.getUsername()+" /password:"+remote_host.getPassword(), Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).isSuccess();
 	}
 	
 	protected boolean connectFromSamba() {
@@ -146,27 +170,35 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 	
 	@Override
 	public String getTestPackStorageDir(Host host) {
-		return local_drive; // H: I: J: ... Y:
+		return local_path; // H: I: J: ... Y:
 	}
 	
 	public boolean deleteShare(ConsoleManager cm, Host host) {
 		try {
-			if (host.execElevated("NET SHARE "+file_path+" /DELETE", Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).isSuccess()) {
-				host.delete(file_path);
+			if (host.execElevated("NET SHARE "+remote_path+" /DELETE", Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).isSuccess()) {
+				try {
+					host.delete(remote_path);
+					
+					cm.println(EPrintType.IN_PROGRESS, getClass(), "Share deleted: remote_file="+remote_path+" unc="+unc_path+" url="+url_path);
+				} catch ( Exception ex ) {
+					throw ex;
+				}
 			
 				return true;
 			}
 		} catch ( Exception ex ) {
-			cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "deleteShare", ex, "", host, file_path);
+			cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "deleteShare", ex, "", host, remote_path);
 		}
 		return false;
 	}
 	
 	public boolean disconnect(ConsoleManager cm, Host host) {
 		try {
-			return host.exec("NET USE "+local_drive+" /DELETE", Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).isSuccess();
+			if (host.exec("NET USE "+local_path+" /DELETE", Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).isSuccess()) {
+				cm.println(EPrintType.IN_PROGRESS, getClass(), "Disconnected share: local="+local_path);
+			}
 		} catch ( Exception ex ) {
-			cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "disconnect", ex, "", host, local_drive);
+			cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "disconnect", ex, "", host, local_path);
 		}
 		return false;
 	}
@@ -175,7 +207,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 	public void notifyFinishedTestPack(ConsoleManager cm, Host host) {
 		if (deleteShare(cm, host) && disconnect(cm, host)) {
 			// reset
-			share_name = file_path = unc_path = smb_path = local_drive = null;
+			share_name = remote_path = unc_path = url_path = local_path = null;
 		}
 	}
 	

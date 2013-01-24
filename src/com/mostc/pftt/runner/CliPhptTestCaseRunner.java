@@ -19,6 +19,7 @@ import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.model.phpt.PhptSourceTestPack;
 import com.mostc.pftt.model.phpt.PhptActiveTestPack;
+import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.IPhptTestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
@@ -111,7 +112,18 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				"ext/session/tests/023.phpt",
 				"ext/phar/tests/phar_get_supportedcomp3.phpt",
 				"ext/phar/tests/phar_create_in_cwd.phpt",
-				"ext/phar/tests/phar_get_supported_signatures_002.phpt"
+				"ext/phar/tests/phar_get_supported_signatures_002.phpt",
+				//
+				"ext/standard/tests/streams/stream_get_meta_data_socket_variation2.phpt",
+				"ext/standard/tests/streams/stream_get_meta_data_socket_variation1.phpt",
+				"ext/standard/tests/network/gethostbyname_error002.phpt",
+				"ext/session/tests/003.phpt",
+				"ext/standard/tests/streams/stream_get_meta_data_socket_variation3.phpt",
+				"ext/phar/tests/phar_commitwrite.phpt",
+				"ext/standard/tests/file/fgets_socket_variation1.phpt",
+				"ext/standard/tests/network/shutdown.phpt",
+				"ext/standard/tests/file/fgets_socket_variation2.phpt",
+				"ext/standard/tests/network/tcp4loop.phpt"
 			)) {
 				twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null, null));
 				
@@ -151,6 +163,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	}
 	
 	static boolean saved_ini = false;
+	static String ini_dir;
 	
 	@Override
 	protected void prepareTest() throws Exception {
@@ -158,11 +171,15 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		
 		//
 		if (!saved_ini) {
+			// @see CliScenario#createIniForTest
 			saved_ini = true;
 			
-			String ini_file = build.getDefaultPhpIniPath(host, ESAPIType.CLI);
+			ini_dir = host.mktempname(getClass());
+			host.mkdirs(ini_dir);
 			
-			PhpIni def_ini = PhpIni.createDefaultIniCopy(host, build);
+			String ini_file = ini_dir + "/php.ini";
+			
+			PhpIni def_ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(host, build);
 			
 			FileWriter fw = new FileWriter(ini_file);
 			fw.write(def_ini.toString());
@@ -176,8 +193,9 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		{
 			StringBuilder sb = new StringBuilder(64);
 			sb.append(selected_php_exe);
-			// -n => critical: ignores any .ini file with the php build
-			// TODO sb.append(" -n ");
+			// -c => provide default PhpIni file
+			sb.append(" -c ");
+			sb.append(ini_dir);
 			sb.append(ini_settings);
 			sb.append(" -f \"");sb.append(host.fixPath(test_file));sb.append("\" ");
 			if (test_case.containsSection(EPhptSection.ARGS)) {
@@ -296,6 +314,12 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		// execute PHP to execute the TEST code ... allow up to 60 seconds for execution
 		//      if test is taking longer than 40 seconds to run, spin up an additional thread to compensate (so other non-slow tests can be executed)
 		output = host.exec(shell_file, Host.ONE_MINUTE, env, stdin_post, test_case.isNon8BitCharset()?test_case.getCommonCharset():null, active_test_pack.getDirectory(), thread, 40);
+		
+		if (output.isCrashed() && StringUtil.isWhitespaceOrEmpty(output.output)) {
+			not_crashed = false; // @see #runTest
+			
+			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, "PFTT: exit_code="+output.exit_code+"\n"+output.output, null, null, null, ini, env, null, stdin_post, null, null, null, null, output.output));
+		}
 		
 		return output.output;
 	} // end String executeTest

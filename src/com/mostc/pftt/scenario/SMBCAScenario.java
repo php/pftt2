@@ -2,6 +2,7 @@ package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.RemoteHost;
+import com.mostc.pftt.host.TempFileExecOutput;
 import com.mostc.pftt.results.ConsoleManager;
 
 /** Tests PHP using SMB Continuous Availability (CA) (NOT IMPLEMENTED)
@@ -24,7 +25,9 @@ public class SMBCAScenario extends AbstractSMBScenario {
 	
 	@Override
 	protected boolean createShareWindows(ConsoleManager cm) throws Exception {
-		return remote_host.exec("Powershell -Command{New-SmbShare -Name "+share_name+" -Path "+file_path+" -Scope "+remote_host.getHostname()+" -FullControl "+remote_host.getHostname()+"\\"+remote_host.getUsername()+"}", Host.FOUR_HOURS).printOutputIfCrash(getClass(), cm).isSuccess();
+		TempFileExecOutput teo = remote_host.powershell(getClass(), cm, "New-SmbShare -Name "+share_name+" -Path "+remote_path+" -Scope "+remote_host.getHostname()+" -FullControl "+remote_host.getHostname()+"\\"+remote_host.getUsername(), Host.ONE_MINUTE);
+		teo.printOutputIfCrash(getClass(), cm);
+		return teo.cleanupIfSuccess(remote_host);
 	}
 
 	@Override
@@ -34,7 +37,7 @@ public class SMBCAScenario extends AbstractSMBScenario {
 	
 	@Override
 	public boolean isImplemented() {
-		return true;
+		return false;
 	}
 
 } // end public class SMBCAScenario

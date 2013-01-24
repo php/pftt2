@@ -48,8 +48,13 @@ public class ExecOutput {
 		return printOutputIfCrash(ctx.getSimpleName(), ps);
 	}
 	public ExecOutput printOutputIfCrash(String ctx, PrintStream ps) {
-		if (ps!=null && isCrashed())
-			ps.println(ctx+": "+output.trim());
+		if (ps!=null && isCrashed()) {
+			String output_str = output.trim();
+			if (StringUtil.isEmpty(output_str))
+				output_str = "<Crash with no output. exit_code="+exit_code+">";
+			
+			ps.println(ctx+": "+output_str);
+		}
 		return this;
 	}
 } // end public class ExecOutput

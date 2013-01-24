@@ -28,6 +28,7 @@ import com.mostc.pftt.model.sapi.SharedSAPIInstanceTestCaseGroupKey;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.model.sapi.WebServerInstance;
 import com.mostc.pftt.model.sapi.WebServerManager;
+import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.IPhptTestResultReceiver;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
@@ -110,8 +111,16 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 		return new HttpTestCaseRunner(group_key.getPhpIni(), group_key.getEnv(), params, httpproc, httpexecutor, smgr, (WebServerInstance) ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance(), thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 	}
 	
+	@Override
+	public PhpIni createIniForTest(ConsoleManager cm, Host host, PhpBuild build, PhptActiveTestPack active_test_pack, ScenarioSet scenario_set) {
+		// entire PhpIni will be given to web server when its started
+		return RequiredExtensionsSmokeTest.createDefaultIniCopy(host, build);
+	}
+	
+	@Override
 	public TestCaseGroupKey createTestGroupKey(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack active_test_pack, PhptTestCase test_case, TestCaseGroupKey group_key) throws Exception {
 		Map<String,String> env = null;
+		// ENV vars will be passed to web server manager to wrap the web server in when its executed
 		if (test_case.containsSection(EPhptSection.ENV)) {
 			env = AbstractPhptTestCaseRunner.generateENVForTestCase(cm, host, build, scenario_set, test_case);
 			
@@ -119,7 +128,7 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 		}
 		
 		if (test_case.containsSection(EPhptSection.INI)) {
-			PhpIni ini = AbstractPhptTestCaseRunner.createIniForTest(cm, host, build, active_test_pack, scenario_set);
+			PhpIni ini = createIniForTest(cm, host, build, active_test_pack, scenario_set);
 			ini.replaceAll(test_case.getINI(active_test_pack, host));
 			
 			// note: don't bother comparing test case's INI with existing group_key's INI, PhptTestPackRunner
@@ -128,7 +137,7 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 		} else if (env==null && group_key!=null && group_key.getPhpIni().isDefault()) {
 			return group_key;
 		} else {
-			return new SharedSAPIInstanceTestCaseGroupKey(AbstractPhptTestCaseRunner.createIniForTest(cm, host, build, active_test_pack, scenario_set), env);
+			return new SharedSAPIInstanceTestCaseGroupKey(createIniForTest(cm, host, build, active_test_pack, scenario_set), env);
 		}
 	} // end public TestCaseGroupKey createTestGroupKey
 	

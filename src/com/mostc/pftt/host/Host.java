@@ -448,10 +448,19 @@ public abstract class Host {
 	public ExecOutput execElevated(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String chdir) throws Exception {
 		return execElevated(cmd, timeout_sec, env, stdin_data, charset, chdir, null, FOUR_HOURS);
 	}
+	private boolean checked_elevate, found_elevate;
 	public ExecOutput execElevated(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread test_thread, int slow_timeout_sec) throws Exception {
-		if (isWindows())
-			// execute command with this utility that will elevate the program using Windows UAC
-			cmd = getPfttDir() + "\\bin\\elevate "+cmd;
+		if (isWindows()) {
+			if (!checked_elevate) {
+				found_elevate = exists(getPfttDir()+"\\bin\\elevate.exe");
+				
+				checked_elevate = true;
+			}
+			if (found_elevate) {
+				// execute command with this utility that will elevate the program using Windows UAC
+				cmd = getPfttDir() + "\\bin\\elevate "+cmd;
+			}
+		}
 		
 		return exec(cmd, timeout_sec, env, stdin_data, charset, chdir, test_thread, slow_timeout_sec);
 	}
@@ -802,6 +811,7 @@ public abstract class Host {
 		if (!isWindows())
 			return false;
 		String os_name = getOSNameOnWindows();
+		System.out.println(os_name);
 		return os_name.contains("Windows 8") || os_name.contains("Windows 2012") || os_name.contains("Windows 9") || os_name.contains("Windows 2014");
 	}
 	
@@ -970,6 +980,40 @@ public abstract class Host {
 		} else {
 			return to;
 		}
+	}
+	
+	/** executes Powershell code and returns output.
+	 * 
+	 * Takes care of making a temporary file, storing the powershell code, executing it, then cleaning up.
+	 * 
+	 * @param ctx
+	 * @param cm
+	 * @param ps_code - powershell code to execute (not filename)
+	 * @param timeout - max time to allow powershell to run
+	 * @return
+	 * @throws Exception
+	 */
+	public TempFileExecOutput powershell(Class<?> ctx, ConsoleManager cm, CharSequence ps_code, int timeout) throws Exception {
+		return powershell(ctx==null?null:ctx.getSimpleName(), cm, ps_code, timeout);
+	}
+	
+	private boolean set_unrestricted;
+	public TempFileExecOutput powershell(String ctx_str, ConsoleManager cm, CharSequence ps_code, int timeout) throws Exception {
+		if (!isWindows())
+			throw new IllegalStateException("powershell is only supported on Windows");
+		
+		if (!set_unrestricted) {
+			// do this once
+			execElevated("powershell -Command \"set-executionpolicy unrestricted\"", Host.ONE_MINUTE).printOutputIfCrash(ctx_str, cm);
+			
+			set_unrestricted = true;
+		}
+		
+		String temp_file = mktempname(ctx_str, ".ps1");
+		
+		saveTextFile(temp_file, ps_code.toString());
+		
+		return new TempFileExecOutput(temp_file, execElevated("Powershell -File "+temp_file, timeout));
 	}
 	
 } // end public abstract class Host

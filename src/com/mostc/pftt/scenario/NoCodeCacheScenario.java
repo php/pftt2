@@ -15,6 +15,11 @@ import com.mostc.pftt.results.ConsoleManager;
 public class NoCodeCacheScenario extends AbstractCodeCacheScenario {
 
 	@Override
+	public boolean isPlaceholder() {
+		return true;
+	}
+	
+	@Override
 	public String getName() {
 		return "No-Code-Cache";
 	}

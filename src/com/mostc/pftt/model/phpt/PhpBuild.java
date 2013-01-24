@@ -11,7 +11,9 @@ import javax.annotation.Nullable;
 
 import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.TempFileExecOutput;
 import com.mostc.pftt.model.sapi.SAPIManager;
+import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.util.StringUtil;
@@ -306,7 +308,7 @@ public class PhpBuild extends SAPIManager {
 		if (host.exists(path))
 			ini = new PhpIni(host.getContents(path), build_path);
 		else
-			ini = PhpIni.createDefaultIniCopy(host, this);
+			ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(host, this);
 		
 		this.php_ini = new WeakReference<PhpIni>(ini);
 		return ini;
@@ -614,17 +616,13 @@ public class PhpBuild extends SAPIManager {
 		return eval(host, null, code, timeout_seconds, auto_cleanup);
 	}
 	
-	public static class PHPOutput extends ExecOutput {
+	public static class PHPOutput extends TempFileExecOutput {
 		/** the filename that the code was stored in for execution
 		 * 
 		 */
-		public String php_filename;
 		
 		protected PHPOutput(String php_filename, ExecOutput output) {
-			this.charset = output.charset;
-			this.exit_code = output.exit_code;
-			this.output = output.output;
-			this.php_filename = php_filename;
+			super(php_filename, output);
 		}
 		
 		public boolean hasFatalError() {
@@ -638,18 +636,17 @@ public class PhpBuild extends SAPIManager {
 		}
 		public PHPOutput printHasFatalError(String ctx, PrintStream ps) {
 			if (hasFatalError()) {
-				ps.println(ctx+": "+output.trim());
+				String output_str = output.trim();
+				if (StringUtil.isEmpty(output_str))
+					output_str = "<PHP Crashed with no output. exit_code = "+exit_code+">";
+				
+				ps.println(ctx+": "+output_str);
 				return this;
 			} else {
 				return printOutputIfCrash(ctx, ps);
 			}
 		}
 		
-		public void cleanup(Host host) {
-			try {
-				host.delete(php_filename);
-			} catch ( Exception ex ) {}
-		}
 		@Override
 		public PHPOutput printOutputIfCrash(String ctx, ConsoleManager cm) {
 			return (PHPOutput) super.printOutputIfCrash(ctx, cm);
@@ -706,7 +703,7 @@ public class PhpBuild extends SAPIManager {
 	 * @return
 	 */
 	public String getDefaultExtensionDir() {
-		return build_path+"/ext";
+		return build_path.contains("/") ? build_path+"/ext" : build_path+"\\ext";
 	}
 	
 } // end public class PhpBuild

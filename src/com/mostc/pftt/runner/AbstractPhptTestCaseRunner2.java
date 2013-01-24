@@ -133,11 +133,12 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			host.saveTextFile(test_clean, test_case.get(EPhptSection.CLEAN));
 		} // else test_clean = null;
 		
-		
+		/*
 		if (StringUtil.isEmpty(ini.getExtensionDir()))
 			// this is done in PhpIni#createDefaultIniCopy if the host is Windows
 			// but for Linux/non-Windows, this won't have been done
 			ini.setExtensionDir(build.getDefaultExtensionDir());
+		*/
 		
 		return true;
 	} // end boolean prepare
@@ -409,7 +410,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			}
 			if (expected_re_match||a(test_case)) {
 
-				twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL_WORKS:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
+				twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
 						
 				return;
 			} 
@@ -431,7 +432,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 				}
 				if (expected_re_match) {
 
-					twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL_WORKS:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
+					twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
 							
 					return;
 				}
@@ -443,7 +444,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			
 			if (equalsNoWS(output, expected)||a(test_case)||output.contains("<html>")) {
 				
-				twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL_WORKS:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
+				twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
 						
 				return;
 			}
@@ -460,7 +461,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 				// compare again
 				if (equalsNoWS(output, expected)) {
 					
-					twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL_WORKS:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
+					twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
 					
 					return;
 				} // end if
@@ -470,7 +471,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			String output_trim = output.trim();
 			
 			if (StringUtil.isEmpty(output_trim)||a(test_case)||output.contains("<html>")) {
-				twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL_WORKS:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
+				twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
 				
 				return;
 			}
@@ -478,56 +479,48 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		
 		// if here, test failed!
 
-		if (StringUtil.isNotEmpty(getCrashedSAPIOutput())) {
-			// TODO 
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, getCrashedSAPIOutput(), null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual));
-			
-		} else {
-			// test is FAIL or XFAIL_WORKS
-			
-			// generate a diff
-			String[] actual_lines = StringUtil.splitLines(output);
-			String[] expected_lines = StringUtil.splitLines(test_case.getExpected());
-			Diff<String> diff = new Diff<String>(expected_lines, actual_lines);
-	
-			String expectf;
-			// generate the EXPECTF section to show the user the regular expression that was actually used (generated from EXPECTF section) to evaluate test output
-			if (test_case.containsSection(EPhptSection.EXPECTF)) {
-				expectf = PhptTestCase.prepareExpectF(test_case.getTrim(EPhptSection.EXPECTF));
-			} else {
-				expectf = null;
-			}
+		// generate a diff
+		String[] actual_lines = StringUtil.splitLines(output);
+		String[] expected_lines = StringUtil.splitLines(test_case.getExpected());
+		Diff<String> diff = new Diff<String>(expected_lines, actual_lines);
 
-			PhptTestResult result;
-			if (test_case.isXFail()) {
-				result = new PhptTestResult(host, EPhptTestStatus.XFAIL, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual);
-			} else {
-				result = notifyFail(new PhptTestResult(host, EPhptTestStatus.FAIL, test_case, output, actual_lines, expected_lines, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), diff, expectf, preoverride_actual, getCrashedSAPIOutput()));
-			}
-			
-			//
-			// set result#regex_compiler_dump and result#regex_output dump if test result is FAIL or XFAIL_WORKS and test has an EXPECTF or EXPECTREGEX section
-			if (test_case.containsSection(EPhptSection.EXPECTF) || test_case.containsSection(EPhptSection.EXPECTREGEX)) {
-				// test may be failing due to a bad regular expression in test or bug in regular expression engine
-				//
-				// get a debug dump from the regular expression engine to save with the result
-				//
-				// (this is an expensive operation so it shouldn't be done for every test. there shouldn't be
-				//  very many FAIL tests so this shouldn't be done very much)
-				LengthLimitStringWriter dump_sw = new LengthLimitStringWriter();
-				LengthLimitStringWriter output_sw = new LengthLimitStringWriter();
-				PrintWriter dump_pw = new PrintWriter(dump_sw);
-				PrintWriter output_pw = new PrintWriter(output_sw);
-				
-				test_case.debugExpectedRegularExpression(host, scenario_set, twriter, result.actual, dump_pw, output_pw);
-				
-				result.regex_compiler_dump = dump_sw.toString();
-				result.regex_output = output_sw.toString();
-			}
-			//
-			
-			twriter.addResult(host, scenario_set, result);
+		String expectf;
+		// generate the EXPECTF section to show the user the regular expression that was actually used (generated from EXPECTF section) to evaluate test output
+		if (test_case.containsSection(EPhptSection.EXPECTF)) {
+			expectf = PhptTestCase.prepareExpectF(test_case.getTrim(EPhptSection.EXPECTF));
+		} else {
+			expectf = null;
 		}
+
+		PhptTestResult result;
+		if (test_case.isXFail()) {
+			result = new PhptTestResult(host, EPhptTestStatus.XFAIL_WORKS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual);
+		} else {
+			result = notifyFail(new PhptTestResult(host, EPhptTestStatus.FAIL, test_case, output, actual_lines, expected_lines, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), diff, expectf, preoverride_actual, getCrashedSAPIOutput()));
+		}
+		
+		//
+		// set result#regex_compiler_dump and result#regex_output dump if test result is FAIL or XFAIL_WORKS and test has an EXPECTF or EXPECTREGEX section
+		if (test_case.containsSection(EPhptSection.EXPECTF) || test_case.containsSection(EPhptSection.EXPECTREGEX)) {
+			// test may be failing due to a bad regular expression in test or bug in regular expression engine
+			//
+			// get a debug dump from the regular expression engine to save with the result
+			//
+			// (this is an expensive operation so it shouldn't be done for every test. there shouldn't be
+			//  very many FAIL tests so this shouldn't be done very much)
+			LengthLimitStringWriter dump_sw = new LengthLimitStringWriter();
+			LengthLimitStringWriter output_sw = new LengthLimitStringWriter();
+			PrintWriter dump_pw = new PrintWriter(dump_sw);
+			PrintWriter output_pw = new PrintWriter(output_sw);
+			
+			test_case.debugExpectedRegularExpression(host, scenario_set, twriter, result.actual, dump_pw, output_pw);
+			
+			result.regex_compiler_dump = dump_sw.toString();
+			result.regex_output = output_sw.toString();
+		}
+		//
+		
+		twriter.addResult(host, scenario_set, result);
 	} // end void evalTest
 	
 	protected PhptTestResult notifyFail(PhptTestResult result) {

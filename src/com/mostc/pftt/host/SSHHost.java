@@ -1,6 +1,5 @@
 package com.mostc.pftt.host;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -17,26 +16,23 @@ import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.github.mattficken.io.AbstractDetectingCharsetReader;
+import javax.annotation.Nullable;
+
 import com.github.mattficken.io.ByLineReader;
 import com.github.mattficken.io.ByteArrayIOStream;
 import com.github.mattficken.io.CharsetByLineReader;
 import com.github.mattficken.io.CharsetDeciderDecoder;
-import com.github.mattficken.io.DefaultCharsetDeciderDecoder;
 import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.MultiCharsetByLineReader;
 import com.github.mattficken.io.NoCharsetByLineReader;
-import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
 import com.mostc.pftt.util.StringUtil;
-import com.sshtools.j2ssh.ScpClient;
 import com.sshtools.j2ssh.SftpClient;
 import com.sshtools.j2ssh.SshClient;
 import com.sshtools.j2ssh.authentication.AuthenticationProtocolState;
@@ -78,7 +74,9 @@ import com.sshtools.j2ssh.transport.publickey.SshPublicKey;
  * -OpenSSH on Linux
  * -Apache Mina-SSH on Windows
  * 
- * SSH Server must support SESSION, SFTP and SCP channels (most do).
+ * SSH Server must support SESSION and SFTP channels (SCP channel not required)
+ * 
+ * NOTE: added 1 line to SftpClient#resolveRemotePath to support checking for [letter]:\ on Windows
  * 
  * @author Matt Ficken
  * 
@@ -86,13 +84,18 @@ import com.sshtools.j2ssh.transport.publickey.SshPublicKey;
 
 public class SSHHost extends RemoteHost {
 	private static final Timer timer = new Timer();
-	protected final String hostname, username, password;
+	protected String address, hostname;
+	protected final String username, password;
 	protected final int port;
+	protected final HostKeyVerification verif;
 	protected boolean closed, login_fail;
-	protected String address, os_name_long;
+	@Nullable
+	protected String os_name_long;
+	@Nullable
 	protected Boolean is_windows;
+	@Nullable
 	protected SshClient ssh;
-	protected ScpClient scp;
+	@Nullable
 	protected SftpClient sftp;
 	
 	public SSHHost(String hostname, String username, String password) {
@@ -100,11 +103,32 @@ public class SSHHost extends RemoteHost {
 	}
 	
 	public SSHHost(String hostname, int port, String username, String password) {
+		this(hostname, port, username, password, new HostKeyVerification() {
+				@Override
+				public boolean verifyHost(String host, SshPublicKey pk) throws TransportProtocolException {
+					return true;
+				}
+			});
+	}
+	
+	public SSHHost(String hostname, String username, String password, HostKeyVerification verif) {
+		this(hostname, 22, username, password, verif);
+	}
+	
+	public SSHHost(String hostname, int port, String username, String password, HostKeyVerification verif) {
+		this.address = hostname;
+		
+		if (hostname.contains(".")||hostname.contains(":")) {
+			// use address instead, then ask actual hostname once connected
+			// @see #ensureSshOpen
+			hostname = null;
+		}
+		
 		this.hostname = hostname;
 		this.port = port;
 		this.username = username;
 		this.password = password;
-		this.address = hostname;
+		this.verif = verif;
 	}
 	
 	protected String normalizePath(String path) {
@@ -120,16 +144,13 @@ public class SSHHost extends RemoteHost {
 			throw new IllegalStateException("SSH connection administratively/explicitly closed");
 		do_close(); // ensure any existing ssh, sftp or scp client gets closed (for gc)
 		
-		address = InetAddress.getByName(hostname).getHostAddress();
-		
+		if (hostname!=null) {
+			// address isn't IP address (its hostname), resolve it now @see SSHHost#<init>
+			address = InetAddress.getByName(hostname).getHostAddress();
+		}
 		ssh = new SshClient();
 		
-		ssh.connect(address, port, new HostKeyVerification() {
-				@Override
-				public boolean verifyHost(String host, SshPublicKey pk) throws TransportProtocolException {
-					return true;
-				}
-			});
+		ssh.connect(address, port, verif);
 		
 		PasswordAuthenticationClient pwd = new PasswordAuthenticationClient();
 
@@ -141,14 +162,12 @@ public class SSHHost extends RemoteHost {
 			login_fail = true; // IllegalStateException below may get caught/ignored
 			throw new IllegalStateException("authentication failed. attempted login as user: "+username+" using password: "+password+" on host: "+hostname+":"+port+" ("+address+":"+port+")");
 		}
-	}
-	
-	protected void ensureScpOpen() throws UnknownHostException, IOException {
-		if (!login_fail && scp != null)
-			return;
-		ensureSshOpen();
-		scp = ssh.openScpClient();
-	}
+		
+		if (hostname==null) {
+			// only have ip address, get hostname
+			hostname = isWindows() ? getEnvValue("COMPUTERNAME") : getEnvValue("HOSTNAME");
+		}
+	} // end protected void ensureSshOpen
 	
 	protected void ensureSftpOpen() throws UnknownHostException, IOException {
 		if (!login_fail && sftp != null && !sftp.isClosed())
@@ -176,7 +195,6 @@ public class SSHHost extends RemoteHost {
 			}
 			sftp = null;
 		}
-		scp = null;
 		if (ssh!=null) {
 			ssh.disconnect();
 			ssh = null;
@@ -227,7 +245,8 @@ public class SSHHost extends RemoteHost {
 			FileAttributes fa = sftp.stat(normalizePath(path));
 			return fa.isFile() || fa.isDirectory();
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			// throws Exception if it doesn't exist
+			//ex.printStackTrace();
 		}
 		return false;
 	}
@@ -262,8 +281,10 @@ public class SSHHost extends RemoteHost {
 
 	@Override
 	public String getContents(String file) throws IOException {
-		ensureScpOpen();
-		NoCharsetByLineReader reader = new NoCharsetByLineReader(scp.get(normalizePath(file)));
+		ensureSftpOpen();
+		ByteArrayIOStream local = new ByteArrayIOStream(1024);
+		sftp.get(normalizePath(file), local);
+		NoCharsetByLineReader reader = new NoCharsetByLineReader(local.getInputStream());
 		String str = IOUtil.toString(reader, IOUtil.HALF_MEGABYTE);
 		reader.close();
 		return str;
@@ -271,8 +292,10 @@ public class SSHHost extends RemoteHost {
 
 	@Override
 	public String getContentsDetectCharset(String file, CharsetDeciderDecoder cdd) throws IOException {
-		ensureScpOpen();
-		MultiCharsetByLineReader reader = new MultiCharsetByLineReader(scp.get(normalizePath(file)), cdd);
+		ensureSftpOpen();
+		ByteArrayIOStream local = new ByteArrayIOStream(1024);
+		sftp.get(normalizePath(file), local);
+		MultiCharsetByLineReader reader = new MultiCharsetByLineReader(local.getInputStream(), cdd);
 		String str = IOUtil.toString(reader, IOUtil.HALF_MEGABYTE);
 		reader.close();
 		return str;
@@ -280,14 +303,18 @@ public class SSHHost extends RemoteHost {
 
 	@Override
 	public ByLineReader readFile(String file) throws FileNotFoundException, IOException {
-		ensureScpOpen();
-		return new NoCharsetByLineReader(scp.get(normalizePath(file)));
+		ensureSftpOpen();
+		ByteArrayIOStream local = new ByteArrayIOStream(1024);
+		sftp.get(normalizePath(file), local);
+		return new NoCharsetByLineReader(local.getInputStream());
 	}
 
 	@Override
 	public ByLineReader readFileDetectCharset(String file, CharsetDeciderDecoder cdd) throws FileNotFoundException, IOException {
-		ensureScpOpen();
-		return new MultiCharsetByLineReader(scp.get(normalizePath(file)), cdd);
+		ensureSftpOpen();
+		ByteArrayIOStream local = new ByteArrayIOStream(1024);
+		sftp.get(normalizePath(file), local);
+		return new MultiCharsetByLineReader(local.getInputStream(), cdd);
 	}
 
 	@Override
@@ -385,7 +412,7 @@ public class SSHHost extends RemoteHost {
 		//
 		final AtomicBoolean run = new AtomicBoolean(true);
 		final SessionChannelClient session = do_exec(cmd, env, chdir, stdin_post, out);
-		if (timeout>FOUR_HOURS) {
+		if (timeout>NO_TIMEOUT) {
 			timer.schedule(new TimerTask() {
 					public void run() {
 						try {
@@ -408,7 +435,7 @@ public class SSHHost extends RemoteHost {
 		//
 		
 		// read output from command
-		StringBuilder sb = new StringBuilder(1024);
+		/* TODO StringBuilder sb = new StringBuilder(1024);
 		DefaultCharsetDeciderDecoder d = charset == null ? null : PhptTestCase.newCharsetDeciderDecoder();
 		ByLineReader reader = charset == null ? new NoCharsetByLineReader(out.getInputStream()) : new MultiCharsetByLineReader(out.getInputStream(), d);
 		String line;
@@ -424,16 +451,16 @@ public class SSHHost extends RemoteHost {
 			//ex.printStackTrace();
 		}
 		
-		out.close();
+		out.close();*/
 		
 		// wait for exit
 		session.getState().waitForState(ChannelState.CHANNEL_CLOSED);
 		
 		//
 		eo.exit_code = session.getExitCode();
-		if (reader instanceof AbstractDetectingCharsetReader)
-			eo.charset = ((AbstractDetectingCharsetReader)reader).cs;
-		eo.output = sb.toString();
+		/* TODO if (reader instanceof AbstractDetectingCharsetReader)
+			eo.charset = ((AbstractDetectingCharsetReader)reader).cs; */
+		eo.output = out.toString();
 		//
 		
 		return eo;
@@ -458,7 +485,7 @@ public class SSHHost extends RemoteHost {
 	public String getEnvValue(String name) {
 		try {
 			if (isWindows())
-				return cmd("ECHO %"+name+"%", ONE_MINUTE).output;
+				return StringUtil.chomp(cmd("ECHO %"+name+"%", ONE_MINUTE).output);
 			else
 				return exec("echo $"+name, ONE_MINUTE).output;
 		} catch ( Exception ex ) {
@@ -492,34 +519,33 @@ public class SSHHost extends RemoteHost {
 
 	@Override
 	public void download(String src, String dst) throws IllegalStateException, IOException, Exception {
-		ensureScpOpen();
-		IOUtil.copy(scp.get(normalizePath(src)), new BufferedOutputStream(new FileOutputStream(dst)), IOUtil.HALF_MEGABYTE);
+		ensureSftpOpen();
+		sftp.get(normalizePath(src), new BufferedOutputStream(new FileOutputStream(dst)));
 	}
 	
-	protected static void walk(File[] files, LinkedList<String> file_list) {
+	protected void do_upload(String base, File[] files, String dst) throws IOException {
 		for (File file : files) {
-			if (file.isDirectory())
-				walk(file.listFiles(), file_list);
-			else
-				file_list.add(file.getAbsolutePath());
+			if (file.isDirectory()) {
+				do_upload(base, file.listFiles(), dst);
+			} else {
+				String remote_file_path = joinIntoOnePath(dst, pathFrom(base, file.getAbsolutePath()));
+				
+				sftp.put(file.getAbsolutePath(), remote_file_path);
+			}
 		}
 	}
 
 	@Override
-	public void upload(String src, String dst) throws IllegalStateException, IOException, Exception {
-		ensureScpOpen();
+	public void upload(String src, String dst) throws IllegalStateException, IOException {
+		ensureSftpOpen();
 		dst = normalizePath(dst);
 		
 		File fsrc = new File(src);
 		if (fsrc.isDirectory()) {
-			LinkedList<String> file_list = new LinkedList<String>();
-			
-			walk(fsrc.listFiles(), file_list);
-			
-			scp.put((String[]) file_list.toArray(new String[file_list.size()]), dst, false);
+			do_upload(src, fsrc.listFiles(), dst);
 		} else {
 			// uploading single file
-			scp.put(new BufferedInputStream(new FileInputStream(fsrc)), fsrc.length(), src, dst);
+			sftp.put(fsrc.getAbsolutePath(), dst);
 		}
 	}
 
@@ -636,16 +662,16 @@ public class SSHHost extends RemoteHost {
 	public void saveTextFile(String filename, String text, CharsetEncoder ce) throws IllegalStateException, IOException {
 		if (text==null)
 			text = "";
-		ensureScpOpen();
+		ensureSftpOpen();
 		filename = normalizePath(filename);
 		
 		if (ce==null) {
 			byte[] text_bytes = text.getBytes();
-			scp.put(new ByteArrayInputStream(text_bytes), text_bytes.length, filename, filename);
+			sftp.put(new ByteArrayInputStream(text_bytes), filename);
 		} else {
 			ByteBuffer bbuf = ByteBuffer.allocate(50+text.length()*2);
 			ce.encode(CharBuffer.wrap(text.toCharArray()), bbuf, true);
-			scp.put(new ByteBufferInputStream(bbuf), bbuf.capacity() - bbuf.remaining(), filename, filename);
+			sftp.put(new ByteBufferInputStream(bbuf), filename);
 		}
 	}
 	

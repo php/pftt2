@@ -10,12 +10,9 @@ import com.mostc.pftt.model.phpt.ESAPIType;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.model.phpt.PhptTestCase;
-import com.mostc.pftt.model.phpt.PhptActiveTestPack;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.IPhptTestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
-import com.mostc.pftt.scenario.AbstractINIScenario;
-import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 public abstract class AbstractPhptTestCaseRunner {
@@ -33,18 +30,6 @@ public abstract class AbstractPhptTestCaseRunner {
 	public static final String ENV_HTTP_CONTENT_ENCODING = "HTTP_CONTENT_ENCODING";
 	
 	public abstract void runTest() throws IOException, Exception, Throwable;
-	
-	public static PhpIni createIniForTest(ConsoleManager cm, Host host, PhpBuild build, PhptActiveTestPack active_test_pack, ScenarioSet scenario_set) {
-		PhpIni ini = PhpIni.createDefaultIniCopy(host, build); // TODO
-		//_ini.replaceAll(test_case.getINI(active_test_pack, host));
-		for ( Scenario scenario : scenario_set ) {
-			if (scenario instanceof AbstractINIScenario) {
-				((AbstractINIScenario)scenario).setup(cm, host, build, ini);
-			}
-		}
-		ini.addToIncludePath(host, active_test_pack.getDirectory());
-		return ini;
-	}
 	
 	public static Map<String, String> generateENVForTestCase(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhptTestCase test_case) throws Exception {
 		// read ENV vars from test, from its parent (if a test redirected to this test), and merge from scenario
@@ -101,7 +86,7 @@ public abstract class AbstractPhptTestCaseRunner {
 			
 			return true;
 		} else if (test_case.getName().contains("dba")||test_case.getName().contains("sybase")||test_case.getName().contains("snmp")||test_case.getName().contains("interbase")||test_case.getName().contains("ldap")||test_case.getName().contains("imap")||test_case.getName().contains("ftp")||test_case.getName().contains("curl")||test_case.getName().contains("sql")||test_case.getName().contains("enchant")||test_case.getName().contains("oci")||test_case.getName().contains("pcntl")||test_case.getName().contains("soap")||test_case.getName().contains("xmlrpc")||test_case.getName().contains("pdo")||test_case.getName().contains("odbc")) {
-			// TODO temp - don't run these SKIPIFs without the scenario loaded
+			// TODO don't run these SKIPIFs without the scenario loaded
 			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.SKIP, test_case, "test would've been skipped", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return true;

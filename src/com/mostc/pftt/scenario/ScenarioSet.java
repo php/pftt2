@@ -66,15 +66,14 @@ public class ScenarioSet extends ArrayList<Scenario> {
 		StringBuilder sb = new StringBuilder(40);
 		String str;
 		for ( Scenario s : this ) {
-			if (sb.length()>0)
+			if (s.isPlaceholder())
+				continue;
+			else if (sb.length()>0)
 				sb.append('_');
 			str = s.toString();
-			if (str.startsWith("No-"))
-				// ignore these scenarios, they're placeholders
-				continue;
 			sb.append(str);
 		}
-		str = sb.toString();
+		this.str = sb.toString();
 	}
 	
 	protected void forceSort() {
@@ -91,8 +90,24 @@ public class ScenarioSet extends ArrayList<Scenario> {
 	
 	@Override
 	public String toString() {
+		return getName();
+	}
+	
+	public String getName() {
 		ensureSorted();
 		return str; // @see #sort
+	}
+	
+	public String getShortName() {
+		StringBuilder sb = new StringBuilder();
+		for ( Scenario s : this ) {
+			if (s.ignoreForShortName())
+				continue;
+			else if (sb.length()>0)
+				sb.append('_');
+			sb.append(s.getName());
+		}
+		return sb.toString();
 	}
 	
 	@Override

@@ -1,6 +1,6 @@
 package com.mostc.pftt.model.ui;
 
-import com.mostc.pftt.scenario.WordpressScenario
+import com.mostc.pftt.scenario.app.WordpressScenario
 
 // auto import UITestCase
 // cr or case_runner -

@@ -57,6 +57,14 @@ public abstract class Scenario {
 	public void getENV(Map<String, String> env) {
 		
 	}
+	
+	public boolean isPlaceholder() {
+		return false;
+	}
+	
+	public boolean ignoreForShortName() {
+		return false;
+	}
 
 	public boolean hasENV() {
 		return false;

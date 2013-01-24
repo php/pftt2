@@ -84,5 +84,7 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 	 * @throws Exception
 	 */
 	public abstract TestCaseGroupKey createTestGroupKey(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack active_test_pack, PhptTestCase test_case, TestCaseGroupKey group_key) throws Exception;
+	
+	public abstract PhpIni createIniForTest(ConsoleManager cm, Host host, PhpBuild build, PhptActiveTestPack active_test_pack, ScenarioSet scenario_set);
 
 } // end public abstract class AbstractSAPIScenario

@@ -2,7 +2,7 @@ package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.RemoteHost;
 
-/** Tests running a PHP build and its test pack both stored remotely on a basic SMB file share. (NOT IMPLEMENTED)
+/** Tests running a PHP build and its test pack both stored remotely on a basic SMB file share.
  * 
  * @author Matt Ficken
  *
