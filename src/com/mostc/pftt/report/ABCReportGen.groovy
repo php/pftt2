@@ -1,10 +1,10 @@
 package com.mostc.pftt.report
 
-class AUTReportGen extends AbstractReportGen {
+class ABCReportGen extends AbstractReportGen {
 	final String os_name;
 	final File tmp_file;
 	
-	public AUTReportGen(File tmp_file, String os_name) {
+	public ABCReportGen(File tmp_file, String os_name) {
 		this.tmp_file = tmp_file;
 		this.os_name = os_name;
 	}

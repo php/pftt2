@@ -1,5 +1,6 @@
 package com.mostc.pftt.model.phpt;
 
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.ref.WeakReference;
@@ -704,6 +705,30 @@ public class PhpBuild extends SAPIManager {
 	 */
 	public String getDefaultExtensionDir() {
 		return build_path.contains("/") ? build_path+"/ext" : build_path+"\\ext";
+	}
+
+	boolean saved_ini = false;
+	String ini_dir;
+	public String prepare(Host host) throws IOException {
+		if (saved_ini) {
+			return ini_dir;
+		} else {
+			// @see CliScenario#createIniForTest
+			saved_ini = true;
+			
+			ini_dir = host.mktempname(getClass());
+			host.mkdirs(ini_dir);
+			
+			String ini_file = ini_dir + "/php.ini";
+			
+			PhpIni def_ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(host, this);
+			
+			FileWriter fw = new FileWriter(ini_file);
+			fw.write(def_ini.toString());
+			fw.close();
+			
+			return ini_dir;
+		}
 	}
 	
 } // end public class PhpBuild

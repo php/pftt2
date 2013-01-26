@@ -1,5 +1,5 @@
 package com.mostc.pftt.scenario;
 
-public abstract class AbstractStreamsScenario extends AbstractParallelScenario {
+public abstract class AbstractStreamsScenario extends AbstractNetworkedServiceScenario {
 
 }

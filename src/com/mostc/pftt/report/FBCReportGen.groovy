@@ -214,7 +214,7 @@ html.html {
 				td(colspan:2, 'Crashes (Test)')
 			}
 			/* --------------- end headers -------------- */
-			/*tr {
+			tr {
 				td(row++)
 				td(test_telem.getOSName())
 				td() {
@@ -227,7 +227,7 @@ html.html {
 						br(test_name)
 					}
 				}
-			}*/
+			}
 		} // table
 
 		// new PHPT failures

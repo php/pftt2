@@ -34,7 +34,7 @@ import com.mostc.pftt.model.smoke.ESmokeTestStatus;
 import com.mostc.pftt.model.smoke.PhptTestCountsMatchSmokeTest;
 import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.model.smoke.RequiredFeaturesSmokeTest;
-import com.mostc.pftt.report.AUTReportGen;
+import com.mostc.pftt.report.ABCReportGen;
 import com.mostc.pftt.report.AbstractReportGen;
 import com.mostc.pftt.report.FBCReportGen;
 import com.mostc.pftt.results.ConsoleManager;
@@ -46,10 +46,11 @@ import com.mostc.pftt.runner.PhpUnitTestPackRunner;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner;
 import com.mostc.pftt.runner.PhptTestPackRunner;
 import com.mostc.pftt.scenario.AbstractSAPIScenario;
-import com.mostc.pftt.scenario.SMBDFSRScenario;
+import com.mostc.pftt.scenario.SMBDFSScenario;
 import com.mostc.pftt.scenario.SMBDeduplicationScenario;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.scenario.AbstractSMBScenario.SMBStorageDir;
 import com.mostc.pftt.util.DownloadUtil;
 import com.mostc.pftt.util.HostEnvUtil;
 import com.mostc.pftt.util.StringUtil;
@@ -66,6 +67,9 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
  */
 
 // TODO phpt_all, etc... should display location of result-pack being written
+// XXX ? only compress .xml result files that are for FAIL or XFAIL_WORKS or CRASH or TEST_EXPCEPTION
+//           -then discard if PASS, SKIP or XSKIP
+//         -would still save list of tests for each status
 public class PfttMain {
 	protected Host host;
 	
@@ -284,6 +288,7 @@ public class PfttMain {
 	}
 	
 	protected static void cmd_aut(ConsoleManager cm, PfttMain rt, Host host, PhpBuild build, Collection<ScenarioSet> scenario_sets) throws IllegalStateException, IOException, Exception {
+		/*
 		new PhpUnitTestPackRunner(PhpUnitAppTestPack.load("/"), scenario_sets.iterator().next(), build, host);
 		
 		host.upload7ZipAndDecompress(host.getPfttDir()+"/cache/cache.7z", "");
@@ -294,7 +299,8 @@ public class PfttMain {
 		host.getContents(tmp_file);
 		// for now, don't delete tmp_file
 				
-		rt.show_report(cm, new AUTReportGen(new File(tmp_file), host.getOSName())); 
+		rt.show_report(cm, new ABCReportGen(new File(tmp_file), host.getOSName()));
+		*/ 
 	}
 	
 	protected static void cmd_shell_ui() {
@@ -723,18 +729,15 @@ public class PfttMain {
 		
 		LocalConsoleManager cm = new LocalConsoleManager(source_pack, debug_pack, force, windebug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug);
 		
-		// TODO 
+		//
 		/*
-		SSHHost remote_host = new SSHHost("10.200.41.219", "administrator", "password01!");
+		SSHHost remote_host = new SSHHost("10.200.48.119", "administrator", "password01!");
 		System.out.println(remote_host.isWindows());
-		System.out.println("729");
-		remote_host.exec("systeminfo", Host.ONE_MINUTE);
-		System.out.println("731");
 		//SMBDeduplicationScenario d = new SMBDeduplicationScenario(remote_host, "F:");
-		SMBDFSRScenario d = new SMBDFSRScenario(remote_host);
-		System.out.println("731");
-		System.out.println(d.notifyPrepareStorageDir(cm, rt.host));
-		d.notifyTestPackInstalled(cm, rt.host);
+		SMBDFSScenario d = new SMBDFSScenario(remote_host);
+		SMBStorageDir dir = d.createStorageDir(cm, rt.host);
+		System.out.println(dir.getLocalPath(rt.host));
+		System.out.println(dir.notifyTestPackInstalled(cm, rt.host));
 		
 		System.exit(0);
 		*/

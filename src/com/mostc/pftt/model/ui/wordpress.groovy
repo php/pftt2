@@ -1,120 +1,108 @@
 package com.mostc.pftt.model.ui;
 
-import com.mostc.pftt.scenario.app.WordpressScenario
-
-// auto import UITestCase
-// cr or case_runner -
-// host -
-// build -
-// middleware -
-// host_int -
-
-install_ctx = cr.install(new WordpressScenario())
-
 /*
-def user_anon_test(prefix='') {
-	cr.run(new UITestCase("$prefix-View-Content") {
-		def act() {
-			
-		}
-	})
-
-	cr.run(new UITestCase("$prefix-Create-Story") {
-		def act() {
-			
-		}
-	})
+class WordpressTestPack {
 	
-	cr.run(new UITestCase("$prefix-Post-Comments") {
-		def act() {
-			
-		}
-	})
-} // end def user_anon_test
-
-def user_tests(user_info=null, prefix='', suffix='', xfail=false) {
-	// login new user
-	if (user_info) {
-		user_login(user_info, prefix, suffix, xfail)
-		
-		// test as new user
-		user_anon_test(prefix)
-		
-		// change settings
-		cr.run(new UITestCase("$prefix-View-Settings-$suffix")) {
+	def user_anon_test(prefix='') {
+		cr.run(new UITestCase("$prefix-View-Content") {
 			def act() {
 				
 			}
-		}, xfail)
-		
-		cr.run(new UITestCase("$prefix-Change-Settings-$suffix")) {
+		})
+	
+		cr.run(new UITestCase("$prefix-Create-Story") {
 			def act() {
 				
 			}
-		}, xfail)
+		})
+		
+		cr.run(new UITestCase("$prefix-Post-Comments") {
+			def act() {
+				
+			}
+		})
+	} // end def user_anon_test
 	
-		user_logout(user_info, prefix, xfail)
-	} else {
-		// report that these cases can't be tested b/c user wasn't created
-		cr.bork("$prefix-Login-$suffix")
-		cr.bork("$prefix-View-Settings-$suffix")
-		cr.bork("$prefix-Change-Settings-$suffix")
-		cr.bork("$prefix-Logout-$suffix")
+	def user_tests(user_info=null, prefix='', suffix='', xfail=false) {
+		// login new user
+		if (user_info) {
+			user_login(user_info, prefix, suffix, xfail)
+			
+			// test as new user
+			user_anon_test(prefix)
+			
+			// change settings
+			cr.run(new UITestCase("$prefix-View-Settings-$suffix")) {
+				def act() {
+					
+				}
+			}, xfail)
+			
+			cr.run(new UITestCase("$prefix-Change-Settings-$suffix")) {
+				def act() {
+					
+				}
+			}, xfail)
+		
+			user_logout(user_info, prefix, xfail)
+		} else {
+			// report that these cases can't be tested b/c user wasn't created
+			cr.bork("$prefix-Login-$suffix")
+			cr.bork("$prefix-View-Settings-$suffix")
+			cr.bork("$prefix-Change-Settings-$suffix")
+			cr.bork("$prefix-Logout-$suffix")
+		}
+	} // end def user_tests
+	
+	def register_user(suffix='1', xfail=false) {
+		// TODO
 	}
-} // end def user_tests
-
-def register_user(suffix='1', xfail=false) {
-	// TODO
-}
-
-def admin_login(suffix='1', xfail=false, given_password=null) {
-	// login as administrator
-	user_login({username = install_ctx.admin_user; password = given_password==null?install_ctx.admin_password:given_password}, 'Admin', suffix, xfail)
-}
-
-def admin_logout(suffix='1') {
-	// logout administrator
-	user_logout('Admin', suffix)
-}
-
-def delete_user(user_info, suffix='1') {
-	// TODO
-}
-
-def user_login(user_info, prefix='', suffix='', xfail=false) {
-	cr.run(new UITestCase("$prefix-Login-$suffix") {
-		def act() {
-			go_home().find_link('Login', 'Signin').click().fill('User', user_info.username).fill('Password', user_info.password).submit()
-		}
-	}, xfail);
-}
-
-def user_logout(prefix='', suffix='', xfail=false) {
-	// logout
-	cr.run(new UITestCase("$prefix-Logout-$suffix") {
-		def act() {
-			// unless go_url() or go_home() called, starts with page left by previous UITestCase
-			find_link('Logout').click()
-		}
-	}, xfail);
-}
-
-def xfail_tests(suffix='') {
-	admin_login(suffix, xfail=true, given_password='wrong_password')
 	
-	admin_login(suffix)
+	def admin_login(suffix='1', xfail=false, given_password=null) {
+		// login as administrator
+		user_login({username = install_ctx.admin_user; password = given_password==null?install_ctx.admin_password:given_password}, 'Admin', suffix, xfail)
+	}
 	
-	change_password(created_user)
-	change_password(registered_user)
+	def admin_logout(suffix='1') {
+		// logout administrator
+		user_logout('Admin', suffix)
+	}
 	
-	admin_logout(suffix)
+	def delete_user(user_info, suffix='1') {
+		// TODO
+	}
 	
-	user_login(created_user, xfail=true)
-	user_login(registered_user, xfail=true)
-}
-
-///////// FIRST TEST CASE HERE ////////////
-
+	def user_login(user_info, prefix='', suffix='', xfail=false) {
+		cr.run(new UITestCase("$prefix-Login-$suffix") {
+			def act() {
+				go_home().find_link('Login', 'Signin').click().fill('User', user_info.username).fill('Password', user_info.password).submit()
+			}
+		}, xfail);
+	}
+	
+	def user_logout(prefix='', suffix='', xfail=false) {
+		// logout
+		cr.run(new UITestCase("$prefix-Logout-$suffix") {
+			def act() {
+				// unless go_url() or go_home() called, starts with page left by previous UITestCase
+				find_link('Logout').click()
+			}
+		}, xfail);
+	}
+	
+	def xfail_tests(suffix='') {
+		admin_login(suffix, xfail=true, given_password='wrong_password')
+		
+		admin_login(suffix)
+		
+		change_password(created_user)
+		change_password(registered_user)
+		
+		admin_logout(suffix)
+		
+		user_login(created_user, xfail=true)
+		user_login(registered_user, xfail=true)
+	}
 
 // test anonymously
 user_anon_test('Anonymous')
@@ -191,4 +179,7 @@ admin_logout('All-Plugins-2')
 
 user_login(created_user, 'All-Plugins', 'Old-Password', xfail=true)
 user_login(registered_user, 'All-Plugins', 'Old-Password', xfail=true)
+
+
+}
 */

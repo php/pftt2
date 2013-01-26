@@ -158,7 +158,7 @@ public class RemotePhptTestPackRunner extends PhptTestPackRunner {
 
 	@Override
 	public void runAllTests(PhptSourceTestPack test_pack) throws FileNotFoundException, IOException, Exception {
-		PhptActiveTestPack active_test_pack = test_pack.install(this.host, remote_host.getPhpSdkDir()+"/Remote");
+		PhptActiveTestPack active_test_pack = test_pack.install(tmgr.getConsoleManager(), this.host, remote_host.getPhpSdkDir()+"/Remote");
 		
 		commonRunStart();
 		sendTestPack(active_test_pack);

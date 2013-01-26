@@ -11,7 +11,22 @@ import com.mostc.pftt.results.ConsoleManager.EPrintType;
  */
 
 public class LocalFileSystemScenario extends AbstractFileSystemScenario {
-
+	protected static ITestPackStorageDir LOCAL_DIR = new ITestPackStorageDir() {
+			@Override
+			public boolean notifyTestPackInstalled(ConsoleManager cm, Host host) {
+				return true;
+			}
+			@Override
+			public String getLocalPath(Host host) {
+				return host.getPhpSdkDir();
+			}
+			@Override
+			public boolean delete(ConsoleManager cm, Host host) {
+				return true; // don't actually delete php sdk
+			}
+		};
+	
+	
 	@Override
 	public String getName() {
 		return "Local-FileSystem";
@@ -28,19 +43,14 @@ public class LocalFileSystemScenario extends AbstractFileSystemScenario {
 	}
 
 	@Override
-	public boolean notifyPrepareStorageDir(ConsoleManager cm, Host host) {
+	public ITestPackStorageDir createStorageDir(ConsoleManager cm, Host host) {
 		try {
-			host.mkdirs(getTestPackStorageDir(host));
-			return true;
+			host.mkdirs(host.getPhpSdkDir());
+			return LOCAL_DIR;
 		} catch ( Exception ex ) {
-			cm.addGlobalException(EPrintType.CANT_CONTINUE, LocalFileSystemScenario.class, "notifyPrepareStorageDir", ex, "");
-			return false;
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, LocalFileSystemScenario.class, "createStorageDir", ex, "");
+			return null;
 		}
-	}
-
-	@Override
-	public String getTestPackStorageDir(Host host) {
-		return host.getPhpSdkDir();
 	}
 
 } // end public class LocalFileSystemScenario

@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.SSHHost;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.model.phpt.PhptSourceTestPack;
@@ -26,8 +27,10 @@ import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.IPhptTestResultReceiver;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.scenario.AbstractFileSystemScenario;
+import com.mostc.pftt.scenario.AbstractFileSystemScenario.ITestPackStorageDir;
 import com.mostc.pftt.scenario.AbstractSAPIScenario;
 import com.mostc.pftt.scenario.AbstractWebServerScenario;
+import com.mostc.pftt.scenario.SMBDeduplicationScenario;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.StringUtil;
@@ -105,6 +108,10 @@ public class LocalPhptTestPackRunner extends PhptTestPackRunner {
 		sapi_scenario = AbstractSAPIScenario.getSAPIScenario(scenario_set);
 		file_scenario = AbstractFileSystemScenario.getFileSystemScenario(scenario_set);
 		
+		// TODO
+		SSHHost remote_host = new SSHHost("10.200.41.219", "administrator", "password01!");
+		file_scenario = new SMBDeduplicationScenario(remote_host, "F:");
+		
 		// ensure all scenarios are implemented
 		if (!scenario_set.isImplemented()) {
 			cm.println(EPrintType.SKIP_OPERATION, getClass(), "Scenario Set not implemented: "+scenario_set);
@@ -119,25 +126,28 @@ public class LocalPhptTestPackRunner extends PhptTestPackRunner {
 		cm.println(EPrintType.IN_PROGRESS, getClass(), "preparing storage for test-pack...");
 		
 		// prepare storage
-		if (!file_scenario.notifyPrepareStorageDir(cm, host)) {
+		ITestPackStorageDir storage_dir = file_scenario.createStorageDir(cm, host);
+		if (storage_dir == null) {
 			cm.println(EPrintType.CANT_CONTINUE, getClass(), "unable to prepare storage for test-pack, giving up!");
 			close();
 			return;
 		}
 		//
 
-		String storage_dir = file_scenario.getTestPackStorageDir(host);
 		// generate name of directory on that storage to store the copy of the test-pack
-		String test_pack_dir;
-		long millis = System.currentTimeMillis();
-		for ( int i=0 ; ; i++ ) {
-			// try to include version, branch info etc... from name of test-pack
-			test_pack_dir = storage_dir + "/PFTT-" + Host.basename(src_test_pack.getSourceDirectory()) + "-" + millis;
-			if (!host.exists(test_pack_dir))
-				break;
-			millis++;
-			if (i%100==0)
-				millis = System.currentTimeMillis();
+		String test_pack_dir = null;
+		{
+			String local_path = storage_dir.getLocalPath(host);
+			long millis = System.currentTimeMillis();
+			for ( int i=0 ; i < 655535 ; i++ ) {
+				// try to include version, branch info etc... from name of test-pack
+				test_pack_dir = local_path + "/PFTT-" + Host.basename(src_test_pack.getSourceDirectory()) + (i==0?"":"-" + millis);
+				if (!host.exists(test_pack_dir))
+					break;
+				millis++;
+				if (i%100==0)
+					millis = System.currentTimeMillis();
+			}
 		}
 		//
 		
@@ -152,7 +162,7 @@ public class LocalPhptTestPackRunner extends PhptTestPackRunner {
 					active_test_pack = src_test_pack.installInPlace();
 				else
 					// copy test-pack onto (remote) file system
-					active_test_pack = src_test_pack.install(host, test_pack_dir);
+					active_test_pack = src_test_pack.install(cm, host, test_pack_dir);
 			} catch (Exception ex ) {
 				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "runTestList", ex, "", host, file_scenario, active_test_pack);
 			}
@@ -164,7 +174,7 @@ public class LocalPhptTestPackRunner extends PhptTestPackRunner {
 			//
 			
 			// notify storage
-			if (!file_scenario.notifyTestPackInstalled(cm, host)) {
+			if (!storage_dir.notifyTestPackInstalled(cm, host)) {
 				cm.println(EPrintType.CANT_CONTINUE, getClass(), "unable to prepare storage for test-pack, giving up!(2)");
 				close();
 				return;
@@ -218,7 +228,7 @@ public class LocalPhptTestPackRunner extends PhptTestPackRunner {
 				host.delete(active_test_pack.getDirectory());
 				
 				// cleanup, disconnect storage, etc...
-				file_scenario.notifyFinishedTestPack(cm, host);
+				storage_dir.delete(cm, host);
 			}
 			//
 		} finally {

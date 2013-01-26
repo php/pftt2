@@ -82,6 +82,8 @@ import com.sshtools.j2ssh.transport.publickey.SshPublicKey;
  * 
  */
 
+// TODO 7zip compress test-pack and upload
+//     -don't include skip or xskip tests (save bandwidth/time)
 public class SSHHost extends RemoteHost {
 	private static final Timer timer = new Timer();
 	protected String address, hostname;
@@ -404,10 +406,10 @@ public class SSHHost extends RemoteHost {
 	} // end protected static class SSHExecHandle
 	
 	@Override
-	public ExecOutput exec(String cmd, int timeout, Map<String, String> env, byte[] stdin_post, Charset charset, String chdir, final TestPackRunnerThread thread, int thread_slow_sec) throws Exception {
-		ByteArrayIOStream out = new ByteArrayIOStream(1024);
+	public ExecOutput exec(final String cmd, int timeout, Map<String, String> env, byte[] stdin_post, Charset charset, String chdir, final TestPackRunnerThread thread, int thread_slow_sec) throws Exception {
+		final ByteArrayIOStream out = new ByteArrayIOStream(1024);
 		
-		ExecOutput eo = new ExecOutput();
+		final ExecOutput eo = new ExecOutput();
 		
 		//
 		final AtomicBoolean run = new AtomicBoolean(true);
@@ -457,6 +459,7 @@ public class SSHHost extends RemoteHost {
 		session.getState().waitForState(ChannelState.CHANNEL_CLOSED);
 		
 		//
+		eo.cmd = cmd;
 		eo.exit_code = session.getExitCode();
 		/* TODO if (reader instanceof AbstractDetectingCharsetReader)
 			eo.charset = ((AbstractDetectingCharsetReader)reader).cs; */

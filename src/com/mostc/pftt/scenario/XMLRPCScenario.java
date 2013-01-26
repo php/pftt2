@@ -6,7 +6,7 @@ package com.mostc.pftt.scenario;
  *
  */
 
-public class XMLRPCScenario extends AbstractParallelScenario {
+public class XMLRPCScenario extends AbstractNetworkedServiceScenario {
 
 	@Override
 	public String getName() {

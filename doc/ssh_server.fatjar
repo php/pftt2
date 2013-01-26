@@ -1,0 +1,14 @@
+#Fat Jar Configuration File
+#Mon Jan 21 13:10:29 PST 2013
+onejar.license.required=true
+manifest.classpath=
+manifest.removesigners=true
+onejar.checkbox=false
+jarname=ssh_server.jar
+manifest.mergeall=true
+manifest.mainclass=com.mostc.pftt.main.SSHServer
+manifest.file=<createnew>
+jarname.isextern=false
+onejar.expand=
+excludes=<jar|htmlcleaner-2.2.jar>;<jar|groovy-1.8.6.jar>;<jar|icu4j-49_1.jar>;<jar|icudata.jar>;<jar|icutzdata.jar>;<jar|jansi-1.7.jar>;<jar|jline-0.9.94.jar>;<jar|selenium-server-standalone-2.19.0.jar>;<jar|xercesImpl.jar>;<jar|xmlpull-1.1.3.1.jar>;<jar|commons-cli-1.2.jar>;<jar|antlr-2.7.7.jar>;<jar|asm-3.2.jar>;<jar|asm-analysis-3.2.jar>;<jar|asm-commons-3.2.jar>;<jar|asm-util-3.2.jar>
+includes=

@@ -6,7 +6,7 @@ package com.mostc.pftt.scenario;
 *
 */
 
-public class SOAPScenario extends AbstractParallelScenario {
+public class SOAPScenario extends AbstractNetworkedServiceScenario {
 
 	@Override
 	public String getName() {

@@ -141,11 +141,26 @@ public abstract class Host {
 		if (os_name!=null)
 			return os_name;
 		
-		os_name = getOSNameLong();
-		
-		os_name.replaceAll("Windows", "Win");
+		os_name = shortenOSName(getOSNameLong());
 		
 		return os_name;
+	}
+	
+	public static String shortenOSName(String os_name) {
+		os_name = os_name.replace("Microsoft", "");
+		os_name = os_name.replace("Server", "");
+		os_name = os_name.replace("Datacenter", "");
+		os_name = os_name.replace("Enterprise", "");
+		os_name = os_name.replace("Standard", "");
+		os_name = os_name.replace("Professional", "");
+		os_name = os_name.replace("Home", "");
+		os_name = os_name.replace("Basic", "");
+		//
+		os_name = os_name.replace("  ", " ");
+		os_name = os_name.replace("  ", " ");
+		os_name = os_name.replace("  ", " ");
+		os_name = os_name.replace("  ", " ");
+		return os_name.trim();
 	}
 	
 	/** returns the OS name with whatever platform specific info in the platform specific format
@@ -319,13 +334,21 @@ public abstract class Host {
 	 * 
 	 * This will improve performance for a few large files or a lots of small files.
 	 * 
+	 * @param cm
+	 * @param ctx_str
+	 * @param src_host
 	 * @param src
 	 * @param dst
 	 * @throws IllegalStateException
 	 * @throws IOException
 	 * @throws Exception
 	 */
-	public abstract void downloadCompressWith7Zip(String src, String dst) throws IllegalStateException, IOException, Exception;
+	public abstract void downloadCompressWith7Zip(ConsoleManager cm, String ctx_str, Host src_host, String src, String dst) throws IllegalStateException, IOException, Exception;
+	
+	public void downloadCompressWith7Zip(ConsoleManager cm, Class<?> clazz, Host src_host, String src, String dst) throws IllegalStateException, IOException, Exception {
+		downloadCompressWith7Zip(cm, clazz.getSimpleName(), src_host, src, dst);
+	}
+	
 	/** downloads file from remote source to local destination
 	 * 
 	 * @param src
@@ -339,13 +362,20 @@ public abstract class Host {
 	 * 
 	 * This will improve performance for a few large files or a lots of small files.
 	 * 
+	 * @param cm
+	 * @param ctx
 	 * @param src
+	 * @param dst_host
 	 * @param dst
 	 * @throws IllegalStateException
 	 * @throws IOException
 	 * @throws Exception
 	 */
-	public abstract void uploadCompressWith7Zip(String src, String dst) throws IllegalStateException, IOException, Exception;
+	public abstract void uploadCompressWith7Zip(ConsoleManager cm, String ctx_str, String src, Host dst_host, String dst) throws IllegalStateException, IOException, Exception;
+	
+	public void uploadCompressWith7Zip(ConsoleManager cm, Class<?> ctx, String src, Host dst_host, String dst) throws IllegalStateException, IOException, Exception {
+		uploadCompressWith7Zip(cm, ctx.getSimpleName(), src, dst_host, dst);
+	}
 	/** Uploads file from local source to remote destination
 	 * 
 	 * @param src
@@ -656,32 +686,117 @@ public abstract class Host {
 		return StringUtil.replaceAll(PAT_fs, "/", StringUtil.replaceAll(PAT_bs, "/", name));
 	}
 	
+	public void upload7ZipAndDecompress(ConsoleManager cm, Class<?> clazz, Host src_host, String src, String dst) throws IllegalStateException, IOException, Exception {
+		upload7ZipAndDecompress(cm, clazz.getSimpleName(), src_host, src, dst);
+	}
+	
+	public void download7ZipAndDecompress(ConsoleManager cm, Class<?> clazz, String src, Host dst_host, String dst) throws IllegalStateException, IOException, Exception {
+		download7ZipAndDecompress(cm, clazz.getSimpleName(), src, dst_host, dst);
+	}
+	
 	/** uploads a 7zip file from local source to remote destination and decompresses it.
 	 * 
 	 * Assumes local source is already a 7zip file, while #uploadCompressWith7Zip does the compression itself
 	 * 
+	 * @param cm
+	 * @param ctx_str
+	 * @param src_host
 	 * @param src
 	 * @param dst
 	 * @throws IllegalStateException
 	 * @throws IOException
 	 * @throws Exception
 	 */
-	public void upload7ZipAndDecompress(String src, String dst) throws IllegalStateException, IOException, Exception {
-		// TODO
+	public void upload7ZipAndDecompress(ConsoleManager cm, String ctx_str, Host src_host, String src, String dst) throws IllegalStateException, IOException, Exception {
+		ensure7Zip(cm, src_host);
+		
+		String dst_7zip_file = mktempname(ctx_str, ".7z");
+		
+		upload(src, dst_7zip_file);
+		
+		decompress(cm, src_host, dst_7zip_file, dst);
+		
+		delete(dst_7zip_file);
 	}
 	
 	/** Downloads remote 7Zip file to local destination and decompresses it.
 	 * 
 	 * Assumes remote source is already a 7zip file.
 	 * 
+	 * @param cm
+	 * @param ctx_str
 	 * @param src
+	 * @param dst_host
 	 * @param dst
 	 * @throws IllegalStateException
 	 * @throws IOException
 	 * @throws Exception
 	 */
-	public void download7ZipAndDecompress(String src, String dst) throws IllegalStateException, IOException, Exception {
-		// TODO 
+	public void download7ZipAndDecompress(ConsoleManager cm, String ctx_str, String src, Host dst_host, String dst) throws IllegalStateException, IOException, Exception {
+		ensure7Zip(cm, dst_host);
+		
+		String dst_7zip_file = dst_host.mktempname(ctx_str, ".7z");
+		
+		download(src, dst_7zip_file);
+		
+		dst_host.decompress(cm, this, dst_7zip_file, dst);
+		
+		dst_host.delete(dst_7zip_file);
+	}
+	
+	private boolean install_7zip_attempt;
+	protected void ensure7Zip(ConsoleManager cm, Host ohost) throws Exception {
+		if (install_7zip_attempt)
+			return;
+		install_7zip_attempt = true;
+		if (ohost.isRemote() == this.isRemote()) {
+			// no host with 7zip
+			cm.println(EPrintType.CLUE, getClass(), "No host found with a copy of 7z.exe!");
+		} else if (ohost.isRemote()) {
+			install7Zip(cm, this, ohost);
+		} else {
+			install7Zip(cm, ohost, this);
+		}
+	}
+	
+	private static void install7Zip(ConsoleManager cm, Host src_host, Host dst_host) throws Exception {
+		final String dst_7z_path = dst_host.getPfttDir()+"\\bin\\7z.exe";
+		
+		if (dst_host.exists(dst_7z_path)) {
+			cm.println(EPrintType.CLUE, "install7Zip", "7z.exe already installed on: "+dst_host);
+			return;
+		}
+		
+		final String src_7z_path = src_host.getPfttDir()+"\\bin\\7z.exe";
+		if (!src_host.exists(src_7z_path)) {
+			cm.println(EPrintType.CLUE, "install7Zip", "7z.exe not found on source: "+src_host);
+			return;
+		}
+		
+		try {
+			dst_host.upload(src_7z_path, dst_7z_path);
+			
+			cm.println(EPrintType.CLUE, "install7Zip", "7z.exe installed on: "+dst_host+" (src="+src_host+")");
+		} catch ( Exception ex ) {
+			cm.addGlobalException(EPrintType.CLUE, "install7Zip", ex, "Unable to install 7z.exe on dst="+dst_host+" from src="+src_host);
+			
+			throw ex;
+		}
+	} // end private static void install7Zip
+	
+	public void decompress(ConsoleManager cm, Host ohost, String zip7_file, String dst) throws IllegalStateException, IOException, Exception {
+		ensure7Zip(cm, ohost);
+		
+		String base_dir = Host.basename(dst);
+		mkdirs(base_dir);
+		
+		exec(getPfttDir()+"\\bin\\7z x -bd -y "+zip7_file, Host.FOUR_HOURS, base_dir);
+	}
+	
+	public void compress(ConsoleManager cm, Host ohost, String src, String zip7_file) throws IllegalStateException, IOException, Exception {
+		ensure7Zip(cm, ohost);
+		
+		exec(getPfttDir()+"\\bin\\7z a -bd "+zip7_file+" "+src, Host.FOUR_HOURS, src);
 	}
 	
 	/** gets a string of info about the host
@@ -778,40 +893,39 @@ public abstract class Host {
 		if (!isWindows())
 			return false;
 		String os_name = getOSNameOnWindows();
-		return os_name.contains("Windows Vista") || os_name.contains("Windows 2008 ") || os_name.contains("Windows 2008r2") || os_name.contains("Windows 7") || os_name.contains("Windows 8") || os_name.contains("Windows 2012");
+		return os_name.contains("Windows Vista") || os_name.contains("Windows 2008") || os_name.contains("Windows 2008") || os_name.contains("Windows 7") || os_name.contains("Windows 8") || os_name.contains("Windows 2012") || os_name.contains("Windows 9");
 	}
 	public boolean isBeforeVista() {
 		if (!isWindows())
 			return false;
 		String os_name = getOSNameOnWindows();
-		return os_name.contains("Windows XP") || os_name.contains("Windows 2003 ") || os_name.contains("Windows 2000");
+		return os_name.contains("Windows XP") || os_name.contains("Windows 2003") || os_name.contains("Windows 2000");
 	}
 	public boolean isVistaOrBefore() {
 		if (!isWindows())
 			return false;
 		String os_name = getOSNameOnWindows();
-		return os_name.contains("Windows Vista") || os_name.contains("Windows 2008 ") || os_name.contains("Windows 2003") || os_name.contains("Windows XP");
+		return os_name.contains("Windows Vista") || os_name.contains("Windows 2008") || os_name.contains("Windows 2003") || os_name.contains("Windows XP");
 	}
 	public boolean isVistaExact() {
 		if (!isWindows())
 			return false;
-		String os_name = getOSNameOnWindows();
+		String os_name = getOSName();
 		// technically Vista SP0 != 2008 RTM but Vista SP1 == 2008 RTM and Vista SP2 == 2008sp2 
 		// thats why 2008 RTM is often referred to as 2008sp1 (1 service pack for 2008 after RTM, which is 
 		//      2008sp2, so there are 2 versions of Windows 2008, 2008sp1 and 2008sp2)
-		return os_name.contains("Windows Vista") || os_name.contains("Windows 2008 ");
+		return os_name.contains("Windows Vista") || os_name.contains("Windows 2008");
 	}
 	public boolean isWin8Exact() {
 		if (!isWindows())
 			return false;
-		String os_name = getOSNameOnWindows();
+		String os_name = getOSName();
 		return os_name.contains("Windows 8") || os_name.contains("Windows 2012");
 	}
 	public boolean isWin8OrLater() {
 		if (!isWindows())
 			return false;
-		String os_name = getOSNameOnWindows();
-		System.out.println(os_name);
+		String os_name = getOSName();
 		return os_name.contains("Windows 8") || os_name.contains("Windows 2012") || os_name.contains("Windows 9") || os_name.contains("Windows 2014");
 	}
 	

@@ -38,6 +38,8 @@ import com.mostc.pftt.util.StringUtil;
  *
  */
  
+// TODO store consolemanager logs in result-pack
+//   -including smoke checks from dfs and deduplication scenrios
 public class PhptResultPackWriter extends PhptResultPack implements IPhptTestResultReceiver {
 	private File telem_dir;
 	protected final HashMap<Host,HashMap<ScenarioSet,HashMap<EPhptTestStatus,PrintWriter>>> status_list_map;

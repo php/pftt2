@@ -35,6 +35,7 @@ import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.MultiCharsetByLineReader;
 import com.github.mattficken.io.NoCharsetByLineReader;
 import com.mostc.pftt.model.phpt.PhptTestCase;
+import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
 import com.mostc.pftt.util.StringUtil;
 import com.sun.jna.Pointer;
@@ -186,6 +187,7 @@ public class LocalHost extends Host {
 			task.cancel();
 		
 		ExecOutput out = new ExecOutput();
+		out.cmd = commandline;
 		out.output = eh.getOutput();
 		out.charset = eh.charset;
 		out.exit_code = eh.getExitCode();
@@ -636,7 +638,7 @@ public class LocalHost extends Host {
 	}
 
 	@Override
-	public void downloadCompressWith7Zip(String src, String dst) throws IllegalStateException, IOException, Exception {
+	public void downloadCompressWith7Zip(ConsoleManager cm, String ctx_str, Host src_host, String src, String dst) throws IllegalStateException, IOException, Exception {
 		download(src, dst);
 	}
 
@@ -646,7 +648,7 @@ public class LocalHost extends Host {
 	}
 
 	@Override
-	public void uploadCompressWith7Zip(String src, String dst) throws IllegalStateException, IOException, Exception {
+	public void uploadCompressWith7Zip(ConsoleManager cm, String ctx_str, String src, Host dst_host, String dst) throws IllegalStateException, IOException, Exception {
 		upload(src, dst);
 	}
 

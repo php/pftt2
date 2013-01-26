@@ -244,6 +244,7 @@ public class PhptSourceTestPack extends SourceTestPack {
 	 * location can be local or remote.
 	 * 
 	 * @see #read - must have already been called
+	 * @param cm
 	 * @param host
 	 * @param test_pack_dir
 	 * @return
@@ -251,23 +252,35 @@ public class PhptSourceTestPack extends SourceTestPack {
 	 * @throws IOException
 	 * @throws Exception
 	 */
-	public PhptActiveTestPack install(Host host, String test_pack_dir) throws IllegalStateException, IOException, Exception {
+	public PhptActiveTestPack install(ConsoleManager cm, Host host, String test_pack_dir) throws IllegalStateException, IOException, Exception {
 		if (!this.host.isRemote() || this.host.equals(host)) {
 			// installing from local host to remote host OR from remote host to itself
-			host.upload(test_pack, test_pack_dir);
+			host.uploadCompressWith7Zip(cm, getClass(), test_pack, host, test_pack_dir);
 		} else if (!host.isRemote()) {
 			// installing from remote host to local host
-			host.download(test_pack, test_pack_dir);
+			host.download7ZipAndDecompress(cm, getClass(), test_pack, this.host, test_pack_dir);
 		} else {
-			// installing from 1 remote host to a different remote host
+			// installing from 1 remote host(src) to a different remote host (dst)
 			LocalHost local_host = new LocalHost();
-			String local_dir = local_host.mktempname(getClass());
-			this.host.download(test_pack, local_dir);
-			host.upload(local_dir, test_pack_dir);
-			local_host.delete(local_dir);
+			
+			// decide file names
+			String local_7zip_file = local_host.mktempname(getClass(), ".7z");
+			String src_7zip_file = this.host.mktempname(getClass(), ".7z");
+			String dst_7zip_file = host.mktempname(getClass(), ".7z");
+			
+			// compress and download/upload and decompress
+			this.host.compress(cm, host, test_pack, src_7zip_file);
+			this.host.download(src_7zip_file, local_7zip_file);
+			host.upload(local_7zip_file, dst_7zip_file);
+			host.decompress(cm, this.host, dst_7zip_file, test_pack_dir);
+			
+			// cleanup
+			this.host.delete(dst_7zip_file);
+			host.delete(src_7zip_file);
+			local_host.delete(local_7zip_file);
 		}
 		return new PhptActiveTestPack(test_pack_dir);
-	}
+	} // end public PhptActiveTestPack install
 	
 	/** installs only the named test cases from test pack into to the given location to actively run it from.
 	 * 

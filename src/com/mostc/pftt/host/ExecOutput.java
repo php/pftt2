@@ -13,6 +13,7 @@ public class ExecOutput {
 	public Charset charset;
 	/** exit code for program. if 0, program exited successfully */
 	public int exit_code;
+	public String cmd;
 	
 	/** returns the output split into lines.
 	 * 
@@ -51,7 +52,7 @@ public class ExecOutput {
 		if (ps!=null && isCrashed()) {
 			String output_str = output.trim();
 			if (StringUtil.isEmpty(output_str))
-				output_str = "<Crash with no output. exit_code="+exit_code+">";
+				output_str = "<Crash with no output. exit_code="+exit_code+" cmd="+cmd+">";
 			
 			ps.println(ctx+": "+output_str);
 		}

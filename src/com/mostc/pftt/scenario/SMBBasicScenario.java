@@ -4,6 +4,9 @@ import com.mostc.pftt.host.RemoteHost;
 
 /** Tests running a PHP build and its test pack both stored remotely on a basic SMB file share.
  * 
+ * 
+ * Typically, you'll create 1 instance of this for each remote file server, and each instance can create manage multiple shares at the same time.
+ * 
  * @author Matt Ficken
  *
  */

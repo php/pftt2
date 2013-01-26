@@ -19,7 +19,6 @@ import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.model.phpt.PhptSourceTestPack;
 import com.mostc.pftt.model.phpt.PhptActiveTestPack;
-import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.IPhptTestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
@@ -37,7 +36,7 @@ import com.mostc.pftt.util.StringUtil;
 
 public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected ExecOutput output;
-	protected String selected_php_exe, shell_script, test_cmd, skip_cmd, ini_settings, shell_file;
+	protected String selected_php_exe, shell_script, test_cmd, skip_cmd, ini_settings, shell_file, ini_dir;
 	
 	public static boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
 		if (AbstractPhptTestCaseRunner2.willSkip(cm, twriter, host, scenario_set, type, build, test_case)) {
@@ -123,7 +122,9 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				"ext/standard/tests/file/fgets_socket_variation1.phpt",
 				"ext/standard/tests/network/shutdown.phpt",
 				"ext/standard/tests/file/fgets_socket_variation2.phpt",
-				"ext/standard/tests/network/tcp4loop.phpt"
+				"ext/standard/tests/network/tcp4loop.phpt",
+				"zend/tests/multibyte/multibyte_encoding_003.phpt",
+				"zend/tests/multibyte/multibyte_encoding_002.phpt"
 			)) {
 				twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null, null));
 				
@@ -139,6 +140,8 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	@Override
 	protected boolean prepare() throws IOException, Exception {
 		if (super.prepare()) {
+			ini_dir = build.prepare(host);
+			
 			//
 			ini_settings = ini.toCliArgString(host);
 			
@@ -147,6 +150,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			/* For GET/POST tests, check if cgi sapi is available and if it is, use it. */
 			if (test_case.containsAnySection(EPhptSection.GET, EPhptSection.POST, EPhptSection.PUT, EPhptSection.POST_RAW, EPhptSection.COOKIE, EPhptSection.EXPECTHEADERS)) {
 				if (build.hasPhpCgiExe()) {
+					// -C => important: don't chdir
 					selected_php_exe = build.getPhpCgiExe() + " -C ";
 				} else {
 					twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "CGI not available", null, null, null, null, null, null, null, null, null, null, null));
@@ -162,30 +166,9 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		return false;
 	}
 	
-	static boolean saved_ini = false;
-	static String ini_dir;
-	
 	@Override
 	protected void prepareTest() throws Exception {
 		super.prepareTest();
-		
-		//
-		if (!saved_ini) {
-			// @see CliScenario#createIniForTest
-			saved_ini = true;
-			
-			ini_dir = host.mktempname(getClass());
-			host.mkdirs(ini_dir);
-			
-			String ini_file = ini_dir + "/php.ini";
-			
-			PhpIni def_ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(host, build);
-			
-			FileWriter fw = new FileWriter(ini_file);
-			fw.write(def_ini.toString());
-			fw.close();
-		}
-		//
 		
 		// generate cmd string to run test_file with php.exe
 		//
@@ -293,8 +276,8 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		if (skipif_file != null) {
 			env.put(ENV_USE_ZEND_ALLOC, "1");
 				
-			// -n => critical: ignores any .ini file with the php build
-			skip_cmd = selected_php_exe+" -n "+ini_settings+" -f \""+skipif_file+"\"";
+			// -c => critical, pass php.ini
+			skip_cmd = selected_php_exe+" -c "+ini_dir+" "+ini_settings+" -f \""+skipif_file+"\"";
 
 			if (!env.containsKey(ENV_PATH_TRANSLATED))
 				env.put(ENV_PATH_TRANSLATED, skipif_file);
@@ -303,7 +286,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			
 			// execute SKIPIF (60 second timeout)
 			output = host.exec(skip_cmd, Host.ONE_MINUTE, env, null, active_test_pack.getDirectory());
-			
+						
 			return output.output;
 		}
 		return null;
@@ -327,8 +310,8 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	@Override
 	protected void executeClean() throws Exception {
 		// execute cleanup script
-		// FUTURE should cleanup script be ignored??
 		host.exec(selected_php_exe+" "+test_clean, Host.ONE_MINUTE, env, null, active_test_pack.getDirectory());
+		
 	} // end void executeClean
 
 	@Override

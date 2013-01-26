@@ -4,7 +4,7 @@ package com.mostc.pftt.scenario;
  *
  */
 
-public class LDAPScenario extends AbstractParallelScenario {
+public class LDAPScenario extends AbstractNetworkedServiceScenario {
 
 	@Override
 	public String getName() {
