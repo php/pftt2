@@ -4,7 +4,7 @@ import java.io.IOException;
 
 import com.mostc.pftt.results.ConsoleManager;
 
-public abstract class RemoteHost extends Host {
+public abstract class RemoteHost extends AHost {
 	
 	public abstract boolean isClosed();
 	
@@ -36,7 +36,7 @@ public abstract class RemoteHost extends Host {
 	}
 	
 	@Override
-	public void downloadCompressWith7Zip(ConsoleManager cm, String ctx_str, Host src_host, String src, String dst) throws IllegalStateException, IOException, Exception {
+	public void downloadCompressWith7Zip(ConsoleManager cm, String ctx_str, AHost src_host, String src, String dst) throws IllegalStateException, IOException, Exception {
 		ensure7Zip(cm, src_host);
 		src_host.ensure7Zip(cm, this);
 		
@@ -55,7 +55,7 @@ public abstract class RemoteHost extends Host {
 	}
 	
 	@Override
-	public void uploadCompressWith7Zip(ConsoleManager cm, String ctx_str, String src, Host dst_host, String dst) throws IllegalStateException, IOException, Exception {
+	public void uploadCompressWith7Zip(ConsoleManager cm, String ctx_str, String src, AHost dst_host, String dst) throws IllegalStateException, IOException, Exception {
 		ensure7Zip(cm, dst_host);
 		dst_host.ensure7Zip(cm, this);
 		

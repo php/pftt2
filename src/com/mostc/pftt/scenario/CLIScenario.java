@@ -1,6 +1,6 @@
 package com.mostc.pftt.scenario;
 
-import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.phpt.EPhptSection;
 import com.mostc.pftt.model.phpt.ESAPIType;
 import com.mostc.pftt.model.phpt.PhpBuild;
@@ -36,13 +36,13 @@ public class CliScenario extends AbstractSAPIScenario {
 	@Override
 	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(
 			PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case,
-			ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set,
+			ConsoleManager cm, IPhptTestResultReceiver twriter, AHost host, ScenarioSet scenario_set,
 			PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
 		return new CliPhptTestCaseRunner(group_key.getPhpIni(), thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 	}
 	
 	@Override
-	public int getTestThreadCount(Host host) {
+	public int getTestThreadCount(AHost host) {
 		return 3 * host.getCPUCount();
 	}
 
@@ -52,7 +52,7 @@ public class CliScenario extends AbstractSAPIScenario {
 	}
 	
 	@Override
-	public PhpIni createIniForTest(ConsoleManager cm, Host host, PhpBuild build, PhptActiveTestPack active_test_pack, ScenarioSet scenario_set) {
+	public PhpIni createIniForTest(ConsoleManager cm, AHost host, PhpBuild build, PhptActiveTestPack active_test_pack, ScenarioSet scenario_set) {
 		// default PhpIni will be given to php.exe using a file... @see CliPhptTestCaseRunner#prepare
 		//
 		// this is needed only to collect any custom directives that a test case provides
@@ -60,7 +60,7 @@ public class CliScenario extends AbstractSAPIScenario {
 	}
 
 	@Override
-	public TestCaseGroupKey createTestGroupKey(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack active_test_pack, PhptTestCase test_case, TestCaseGroupKey group_key) {
+	public TestCaseGroupKey createTestGroupKey(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack active_test_pack, PhptTestCase test_case, TestCaseGroupKey group_key) {
 		if (test_case.containsSection(EPhptSection.INI)) {
 			PhpIni ini = createIniForTest(cm, host, build, active_test_pack, scenario_set);
 			ini.replaceAll(test_case.getINI(active_test_pack, host));
@@ -81,7 +81,7 @@ public class CliScenario extends AbstractSAPIScenario {
 	} // end public TestCaseGroupKey createTestGroupKey
 	
 	@Override
-	public boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+	public boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
 		return CliPhptTestCaseRunner.willSkip(cm, twriter, host, scenario_set, type, build, test_case);
 	}
 

@@ -37,9 +37,9 @@ import com.github.mattficken.io.EReadStyle;
 import com.github.mattficken.io.ERecognizedLanguage;
 import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.RestartableInputStream;
+import com.github.mattficken.io.StringUtil;
 import com.github.mattficken.io.CharsetDeciderDecoder.ERecognizerGroup;
 import com.mostc.pftt.util.ErrorUtil;
-import com.mostc.pftt.util.StringUtil;
 
 import se.datadosen.component.RiverLayout;
 

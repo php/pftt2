@@ -1,11 +1,8 @@
-package com.mostc.pftt.util;
+package com.github.mattficken.io;
 
-import java.io.IOException;
-import java.io.Writer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.github.mattficken.io.IOUtil;
 import com.mostc.pftt.util.apache.regexp.RE;
 import com.mostc.pftt.util.apache.regexp.RECompiler;
 import com.mostc.pftt.util.apache.regexp.REProgram;
@@ -229,18 +226,6 @@ public final class StringUtil {
 		return sb.toString();
 	}
 
-	public static String ensurePhpTags(String code) {
-		if (code.startsWith("<?php") || code.startsWith("<?")) {
-			if(code.endsWith("?>")) {
-				return code;
-			} else {
-				return code + "\r\n?>";
-			}	
-		} else {
-			return "<?php \r\n "+code+"\r\n?>";
-		}
-	}
-
 	public static boolean equalsIC(String a, String b) {
 		return a == null || b == null ? false : a.equalsIgnoreCase(b);
 	}
@@ -363,54 +348,6 @@ public final class StringUtil {
 		return sb.toString();
 	}
 	
-	/** replacement for StringWriter that will silent ignore write requests if
-	 * too many chars have been written.
-	 * 
-	 * This avoids OutOfMemoryErrors.
-	 * 
-	 */
-	public static class LengthLimitStringWriter extends Writer {
-		protected final StringBuilder sb;
-		protected final int max;
-		
-		/**
-		 * 
-		 * @param cap - initial capacity
-		 * @param max - maximum capacity - will not exceed this
-		 */
-		public LengthLimitStringWriter(int cap, int max) {
-			this.sb = new StringBuilder(cap);
-			this.max = max;
-		}
-		
-		public LengthLimitStringWriter() {
-			this(512, IOUtil.QUARTER_MEGABYTE);
-		}
-
-		@Override
-		public void close() throws IOException {
-			
-		}
-
-		@Override
-		public void flush() throws IOException {
-			
-		}
-
-		@Override
-		public void write(char[] chars, int off, int len) throws IOException {
-			len = Math.min(len, max - sb.length());
-			if (len>0)
-				sb.append(chars, off, len);
-		}
-		
-		@Override
-		public String toString() {
-			return sb.toString();
-		}
-		
-	} // end public static class LengthLimitStringWriter
-	
 	public static boolean isWhitespaceOrEmpty(String a) {
 		if (a==null)
 			return true;
@@ -423,6 +360,24 @@ public final class StringUtil {
 		}
 		return true;
 	}
+	
+	public static String toJava(CharSequence cs) {
+		StringBuilder sb = new StringBuilder(cs.length());
+		
+		String[] lines = splitLines(cs.toString());
+		
+		for ( int i=0 ; i < lines.length ; i++ ) {
+			sb.append("\"");
+			
+			sb.append(lines[i].replace("\"", "\\\""));
+			
+			if (i+1<lines.length)
+				sb.append("\" + \n");
+			else
+				sb.append("\";\n");
+		}
+		return sb.toString();
+	} // end public static String toJava
 	
 	private StringUtil() {}
 	

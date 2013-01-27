@@ -1,6 +1,6 @@
 package com.mostc.pftt.scenario;
 
-import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
@@ -13,15 +13,15 @@ import com.mostc.pftt.results.ConsoleManager.EPrintType;
 public class LocalFileSystemScenario extends AbstractFileSystemScenario {
 	protected static ITestPackStorageDir LOCAL_DIR = new ITestPackStorageDir() {
 			@Override
-			public boolean notifyTestPackInstalled(ConsoleManager cm, Host host) {
+			public boolean notifyTestPackInstalled(ConsoleManager cm, AHost host) {
 				return true;
 			}
 			@Override
-			public String getLocalPath(Host host) {
+			public String getLocalPath(AHost host) {
 				return host.getPhpSdkDir();
 			}
 			@Override
-			public boolean delete(ConsoleManager cm, Host host) {
+			public boolean delete(ConsoleManager cm, AHost host) {
 				return true; // don't actually delete php sdk
 			}
 		};
@@ -43,7 +43,7 @@ public class LocalFileSystemScenario extends AbstractFileSystemScenario {
 	}
 
 	@Override
-	public ITestPackStorageDir createStorageDir(ConsoleManager cm, Host host) {
+	public ITestPackStorageDir createStorageDir(ConsoleManager cm, AHost host) {
 		try {
 			host.mkdirs(host.getPhpSdkDir());
 			return LOCAL_DIR;

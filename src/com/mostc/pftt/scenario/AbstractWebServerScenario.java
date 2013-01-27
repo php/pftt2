@@ -16,7 +16,9 @@ import org.apache.http.protocol.RequestExpectContinue;
 import org.apache.http.protocol.RequestTargetHost;
 import org.apache.http.protocol.RequestUserAgent;
 
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.HostGroup;
 import com.mostc.pftt.model.phpt.EPhptSection;
 import com.mostc.pftt.model.phpt.ESAPIType;
 import com.mostc.pftt.model.phpt.PhpBuild;
@@ -86,7 +88,18 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 	 * @return
 	 */
 	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, String docroot) {
-		return smgr.getWebServerInstance(cm, host, build, null, null, docroot, null, this).isRunning() ? EScenarioStartState.STARTED : EScenarioStartState.FAILED_TO_START;
+		if (host instanceof AHost) {
+			return smgr.getWebServerInstance(cm, (AHost)host, build, null, null, docroot, null, this).isRunning() ? EScenarioStartState.STARTED : EScenarioStartState.FAILED_TO_START;
+		} else {
+			EScenarioStartState state = EScenarioStartState.SKIP, _state = null;
+			for (Host h : (HostGroup)host ) {
+				_state = start(cm, h, build, scenario_set);
+				if (EScenarioStartState.FAILED_TO_START==state)
+					return EScenarioStartState.FAILED_TO_START;
+				state = _state;
+			}
+			return state;
+		}
 	}
 	
 	/**
@@ -107,18 +120,18 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 	}
 	
 	@Override
-	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, IPhptTestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
 		return new HttpTestCaseRunner(group_key.getPhpIni(), group_key.getEnv(), params, httpproc, httpexecutor, smgr, (WebServerInstance) ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance(), thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 	}
 	
 	@Override
-	public PhpIni createIniForTest(ConsoleManager cm, Host host, PhpBuild build, PhptActiveTestPack active_test_pack, ScenarioSet scenario_set) {
+	public PhpIni createIniForTest(ConsoleManager cm, AHost host, PhpBuild build, PhptActiveTestPack active_test_pack, ScenarioSet scenario_set) {
 		// entire PhpIni will be given to web server when its started
 		return RequiredExtensionsSmokeTest.createDefaultIniCopy(host, build);
 	}
 	
 	@Override
-	public TestCaseGroupKey createTestGroupKey(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack active_test_pack, PhptTestCase test_case, TestCaseGroupKey group_key) throws Exception {
+	public TestCaseGroupKey createTestGroupKey(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack active_test_pack, PhptTestCase test_case, TestCaseGroupKey group_key) throws Exception {
 		Map<String,String> env = null;
 		// ENV vars will be passed to web server manager to wrap the web server in when its executed
 		if (test_case.containsSection(EPhptSection.ENV)) {
@@ -147,7 +160,7 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 	}
 	
 	@Override
-	public boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+	public boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
 		return HttpTestCaseRunner.willSkip(cm, twriter, host, scenario_set, type, build, test_case);
 	}
 	

@@ -1,6 +1,6 @@
 package com.mostc.pftt.scenario;
 
-import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.phpt.ESAPIType;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhptTestCase;
@@ -21,7 +21,7 @@ public abstract class AbstractApacheScenario extends AbstractProductionWebServer
 	}
 	
 	@Override
-	public boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+	public boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
 		if (!ApacheManager.isSupported(cm, twriter, host, scenario_set, build, test_case)) {
 			return false;
 		}

@@ -1,6 +1,6 @@
 package com.mostc.pftt.model.phpt;
 
-import com.mostc.pftt.util.StringUtil;
+import com.github.mattficken.io.StringUtil;
 
 /** All valid sections a PHPT may contain.
  * 

@@ -20,7 +20,7 @@ import javax.swing.JToggleButton;
 import javax.swing.border.LineBorder;
 
 import se.datadosen.component.RiverLayout;
-import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.PhptTestPackRunner;
@@ -140,7 +140,7 @@ public class PhptDebuggerFrame extends JPanel {
 		tabs.addTab("Localhost", localhost_tab = new PhptHostTab(new LocalHost(), phpt_test_pack_runner));
 	}
 	
-	public void showResult(Host host, int total, int completed, PhptTestResult result) {
+	public void showResult(AHost host, int total, int completed, PhptTestResult result) {
 		localhost_tab.showResult(total, completed, result);
 	}
 	

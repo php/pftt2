@@ -1,7 +1,8 @@
 package com.mostc.pftt.util;
 
+import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.ExecOutput;
-import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
@@ -14,7 +15,7 @@ import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
 public final class HostEnvUtil {
 	
-	public static void prepareHostEnv(Host host, ConsoleManager cm, boolean enable_debug_prompt) throws Exception {
+	public static void prepareHostEnv(AHost host, ConsoleManager cm, boolean enable_debug_prompt) throws Exception {
 		if (host.isWindows()) {
 			prepareWindows(host, cm, enable_debug_prompt);
 		} else {
@@ -38,7 +39,7 @@ public final class HostEnvUtil {
 	 * @param enable_debug_prompt
 	 * @throws Exception
 	 */
-	public static void prepareWindows(Host host, ConsoleManager cm, boolean enable_debug_prompt) throws Exception {
+	public static void prepareWindows(AHost host, ConsoleManager cm, boolean enable_debug_prompt) throws Exception {
 		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "preparing Windows host to run PHP...");
 		// have to fix Windows Error Reporting from popping up and blocking execution:
 		
@@ -61,7 +62,7 @@ public final class HostEnvUtil {
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "disabling Windows Firewall...");
 			
 			// LATER edit firewall rules instead (what if on public network, ex: Azure)
-			host.execElevated("netsh firewall set opmode disable", Host.ONE_MINUTE);
+			host.execElevated(cm, HostEnvUtil.class, "netsh firewall set opmode disable", AHost.ONE_MINUTE);
 			
 			//
 			if (enable_debug_prompt) {
@@ -76,14 +77,14 @@ public final class HostEnvUtil {
 					//  2. VS may have problems with PHP's pdb files
 					//
 					// `windbg -IS`
-					host.execElevated(StringUtil.ensureQuoted(win_dbg_exe)+" -IS", Host.ONE_MINUTE);
+					host.execElevated(cm, HostEnvUtil.class, StringUtil.ensureQuoted(win_dbg_exe)+" -IS", AHost.ONE_MINUTE);
 				}
 			}
 			//
 			
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "creating File Share for "+host.getPhpSdkDir()+"...");
 			// share PHP-SDK over network. this also will share C$, G$, etc...
-			host.execElevated("NET SHARE PHP_SDK="+host.getPhpSdkDir()+" /Grant:"+host.getUsername()+",Full", Host.ONE_MINUTE);
+			host.execElevated(cm, HostEnvUtil.class, "NET SHARE PHP_SDK="+host.getPhpSdkDir()+" /Grant:"+host.getUsername()+",Full", AHost.ONE_MINUTE);
 		}
 			
 		if (host.isVistaOrBefore()) {
@@ -100,7 +101,7 @@ public final class HostEnvUtil {
 					host.upload(local_file, remote_file);
 				}
 				cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Installing VC9 Runtime");
-				host.execElevated(remote_file+" /Q", Host.FOUR_HOURS);
+				host.execElevated(cm, HostEnvUtil.class, remote_file+" /Q", AHost.FOUR_HOURS);
 				if (remote_file!=null)
 					host.delete(remote_file);
 			}
@@ -124,10 +125,10 @@ public final class HostEnvUtil {
 	 * @return
 	 * @throws Exception
 	 */
-	public static boolean regQueryAdd(ConsoleManager cm, Host host, String key, String name, String value, String type) throws Exception {
+	public static boolean regQueryAdd(ConsoleManager cm, AHost host, String key, String name, String value, String type) throws Exception {
 		// check the registry first, to not edit the registry if we don't have too		
-		ExecOutput output = host.exec("REG QUERY \""+key+"\" /f "+name, Host.ONE_MINUTE);
-		output.printOutputIfCrash(HostEnvUtil.class.getSimpleName(), cm);
+		ExecOutput output = host.execOut("REG QUERY \""+key+"\" /f "+name, AHost.ONE_MINUTE);
+		output.printOutputIfCrash(HostEnvUtil.class, cm);
 		for ( String line : output.getLines() ) {
 			if (line.contains(name) && line.contains(type) && line.contains(value))
 				return false;
@@ -137,7 +138,7 @@ public final class HostEnvUtil {
 		// (on Longhorn+ this will prompt the user to approve this action (approve elevating to administrator. 
 		//  should avoid doing this to avoid bothering the user/requiring manual input).
 		
-		host.execElevated("REG ADD \""+key+"\" /v "+name+" /t "+type+" /f /d "+value, Host.ONE_MINUTE);
+		host.execElevated(cm, HostEnvUtil.class, "REG ADD \""+key+"\" /v "+name+" /t "+type+" /f /d "+value, AHost.ONE_MINUTE);
 		
 		return true;
 	}

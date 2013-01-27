@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.phpt.EBuildBranch;
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
 
@@ -27,14 +27,14 @@ public class PhptResultPackReader extends PhptResultPack {
 	 * @return
 	 * @throws FileNotFoundException 
 	 */
-	public static PhptResultPackReader open(Host host, File last_file) throws FileNotFoundException {
+	public static PhptResultPackReader open(AHost host, File last_file) throws FileNotFoundException {
 		return new PhptResultPackReader(host, last_file, PhptTallyFile.open(new File(last_file, "tally.xml")));
 	}
 	//
 	protected PhptTallyFile tally;
 	protected HashMap<EPhptTestStatus,BufferedReader> readers;
 
-	protected PhptResultPackReader(Host host, File telem_dir, PhptTallyFile tally) throws FileNotFoundException {
+	protected PhptResultPackReader(AHost host, File telem_dir, PhptTallyFile tally) throws FileNotFoundException {
 		super(host);
 		this.tally = tally;
 		readers = new HashMap<EPhptTestStatus,BufferedReader>();

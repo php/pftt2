@@ -3,7 +3,7 @@ package com.mostc.pftt.model.sapi;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 
@@ -22,7 +22,7 @@ public class SharedSAPIInstanceTestCaseGroupKey extends TestCaseGroupKey {
 		sapi_instances = new HashMap<Thread,SAPIInstance>();
 	}
 	
-	public void setSAPIInstance(ConsoleManager cm, Host host, SAPIInstance sapi_instance) {
+	public void setSAPIInstance(ConsoleManager cm, AHost host, SAPIInstance sapi_instance) {
 		SAPIInstance this_sapi_instance;
 		synchronized(sapi_instances) {
 			this_sapi_instance = sapi_instances.get(Thread.currentThread());

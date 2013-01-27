@@ -15,8 +15,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.kxml2.io.KXmlSerializer;
 import org.xmlpull.v1.XmlSerializer;
 
-import com.mostc.pftt.host.Host;
-import com.mostc.pftt.host.RemoteHost;
+import com.github.mattficken.io.StringUtil;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.phpt.EBuildBranch;
 import com.mostc.pftt.model.phpt.EBuildSourceType;
 import com.mostc.pftt.model.phpt.ECPUArch;
@@ -29,7 +29,6 @@ import com.mostc.pftt.model.phpt.PhptSourceTestPack;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.ErrorUtil;
-import com.mostc.pftt.util.StringUtil;
 
 /** Writes the result-pack from a test run.
  * 
@@ -42,12 +41,12 @@ import com.mostc.pftt.util.StringUtil;
 //   -including smoke checks from dfs and deduplication scenrios
 public class PhptResultPackWriter extends PhptResultPack implements IPhptTestResultReceiver {
 	private File telem_dir;
-	protected final HashMap<Host,HashMap<ScenarioSet,HashMap<EPhptTestStatus,PrintWriter>>> status_list_map;
-	protected Host host;
+	protected final HashMap<AHost,HashMap<ScenarioSet,HashMap<EPhptTestStatus,PrintWriter>>> status_list_map;
+	protected AHost host;
 	protected PrintWriter global_exception_writer;
 	protected int total_count = 0;
 	protected LocalConsoleManager cm;
-	protected final HashMap<Host,HashMap<ScenarioSet,HashMap<EPhptTestStatus,AtomicInteger>>> counts;
+	protected final HashMap<AHost,HashMap<ScenarioSet,HashMap<EPhptTestStatus,AtomicInteger>>> counts;
 	protected PhpBuild build;
 	protected PhptSourceTestPack test_pack;
 	protected ScenarioSet scenario_set;
@@ -55,7 +54,7 @@ public class PhptResultPackWriter extends PhptResultPack implements IPhptTestRes
 	protected boolean run = true;
 	protected XmlSerializer serial;
 	
-	protected static File makeName(ConsoleManager cm, Host host, File base, PhpBuild build, int i) throws Exception {
+	protected static File makeName(ConsoleManager cm, AHost host, File base, PhpBuild build, ScenarioSet scenario_set, int i) throws Exception {
 		StringBuilder sb = new StringBuilder();
 		sb.append("/");
 		sb.append(build.getVersionBranch(cm, host));
@@ -81,6 +80,9 @@ public class PhptResultPackWriter extends PhptResultPack implements IPhptTestRes
 			sb.append(cpu);
 		}
 		
+		sb.append('-');
+		sb.append(scenario_set.getShortName());
+		
 		if (i>0) {
 			sb.append("-");
 			sb.append(i);
@@ -88,11 +90,11 @@ public class PhptResultPackWriter extends PhptResultPack implements IPhptTestRes
 		return new File(base.getAbsolutePath() + sb);
 	}
 	
-	public PhptResultPackWriter(Host host, LocalConsoleManager cm, File telem_base_dir, PhpBuild build, PhptSourceTestPack test_pack, ScenarioSet scenario_set) throws Exception {
+	public PhptResultPackWriter(AHost host, LocalConsoleManager cm, File telem_base_dir, PhpBuild build, PhptSourceTestPack test_pack, ScenarioSet scenario_set) throws Exception {
 		super(host);
 		
-		status_list_map = new HashMap<Host,HashMap<ScenarioSet,HashMap<EPhptTestStatus,PrintWriter>>>(16);
-		counts = new HashMap<Host,HashMap<ScenarioSet,HashMap<EPhptTestStatus,AtomicInteger>>>(16);
+		status_list_map = new HashMap<AHost,HashMap<ScenarioSet,HashMap<EPhptTestStatus,PrintWriter>>>(16);
+		counts = new HashMap<AHost,HashMap<ScenarioSet,HashMap<EPhptTestStatus,AtomicInteger>>>(16);
 		
 		// setup serializer to indent XML (pretty print) so its easy for people to read
 		serial = new KXmlSerializer();
@@ -106,7 +108,7 @@ public class PhptResultPackWriter extends PhptResultPack implements IPhptTestRes
 		this.scenario_set = scenario_set;
 		this.build = build;
 		this.test_pack = test_pack;
-		this.telem_dir = new File(host.uniqueNameFromBase(makeName(cm, host, telem_base_dir, build, 0).getAbsolutePath()));
+		this.telem_dir = new File(host.uniqueNameFromBase(makeName(cm, host, telem_base_dir, build, scenario_set, 0).getAbsolutePath()));
 		this.telem_dir.mkdirs();
 		
 		results = new LinkedBlockingQueue<ResultQueueEntry>();
@@ -139,7 +141,7 @@ public class PhptResultPackWriter extends PhptResultPack implements IPhptTestRes
 		return cm;
 	}
 	
-	public void close(Host host) {
+	public void close(AHost host) {
 		// TODO
 	}
 	
@@ -148,7 +150,7 @@ public class PhptResultPackWriter extends PhptResultPack implements IPhptTestRes
 		run = false;
 		
 		try {
-			for ( Host this_host : status_list_map.keySet() ) {
+			for ( AHost this_host : status_list_map.keySet() ) {
 				for ( ScenarioSet this_scenario_set : status_list_map.get(this_host).keySet() ) {
 					for ( PrintWriter pw : status_list_map.get(this_host).get(this_scenario_set).values() ) {
 						pw.close();
@@ -166,7 +168,7 @@ public class PhptResultPackWriter extends PhptResultPack implements IPhptTestRes
 		}
 		
 		try {
-			for (Host h:status_list_map.keySet()) {
+			for (AHost h:status_list_map.keySet()) {
 				for (ScenarioSet s:status_list_map.get(h).keySet()) {
 					for (PrintWriter pw:status_list_map.get(h).get(s).values()) {
 						pw.close();
@@ -254,10 +256,10 @@ public class PhptResultPackWriter extends PhptResultPack implements IPhptTestRes
 		return pass / (pass+fail);
 	}
 	
-	public void addTestException(Host this_host, ScenarioSet this_scenario_set, PhptTestCase test_file, Throwable ex, Object a) {
+	public void addTestException(AHost this_host, ScenarioSet this_scenario_set, PhptTestCase test_file, Throwable ex, Object a) {
 		addTestException(this_host, this_scenario_set, test_file, ex, a, null);
 	}
-	public void addTestException(Host this_host, ScenarioSet this_scenario_set, PhptTestCase test_case, Throwable ex, Object a, Object b) {
+	public void addTestException(AHost this_host, ScenarioSet this_scenario_set, PhptTestCase test_case, Throwable ex, Object a, Object b) {
 		String ex_str = ErrorUtil.toString(ex);
 		if (a!=null)
 			ex_str += " a="+a;
@@ -273,17 +275,17 @@ public class PhptResultPackWriter extends PhptResultPack implements IPhptTestRes
 	}
 	int completed = 0; 
 	@Override
-	public void addResult(Host this_host, ScenarioSet this_scenario_set, PhptTestResult result) {
+	public void addResult(AHost this_host, ScenarioSet this_scenario_set, PhptTestResult result) {
 		// enqueue result to be handled by another thread to avoid interrupting every phpt thread
 		results.add(new ResultQueueEntry(this_host, this_scenario_set, result));
 	}
 	
 	protected static final class ResultQueueEntry {
-		protected final Host this_host;
+		protected final AHost this_host;
 		protected final ScenarioSet this_scenario_set;
 		protected final PhptTestResult result;
 		
-		protected ResultQueueEntry(Host this_host, ScenarioSet this_scenario_set, PhptTestResult result) {
+		protected ResultQueueEntry(AHost this_host, ScenarioSet this_scenario_set, PhptTestResult result) {
 			this.this_host = this_host;
 			this.this_scenario_set = this_scenario_set;
 			this.result = result;
@@ -291,11 +293,11 @@ public class PhptResultPackWriter extends PhptResultPack implements IPhptTestRes
 		
 	} // end protected static final class ResultQueueEntry
 	
-	protected File telem_dir(Host this_host, ScenarioSet this_scenario_set) {
+	protected File telem_dir(AHost this_host, ScenarioSet this_scenario_set) {
 		return new File(host.joinIntoOnePath(telem_dir.getAbsolutePath(), this_host.getName(), this_scenario_set.toString()));
 	}
 	
-	private void incrementStatusCount(final Host this_host, final ScenarioSet this_scenario_set, final PhptTestResult result) {
+	private void incrementStatusCount(final AHost this_host, final ScenarioSet this_scenario_set, final PhptTestResult result) {
 		HashMap<ScenarioSet,HashMap<EPhptTestStatus,AtomicInteger>> a = counts.get(this_host);
 		if (a==null) {
 			a = new HashMap<ScenarioSet,HashMap<EPhptTestStatus,AtomicInteger>>(4);
@@ -311,7 +313,7 @@ public class PhptResultPackWriter extends PhptResultPack implements IPhptTestRes
 		b.get(result.status).incrementAndGet();
 	} // end private void incrementStatusCount
 	
-	private void recordStatusInList(final Host this_host, final ScenarioSet this_scenario_set, final File this_telem_dir, final PhptTestResult result) throws IOException {
+	private void recordStatusInList(final AHost this_host, final ScenarioSet this_scenario_set, final File this_telem_dir, final PhptTestResult result) throws IOException {
 		HashMap<ScenarioSet,HashMap<EPhptTestStatus,PrintWriter>> a = status_list_map.get(this_host);
 		if (a==null) {
 			a = new HashMap<ScenarioSet,HashMap<EPhptTestStatus,PrintWriter>>(4);
@@ -350,7 +352,7 @@ public class PhptResultPackWriter extends PhptResultPack implements IPhptTestRes
 	} // end private void recordStatusInList
 		
 	//@NotThreadSafe
-	protected void handleResult(final Host this_host, final ScenarioSet this_scenario_set, final PhptTestResult result) {
+	protected void handleResult(final AHost this_host, final ScenarioSet this_scenario_set, final PhptTestResult result) {
 		incrementStatusCount(this_host, this_scenario_set, result);
 		
 		final File this_telem_dir = telem_dir(host, this_scenario_set);
@@ -369,27 +371,32 @@ public class PhptResultPackWriter extends PhptResultPack implements IPhptTestRes
 		final boolean store_all = PhptTestResult.shouldStoreAllInfo(result.status);
 		
 		
-		try {
-			File result_file = new File(this_telem_dir, test_case_base_name+".xml");
-			
-			result_file.getParentFile().mkdirs();
-			
-			OutputStream out = new BufferedOutputStream(new FileOutputStream(result_file));
-			
-			serial.setOutput(out, null);
-			
-			// write result info in XML format
-			serial.startDocument(null, null);
-			// write result and reference to the XSL stylesheet
-			result.serialize(serial, store_all, StringUtil.repeat("../", Host.countUp(test_case_base_name, telem_dir.getAbsolutePath()))+"/phptresult.xsl");
-			serial.endDocument();
-			
-			serial.flush();
-			out.close();
-			
-		} catch ( Exception ex ) {
-			cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "handleResult", ex, "", this_telem_dir, test_case_base_name);
+		//
+		if (store_all || !cm.isNoResultFileForPassSkipXSkip()) {
+			// may want to skip storing result files for PASS, SKIP or XSKIP tests
+			try {
+				File result_file = new File(this_telem_dir, test_case_base_name+".xml");
+				
+				result_file.getParentFile().mkdirs();
+				
+				OutputStream out = new BufferedOutputStream(new FileOutputStream(result_file));
+				
+				serial.setOutput(out, null);
+				
+				// write result info in XML format
+				serial.startDocument(null, null);
+				// write result and reference to the XSL stylesheet
+				result.serialize(serial, store_all, StringUtil.repeat("../", AHost.countUp(test_case_base_name, telem_dir.getAbsolutePath()))+"/phptresult.xsl");
+				serial.endDocument();
+				
+				serial.flush();
+				out.close();
+				
+			} catch ( Exception ex ) {
+				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "handleResult", ex, "", this_telem_dir, test_case_base_name);
+			}
 		}
+		//
 		
 		//
 		if (store_all && StringUtil.isNotEmpty(result.shell_script)) {
@@ -436,9 +443,9 @@ public class PhptResultPackWriter extends PhptResultPack implements IPhptTestRes
 		this.total_count = total_count;
 	}
 
-	public void addGlobalException(RemoteHost remote_host, String text) {
+	public void addGlobalException(AHost host, String text) {
 		synchronized (global_exception_writer) {
-			global_exception_writer.println("Host: "+remote_host);
+			global_exception_writer.println("Host: "+host);
 			global_exception_writer.println(text);
 			global_exception_writer.flush();
 		}

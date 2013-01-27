@@ -1,6 +1,6 @@
 package com.mostc.pftt.scenario;
 
-import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.AHost;
 
 /** Tests PHP using SMB with Client-Side-Caching enabled (NOT IMPLEMENTED)
  * 

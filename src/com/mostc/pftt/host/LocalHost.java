@@ -34,10 +34,10 @@ import com.github.mattficken.io.DefaultCharsetDeciderDecoder;
 import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.MultiCharsetByLineReader;
 import com.github.mattficken.io.NoCharsetByLineReader;
+import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
-import com.mostc.pftt.util.StringUtil;
 import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.Kernel32;
 import com.sun.jna.platform.win32.WinNT.HANDLE;
@@ -49,7 +49,7 @@ import com.sun.jna.platform.win32.WinNT.HANDLE;
  */
 
 @SuppressWarnings("unused")
-public class LocalHost extends Host {
+public class LocalHost extends AHost {
 	private static final Timer timer = new Timer();
 	private static final boolean is_windows = System.getProperty("os.name").toLowerCase().contains("windows");
 	private static int self_process_id;
@@ -111,7 +111,7 @@ public class LocalHost extends Host {
 	}
 
 	@Override
-	public void delete(String path) {
+	public boolean delete(String path) {
 		if (isDirectory(path)) {
 			// ensure empty
 			try {
@@ -128,7 +128,8 @@ public class LocalHost extends Host {
 		} else {
 			new File(path).delete();
 		}
-	} // end public void delete
+		return true;
+	} // end public boolean delete
 
 	@Override
 	public boolean exists(String path) {
@@ -141,12 +142,12 @@ public class LocalHost extends Host {
 	}
 
 	@Override
-	public void saveTextFile(String filename, String text) throws IOException {
-		saveTextFile(filename, text, null);
+	public boolean saveTextFile(String filename, String text) throws IOException {
+		return saveTextFile(filename, text, null);
 	}
 
 	@Override
-	public void saveTextFile(String filename, String text, CharsetEncoder ce) throws IOException {
+	public boolean saveTextFile(String filename, String text, CharsetEncoder ce) throws IOException {
 		if (text==null)
 			text = "";
 		FileOutputStream fos = new FileOutputStream(filename);
@@ -161,18 +162,19 @@ public class LocalHost extends Host {
 		} finally {
 			fos.close();
 		}
+		return true;
 	}
 
 	@Override
-	public ExecOutput exec(String commandline, int timeout, Map<String,String> env, byte[] stdin, Charset charset, String chdir) throws Exception {
-		return exec(commandline, timeout, env, stdin, charset, chdir, null, NO_TIMEOUT);
+	public ExecOutput execOut(String commandline, int timeout, Map<String,String> env, byte[] stdin, Charset charset, String chdir) throws Exception {
+		return execOut(commandline, timeout, env, stdin, charset, chdir, null, NO_TIMEOUT);
 	}
 	@Override
 	public LocalExecHandle execThread(String commandline, Map<String,String> env, String chdir, byte[] stdin_data) throws Exception {
 		return exec_impl(splitCmdString(commandline), env, chdir, NO_TIMEOUT, stdin_data);
 	}
 	@Override
-	public ExecOutput exec(String commandline, int timeout, Map<String,String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread thread, int thread_slow_sec) throws Exception {
+	public ExecOutput execOut(String commandline, int timeout, Map<String,String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread thread, int thread_slow_sec) throws Exception {
 		ThreadSlowTask task = null;
 		if (thread!=null && thread_slow_sec>NO_TIMEOUT) {
 			task = new ThreadSlowTask(thread);
@@ -226,7 +228,7 @@ public class LocalHost extends Host {
 	}
 	
 	@Override
-	public void copy(String src, String dst) throws Exception {
+	public boolean copy(String src, String dst) throws Exception {
 		if (isWindows()) {
 			src = toWindowsPath(src);
 			dst = toWindowsPath(dst);
@@ -236,18 +238,19 @@ public class LocalHost extends Host {
 				// ensure xcopy sees destination is supposed to be a directory, or xcopy will ask/block forever
 				dst += "\\";
 				
-				cmd = "xcopy /Q /Y /S /E \""+src+"\" \""+dst+"\"";
+				// /I is only for directories
+				// TODO try /J => performance improvement?
+				cmd = "xcopy /Q /Y /C /I /E /G /R /H \""+src+"\" \""+dst+"\"";
 			} else {
 				mkdirs(dirname(dst));
 				if (basename(src).equals(basename(dst))) {
 					dst = dirname(dst);
 					
-					cmd = "xcopy /Q /Y /S /E \""+src+"\" \""+dst+"\"";
+					cmd = "xcopy /Q /Y /E /G /R /H /C \""+src+"\" \""+dst+"\"";
 				}
 			}
 			if (cmd==null)
 				cmd = "cmd /C copy \""+src+"\" \""+dst+"\"";
-			
 			
 			exec(cmd, NO_TIMEOUT);
 		} else {
@@ -255,7 +258,8 @@ public class LocalHost extends Host {
 			dst = toUnixPath(dst);
 			exec("cp \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
 		}
-	}
+		return true;
+	} // end public boolean copy
 
 	@Override
 	public String getUsername() {
@@ -344,7 +348,7 @@ public class LocalHost extends Host {
 							// see if its exit/killing is blocked by werfault.exe
 							//
 							try {
-								String[] lines = exec("WMIC path win32_process get Processid,Commandline", Host.ONE_MINUTE).getLines();
+								String[] lines = execOut("WMIC path win32_process get Processid,Commandline", AHost.ONE_MINUTE).getLines();
 								String prev_line = "";
 								for ( String line : lines ) {
 									line = line.toLowerCase();
@@ -633,28 +637,29 @@ public class LocalHost extends Host {
 	}
 
 	@Override
-	public void mkdirs(String path) throws IllegalStateException, IOException {
+	public boolean mkdirs(String path) throws IllegalStateException, IOException {
 		new File(path).mkdirs();
+		return true;
 	}
 
 	@Override
-	public void downloadCompressWith7Zip(ConsoleManager cm, String ctx_str, Host src_host, String src, String dst) throws IllegalStateException, IOException, Exception {
+	public void downloadCompressWith7Zip(ConsoleManager cm, String ctx_str, AHost src_host, String src, String dst) throws IllegalStateException, IOException, Exception {
 		download(src, dst);
 	}
 
 	@Override
-	public void download(String src, String dst) throws IllegalStateException, IOException, Exception {
-		copy(src, dst);
+	public boolean download(String src, String dst) throws IllegalStateException, IOException, Exception {
+		return copy(src, dst);
 	}
 
 	@Override
-	public void uploadCompressWith7Zip(ConsoleManager cm, String ctx_str, String src, Host dst_host, String dst) throws IllegalStateException, IOException, Exception {
+	public void uploadCompressWith7Zip(ConsoleManager cm, String ctx_str, String src, AHost dst_host, String dst) throws IllegalStateException, IOException, Exception {
 		upload(src, dst);
 	}
 
 	@Override
-	public void upload(String src, String dst) throws IllegalStateException, IOException, Exception {
-		copy(src, dst);
+	public boolean upload(String src, String dst) throws IllegalStateException, IOException, Exception {
+		return copy(src, dst);
 	}
 
 	@Override

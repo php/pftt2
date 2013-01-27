@@ -14,7 +14,7 @@ public class TempFileExecOutput extends ExecOutput {
 		this.temp_file = temp_file;
 	}
 
-	public boolean cleanupIfSuccess(Host host) {
+	public boolean cleanupIfSuccess(AHost host) {
 		if (isSuccess()) {
 			cleanup(host);
 			return true;
@@ -23,7 +23,7 @@ public class TempFileExecOutput extends ExecOutput {
 		}
 	}
 	
-	public void cleanup(Host host) {
+	public void cleanup(AHost host) {
 		try {
 			host.delete(temp_file);
 		} catch ( Exception ex ) {}

@@ -9,7 +9,7 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultHighlighter;
 import javax.swing.text.Highlighter;
 
-import com.mostc.pftt.util.StringUtil;
+import com.github.mattficken.io.StringUtil;
 
 public class BitEditField extends JTextField implements DocumentListener {
 

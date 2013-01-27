@@ -7,29 +7,11 @@ import java.util.Map;
 
 import javax.annotation.concurrent.ThreadSafe;
 
-import org.apache.http.Header;
-import org.apache.http.HttpHost;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ByteArrayEntity;
-import org.apache.http.params.HttpParams;
-import org.apache.http.protocol.BasicHttpContext;
-import org.apache.http.protocol.ExecutionContext;
-import org.apache.http.protocol.HttpContext;
-import org.apache.http.protocol.HttpProcessor;
-import org.apache.http.protocol.HttpRequestExecutor;
-
-import com.github.mattficken.io.IOUtil;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
-import com.mostc.pftt.model.phpt.EPhptSection;
-import com.mostc.pftt.model.phpt.EPhptTestStatus;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.PhptTestResult;
-import com.mostc.pftt.runner.DebuggingHttpClientConnection;
-import com.mostc.pftt.util.ErrorUtil;
 
 /** Manages a certain type of web server, such as PHP's builtin web server.
  * 
@@ -103,7 +85,7 @@ public abstract class WebServerManager extends SAPIManager {
 	 * @param server_name null or unique name of server (could be list of test cases)
 	 * @return
 	 */
-	public WebServerInstance getWebServerInstance(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, WebServerInstance assigned, Object server_name) {
+	public WebServerInstance getWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, WebServerInstance assigned, Object server_name) {
 		WebServerInstance sapi;
 		if (assigned!=null) {
 			if (assigned.isRunning())
@@ -132,7 +114,7 @@ public abstract class WebServerManager extends SAPIManager {
 		return sapi;
 	}
 	
-	protected abstract WebServerInstance createWebServerInstance(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, Object server_name);
+	protected abstract WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, Object server_name);
 	
 	/** some web servers can only have one active instance at any one time
 	 * 

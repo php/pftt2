@@ -1,5 +1,6 @@
 package com.mostc.pftt.scenario;
 
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.EBuildBranch;
 import com.mostc.pftt.model.phpt.ESAPIType;
@@ -47,7 +48,7 @@ public class BuiltinWebServerScenario extends AbstractWebServerScenario {
 	}
 	
 	@Override
-	public int getTestThreadCount(Host host) {
+	public int getTestThreadCount(AHost host) {
 		// XXX update this calculation from time to time as this web server's performance improves (probably decrease)
 		return 8 * host.getCPUCount();
 	}

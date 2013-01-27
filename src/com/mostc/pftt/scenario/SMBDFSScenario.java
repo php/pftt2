@@ -1,5 +1,6 @@
 package com.mostc.pftt.scenario;
 
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.RemoteHost;
 import com.mostc.pftt.host.TempFileExecOutput;
@@ -54,7 +55,7 @@ public class SMBDFSScenario extends AbstractSMBScenario {
 	}
 	
 	@Override
-	public DFSSMBStorageDir createStorageDir(ConsoleManager cm, Host local_host) {
+	public DFSSMBStorageDir createStorageDir(ConsoleManager cm, AHost local_host) {
 		if (!remote_host.isWindows()) {
 			cm.println(EPrintType.XSKIP_OPERATION, getName(), "Scenario can only be run against a Windows host");
 			return null;
@@ -89,10 +90,10 @@ public class SMBDFSScenario extends AbstractSMBScenario {
 		protected String url_namespace_path, url_target;
 		
 		@Override
-		public boolean delete(ConsoleManager cm, Host local_host) {
+		public boolean delete(ConsoleManager cm, AHost local_host) {
 			try {
 				// delete folder and link
-				if (!remote_host.execElevated("DFSUTIL LINK REMOVE "+unc_path, Host.ONE_MINUTE*10).printOutputIfCrash(getClass(), cm).isSuccess()) {
+				if (!remote_host.execElevated(cm, getClass(), "DFSUTIL LINK REMOVE "+unc_path, AHost.ONE_MINUTE*10)) {
 					cm.println(EPrintType.CANT_CONTINUE, getClass(), "Unable to remove DFS Link");
 					
 					disconnect(this, cm, local_host);
@@ -100,7 +101,7 @@ public class SMBDFSScenario extends AbstractSMBScenario {
 				}
 				
 				// delete namespace
-				if (!remote_host.execElevated("DFSUTIL ROOT REMOVE "+unc_namespace_path, Host.ONE_MINUTE*10).printOutputIfCrash(getClass(), cm).isSuccess()) {
+				if (!remote_host.execElevated(cm, getClass(), "DFSUTIL ROOT REMOVE "+unc_namespace_path, AHost.ONE_MINUTE*10)) {
 					cm.println(EPrintType.CANT_CONTINUE, getClass(), "Uanble to remove DFS Namespace");
 					
 					disconnect(this, cm, local_host);
@@ -176,14 +177,14 @@ public class SMBDFSScenario extends AbstractSMBScenario {
 			return false;
 		}
 		
-		if (!remote_host.execElevated("DFSUTIL ROOT ADDSTD "+dfs_dir.unc_namespace_path, Host.ONE_MINUTE*10).printOutputIfCrash(getClass(), cm).isSuccess()) {
+		if (!remote_host.execElevated(cm, getClass(), "DFSUTIL ROOT ADDSTD "+dfs_dir.unc_namespace_path, AHost.ONE_MINUTE*10)) {
 			cm.println(EPrintType.CANT_CONTINUE, getClass(), "Unable to create namespace!");
 			
 			return false;
 		}
 		
 		// create 1 link to the 1 target
-		if (remote_host.execElevated("DFSUTIL LINK ADD "+dfs_dir.unc_path+" "+dfs_dir.unc_target, Host.ONE_MINUTE*10).printOutputIfCrash(getClass(), cm).isSuccess()) {
+		if (remote_host.execElevated(cm, getClass(), "DFSUTIL LINK ADD "+dfs_dir.unc_path+" "+dfs_dir.unc_target, AHost.ONE_MINUTE*10)) {
 			cm.println(EPrintType.IN_PROGRESS, getClass(), "DFS link created");
 			
 			cm.println(EPrintType.COMPLETED_OPERATION, getClass(), "DFS Share created. Done. unc_path=");
@@ -210,7 +211,7 @@ public class SMBDFSScenario extends AbstractSMBScenario {
 		ps_sb.append("Add-WindowsFeature -name FS-DFS-Replication\n");
 		
 		try {
-			TempFileExecOutput teo = remote_host.powershell(getClass(), cm, ps_sb, Host.FOUR_HOURS);
+			TempFileExecOutput teo = remote_host.powershell(getClass(), cm, ps_sb, AHost.FOUR_HOURS);
 			
 			if (teo.printOutputIfCrash(getClass(), cm).isSuccess()) {
 				teo.cleanup(remote_host);

@@ -17,13 +17,13 @@ import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlSerializer;
 
+import com.github.mattficken.io.StringUtil;
 import com.ibm.icu.charset.CharsetICU;
-import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
 import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.model.phpt.PhptSourceTestPack;
 import com.mostc.pftt.model.phpt.PhptTestCase;
-import com.mostc.pftt.util.StringUtil;
 
 /** result of running a PhptTestCase
  * 
@@ -38,7 +38,7 @@ import com.mostc.pftt.util.StringUtil;
 
 public class PhptTestResult {
 	public Charset actual_cs;
-	public Host host;
+	public AHost host;
 	/** the result of the test case */
 	public EPhptTestStatus status;
 	/** the test case */
@@ -80,11 +80,11 @@ public class PhptTestResult {
 		
 	}
 	
-	public PhptTestResult(Host host, EPhptTestStatus status, PhptTestCase test_case, String actual, String[] actual_lines, String[] expected_lines, Charset actual_cs, PhpIni ini, Map<String,String> env, String[] cmd_array, byte[] stdin_data, String shell_script, Diff<String> diff, String expectf_output, String preoverride_actual) {
+	public PhptTestResult(AHost host, EPhptTestStatus status, PhptTestCase test_case, String actual, String[] actual_lines, String[] expected_lines, Charset actual_cs, PhpIni ini, Map<String,String> env, String[] cmd_array, byte[] stdin_data, String shell_script, Diff<String> diff, String expectf_output, String preoverride_actual) {
 		this(host, status, test_case, actual, actual_lines, expected_lines, actual_cs, ini, env, cmd_array, stdin_data, shell_script, diff, expectf_output, preoverride_actual, null);
 	}
 	
-	public PhptTestResult(Host host, EPhptTestStatus status, PhptTestCase test_case, String actual, String[] actual_lines, String[] expected_lines, Charset actual_cs, PhpIni ini, Map<String,String> env, String[] cmd_array, byte[] stdin_data, String shell_script, Diff<String> diff, String expectf_output, String preoverride_actual, String sapi_output) {
+	public PhptTestResult(AHost host, EPhptTestStatus status, PhptTestCase test_case, String actual, String[] actual_lines, String[] expected_lines, Charset actual_cs, PhpIni ini, Map<String,String> env, String[] cmd_array, byte[] stdin_data, String shell_script, Diff<String> diff, String expectf_output, String preoverride_actual, String sapi_output) {
 		this();
 		this.sapi_output = sapi_output;
 		this.actual_cs = actual_cs;
@@ -215,7 +215,8 @@ public class PhptTestResult {
 		serial.startTag(null, "phptResult");
 		if (status!=null)
 			serial.attribute(null, "status", status.toString());
-		serial.attribute(null, "testCase", test_case.getName());
+		if (test_case!=null)
+			serial.attribute(null, "testCase", test_case.getName());
 		if (actual_cs!=null)
 			serial.attribute(null, "actualCharset", actual_cs.toString());
 		//if (host!=null)

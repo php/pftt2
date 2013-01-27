@@ -26,7 +26,7 @@ public abstract class SMBCSCOptionScenario extends AbstractOptionScenario {
 		try {
 			host.saveTextFile(ps_file, ps_sb.toString());
 			
-			if (host.exec("powershell -File "+ps_file, Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).isSuccess()) {
+			if (host.exec(cm, getClass(), "powershell -File "+ps_file, Host.ONE_MINUTE)) {
 				host.delete(ps_file);
 				
 				return true;

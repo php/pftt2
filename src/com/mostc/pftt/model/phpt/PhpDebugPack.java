@@ -1,8 +1,8 @@
 package com.mostc.pftt.model.phpt;
 
-import com.mostc.pftt.host.Host;
+import com.github.mattficken.io.StringUtil;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.DebugPack;
-import com.mostc.pftt.util.StringUtil;
 
 public class PhpDebugPack extends DebugPack {
 	protected final String path;
@@ -15,11 +15,11 @@ public class PhpDebugPack extends DebugPack {
 		return path;
 	}
 
-	public static PhpDebugPack open(Host host, String path) {
+	public static PhpDebugPack open(AHost host, String path) {
 		if (StringUtil.endsWithIC(path, ".zip")) {
 			// automatically decompress
 			String zip_file = path;
-			path = host.uniqueNameFromBase(Host.removeFileExt(path));
+			path = host.uniqueNameFromBase(AHost.removeFileExt(path));
 				
 			if (!host.unzip(zip_file, path))
 				return null;

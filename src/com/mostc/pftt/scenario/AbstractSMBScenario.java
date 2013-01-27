@@ -1,11 +1,12 @@
 package com.mostc.pftt.scenario;
 
+import com.github.mattficken.io.StringUtil;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.RemoteHost;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
-import com.mostc.pftt.util.StringUtil;
 
 /** Scenarios that test PHP using builds and test packs that are stored remotely and accessed using SMB.
  *
@@ -25,13 +26,13 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		if (StringUtil.isEmpty(base_file_path))
 			// fallback to a default path, @see SMBDeduplicationScenario
 			base_file_path = remote_host.isWindows() ? "C:\\PFTT-Share" : "/var/data/PFTT-Share";
-		else if (StringUtil.isEmpty(Host.basename(base_file_path)))
+		else if (StringUtil.isEmpty(AHost.basename(base_file_path)))
 			// base_file_path ~= C:\
 			base_file_path += "\\PFTT-Share";
 		if (StringUtil.isNotEmpty(base_share_name))
 			base_share_name = base_share_name.trim();
 		if (StringUtil.isEmpty(base_share_name)) {
-			base_share_name = Host.basename(base_file_path);
+			base_share_name = AHost.basename(base_file_path);
 			if (StringUtil.isEmpty(base_share_name))
 				base_share_name = "\\PFTT-Share";
 		}
@@ -56,7 +57,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 	 * @return TRUE on success, FALSE on failure (can't use this storage if failure)
 	 */
 	@Override
-	public SMBStorageDir createStorageDir(ConsoleManager cm, Host host) {
+	public SMBStorageDir createStorageDir(ConsoleManager cm, AHost host) {
 		SMBStorageDir dir = newSMBStorageDir();
 		
 		if ( createShare(dir, cm) ) {
@@ -81,17 +82,17 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		protected String share_name, remote_path, unc_path, url_path, local_path;
 		
 		@Override
-		public boolean notifyTestPackInstalled(ConsoleManager cm, Host local_host) {
+		public boolean notifyTestPackInstalled(ConsoleManager cm, AHost local_host) {
 			return true;
 		}
 		
 		@Override
-		public boolean delete(ConsoleManager cm, Host local_host) {
+		public boolean delete(ConsoleManager cm, AHost local_host) {
 			return disconnect(this, cm, local_host) && deleteShare(this, cm, local_host);
 		}
 
 		@Override
-		public String getLocalPath(Host local_host) {
+		public String getLocalPath(AHost local_host) {
 			return local_path; // H: I: J: ... Y:
 		}
 		
@@ -107,7 +108,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 			return false; // XXX samba support
 		
 		try {
-			String output_str = remote_host.execElevated("NET SHARE", Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).output;
+			String output_str = remote_host.execElevatedOut("NET SHARE", AHost.ONE_MINUTE).output;
 			
 			return output_str.contains(share_name);
 		} catch ( Exception ex ) {
@@ -166,7 +167,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		
 		String cmd = "NET SHARE "+share_name+"="+remote_path+" /Grant:"+remote_host.getUsername()+",Full";
 		System.out.println("cmd "+cmd);
-		return remote_host.execElevated(cmd, Host.FOUR_HOURS).printOutputIfCrash(getClass(), cm).isSuccess();
+		return remote_host.execElevated(cm, getClass(), cmd, AHost.FOUR_HOURS);
 	}
 	
 	protected boolean createShareSamba(SMBStorageDir dir, ConsoleManager cm) {
@@ -174,7 +175,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		return false;
 	}
 	
-	protected boolean connect(SMBStorageDir dir, ConsoleManager cm, Host local_host) {
+	protected boolean connect(SMBStorageDir dir, ConsoleManager cm, AHost local_host) {
 		if (remote_host.isRemote()) {
 			try {
 				if (remote_host.isWindows())
@@ -194,7 +195,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 	} // end protected boolean connect
 	
 	protected static final String[] DRIVES = new String[]{"H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y"}; // 18
-	protected boolean connectFromWindows(SMBStorageDir dir, ConsoleManager cm, Host local_host) throws Exception {
+	protected boolean connectFromWindows(SMBStorageDir dir, ConsoleManager cm, AHost local_host) throws Exception {
 		dir.local_path = null;
 		for ( int i=0 ; i < DRIVES.length ; i++ ) {
 			if (!local_host.exists(DRIVES[i] + ":\\")) {
@@ -207,7 +208,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		
 		String cmd = "NET USE "+dir.local_path+" "+dir.unc_path+" /user:"+remote_host.getUsername()+" "+remote_host.getPassword();
 		
-		return local_host.execElevated(cmd, Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).isSuccess();
+		return local_host.execElevated(cm, getClass(), cmd, AHost.ONE_MINUTE);
 	}
 	
 	protected boolean connectFromSamba(SMBStorageDir dir, ConsoleManager cm) {
@@ -215,7 +216,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		return false;
 	}
 	
-	protected boolean deleteShare(SMBStorageDir dir, ConsoleManager cm, Host host) {
+	protected boolean deleteShare(SMBStorageDir dir, ConsoleManager cm, AHost host) {
 		if (doDeleteShareWindows(cm, dir.remote_path)) {
 			cm.println(EPrintType.IN_PROGRESS, getClass(), "Share deleted: remote_file="+dir.remote_path+" unc="+dir.unc_path+" url="+dir.url_path);
 			
@@ -229,7 +230,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 	
 	protected boolean doDeleteShareWindows(ConsoleManager cm, String remote_path) {
 		try {
-			if (remote_host.execElevated("NET SHARE "+remote_path+" /DELETE", Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).isSuccess()) {
+			if (remote_host.execElevated(cm, getClass(), "NET SHARE "+remote_path+" /DELETE", AHost.ONE_MINUTE)) {
 				try {
 					remote_host.delete(remote_path);
 					
@@ -244,9 +245,9 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		return false;
 	}
 	
-	protected boolean disconnect(SMBStorageDir dir, ConsoleManager cm, Host host) {
+	protected boolean disconnect(SMBStorageDir dir, ConsoleManager cm, AHost host) {
 		try {
-			if (host.exec("NET USE "+dir.local_path+" /DELETE", Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).isSuccess()) {
+			if (host.exec(cm, getClass(), "NET USE "+dir.local_path+" /DELETE", AHost.ONE_MINUTE)) {
 				cm.println(EPrintType.IN_PROGRESS, getClass(), "Disconnected share: local="+dir.local_path);
 			}
 		} catch ( Exception ex ) {

@@ -10,13 +10,13 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
-import com.mostc.pftt.host.Host;
+import com.github.mattficken.io.StringUtil;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.SourceTestPack;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.IPhptTestResultReceiver;
 import com.mostc.pftt.results.PhptResultPackWriter;
-import com.mostc.pftt.util.StringUtil;
 
 /** manages a test-pack of PHPT tests
  * 
@@ -29,7 +29,7 @@ public class PhptSourceTestPack extends SourceTestPack {
 	//    -some tests fail b/c the path to php will have / in it, which it can't execute via `shell_exec`
 	protected String test_pack;
 	protected File test_pack_file;
-	protected Host host;
+	protected AHost host;
 	protected LinkedList<File> non_phpt_files;
 	protected HashMap<String,PhptTestCase> test_cases_by_name;
 	
@@ -45,11 +45,11 @@ public class PhptSourceTestPack extends SourceTestPack {
 		return getSourceDirectory();
 	}
 	
-	public boolean open(ConsoleManager cm, Host host) {
+	public boolean open(ConsoleManager cm, AHost host) {
 		if (StringUtil.endsWithIC(this.test_pack, ".zip")) {
 			// automatically decompress build
 			String zip_file = test_pack;
-			this.test_pack = host.uniqueNameFromBase(Host.removeFileExt(test_pack));
+			this.test_pack = host.uniqueNameFromBase(AHost.removeFileExt(test_pack));
 				
 			if (!host.unzip(cm, zip_file, test_pack))
 				return false;
@@ -227,7 +227,7 @@ public class PhptSourceTestPack extends SourceTestPack {
 	 * @return
 	 * @throws IOException
 	 */
-	public String getContents(Host host, String name) throws IOException {
+	public String getContents(AHost host, String name) throws IOException {
 		return host.getContentsDetectCharset(new File(test_pack_file, name).getAbsolutePath(), PhptTestCase.newCharsetDeciderDecoder());
 	}
 	
@@ -252,9 +252,9 @@ public class PhptSourceTestPack extends SourceTestPack {
 	 * @throws IOException
 	 * @throws Exception
 	 */
-	public PhptActiveTestPack install(ConsoleManager cm, Host host, String test_pack_dir) throws IllegalStateException, IOException, Exception {
+	public PhptActiveTestPack install(ConsoleManager cm, AHost host, String test_pack_dir) throws IllegalStateException, IOException, Exception {
 		if (!this.host.isRemote() || this.host.equals(host)) {
-			// installing from local host to remote host OR from remote host to itself
+			// installing from local host to remote host OR from remote|local host to itself
 			host.uploadCompressWith7Zip(cm, getClass(), test_pack, host, test_pack_dir);
 		} else if (!host.isRemote()) {
 			// installing from remote host to local host
@@ -293,7 +293,7 @@ public class PhptSourceTestPack extends SourceTestPack {
 	 * @throws IOException
 	 * @throws Exception
 	 */
-	public PhptActiveTestPack installNamed(Host host, String test_pack_dir, List<PhptTestCase> test_cases) throws IllegalStateException, IOException, Exception {
+	public PhptActiveTestPack installNamed(AHost host, String test_pack_dir, List<PhptTestCase> test_cases) throws IllegalStateException, IOException, Exception {
 		if (!this.host.isRemote() || this.host.equals(host)) {
 			// installing from local host to remote host OR from remote host to itself
 			uploadNonTestCaseFiles(host, test_pack, test_pack_dir);
@@ -319,19 +319,19 @@ public class PhptSourceTestPack extends SourceTestPack {
 		return new PhptActiveTestPack(test_pack_dir);
 	}
 
-	protected void uploadNonTestCaseFiles(Host dst_host, String src_dir, String dst_dir) throws IllegalStateException, IOException, Exception {
+	protected void uploadNonTestCaseFiles(AHost dst_host, String src_dir, String dst_dir) throws IllegalStateException, IOException, Exception {
 		String remote_name;
 		for ( File f : non_phpt_files ) {
-			remote_name = Host.pathFrom(test_pack, f.getAbsolutePath());
+			remote_name = AHost.pathFrom(test_pack, f.getAbsolutePath());
 			
 			dst_host.upload(f.getAbsolutePath(), dst_dir+"/"+remote_name);
 		}
 	}
 
-	protected void downloadNonTestCaseFiles(Host dst_host, String src_dir, String dst_dir) throws IllegalStateException, IOException, Exception {
+	protected void downloadNonTestCaseFiles(AHost dst_host, String src_dir, String dst_dir) throws IllegalStateException, IOException, Exception {
 		String remote_name;
 		for ( File f : non_phpt_files ) {
-			remote_name = Host.pathFrom(test_pack, f.getAbsolutePath());
+			remote_name = AHost.pathFrom(test_pack, f.getAbsolutePath());
 			
 			dst_host.download(src_dir+"/"+remote_name, dst_dir+"/"+remote_name);
 		}
@@ -342,7 +342,7 @@ public class PhptSourceTestPack extends SourceTestPack {
 	 * @return
 	 */
 	public EBuildBranch getVersionBranch() {
-		String dir = Host.basename(test_pack);
+		String dir = AHost.basename(test_pack);
 		if (dir.contains("5.4")||dir.contains("5-4")||dir.contains("5_4")||dir.contains("54"))
 			return EBuildBranch.PHP_5_4;
 		else if (dir.contains("5.3")||dir.contains("5-3")||dir.contains("5_3")||dir.contains("53"))
@@ -362,7 +362,7 @@ public class PhptSourceTestPack extends SourceTestPack {
 	 * @return
 	 */
 	public String getVersion() {
-		String[] split = Host.basename(test_pack).split("[\\.|\\-]");
+		String[] split = AHost.basename(test_pack).split("[\\.|\\-]");
 		return split.length==0?null:split[split.length-1];
 	}
 

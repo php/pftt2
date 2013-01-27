@@ -1,6 +1,6 @@
 package com.mostc.pftt.scenario;
 
-import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.phpt.ESAPIType;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhpIni;
@@ -50,11 +50,11 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 	 * @param active_test_pack
 	 * @return
 	 */
-	public abstract AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack);
+	public abstract AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, IPhptTestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack);
 
-	public abstract boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception;
+	public abstract boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception;
 	
-	public boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpIni ini, PhpBuild build, PhptTestCase test_case) throws Exception {
+	public boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpIni ini, PhpBuild build, PhptTestCase test_case) throws Exception {
 		return AbstractPhptTestCaseRunner.willSkip(cm, twriter, host, scenario_set, type, ini, build, test_case);
 	}
 	
@@ -62,7 +62,7 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 		
 	}
 
-	public abstract int getTestThreadCount(Host host);
+	public abstract int getTestThreadCount(AHost host);
 
 	public abstract ESAPIType getSAPIType();
 
@@ -83,8 +83,8 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 	 * @return
 	 * @throws Exception
 	 */
-	public abstract TestCaseGroupKey createTestGroupKey(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack active_test_pack, PhptTestCase test_case, TestCaseGroupKey group_key) throws Exception;
+	public abstract TestCaseGroupKey createTestGroupKey(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack active_test_pack, PhptTestCase test_case, TestCaseGroupKey group_key) throws Exception;
 	
-	public abstract PhpIni createIniForTest(ConsoleManager cm, Host host, PhpBuild build, PhptActiveTestPack active_test_pack, ScenarioSet scenario_set);
+	public abstract PhpIni createIniForTest(ConsoleManager cm, AHost host, PhpBuild build, PhptActiveTestPack active_test_pack, ScenarioSet scenario_set);
 
 } // end public abstract class AbstractSAPIScenario

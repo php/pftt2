@@ -4,8 +4,8 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.LinkedList;
 
+import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.Host;
-import com.mostc.pftt.util.StringUtil;
 
 /** Represents an Access-Control-List (ACL), specifically an ACL for the NTFS File system.
  * 

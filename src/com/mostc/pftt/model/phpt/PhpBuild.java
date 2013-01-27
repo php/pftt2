@@ -10,6 +10,8 @@ import java.util.WeakHashMap;
 
 import javax.annotation.Nullable;
 
+import com.github.mattficken.io.StringUtil;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.TempFileExecOutput;
@@ -17,7 +19,7 @@ import com.mostc.pftt.model.sapi.SAPIManager;
 import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
-import com.mostc.pftt.util.StringUtil;
+import com.mostc.pftt.util.StringUtil2;
 
 /** represents a single build of PHP.
  * 
@@ -298,7 +300,7 @@ public class PhpBuild extends SAPIManager {
 	 * @return
 	 * @throws IOException
 	 */
-	public PhpIni getDefaultPhpIni(Host host, ESAPIType type) throws IOException {
+	public PhpIni getDefaultPhpIni(AHost host, ESAPIType type) throws IOException {
 		PhpIni ini;
 		if (this.php_ini!=null) {
 			ini = this.php_ini.get();
@@ -388,8 +390,8 @@ public class PhpBuild extends SAPIManager {
 		
 		// should be able to get this info for release, qa and snapshot builds
 		// but for dev builds, might not be able to get this info any other way than parsing phpinfo
-		if (getBuildSourceType(host)!=EBuildSourceType.WINDOWS_DOT_PHP_DOT_NET) {
-			for (String line : StringUtil.splitLines(getPhpInfo(cm, host))) {
+		if (getBuildSourceType(host)!=EBuildSourceType.WINDOWS_DOT_PHP_DOT_NET && host instanceof AHost) {
+			for (String line : StringUtil.splitLines(getPhpInfo(cm, (AHost)host))) {
 				if (line.startsWith("PHP Version =>")) {
 					version_str = line.substring("PHP Version => ".length());
 					
@@ -465,7 +467,7 @@ public class PhpBuild extends SAPIManager {
 	 * @return
 	 * @throws Exception
 	 */
-	public boolean isExtensionEnabled(ConsoleManager cm, Host host, ESAPIType type, PhpIni ini, String ext_name) throws Exception {
+	public boolean isExtensionEnabled(ConsoleManager cm, AHost host, ESAPIType type, PhpIni ini, String ext_name) throws Exception {
 		if (ext_name.equals("spl")||ext_name.equals("standard")||ext_name.equals("core"))
 			// these extensions are always there/always builtin
 			return true;
@@ -519,7 +521,7 @@ public class PhpBuild extends SAPIManager {
 	 * @return
 	 * @throws Exception
 	 */
-	public boolean isExtensionEnabled(ConsoleManager cm, Host host, ESAPIType type, String ext_name) throws Exception {
+	public boolean isExtensionEnabled(ConsoleManager cm, AHost host, ESAPIType type, String ext_name) throws Exception {
 		return isExtensionEnabled(cm, host, type, null, ext_name);
 	}
 	
@@ -530,7 +532,7 @@ public class PhpBuild extends SAPIManager {
 	 * @return
 	 * @throws Exception
 	 */
-	public String getPhpInfo(ConsoleManager cm, Host host) throws Exception {
+	public String getPhpInfo(ConsoleManager cm, AHost host) throws Exception {
 		String php_info;
 		if (this.php_info != null) {
 			php_info = this.php_info.get();
@@ -539,7 +541,7 @@ public class PhpBuild extends SAPIManager {
 		}
 		
 		ExecOutput eo = eval(host, "phpinfo();");
-		eo.printOutputIfCrash(getClass().getSimpleName()+"#getPhpInfo", cm);
+		eo.printOutputIfCrash(Host.toContext(getClass(), "getPhpInfo"), cm);
 		php_info = eo.output;
 		this.php_info = new WeakReference<String>(php_info);
 		return php_info;
@@ -571,11 +573,11 @@ public class PhpBuild extends SAPIManager {
 	 * @return
 	 * @throws Exception
 	 */
-	public PHPOutput eval(Host host, PhpIni ini, String code) throws Exception {
+	public PHPOutput eval(AHost host, PhpIni ini, String code) throws Exception {
 		return eval(host, ini, code, true);
 	}
 	
-	public PHPOutput eval(Host host, String code) throws Exception {
+	public PHPOutput eval(AHost host, String code) throws Exception {
 		return eval(host, null, code);
 	}
 	
@@ -589,16 +591,16 @@ public class PhpBuild extends SAPIManager {
 	 * @throws Exception
 	 * @see PHPOutput#cleanup
 	 */
-	public PHPOutput eval(Host host, PhpIni ini, String code, boolean auto_cleanup) throws Exception {
+	public PHPOutput eval(AHost host, PhpIni ini, String code, boolean auto_cleanup) throws Exception {
 		return eval(host, ini, code, Host.FOUR_HOURS, auto_cleanup);
 	}
 	
-	public PHPOutput eval(Host host, String code, boolean auto_cleanup) throws Exception {
+	public PHPOutput eval(AHost host, String code, boolean auto_cleanup) throws Exception {
 		return eval(host, null, code, auto_cleanup);
 	}
 		
-	public PHPOutput eval(Host host, PhpIni ini, String code, int timeout_seconds, boolean auto_cleanup) throws Exception {
-		code = StringUtil.ensurePhpTags(code);
+	public PHPOutput eval(AHost host, PhpIni ini, String code, int timeout_seconds, boolean auto_cleanup) throws Exception {
+		code = StringUtil2.ensurePhpTags(code);
 				
 		String php_filename = host.mktempname("Build", ".php");
 		
@@ -606,14 +608,14 @@ public class PhpBuild extends SAPIManager {
 		
 		// -n => CRITICAL: causes php.exe to ignore any .ini file that comes with build
 		//    (so PFTT won't be affected and/or can override that .ini file)
-		PHPOutput output = new PHPOutput(php_filename, host.exec(php_exe+" -n "+(ini==null?"":ini.toCliArgString(host))+" "+php_filename, timeout_seconds, new HashMap<String,String>(), null, Host.dirname(php_filename)));
+		PHPOutput output = new PHPOutput(php_filename, host.execOut(php_exe+" -n "+(ini==null?"":ini.toCliArgString(host))+" "+php_filename, timeout_seconds, new HashMap<String,String>(), null, Host.dirname(php_filename)));
 		if (auto_cleanup && !output.hasFatalError())
 			// if fatal error, don't clean up so user can check it
 			output.cleanup(host);
 		return output;
 	}
 	
-	public PHPOutput eval(Host host, String code, int timeout_seconds, boolean auto_cleanup) throws Exception {
+	public PHPOutput eval(AHost host, String code, int timeout_seconds, boolean auto_cleanup) throws Exception {
 		return eval(host, null, code, timeout_seconds, auto_cleanup);
 	}
 	
@@ -657,7 +659,7 @@ public class PhpBuild extends SAPIManager {
 		}
 	} // end public static class PHPOutput
 	
-	public String[] getExtensionList(ConsoleManager cm, Host host, ESAPIType type) throws Exception {
+	public String[] getExtensionList(ConsoleManager cm, AHost host, ESAPIType type) throws Exception {
 		return getExtensionList(cm, host, getDefaultPhpIni(host, type));
 	}
 	
@@ -674,7 +676,7 @@ public class PhpBuild extends SAPIManager {
 	 * @return
 	 * @throws Exception
 	 */
-	public String[] getExtensionList(ConsoleManager cm, Host host, PhpIni ini) throws Exception {
+	public String[] getExtensionList(ConsoleManager cm, AHost host, PhpIni ini) throws Exception {
 		String[] module_list;
 		if (this.module_list!=null) {
 			module_list = this.module_list.get();
@@ -684,8 +686,8 @@ public class PhpBuild extends SAPIManager {
 		
 		String ini_settings = ini==null?null:ini.toCliArgString(host);
 		
-		ExecOutput output = host.exec(php_exe+(ini_settings==null?"":" "+ini_settings)+" -m", Host.ONE_MINUTE);
-		output.printOutputIfCrash(getClass().getSimpleName()+"#getExtensionList", cm);
+		ExecOutput output = host.execOut(php_exe+(ini_settings==null?"":" "+ini_settings)+" -m", Host.ONE_MINUTE);
+		output.printOutputIfCrash(Host.toContext(getClass(), "getExtensionList"), cm);
 		
 		ArrayList<String> list = new ArrayList<String>();
 		

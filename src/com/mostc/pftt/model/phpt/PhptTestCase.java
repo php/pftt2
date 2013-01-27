@@ -20,14 +20,15 @@ import com.github.mattficken.io.AbstractDetectingCharsetReader;
 import com.github.mattficken.io.ByLineReader;
 import com.github.mattficken.io.CharsetDeciderDecoder;
 import com.github.mattficken.io.DefaultCharsetDeciderDecoder;
+import com.github.mattficken.io.StringUtil;
 import com.ibm.icu.charset.CharsetICU;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.TestCase;
 import com.mostc.pftt.model.phpt.PhpBuild.PHPOutput;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.IPhptTestResultReceiver;
 import com.mostc.pftt.scenario.ScenarioSet;
-import com.mostc.pftt.util.StringUtil;
 import com.mostc.pftt.util.apache.regexp.RE;
 import com.mostc.pftt.util.apache.regexp.RECompiler;
 import com.mostc.pftt.util.apache.regexp.REDebugCompiler;
@@ -119,7 +120,7 @@ public class PhptTestCase extends TestCase {
 	 * @throws FileNotFoundException
 	 * @throws IOException
 	 */
-	public static PhptTestCase load(Host host, PhptSourceTestPack test_pack, String test_name, IPhptTestResultReceiver twriter) throws FileNotFoundException, IOException {
+	public static PhptTestCase load(AHost host, PhptSourceTestPack test_pack, String test_name, IPhptTestResultReceiver twriter) throws FileNotFoundException, IOException {
 		return load(host, test_pack, false, test_name, twriter);
 	}
 	
@@ -138,12 +139,12 @@ public class PhptTestCase extends TestCase {
 	 * @throws FileNotFoundException
 	 * @throws IOException
 	 */
-	public static PhptTestCase load(Host host, PhptSourceTestPack test_pack, boolean keep_all, String test_name, IPhptTestResultReceiver twriter) throws FileNotFoundException, IOException {
+	public static PhptTestCase load(AHost host, PhptSourceTestPack test_pack, boolean keep_all, String test_name, IPhptTestResultReceiver twriter) throws FileNotFoundException, IOException {
 		return load(host, test_pack, keep_all, test_name, twriter, null);
 	}
 		
 	static final Pattern PATTERN_AZ = Pattern.compile("^--([_A-Z]+)--");
-	public static PhptTestCase load(Host host, PhptSourceTestPack test_pack, boolean keep_all, String test_name, IPhptTestResultReceiver twriter, PhptTestCase parent) throws FileNotFoundException, IOException {
+	public static PhptTestCase load(AHost host, PhptSourceTestPack test_pack, boolean keep_all, String test_name, IPhptTestResultReceiver twriter, PhptTestCase parent) throws FileNotFoundException, IOException {
 		String file = host.fixPath(test_pack.getSourceDirectory()+host.dirSeparator()+test_name); 
 		
 		PhptTestCase test_case = new PhptTestCase(test_pack, test_name);
@@ -239,7 +240,7 @@ public class PhptTestCase extends TestCase {
 	
 	public PhptTestCase(PhptSourceTestPack test_pack, String name) {
 		this.test_pack = test_pack;
-		this.name = Host.toUnixPath(name).toLowerCase();
+		this.name = AHost.toUnixPath(name).toLowerCase();
 		
 		section_text = new HashMap<EPhptSection,String>();
 	}
@@ -254,7 +255,7 @@ public class PhptTestCase extends TestCase {
 	 * @return
 	 * @throws IOException
 	 */
-	public String getContents(Host host) throws IOException {
+	public String getContents(AHost host) throws IOException {
 		String contents;
 		if (this.contents!=null) {
 			contents = this.contents.get();
@@ -274,10 +275,10 @@ public class PhptTestCase extends TestCase {
 	 * @param host
 	 * @return
 	 */
-	public PhpIni getINI(PhptActiveTestPack active_test_pack, Host host) {
+	public PhpIni getINI(PhptActiveTestPack active_test_pack, AHost host) {
 		PhpIni this_ini;
 		String this_ini_pwd;
-		String ini_pwd = active_test_pack.getDirectory()+host.dirSeparator()+Host.dirname(name);
+		String ini_pwd = active_test_pack.getDirectory()+host.dirSeparator()+AHost.dirname(name);
 		if (this.ini_pwd!=null) {
 			this_ini_pwd = this.ini_pwd.get();
 			if (this_ini_pwd != null && this_ini_pwd.equals(ini_pwd)) {
@@ -339,7 +340,7 @@ public class PhptTestCase extends TestCase {
 	 * @param twriter
 	 * @return
 	 */
-	public RE getExpectedCompiled(Host host, ScenarioSet scenario_set, IPhptTestResultReceiver twriter) {
+	public RE getExpectedCompiled(AHost host, ScenarioSet scenario_set, IPhptTestResultReceiver twriter) {
 		RE expected_re;
 		if (this.expected_re!=null) {
 			expected_re = this.expected_re.get();
@@ -397,7 +398,7 @@ public class PhptTestCase extends TestCase {
 	 * @param dump_pw
 	 * @param output_pw
 	 */
-	public void debugExpectedRegularExpression(Host host, ScenarioSet scenario_set, IPhptTestResultReceiver twriter, String actual_str, PrintWriter dump_pw, PrintWriter output_pw) {
+	public void debugExpectedRegularExpression(AHost host, ScenarioSet scenario_set, IPhptTestResultReceiver twriter, String actual_str, PrintWriter dump_pw, PrintWriter output_pw) {
 		String expected_str;		
 		if (containsSection(EPhptSection.EXPECTREGEX)) {
 			expected_str = getTrim(EPhptSection.EXPECTREGEX);
@@ -662,7 +663,7 @@ public class PhptTestCase extends TestCase {
 	 * @return
 	 */
 	public String getShortName() {
-		return Host.basename(getBaseName());
+		return AHost.basename(getBaseName());
 	}
 	
 	/** returns the folder the test is in
@@ -670,7 +671,7 @@ public class PhptTestCase extends TestCase {
 	 * @return
 	 */
 	public String getFolder() {
-		return Host.dirname(getBaseName());
+		return AHost.dirname(getBaseName());
 	}
 	
 	public boolean isWin32Test() {
@@ -709,18 +710,18 @@ public class PhptTestCase extends TestCase {
 	 * @see #readRedirectTestEnvironment
 	 * @throws Exception
 	 */
-	public String[] readRedirectTestNames(ConsoleManager cm, Host host, PhpBuild build) throws Exception {
+	public String[] readRedirectTestNames(ConsoleManager cm, AHost host, PhpBuild build) throws Exception {
 		// don't need to cache this, this is called only once per PHPTTestPack instance
 		String code = get(EPhptSection.REDIRECTTEST);
 		
 		code = "<?php function a() {\n"+code+" \n}\n $a = a();\n $a=$a['TESTS'];\n if (is_array($a)) { foreach ($a as $b) { echo $b.\"\\n\";}} elseif (is_string($a)) {echo $a.\"\\n\";} ?>";
 		
-		PHPOutput output = build.eval(host, code).printHasFatalError(getClass().getSimpleName()+"#readRedirectTestNames", cm);
+		PHPOutput output = build.eval(host, code).printHasFatalError(Host.toContext(getClass(), "readRedirectTestNames"), cm);
 		
 		ArrayList<String> test_names = new ArrayList<String>(2);
 		
 		if (!output.hasFatalError()) {
-			String base_dir = Host.dirname(output.temp_file);
+			String base_dir = AHost.dirname(output.temp_file);
 			for (String line : output.getLines()) {
 				// code may use __DIR__ to get its current directory => strip off current directory(/tmp, etc...)
 				if (line.startsWith(base_dir)) {
@@ -749,7 +750,7 @@ public class PhptTestCase extends TestCase {
 	 * @return
 	 * @throws Exception
 	 */
-	public HashMap<String,String> getENV(ConsoleManager cm, Host host, PhpBuild build) throws Exception {
+	public HashMap<String,String> getENV(ConsoleManager cm, AHost host, PhpBuild build) throws Exception {
 		HashMap<String,String> env = new HashMap<String,String>();
 		
 		
@@ -766,7 +767,7 @@ public class PhptTestCase extends TestCase {
 				
 				String code = "<?php function a() {\n"+env_str+" \n}\n $a=a(); echo $a.\"\\n\"; ?>";
 				
-				PHPOutput output = build.eval(host, code).printHasFatalError(getClass().getSimpleName()+"#getENV", cm);
+				PHPOutput output = build.eval(host, code).printHasFatalError(Host.toContext(getClass(), "getENV"), cm);
 				
 				lines = output.hasFatalError() ? null : output.getLines();
 			} else {
@@ -804,14 +805,14 @@ public class PhptTestCase extends TestCase {
 	 * @return
 	 * @throws Exception
 	 */
-	public HashMap<String,String> readRedirectTestEnvironment(ConsoleManager cm, Host host, PhpBuild build) throws Exception {
+	public HashMap<String,String> readRedirectTestEnvironment(ConsoleManager cm, AHost host, PhpBuild build) throws Exception {
 		HashMap<String,String> env = new HashMap<String,String>();
 		
 		String rt_str = get(EPhptSection.REDIRECTTEST);
 		if (StringUtil.isNotEmpty(rt_str)) {
 			String code = "<?php function a() {\n"+rt_str+" \n}\n $a = a();\n $a=$a['ENV'];\n foreach ($a as $b=>$c) { echo $b.\"\\n\"; echo $c.\"\\n\"; } ?>";
 			
-			PHPOutput output = build.eval(host, code).printHasFatalError(getClass().getSimpleName()+"#readRedirectTestEnvironment", cm);
+			PHPOutput output = build.eval(host, code).printHasFatalError(Host.toContext(getClass(), "readRedirectTestEnvironment"), cm);
 			if (!output.hasFatalError()) {
 				String[] lines = output.getLines();
 				for ( int i=0 ; i < lines.length ; i+=2) {

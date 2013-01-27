@@ -5,7 +5,6 @@ import java.util.Map;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.scenario.Scenario.EScenarioStartState;
 
 /** Sets up a MySQL database and tests the mysql, mysqli and pdo_mysql extensions against it. (NOT IMPLEMENTED)
  * 

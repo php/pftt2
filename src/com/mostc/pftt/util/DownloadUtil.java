@@ -28,6 +28,7 @@ import org.apache.http.protocol.RequestExpectContinue;
 import org.apache.http.protocol.RequestTargetHost;
 import org.apache.http.protocol.RequestUserAgent;
 
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
@@ -109,7 +110,7 @@ public class DownloadUtil {
 			System.out.println("PFTT: release_get: decompressing "+local_file_zip+"...");
 			
 			// TODO c:\program files
-			host.exec("\"C:\\Program Files\\7-Zip\\7z\" x "+local_file_zip, Host.FOUR_HOURS, local_dir).printOutputIfCrash(DownloadUtil.class.getSimpleName(), cm);
+			host.exec(cm, DownloadUtil.class, "\"C:\\Program Files\\7-Zip\\7z\" x "+local_file_zip, AHost.FOUR_HOURS, local_dir);
 			
 			return true;
 		} catch ( Exception ex ) {

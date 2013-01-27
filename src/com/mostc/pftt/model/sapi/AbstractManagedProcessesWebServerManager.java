@@ -8,9 +8,9 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
-import com.mostc.pftt.host.Host.ExecHandle;
+import com.mostc.pftt.host.AHost.ExecHandle;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
@@ -52,7 +52,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 	}
 	
 	@Override
-	protected WebServerInstance createWebServerInstance(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, Object server_name) {
+	protected WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, Object server_name) {
 		String sapi_output = "";
 		int port_attempts;
 		boolean found_port;
@@ -88,7 +88,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 			//             php won't complain about this though, it will run, but be inaccessible
 			String listen_address = host.getLocalhostListenAddress();
 			
-			Host.ExecHandle handle = null;
+			AHost.ExecHandle handle = null;
 			try {
 				// provide a ManagedProcessWebServerInstance to handle the running web server instance
 				final ManagedProcessWebServerInstance web = createManagedProcessWebServerInstance(cm, host, build, ini, env, docroot, listen_address, port);
@@ -97,7 +97,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 				
 				handle = host.execThread(web.getCmdString(), web.getEnv(), docroot);
 				
-				final Host.ExecHandle handlef = handle;
+				final AHost.ExecHandle handlef = handle;
 								
 				// ensure server can be connected to
 				{
@@ -169,7 +169,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 		return new CrashedWebServerInstance(this, ini, env, sapi_output);
 	} // end protected synchronized WebServerInstance createWebServerInstance
 	
-	protected abstract ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini, Map<String, String> env, String docroot, String listen_address, int port);
+	protected abstract ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String, String> env, String docroot, String listen_address, int port);
 	
 	public static abstract class ManagedProcessWebServerInstance extends WebServerInstance {
 		protected Debugger debug_handle;

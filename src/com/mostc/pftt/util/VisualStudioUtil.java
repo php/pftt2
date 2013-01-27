@@ -1,5 +1,6 @@
 package com.mostc.pftt.util;
 
+import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.results.ConsoleManager;
 
@@ -27,7 +28,7 @@ public final class VisualStudioUtil {
 			return false;
 		
 		try {
-			return host.exec("\""+editbin+"\" /stack:"+stack_size+" \""+exe_file+"\"", Host.ONE_MINUTE).printOutputIfCrash(VisualStudioUtil.class, cm).isSuccess();
+			return host.exec(cm, VisualStudioUtil.class, "\""+editbin+"\" /stack:"+stack_size+" \""+exe_file+"\"", Host.ONE_MINUTE);
 		} catch ( Exception ex ) {
 			ex.printStackTrace();
 			return false;

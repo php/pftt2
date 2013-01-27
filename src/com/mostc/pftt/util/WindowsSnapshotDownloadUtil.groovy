@@ -9,7 +9,7 @@ import java.util.Comparator;
 import org.htmlcleaner.HtmlCleaner;
 import org.htmlcleaner.SimpleXmlSerializer;
 
-import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.phpt.EBuildType;
 import com.mostc.pftt.model.phpt.EBuildBranch;
 
@@ -32,11 +32,11 @@ final class WindowsSnapshotDownloadUtil {
 	static final URL PHP_5_6_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-5.6/")
 	static final URL PHP_MASTER_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/master/")
 
-	static File snapshotURLtoLocalFile(Host host, URL url) {
+	static File snapshotURLtoLocalFile(AHost host, URL url) {
 		String local_path = null;
 		if (url.getHost().equals("windows.php.net")) {
 			if (url.getPath().contains("release")||url.getPath().contains("qa")||url.getPath().contains("/snaps/php-5.3/")||url.getPath().contains("/snaps/php-5.4/")||url.getPath().contains("/snaps/php-5.5/")||url.getPath().contains("/snaps/master/")) {
-				local_path = Host.basename(url.getPath());
+				local_path = AHost.basename(url.getPath());
 			} else if (url.getPath().startsWith("/downloads/")) {
 				// some special build being shared on windows.php.net (probably unstable, expiremental, etc...)
 				local_path = url.getPath().replaceAll("/downloads/", "");

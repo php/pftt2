@@ -3,7 +3,7 @@ package com.mostc.pftt.runner;
 import java.io.IOException;
 import java.util.Map;
 
-import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.phpt.EPhptSection;
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
 import com.mostc.pftt.model.phpt.ESAPIType;
@@ -31,7 +31,7 @@ public abstract class AbstractPhptTestCaseRunner {
 	
 	public abstract void runTest() throws IOException, Exception, Throwable;
 	
-	public static Map<String, String> generateENVForTestCase(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhptTestCase test_case) throws Exception {
+	public static Map<String, String> generateENVForTestCase(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhptTestCase test_case) throws Exception {
 		// read ENV vars from test, from its parent (if a test redirected to this test), and merge from scenario
 		//
 		// NOTE: for HTTP tests, this will be done for each group_key by AbstractWebServerScenario
@@ -59,7 +59,7 @@ public abstract class AbstractPhptTestCaseRunner {
 	 * @return
 	 * @throws Exception
 	 */
-	public static boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+	public static boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
 		if (host.isWindows()) {
 			if (test_case.getName().contains("sysvmsg")||test_case.getName().contains("sysvshm")||test_case.getName().contains("gettext")||test_case.getName().contains("exif")||test_case.getName().contains("readline")||test_case.getName().contains("posix")) {
 				// extensions not supported on Windows
@@ -95,7 +95,7 @@ public abstract class AbstractPhptTestCaseRunner {
 		}
 	} // end public static boolean willSkip
 	
-	public static boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpIni ini, PhpBuild build, PhptTestCase test_case) throws Exception {
+	public static boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpIni ini, PhpBuild build, PhptTestCase test_case) throws Exception {
 		if (test_case.isExtensionTest() && !build.isExtensionEnabled(cm, host, type, ini, test_case.getExtensionName())) {
 			// if extension-under-test is not loaded, don't bother running test since it'll just be skipped (or false fail)
 			
@@ -106,8 +106,4 @@ public abstract class AbstractPhptTestCaseRunner {
 		return false;
 	} // end public static boolean willSkip
 	
-	static boolean a(PhptTestCase test_case) {
-		return false;
-	}
-		
 } // end public abstract class AbstractPhptTestCaseRunner

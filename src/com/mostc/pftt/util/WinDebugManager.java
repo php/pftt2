@@ -1,7 +1,9 @@
 package com.mostc.pftt.util;
 
+import com.github.mattficken.io.StringUtil;
+import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.host.AHost.ExecHandle;
 import com.mostc.pftt.host.Host;
-import com.mostc.pftt.host.Host.ExecHandle;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
@@ -21,9 +23,9 @@ import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
 public class WinDebugManager extends DebuggerManager {
 	private String win_dbg_exe;
-	private Host win_dbg_host;
+	private AHost win_dbg_host;
 	
-	protected void ensureFindWinDbgExe(ConsoleManager cm, Host host) {
+	protected void ensureFindWinDbgExe(ConsoleManager cm, AHost host) {
 		if (this.win_dbg_host==host)
 			return;
 		
@@ -37,7 +39,7 @@ public class WinDebugManager extends DebuggerManager {
 	}
 	
 	@Override
-	public WinDebug newDebugger(ConsoleManager cm, Host host, Object server_name, PhpBuild build, int process_id) {
+	public WinDebug newDebugger(ConsoleManager cm, AHost host, Object server_name, PhpBuild build, int process_id) {
 		ensureFindWinDbgExe(cm, host);
 		if (StringUtil.isNotEmpty(win_dbg_exe)) {
 			ensureFindSourceAndDebugPack(cm, host, build);
@@ -54,10 +56,10 @@ public class WinDebugManager extends DebuggerManager {
 	public static class WinDebug extends Debugger {
 		protected final ExecHandle debug_handle;
 		protected final String log_file;
-		protected final Host host;
+		protected final AHost host;
 		protected boolean attached, wait;
 		
-		protected WinDebug(final Host host, String win_dbg_exe, String server_name, String src_path, String debug_path, String image_path, int process_id) throws Exception {
+		protected WinDebug(final AHost host, String win_dbg_exe, String server_name, String src_path, String debug_path, String image_path, int process_id) throws Exception {
 			this.host = host;
 			
 			log_file = host.mktempname(getClass(), ".log");

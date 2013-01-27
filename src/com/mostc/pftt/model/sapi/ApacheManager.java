@@ -7,7 +7,9 @@ import java.util.Map;
 
 import javax.annotation.concurrent.ThreadSafe;
 
+import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.ExecOutput;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
 import com.mostc.pftt.model.phpt.PhpBuild;
@@ -19,7 +21,6 @@ import com.mostc.pftt.results.IPhptTestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.DownloadUtil;
-import com.mostc.pftt.util.StringUtil;
 import com.mostc.pftt.util.VisualStudioUtil;
 
 /** manages and monitors Apache HTTPD web server
@@ -54,7 +55,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 	 * @param apache_dir
 	 * @return
 	 */
-	public static boolean checkOpenSSLVersion(ConsoleManager cm, Host host, PhpBuild build, EApacheVersion apache_version, String apache_dir) {
+	public static boolean checkOpenSSLVersion(ConsoleManager cm, AHost host, PhpBuild build, EApacheVersion apache_version, String apache_dir) {
 		try {
 			if (!host.isWindows())
 				return true;
@@ -65,7 +66,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 				return true;
 			}
 		
-			ExecOutput eo = host.exec("\""+os+"\" version", Host.ONE_MINUTE);
+			ExecOutput eo = host.execOut("\""+os+"\" version", Host.ONE_MINUTE);
 			
 			return build.checkOpenSSLVersion(eo.output);
 		} catch ( Exception ex ) {
@@ -91,7 +92,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			// vc10rt doesn't seem to create an obvious folder here, like vc9, but SysInternals procmon found this folder
 			cm.println(EPrintType.COMPLETED_OPERATION, getClass(), "VC10 seems to be installed already");
 		} else {
-			if (host.execElevated(host.getPfttDir()+"/bin/vc10_vcredist_x86.exe /Q", Host.ONE_MINUTE*5).printOutputIfCrash(getClass(), cm).isSuccess())
+			if (host.execElevated(cm, getClass(), host.getPfttDir()+"/bin/vc10_vcredist_x86.exe /Q", AHost.ONE_MINUTE*5))
 				cm.println(EPrintType.COMPLETED_OPERATION, getClass(), "VC10 Installed");
 			else
 				cm.println(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "VC10 Install was not successful, trying to continue with Apache install anyway...");
@@ -106,10 +107,10 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			);
 		
 		// test exec'ng httpd.exe to see if its installed successfully/runnable
-		return host.exec(httpd(apache_version, host)+" -V", Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).isSuccess();
+		return host.exec(cm, getClass(), httpd(apache_version, host)+" -V", AHost.ONE_MINUTE);
 	}
 	
-	public static boolean isSupported(ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptTestCase test_case) {
+	public static boolean isSupported(ConsoleManager cm, IPhptTestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptTestCase test_case) {
 		if (build.isNTS(host)) {
 			cm.println(EPrintType.SKIP_OPERATION, ApacheManager.class, "Error Apache requires TS Php Build. NTS Php Builds aren't supported with Apache mod_php.");
 			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "NTS Build not supported", null, null, null, null, null, null, null, null, null, null, null));
@@ -135,7 +136,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 	private Host cache_host;
 	private String cache_httpd;
 	@Override
-	protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini, Map<String, String> env, String docroot, String listen_address, int port) {
+	protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String, String> env, String docroot, String listen_address, int port) {
 		EApacheVersion apache_version = decideApacheVersion(cm, host, build, this._apache_version);
 		
 		String httpd = httpd(apache_version, host);
@@ -186,7 +187,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		//    -httpd.conf
 		//    -php.ini
 		//    -error.log
-		final String conf_dir = host.mktempname(getClass().getSimpleName());
+		final String conf_dir = host.mktempname(getClass());
 		try {
 			host.mkdirs(conf_dir);
 		} catch ( Exception ex ) {
@@ -238,11 +239,11 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 	
 	public class ApacheWebServerInstance extends ManagedProcessWebServerInstance {
 		protected final String conf_dir, apache_conf_file, error_log;
-		protected final Host host;
+		protected final AHost host;
 		protected final EApacheVersion apache_version;
 		protected WeakReference<String> log_ref;
 		
-		public ApacheWebServerInstance(EApacheVersion apache_version, ApacheManager ws_mgr, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port, Host host, String conf_dir, String apache_conf_file, String error_log) {
+		public ApacheWebServerInstance(EApacheVersion apache_version, ApacheManager ws_mgr, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port, AHost host, String conf_dir, String apache_conf_file, String error_log) {
 			super(ws_mgr, cmd, ini, env, hostname, port);
 			this.apache_version = apache_version;
 			this.host = host;
@@ -304,7 +305,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		@Override
 		public String getInstanceInfo(ConsoleManager cm) {
 			try {
-				return host.exec(httpd(apache_version, host)+" -V", Host.ONE_MINUTE).output;
+				return host.execOut(httpd(apache_version, host)+" -V", AHost.ONE_MINUTE).output;
 			} catch ( Exception ex ) {
 				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "getInstanceInfo", ex, "");
 				return StringUtil.EMPTY;
@@ -334,7 +335,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 	}
 	
 	protected boolean installLinux(ConsoleManager cm, Host host) throws Exception {
-		return host.exec("emerge www-servers/apache", Host.ONE_MINUTE * 30).printOutputIfCrash(getClass(), cm).isSuccess();
+		return host.exec(cm, getClass(), "emerge www-servers/apache", Host.ONE_MINUTE * 30);
 	}
 	
 	@Override
@@ -361,7 +362,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			conf_dir += host.dirSeparator();
 		
 		StringBuilder sb = new StringBuilder(400);
-		sb.append("LoadModule php5_module \""+Host.toUnixPath(php_dll_path)+"\"\n"); 
+		sb.append("LoadModule php5_module \""+AHost.toUnixPath(php_dll_path)+"\"\n"); 
 		sb.append("PHPIniDir \""+conf_dir+"\"\n");
 		if (apache_version==EApacheVersion.APACHE_2_4)
 			sb.append("LoadModule authz_core_module modules/mod_authz_core.so\n");
@@ -417,9 +418,9 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			EApacheVersion apache_version = decideApacheVersion(cm, host, build, _apache_version);
 			
 			if (host.isWindows())
-				return host.exec(httpd(apache_version, host)+" -k start", Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).isSuccess();
+				return host.exec(cm, getClass(), httpd(apache_version, host)+" -k start", Host.ONE_MINUTE);
 			else
-				return host.exec("/etc/init.d/apache start", Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).isSuccess();
+				return host.exec(cm, getClass(), "/etc/init.d/apache start", Host.ONE_MINUTE);
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "start", ex, "");
 		}
@@ -432,9 +433,9 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			EApacheVersion apache_version = decideApacheVersion(cm, host, build, _apache_version);
 			
 			if (host.isWindows())
-				return host.exec(httpd(apache_version, host)+" -k stop", Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).isSuccess();
+				return host.exec(cm, getClass(), httpd(apache_version, host)+" -k stop", Host.ONE_MINUTE);
 			else
-				return host.exec("/etc/init.d/apache stop", Host.ONE_MINUTE).printOutputIfCrash(getClass(), cm).isSuccess();
+				return host.exec(cm, getClass(), "/etc/init.d/apache stop", Host.ONE_MINUTE);
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "stop", ex, "");
 		}

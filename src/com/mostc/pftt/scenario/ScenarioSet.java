@@ -10,7 +10,7 @@ import java.util.Map;
 
 import javax.annotation.Nullable;
 
-import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 
@@ -204,7 +204,7 @@ public class ScenarioSet extends ArrayList<Scenario> {
 	 * @param build
 	 * @return
 	 */
-	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build) {
+	public boolean isSupported(ConsoleManager cm, AHost host, PhpBuild build) {
 		for (Scenario s :this) {
 			if (!s.isSupported(cm, host, build))
 				return false;

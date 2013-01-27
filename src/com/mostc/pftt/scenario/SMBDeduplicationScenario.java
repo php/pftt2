@@ -1,6 +1,7 @@
 package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.ExecOutput;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.RemoteHost;
 import com.mostc.pftt.host.TempFileExecOutput;
@@ -45,7 +46,7 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 	 */
 	public SMBDeduplicationScenario(RemoteHost remote_host, String base_share_path, String base_share_name) {
 		super(remote_host, base_share_path, base_share_name);
-		this.volume = Host.drive(base_share_path);
+		this.volume = AHost.drive(base_share_path);
 	}
 	
 	@Override
@@ -62,7 +63,7 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 	 * @return
 	 */
 	@Override
-	public DeduplicatedSMBStorageDir createStorageDir(ConsoleManager cm, Host local_host) {
+	public DeduplicatedSMBStorageDir createStorageDir(ConsoleManager cm, AHost local_host) {
 		// check that its win8
 		if (!remote_host.isWin8OrLater()) {
 			cm.println(EPrintType.XSKIP_OPERATION, getName(), "Scenario can only be run against a Windows 8/2012+ host");
@@ -97,11 +98,11 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 		 * @param local_host
 		 */
 		@Override
-		public boolean notifyTestPackInstalled(ConsoleManager cm, Host local_host) {
+		public boolean notifyTestPackInstalled(ConsoleManager cm, AHost local_host) {
 			try {
 				// run deduplication job (on test-pack) -wait for completion
 				cm.println(EPrintType.IN_PROGRESS, getName(), "Running deduplication job... unc="+unc_path+" local="+local_path+" remote_file="+remote_path+" url="+url_path);
-				if (remote_host.powershell(getClass(), cm, "Start-Dedupjob -Volume "+volume+" -Type Optimization", Host.FOUR_HOURS).printOutputIfCrash(getClass(), cm).isSuccess()) {
+				if (remote_host.powershell(getClass(), cm, "Start-Dedupjob -Volume "+volume+" -Type Optimization", AHost.FOUR_HOURS).printOutputIfCrash(getClass(), cm).isSuccess()) {
 					
 					//
 					// log REPARSEPOINT QUERY to show if reparse point/deduplication was really setup
@@ -109,7 +110,7 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 						int count = 0;
 						// pick a few files/folders... doing the share itself won't find a reparsepoint
 						for ( String file : remote_host.list(remote_path) ) {
-							ExecOutput out = remote_host.exec("FSUTIL REPARSEPOINT QUERY "+remote_path+"\\"+file, Host.ONE_MINUTE);
+							ExecOutput out = remote_host.execOut("FSUTIL REPARSEPOINT QUERY "+remote_path+"\\"+file, AHost.ONE_MINUTE);
 							cm.println(EPrintType.CLUE, getName(), "REPARSEPOINT QUERY: "+remote_path+"\\"+file+"\n"+out.output);
 							
 							if (count++>3)
@@ -155,7 +156,7 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 		try {
 			// 
 			cm.println(EPrintType.IN_PROGRESS, getName(), "Starting to Install Deduplication on: "+remote_host);
-			TempFileExecOutput teo = remote_host.powershell(getClass(), cm, ps_sb, Host.ONE_MINUTE * 10);
+			TempFileExecOutput teo = remote_host.powershell(getClass(), cm, ps_sb, AHost.ONE_MINUTE * 10);
 			if (teo.printOutputIfCrash(getClass(), cm).isSuccess()) {
 				// don't delete tmp_file if it failed to help user see why
 				teo.cleanup(remote_host);

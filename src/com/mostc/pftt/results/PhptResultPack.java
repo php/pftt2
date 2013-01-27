@@ -3,10 +3,10 @@ package com.mostc.pftt.results;
 import java.io.File;
 import java.util.List;
 
-import com.mostc.pftt.host.Host;
+import com.github.mattficken.io.StringUtil;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.phpt.EBuildBranch;
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
-import com.mostc.pftt.util.StringUtil;
 
 /** Manages PHPT test results and telemetry
  * 
@@ -22,9 +22,9 @@ public abstract class PhptResultPack {
 		return new File(file, "tally.xml").exists();
 	}
 	//
-	protected final Host host;
+	protected final AHost host;
 	
-	public PhptResultPack(Host host) {
+	public PhptResultPack(AHost host) {
 		this.host = host;
 	}
 	

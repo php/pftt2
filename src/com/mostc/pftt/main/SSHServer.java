@@ -17,7 +17,7 @@ import org.apache.sshd.server.session.ServerSession;
 import org.apache.sshd.server.sftp.SftpSubsystem;
 import org.apache.sshd.server.shell.ProcessShellFactory;
 
-import com.mostc.pftt.util.StringUtil;
+import com.github.mattficken.io.StringUtil;
 
 // NOTE: modified NativeSshFile#getPhysicalName to check for [letter]:\ on Windows
 //       and NativeSshFile#<init>

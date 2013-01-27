@@ -1,5 +1,6 @@
 package com.mostc.pftt.scenario;
 
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.ESAPIType;
 import com.mostc.pftt.model.phpt.PhpBuild;
@@ -23,7 +24,7 @@ public abstract class AbstractINIScenario extends AbstractSerialScenario {
 	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		try {
 			ESAPIType sapi_type = AbstractSAPIScenario.getSAPIScenario(scenario_set).getSAPIType();
-			PhpIni ini = build.getDefaultPhpIni(host, sapi_type);
+			PhpIni ini = host instanceof AHost ? build.getDefaultPhpIni((AHost)host, sapi_type) : new PhpIni();
 			
 			if (setup(cm, host, build, ini)) {
 				build.setDefaultPhpIni(host, sapi_type, ini);
@@ -36,7 +37,7 @@ public abstract class AbstractINIScenario extends AbstractSerialScenario {
 		return false;
 	} // end public boolean setup
 	
-	/** this is called by {@link #setup(ConsoleManager, Host, PhpBuild, ScenarioSet)} and
+	/** this is called by {@link #setup(ConsoleManager, AHost, PhpBuild, ScenarioSet)} and
 	 * directly by AbstractPhptTestCaseRunner#createIniForTest for PHPT tests.
 	 * 
 	 * @param cm
@@ -47,4 +48,4 @@ public abstract class AbstractINIScenario extends AbstractSerialScenario {
 	 */
 	public abstract boolean setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini);
 	
-}
+} // end public abstract class AbstractINIScenario

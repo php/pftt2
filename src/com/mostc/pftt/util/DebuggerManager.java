@@ -1,6 +1,7 @@
 package com.mostc.pftt.util;
 
-import com.mostc.pftt.host.Host;
+import com.github.mattficken.io.StringUtil;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost.LocalExecHandle;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhptTestCase;
@@ -26,7 +27,7 @@ public abstract class DebuggerManager {
 	 * @param handle
 	 * @return
 	 */
-	public Debugger newDebugger(ConsoleManager cm, Host host, Object server_name, PhpBuild build, LocalExecHandle handle) {
+	public Debugger newDebugger(ConsoleManager cm, AHost host, Object server_name, PhpBuild build, LocalExecHandle handle) {
 		int pid = handle.getProcessID();
 		if (pid<1)
 			return null;
@@ -44,7 +45,7 @@ public abstract class DebuggerManager {
 	 * @param process_id
 	 * @return
 	 */
-	public abstract Debugger newDebugger(ConsoleManager cm, Host host, Object server_name, PhpBuild build, int process_id);
+	public abstract Debugger newDebugger(ConsoleManager cm, AHost host, Object server_name, PhpBuild build, int process_id);
 	
 	/** guesses the source pack and debug pack locations based on build, unless
 	 * -src_pack and -debug_pack console options are given 
@@ -54,7 +55,7 @@ public abstract class DebuggerManager {
 	 * @param build
 	 */
 	private PhpBuild found_src_debug_pack_build;
-	protected void ensureFindSourceAndDebugPack(ConsoleManager cm, Host host, PhpBuild build) {
+	protected void ensureFindSourceAndDebugPack(ConsoleManager cm, AHost host, PhpBuild build) {
 		if (build==found_src_debug_pack_build)
 			return;
 		this.found_src_debug_pack_build = build; // cache

@@ -1,6 +1,6 @@
 package com.mostc.pftt.scenario;
 
-import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.results.ConsoleManager;
 
 /** 
@@ -29,7 +29,7 @@ public abstract class AbstractFileSystemScenario extends AbstractSerialScenario 
 		 * @param host
 		 * @return
 		 */
-		boolean notifyTestPackInstalled(ConsoleManager cm, Host local_host);
+		boolean notifyTestPackInstalled(ConsoleManager cm, AHost local_host);
 		
 		/** returns local path to access storage directory.
 		 * 
@@ -38,7 +38,7 @@ public abstract class AbstractFileSystemScenario extends AbstractSerialScenario 
 		 * @param local_host
 		 * @return
 		 */
-		String getLocalPath(Host local_host);
+		String getLocalPath(AHost local_host);
 		
 		/** returns TRUE if storage dir deleted
 		 * 
@@ -46,10 +46,10 @@ public abstract class AbstractFileSystemScenario extends AbstractSerialScenario 
 		 * @param host
 		 * @return
 		 */
-		boolean delete(ConsoleManager cm, Host local_host);
+		boolean delete(ConsoleManager cm, AHost local_host);
 	} // end public interface ITestPackStorageDir
 	
-	public abstract ITestPackStorageDir createStorageDir(ConsoleManager cm, Host host);
+	public abstract ITestPackStorageDir createStorageDir(ConsoleManager cm, AHost host);
 	
 	/** checks if -phpt-in-place console option can be ignored or not
 	 * 

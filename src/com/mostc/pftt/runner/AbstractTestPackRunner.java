@@ -1,15 +1,15 @@
 package com.mostc.pftt.runner;
 
-import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 public abstract class AbstractTestPackRunner {
 	protected final PhpBuild build;
-	protected final Host host;
+	protected final AHost host;
 	protected final ScenarioSet scenario_set;
 	
-	public AbstractTestPackRunner(ScenarioSet scenario_set, PhpBuild build, Host host) {
+	public AbstractTestPackRunner(ScenarioSet scenario_set, PhpBuild build, AHost host) {
 		this.scenario_set = scenario_set;
 		this.build = build;
 		this.host = host;

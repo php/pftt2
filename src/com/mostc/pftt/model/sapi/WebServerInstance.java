@@ -7,9 +7,9 @@ import java.util.Map;
 
 import javax.annotation.concurrent.ThreadSafe;
 
+import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.model.phpt.PhptTestCase;
-import com.mostc.pftt.util.StringUtil;
 
 /** an instance of a web server
  * 

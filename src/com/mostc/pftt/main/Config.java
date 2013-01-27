@@ -12,7 +12,7 @@ import org.codehaus.groovy.control.CompilationFailedException;
 import org.columba.ristretto.smtp.SMTPProtocol;
 
 import com.github.mattficken.io.IOUtil;
-import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.scenario.ApplicationScenario;
@@ -62,17 +62,17 @@ public final class Config {
 	public static final String CONFIGURE_SMTP_METHOD = "configure_smtp";
 	public static final String CONFIGURE_FTP_CLIENT_METHOD = "configure_ftp_client";
 	//
-	protected final LinkedList<Host> hosts;
+	protected final LinkedList<AHost> hosts;
 	protected final LinkedList<ScenarioSet> scenario_sets;
 	protected GroovyObject configure_smtp_method, configure_ftp_client_method;
 	protected String configure_smtp_file, configure_ftp_client_file;
 	
 	protected Config() {
-		hosts = new LinkedList<Host>();
+		hosts = new LinkedList<AHost>();
 		scenario_sets = new LinkedList<ScenarioSet>();
 	}
 	
-	public List<Host> getHosts() {
+	public List<AHost> getHosts() {
 		return hosts;
 	}
 	
@@ -181,7 +181,7 @@ public final class Config {
 		// import all standard Scenarios and Host types
 		sb.append("import ");sb.append(ApplicationScenario.class.getPackage().getName());sb.append(".*;\n");
 		sb.append("import ");sb.append(Scenario.class.getPackage().getName());sb.append(".*;\n");
-		sb.append("import ");sb.append(Host.class.getPackage().getName());sb.append(".*;\n");
+		sb.append("import ");sb.append(AHost.class.getPackage().getName());sb.append(".*;\n");
 		sb.append("import ");sb.append(SMTPProtocol.class.getName());sb.append(";\n");
 		sb.append("import ");sb.append(FTPClient.class.getName());sb.append(";\n");
 		sb.append(code);
@@ -221,9 +221,9 @@ public final class Config {
 			ret = go.invokeMethod(HOSTS_METHOD, null);
 			if (ret instanceof List) {
 				for (Object o : (List<?>)ret) {
-					if (o instanceof Host) {
+					if (o instanceof AHost) {
 						if (!config.hosts.contains(o))
-							config.hosts.add((Host)o);
+							config.hosts.add((AHost)o);
 					} else {
 						cm.println(EPrintType.OPERATION_FAILED_CONTINUING, "Config", "List returned by hosts() must only contain Host objects, not: "+o.getClass()+" see: "+file_name);
 					}

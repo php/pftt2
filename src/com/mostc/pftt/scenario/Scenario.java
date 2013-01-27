@@ -63,7 +63,7 @@ public abstract class Scenario {
 	}
 	
 	public boolean ignoreForShortName() {
-		return false;
+		return isPlaceholder();
 	}
 
 	public boolean hasENV() {
@@ -124,7 +124,7 @@ public abstract class Scenario {
 	 */
 	public void serialize(XmlSerializer serial) throws IllegalArgumentException, IllegalStateException, IOException {
 		serial.startTag(null, "scenario");
-		serial.attribute(null, "name", getClass().getSimpleName());
+		serial.attribute(null, "name", Host.toContext(getClass()));
 		serial.endTag(null, "scenario");
 	}
 	

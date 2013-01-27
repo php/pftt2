@@ -3,12 +3,14 @@ package com.mostc.pftt.model.sapi;
 import java.util.Map;
 
 import javax.annotation.concurrent.ThreadSafe;
+
+import com.github.mattficken.io.StringUtil;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
-import com.mostc.pftt.util.StringUtil;
 
 /** manages local instances of PHP's builtin web server
  * 
@@ -28,16 +30,16 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 	}
 	
 	@Override
-	protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini, Map<String, String> env, String docroot, String listen_address, int port) {
+	protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String, String> env, String docroot, String listen_address, int port) {
 		// run `php.exe -S listen_address:NNNN` in docroot
 		return new BuiltinWebServerInstance(this, host, build, build.getPhpExe()+" -S "+listen_address+":"+port+" "+(ini==null?"":ini.toCliArgString(host)), ini, env, listen_address, port);
 	}
 	
 	public static class BuiltinWebServerInstance extends ManagedProcessWebServerInstance {
 		protected final PhpBuild build;
-		protected final Host host;
+		protected final AHost host;
 		
-		public BuiltinWebServerInstance(BuiltinWebServerManager ws_mgr, Host host, PhpBuild build, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port) {
+		public BuiltinWebServerInstance(BuiltinWebServerManager ws_mgr, AHost host, PhpBuild build, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port) {
 			super(ws_mgr, cmd, ini, env, hostname, port);
 			this.host = host;
 			this.build = build;

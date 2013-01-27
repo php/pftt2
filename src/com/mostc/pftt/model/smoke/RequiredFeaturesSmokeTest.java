@@ -1,6 +1,6 @@
 package com.mostc.pftt.model.smoke;
 
-import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
@@ -1196,7 +1196,7 @@ public class RequiredFeaturesSmokeTest extends SmokeTest {
 		nts_parts = required_nts_features_str.split("%s");
 	} // end static
 	
-	public ESmokeTestStatus test(PhpBuild build, ConsoleManager cm, Host host) {
+	public ESmokeTestStatus test(PhpBuild build, ConsoleManager cm, AHost host) {
 		if (!host.isWindows())
 			return ESmokeTestStatus.XSKIP;
 		

@@ -13,7 +13,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import com.mostc.pftt.host.Host;
+import com.github.mattficken.io.StringUtil;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.SSHHost;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhptTestCase;
@@ -33,7 +34,6 @@ import com.mostc.pftt.scenario.AbstractWebServerScenario;
 import com.mostc.pftt.scenario.SMBDeduplicationScenario;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
-import com.mostc.pftt.util.StringUtil;
 
 /** Runs PHPTs from a given PhptTestPack.
  * 
@@ -80,7 +80,7 @@ public class LocalPhptTestPackRunner extends PhptTestPackRunner {
 		}
 	}
 	
-	public LocalPhptTestPackRunner(ConsoleManager cm, IPhptTestResultReceiver twriter, ScenarioSet scenario_set, PhpBuild build, Host host) {
+	public LocalPhptTestPackRunner(ConsoleManager cm, IPhptTestResultReceiver twriter, ScenarioSet scenario_set, PhpBuild build, AHost host) {
 		super(scenario_set, build, host);
 		this.cm = cm;
 		this.twriter = twriter;
@@ -109,8 +109,8 @@ public class LocalPhptTestPackRunner extends PhptTestPackRunner {
 		file_scenario = AbstractFileSystemScenario.getFileSystemScenario(scenario_set);
 		
 		// TODO
-		SSHHost remote_host = new SSHHost("10.200.41.219", "administrator", "password01!");
-		file_scenario = new SMBDeduplicationScenario(remote_host, "F:");
+		//SSHHost remote_host = new SSHHost("10.200.41.219", "administrator", "password01!");
+		//file_scenario = new SMBDeduplicationScenario(remote_host, "F:");
 		
 		// ensure all scenarios are implemented
 		if (!scenario_set.isImplemented()) {
@@ -141,7 +141,7 @@ public class LocalPhptTestPackRunner extends PhptTestPackRunner {
 			long millis = System.currentTimeMillis();
 			for ( int i=0 ; i < 655535 ; i++ ) {
 				// try to include version, branch info etc... from name of test-pack
-				test_pack_dir = local_path + "/PFTT-" + Host.basename(src_test_pack.getSourceDirectory()) + (i==0?"":"-" + millis);
+				test_pack_dir = local_path + "/PFTT-" + AHost.basename(src_test_pack.getSourceDirectory()) + (i==0?"":"-" + millis);
 				if (!host.exists(test_pack_dir))
 					break;
 				millis++;
@@ -225,10 +225,12 @@ public class LocalPhptTestPackRunner extends PhptTestPackRunner {
 			// if not -dont-cleanup-test-pack and if successful, delete test-pack (otherwise leave it behind for user to analyze the internal exception(s))
 			if (!cm.isDontCleanupTestPack() && !active_test_pack.getDirectory().equals(src_test_pack.getSourceDirectory())) {
 				cm.println(EPrintType.IN_PROGRESS, getClass(), "deleting/cleaning-up active test-pack: "+active_test_pack);
+				
+				// delete the test pack (storage dir assumes its deleted here)
 				host.delete(active_test_pack.getDirectory());
 				
 				// cleanup, disconnect storage, etc...
-				storage_dir.delete(cm, host);
+				storage_dir.delete(cm, host); 
 			}
 			//
 		} finally {

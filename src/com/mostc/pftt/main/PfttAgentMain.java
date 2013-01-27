@@ -2,6 +2,7 @@ package com.mostc.pftt.main;
 
 import java.util.ArrayList;
 
+import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.host.PSCAgentServer;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhptActiveTestPack;
@@ -71,7 +72,18 @@ public class PfttAgentMain extends PSCAgentServer {
 	
 	public static void main(String[] args) throws Exception {
 		PfttAgentMain agent = new PfttAgentMain();
+		if (args.length>0) {
+			if (args[0].equals("simulate")) {
+				//
+				agent.simulate();
+			} else if (args[0].equals("generate")) {
+				//
+				agent.generateSimulation(new LocalHost(), ScenarioSet.getDefaultScenarioSets().get(0));
+				
+				System.exit(0);
+			}
+		}
 		agent.run();
-	}
+	} // end public static void main
 	
 } // end public class PfttAgentMain

@@ -27,11 +27,11 @@ import javax.swing.event.CaretListener;
 import javax.swing.table.DefaultTableModel;
 
 import com.github.mattficken.io.RestartableInputStream;
+import com.github.mattficken.io.StringUtil;
 import com.github.mattficken.io.ui.CharsetDebuggerPanel;
 import com.mostc.pftt.model.phpt.PhptTestCase;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.util.ErrorUtil;
-import com.mostc.pftt.util.StringUtil;
 
 import se.datadosen.component.RiverLayout;
 

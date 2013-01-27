@@ -4,14 +4,15 @@ import java.util.Map;
 
 import javax.annotation.concurrent.ThreadSafe;
 
+import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.ExecOutput;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.util.ErrorUtil;
-import com.mostc.pftt.util.StringUtil;
 
 /** manages and monitors IIS and IIS express web servers
  * 
@@ -37,22 +38,18 @@ public class IISManager extends WebServerManager {
 		return host.getSystemRoot()+"\\System32\\inetsrv\\appcmd.exe";
 	}
 	
-	protected ExecOutput appcmd(Host host, String args) throws Exception {
+	protected ExecOutput appcmd(AHost host, String args) throws Exception {
 		String cmd = appcmd_path(host)+" "+args;
-		ExecOutput eo = host.execElevated(cmd, Host.ONE_MINUTE);
+		ExecOutput eo = host.execElevatedOut(cmd, AHost.ONE_MINUTE);
 		//System.err.println(cmd);
 		//System.err.println(eo.output);
 		return eo;
 	}
 	
-	protected ExecOutput do_start(Host host) throws Exception {
-		return host.execElevated("net start w3svc", Host.ONE_MINUTE*2);
-	}
-	
 	@Override
 	public boolean start(ConsoleManager cm, Host host, PhpBuild build) {
 		try {
-			return do_start(host).printOutputIfCrash(getClass(), cm).isSuccess();
+			return host.execElevated(cm, getClass(), "net start w3svc", AHost.ONE_MINUTE*2);
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "start", ex, "");
 			return false;
@@ -62,7 +59,7 @@ public class IISManager extends WebServerManager {
 	@Override
 	public boolean stop(ConsoleManager cm, Host host, PhpBuild build) {
 		try {
-			return host.execElevated("net stop w3svc", Host.ONE_MINUTE*2).printOutputIfCrash(getClass(), cm).isSuccess();
+			return host.execElevated(cm, getClass(), "net stop w3svc", AHost.ONE_MINUTE*2);
 		} catch ( Exception ex ) {
 			if (cm==null)
 				ex.printStackTrace();
@@ -72,11 +69,11 @@ public class IISManager extends WebServerManager {
 		}
 	}
 	
-	public ExecOutput configure(ConsoleManager cm, Host host, PhpBuild build, String doc_root, PhpIni ini, Map<String,String> env, String listen_address, int listen_port) {
+	public ExecOutput configure(ConsoleManager cm, AHost host, PhpBuild build, String doc_root, PhpIni ini, Map<String,String> env, String listen_address, int listen_port) {
 		return configure(cm, host, build, DEFAULT_SITE_NAME, DEFAULT_APP_NAME, doc_root, ini, env, listen_address, listen_port);
 	}
 	
-	public ExecOutput configure(ConsoleManager cm, Host host, PhpBuild build, String site_name, String app_name, String doc_root, PhpIni ini, Map<String,String> env, String listen_address, int listen_port) {
+	public ExecOutput configure(ConsoleManager cm, AHost host, PhpBuild build, String site_name, String app_name, String doc_root, PhpIni ini, Map<String,String> env, String listen_address, int listen_port) {
 		// clear previous configuration from previous interrupted runs
 		undoConfigure(cm, host);
 		
@@ -127,7 +124,7 @@ public class IISManager extends WebServerManager {
 		return null;
 	} // end public ExecOutput configure
 	
-	public boolean undoConfigure(ConsoleManager cm, Host host) {
+	public boolean undoConfigure(ConsoleManager cm, AHost host) {
 		String c_section = "section:system.webServer";
 		
 		try {
@@ -157,14 +154,14 @@ public class IISManager extends WebServerManager {
 	
 	WebServerInstance wsi;
 	@Override
-	public synchronized WebServerInstance getWebServerInstance(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, WebServerInstance assigned, Object server_name) {
+	public synchronized WebServerInstance getWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, WebServerInstance assigned, Object server_name) {
 		if (wsi==null)
 			wsi = super.getWebServerInstance(cm, host, build, ini, env, docroot, assigned, server_name);
 		return wsi;
 	}
 	
 	@Override
-	protected WebServerInstance createWebServerInstance(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini, Map<String,String> env, String doc_root, Object server_name) {
+	protected WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, String doc_root, Object server_name) {
 		final String listen_address = host.getLocalhostListenAddress();
 		final int listen_port = 80;
 		
@@ -173,7 +170,7 @@ public class IISManager extends WebServerManager {
 		if (eo.isSuccess()) {
 			String err_str = "";
 			try {
-				eo = do_start(host);
+				eo = host.execElevatedOut("net start w3svc", AHost.ONE_MINUTE*2);
 				if (eo.isSuccess()) {
 					return new IISWebServerInstance(this, StringUtil.EMPTY_ARRAY, ini, env, host, build, listen_address, listen_port);
 				} else {
@@ -188,13 +185,13 @@ public class IISManager extends WebServerManager {
 	}
 	
 	public class IISWebServerInstance extends WebServerInstance {
-		protected final Host host;
+		protected final AHost host;
 		protected final PhpBuild build;
 		protected final String hostname;
 		protected final int port;
 		protected boolean running = true;
 
-		public IISWebServerInstance(WebServerManager ws_mgr, String[] cmd_array, PhpIni ini, Map<String,String> env, Host host, PhpBuild build, String hostname, int port) {
+		public IISWebServerInstance(WebServerManager ws_mgr, String[] cmd_array, PhpIni ini, Map<String,String> env, AHost host, PhpBuild build, String hostname, int port) {
 			super(ws_mgr, cmd_array, ini, env);
 			this.host = host;
 			this.build = build;
@@ -241,7 +238,7 @@ public class IISManager extends WebServerManager {
 		
 		protected boolean checkIsRunning() {
 			try {
-				String out = host.exec("TASKLIST /NH /FO CSV /FI \"SERVICES eq w3svc\"", Host.ONE_MINUTE).output;
+				String out = host.execOut("TASKLIST /NH /FO CSV /FI \"SERVICES eq w3svc\"", AHost.ONE_MINUTE).output;
 				return StringUtil.isNotEmpty(out) && !out.contains("No tasks");
 			} catch ( Exception ex ) { 
 				ex.printStackTrace();
@@ -287,7 +284,7 @@ public class IISManager extends WebServerManager {
 			}
 			
 			try {
-				if (host.execElevated("pkgmgr /iu:IIS-WebServerRole;IIS-WebServer;IIS-StaticContent;IIS-WebServerManagementTools;IIS-ManagementConsole;IIS-CGI", Host.ONE_HOUR).printOutputIfCrash(getClass(), cm).isSuccess()) {
+				if (host.execElevated(cm, getClass(), "pkgmgr /iu:IIS-WebServerRole;IIS-WebServer;IIS-StaticContent;IIS-WebServerManagementTools;IIS-ManagementConsole;IIS-CGI", AHost.ONE_HOUR)) {
 					cm.println(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "IIS installed");
 					
 					return true;

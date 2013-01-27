@@ -1,6 +1,6 @@
 package com.mostc.pftt.scenario;
 
-import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.RemoteHost;
 import com.mostc.pftt.host.TempFileExecOutput;
 import com.mostc.pftt.results.ConsoleManager;
@@ -25,7 +25,7 @@ public class SMBCAScenario extends AbstractSMBScenario {
 	
 	@Override
 	protected boolean createShareWindows(SMBStorageDir dir, ConsoleManager cm) throws Exception {
-		TempFileExecOutput teo = remote_host.powershell(getClass(), cm, "New-SmbShare -Name "+dir.share_name+" -Path "+dir.remote_path+" -Scope "+remote_host.getHostname()+" -FullControl "+remote_host.getHostname()+"\\"+remote_host.getUsername(), Host.ONE_MINUTE);
+		TempFileExecOutput teo = remote_host.powershell(getClass(), cm, "New-SmbShare -Name "+dir.share_name+" -Path "+dir.remote_path+" -Scope "+remote_host.getHostname()+" -FullControl "+remote_host.getHostname()+"\\"+remote_host.getUsername(), AHost.ONE_MINUTE);
 		teo.printOutputIfCrash(getClass(), cm);
 		return teo.cleanupIfSuccess(remote_host);
 	}

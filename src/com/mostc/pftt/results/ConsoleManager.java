@@ -9,6 +9,8 @@ public interface ConsoleManager {
 	public boolean isForce();
 	public boolean isWinDebug();
 	public boolean isPfttDebug();
+	public boolean isNoResultFileForPassSkipXSkip();
+	
 	public void restartingAndRetryingTest(PhptTestCase test_case);
 	public void restartingAndRetryingTest(String test_case_name);
 	public void println(EPrintType type, String ctx_str, String string);

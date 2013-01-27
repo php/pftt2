@@ -1,6 +1,6 @@
 package com.mostc.pftt.model.performance;
 
-import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.AHost;
 
 abstract class WCATPerformanceTest extends PerformanceTest {
 
@@ -12,7 +12,7 @@ abstract class WCATPerformanceTest extends PerformanceTest {
 		
 	}
 	
-	void prepareWCAT(Host host) {
+	void prepareWCAT(AHost host) {
 		set_file = host.mktempname(getClass(), ".wcat");
 		
 		scenario_file = host.mktempname(getClass(), ".wcat");
@@ -28,7 +28,7 @@ abstract class WCATPerformanceTest extends PerformanceTest {
 		
 	}
 	
-	void runWCAT(Host host) {
+	void runWCAT(AHost host) {
 /*
 // hostnames to run wcat clients on
 // $CLIENTS = "php-load01,php-load02"

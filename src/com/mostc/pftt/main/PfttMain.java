@@ -19,8 +19,9 @@ import java.util.List;
 import org.codehaus.groovy.tools.shell.Groovysh;
 import org.codehaus.groovy.tools.shell.IO;
 
+import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.ExecOutput;
-import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.host.SSHHost;
 import com.mostc.pftt.model.app.PhpUnitAppTestPack;
@@ -53,7 +54,6 @@ import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.AbstractSMBScenario.SMBStorageDir;
 import com.mostc.pftt.util.DownloadUtil;
 import com.mostc.pftt.util.HostEnvUtil;
-import com.mostc.pftt.util.StringUtil;
 import com.mostc.pftt.util.WinDebugManager;
 import com.mostc.pftt.util.WindowsSnapshotDownloadUtil;
 import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
@@ -71,7 +71,7 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //           -then discard if PASS, SKIP or XSKIP
 //         -would still save list of tests for each status
 public class PfttMain {
-	protected Host host;
+	protected AHost host;
 	
 	public PfttMain() {
 		host = new LocalHost();
@@ -80,8 +80,8 @@ public class PfttMain {
 	@SuppressWarnings("unused")
 	protected File telem_dir() {
 		File file;
-		if (Host.DEV > 0) {
-			file = new File(host.getPhpSdkDir(), "Dev-"+Host.DEV);
+		if (AHost.DEV > 0) {
+			file = new File(host.getPhpSdkDir(), "Dev-"+AHost.DEV);
 		} else {
 			file = new File(host.getPhpSdkDir());
 		}
@@ -287,7 +287,7 @@ public class PfttMain {
 		new RequiredFeaturesSmokeTest();
 	}
 	
-	protected static void cmd_aut(ConsoleManager cm, PfttMain rt, Host host, PhpBuild build, Collection<ScenarioSet> scenario_sets) throws IllegalStateException, IOException, Exception {
+	protected static void cmd_aut(ConsoleManager cm, PfttMain rt, AHost host, PhpBuild build, Collection<ScenarioSet> scenario_sets) throws IllegalStateException, IOException, Exception {
 		/*
 		new PhpUnitTestPackRunner(PhpUnitAppTestPack.load("/"), scenario_sets.iterator().next(), build, host);
 		
@@ -376,11 +376,11 @@ public class PfttMain {
 		System.err.println("Error: Not implemented");		
 	}
  
-	protected static void cmd_release_get(ConsoleManager cm, boolean force, Host host, URL url) {
+	protected static void cmd_release_get(ConsoleManager cm, boolean force, AHost host, URL url) {
 		download_release_and_decompress(cm, force, "build", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, url), url);
 	}
 	
-	protected static void cmd_release_get_previous(ConsoleManager cm, boolean force, Host host, EBuildBranch branch, EBuildType build_type) {
+	protected static void cmd_release_get_previous(ConsoleManager cm, boolean force, AHost host, EBuildBranch branch, EBuildType build_type) {
 		System.out.println("PFTT: release_get: finding previous "+build_type+" build of "+branch+"...");
 		FindBuildTestPackPair find_pair = WindowsSnapshotDownloadUtil.findPreviousPair(build_type, WindowsSnapshotDownloadUtil.getDownloadURL(branch));
 		if (find_pair==null) {
@@ -392,7 +392,7 @@ public class PfttMain {
 		download_release_and_decompress(cm, force, "debug-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getDebug_pack()), find_pair.getDebug_pack());
 	}
 	
-	protected static void cmd_release_get_newest(ConsoleManager cm, boolean force, Host host, EBuildBranch branch, EBuildType build_type) {
+	protected static void cmd_release_get_newest(ConsoleManager cm, boolean force, AHost host, EBuildBranch branch, EBuildType build_type) {
 		System.out.println("PFTT: release_get: finding newest "+build_type+" build of "+branch+"...");
 		FindBuildTestPackPair find_pair = WindowsSnapshotDownloadUtil.findNewestPair(build_type, WindowsSnapshotDownloadUtil.getDownloadURL(branch));
 		if (find_pair==null) {
@@ -404,7 +404,7 @@ public class PfttMain {
 		download_release_and_decompress(cm, force, "debug-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getDebug_pack()), find_pair.getDebug_pack());
 	}
 
-	protected static void cmd_release_get_revision(ConsoleManager cm, boolean force, Host host, EBuildBranch branch, EBuildType build_type, String revision) {
+	protected static void cmd_release_get_revision(ConsoleManager cm, boolean force, AHost host, EBuildBranch branch, EBuildType build_type, String revision) {
 		System.out.println("PFTT: release_get: finding "+build_type+" build in "+revision+" of "+branch+"...");
 		FindBuildTestPackPair find_pair = WindowsSnapshotDownloadUtil.getDownloadURL(branch, build_type, revision);
 		if (find_pair==null) {
@@ -430,7 +430,7 @@ public class PfttMain {
 		}
 	}
 	
-	protected static void download_release_and_decompress(ConsoleManager cm, boolean force, String download_type, Host host, File local_dir, URL url) {
+	protected static void download_release_and_decompress(ConsoleManager cm, boolean force, String download_type, AHost host, File local_dir, URL url) {
 		if (!force && local_dir.exists()) {
 			if (!confirm("Overwrite existing folder "+local_dir+"?"))
 				return;
@@ -512,7 +512,7 @@ public class PfttMain {
 		System.err.println("Error: Not implemented");				
 	}
 	
-	protected static void cmd_upgrade(ConsoleManager cm, Host host) {
+	protected static void cmd_upgrade(ConsoleManager cm, AHost host) {
 		if (!host.hasCmd("git")) {
 			cm.println(EPrintType.CANT_CONTINUE, "upgrade", "please install 'git' first");
 			return;
@@ -520,7 +520,7 @@ public class PfttMain {
 		
 		// execute 'git pull' in c:\php-sdk\PFTT\current
 		try {
-			host.execElevated("git pull", Host.FOUR_HOURS, host.getPfttDir()).printOutputIfCrash(PfttMain.class.getSimpleName(), cm);
+			host.execElevated(cm, PfttMain.class, "git pull", AHost.FOUR_HOURS, host.getPfttDir());
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, PfttMain.class, "cmd_upgrade", ex, "error upgrading PFTT");
 		}
@@ -528,7 +528,7 @@ public class PfttMain {
 	
 	/* ------------------------------- */
 	
-	protected static PhpBuild newBuild(ConsoleManager cm, Host host, String path) {
+	protected static PhpBuild newBuild(ConsoleManager cm, AHost host, String path) {
 		PhpBuild build = new PhpBuild(path);
 		if (build.open(cm, host))
 			return build;
@@ -539,7 +539,7 @@ public class PfttMain {
 			return null; // build not found/readable error
 	}
 	
-	protected static PhptSourceTestPack newTestPack(ConsoleManager cm, Host host, String path) {
+	protected static PhptSourceTestPack newTestPack(ConsoleManager cm, AHost host, String path) {
 		PhptSourceTestPack test_pack = new PhptSourceTestPack(path);
 		if (test_pack.open(cm, host))
 			return test_pack;
@@ -580,7 +580,7 @@ public class PfttMain {
 		int args_i = 0;
 		
 		Config config = null;
-		boolean is_uac = false, windebug = false, pftt_debug = false, show_gui = false, force = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false;
+		boolean is_uac = false, windebug = false, no_result_file_for_pass_xskip_skip = false, pftt_debug = false, show_gui = false, force = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false;
 		String source_pack = null;
 		PhpDebugPack debug_pack = null;
 		LinkedList<File> config_files = new LinkedList<File>();
@@ -679,6 +679,7 @@ public class PfttMain {
 				dont_cleanup_test_pack = false;
 				phpt_not_in_place = true;
 				is_uac = true;
+				no_result_file_for_pass_xskip_skip = true;
 			} else if (args[args_i].equals("-stress_each")) {
 				stress_each = Integer.parseInt(args[args_i++]);
 			} else if (args[args_i].equals("-stress_all")) {
@@ -727,7 +728,7 @@ public class PfttMain {
 			System.err.println("PFTT: not implemented: stress_each="+stress_each+" stress_all="+stress_all+" ignored");
 		}
 		
-		LocalConsoleManager cm = new LocalConsoleManager(source_pack, debug_pack, force, windebug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug);
+		LocalConsoleManager cm = new LocalConsoleManager(source_pack, debug_pack, force, windebug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug, no_result_file_for_pass_xskip_skip);
 		
 		//
 		/*

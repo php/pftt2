@@ -31,8 +31,8 @@ import com.github.mattficken.io.CharsetDeciderDecoder;
 import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.MultiCharsetByLineReader;
 import com.github.mattficken.io.NoCharsetByLineReader;
+import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
-import com.mostc.pftt.util.StringUtil;
 import com.sshtools.j2ssh.SftpClient;
 import com.sshtools.j2ssh.SshClient;
 import com.sshtools.j2ssh.authentication.AuthenticationProtocolState;
@@ -82,8 +82,6 @@ import com.sshtools.j2ssh.transport.publickey.SshPublicKey;
  * 
  */
 
-// TODO 7zip compress test-pack and upload
-//     -don't include skip or xskip tests (save bandwidth/time)
 public class SSHHost extends RemoteHost {
 	private static final Timer timer = new Timer();
 	protected String address, hostname;
@@ -218,7 +216,7 @@ public class SSHHost extends RemoteHost {
 	}
 
 	@Override
-	public void delete(String path) {
+	public boolean delete(String path) {
 		path = normalizePath(path);
 		
 		try {
@@ -235,10 +233,12 @@ public class SSHHost extends RemoteHost {
 				ensureSftpOpen();
 				sftp.rm(path);
 			}
+			return true;
 		} catch ( Exception ex ) {
 			ex.printStackTrace();
 		}
-	} // end public void delete
+		return false;
+	} // end public boolean delete
 
 	@Override
 	public boolean exists(String path) {
@@ -254,21 +254,26 @@ public class SSHHost extends RemoteHost {
 	}
 	
 	@Override
-	public void copy(String src, String dst) throws Exception {
+	public boolean copy(String src, String dst) throws Exception {
 		src = normalizePath(src);
 		dst = normalizePath(dst);
 		if (isWindows()) {
 			src = toWindowsPath(src);
 			dst = toWindowsPath(dst);
-			if (isDirectory(src))
+			if (isDirectory(src)) {
 				// ensure xcopy sees destination is supposed to be a directory, or xcopy will ask/block forever
 				dst += "\\"; 
-			exec("xcopy /Q /Y /S /E \""+src+"\" \""+dst+"\"", FOUR_HOURS);
+			
+				exec("xcopy /Q /Y /C /I /E /G /R /H \""+src+"\" \""+dst+"\"", FOUR_HOURS);
+			} else {
+				exec("xcopy /Q /Y /C /E /G /R /H \""+src+"\" \""+dst+"\"", FOUR_HOURS);
+			}
 		} else {
 			src = toUnixPath(src);
 			dst = toUnixPath(dst);
 			exec("cp \""+src+"\" \""+dst+"\"", FOUR_HOURS);
 		}
+		return true;
 	}
 
 	@Override
@@ -320,8 +325,8 @@ public class SSHHost extends RemoteHost {
 	}
 
 	@Override
-	public void saveTextFile(String filename, String text) throws IOException {
-		saveTextFile(filename, text, null);
+	public boolean saveTextFile(String filename, String text) throws IOException {
+		return saveTextFile(filename, text, null);
 	}
 	
 	protected SessionChannelClient do_exec(String cmd, Map<String, String> env, String chdir, byte[] stdin_post, OutputStream out) throws IOException, IllegalStateException {
@@ -406,7 +411,7 @@ public class SSHHost extends RemoteHost {
 	} // end protected static class SSHExecHandle
 	
 	@Override
-	public ExecOutput exec(final String cmd, int timeout, Map<String, String> env, byte[] stdin_post, Charset charset, String chdir, final TestPackRunnerThread thread, int thread_slow_sec) throws Exception {
+	public ExecOutput execOut(final String cmd, int timeout, Map<String, String> env, byte[] stdin_post, Charset charset, String chdir, final TestPackRunnerThread thread, int thread_slow_sec) throws Exception {
 		final ByteArrayIOStream out = new ByteArrayIOStream(1024);
 		
 		final ExecOutput eo = new ExecOutput();
@@ -467,16 +472,16 @@ public class SSHHost extends RemoteHost {
 		//
 		
 		return eo;
-	} // end public ExecOutput exec
+	} // end public ExecOutput execOut
 
 	@Override
-	public ExecOutput exec(String cmd, int timeout, String chdir) throws Exception {
-		return exec(cmd, timeout, null, null, chdir);
+	public ExecOutput execOut(String cmd, int timeout, String chdir) throws Exception {
+		return execOut(cmd, timeout, null, null, chdir);
 	}
 
 	@Override
-	public ExecOutput exec(String cmd, int timeout, Map<String, String> env, Charset charset, String chdir) throws Exception {
-		return exec(cmd, timeout, env, null, charset, chdir);
+	public ExecOutput execOut(String cmd, int timeout, Map<String, String> env, Charset charset, String chdir) throws Exception {
+		return execOut(cmd, timeout, env, null, charset, chdir);
 	}
 
 	@Override
@@ -488,9 +493,9 @@ public class SSHHost extends RemoteHost {
 	public String getEnvValue(String name) {
 		try {
 			if (isWindows())
-				return StringUtil.chomp(cmd("ECHO %"+name+"%", ONE_MINUTE).output);
+				return StringUtil.chomp(cmdOut("ECHO %"+name+"%", ONE_MINUTE).output);
 			else
-				return exec("echo $"+name, ONE_MINUTE).output;
+				return execOut("echo $"+name, ONE_MINUTE).output;
 		} catch ( Exception ex ) {
 			ex.printStackTrace();
 		}
@@ -515,15 +520,17 @@ public class SSHHost extends RemoteHost {
 	}
 
 	@Override
-	public void mkdirs(String path) throws IllegalStateException, IOException {
+	public boolean mkdirs(String path) throws IllegalStateException, IOException {
 		ensureSftpOpen();
 		sftp.mkdirs(normalizePath(path));
+		return true;
 	}
 
 	@Override
-	public void download(String src, String dst) throws IllegalStateException, IOException, Exception {
+	public boolean download(String src, String dst) throws IllegalStateException, IOException, Exception {
 		ensureSftpOpen();
 		sftp.get(normalizePath(src), new BufferedOutputStream(new FileOutputStream(dst)));
+		return true;
 	}
 	
 	protected void do_upload(String base, File[] files, String dst) throws IOException {
@@ -539,7 +546,7 @@ public class SSHHost extends RemoteHost {
 	}
 
 	@Override
-	public void upload(String src, String dst) throws IllegalStateException, IOException {
+	public boolean upload(String src, String dst) throws IllegalStateException, IOException {
 		ensureSftpOpen();
 		dst = normalizePath(dst);
 		
@@ -550,11 +557,12 @@ public class SSHHost extends RemoteHost {
 			// uploading single file
 			sftp.put(fsrc.getAbsolutePath(), dst);
 		}
+		return true;
 	}
 
 	@Override
-	public ExecOutput exec(String cmd, int timeout, Map<String, String> env, byte[] stdin_post, Charset charset, String chdir) throws Exception {
-		return exec(cmd, timeout, env, stdin_post, charset, chdir, null, FOUR_HOURS);
+	public ExecOutput execOut(String cmd, int timeout, Map<String, String> env, byte[] stdin_post, Charset charset, String chdir) throws Exception {
+		return execOut(cmd, timeout, env, stdin_post, charset, chdir, null, FOUR_HOURS);
 	}
 
 	@Override
@@ -565,7 +573,7 @@ public class SSHHost extends RemoteHost {
 			return os_name_long = getOSNameOnWindows();
 		String v;
 		try {
-			v = " "+exec("uname -a", FOUR_HOURS).output;
+			v = " "+execOut("uname -a", FOUR_HOURS).output;
 		} catch ( Exception ex ) {
 			ex.printStackTrace();
 			v = ""; // don't try again
@@ -662,7 +670,7 @@ public class SSHHost extends RemoteHost {
 	}
 
 	@Override
-	public void saveTextFile(String filename, String text, CharsetEncoder ce) throws IllegalStateException, IOException {
+	public boolean saveTextFile(String filename, String text, CharsetEncoder ce) throws IllegalStateException, IOException {
 		if (text==null)
 			text = "";
 		ensureSftpOpen();
@@ -676,6 +684,7 @@ public class SSHHost extends RemoteHost {
 			ce.encode(CharBuffer.wrap(text.toCharArray()), bbuf, true);
 			sftp.put(new ByteBufferInputStream(bbuf), filename);
 		}
+		return true;
 	}
 	
 	protected static class ByteBufferInputStream extends InputStream {

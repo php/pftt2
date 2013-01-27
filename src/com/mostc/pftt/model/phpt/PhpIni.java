@@ -8,9 +8,9 @@ import java.util.regex.Pattern;
 
 import javax.annotation.Nullable;
 
+import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.LocalHost;
-import com.mostc.pftt.util.StringUtil;
 
 /** A PHP INI is the configuration for PHP.
  * 

@@ -21,7 +21,8 @@ import org.apache.http.protocol.HttpProcessor;
 import org.apache.http.protocol.HttpRequestExecutor;
 
 import com.github.mattficken.io.IOUtil;
-import com.mostc.pftt.host.Host;
+import com.github.mattficken.io.StringUtil;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.phpt.EPhptSection;
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
 import com.mostc.pftt.model.phpt.ESAPIType;
@@ -38,7 +39,6 @@ import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.ErrorUtil;
-import com.mostc.pftt.util.StringUtil;
 
 /** Runs PHPT Test Cases against PHP while its running under a Web Server (builtin, IIS or Apache)
  * 
@@ -58,7 +58,7 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected final HttpProcessor httpproc;
 	protected final HttpRequestExecutor httpexecutor;
 
-	public HttpTestCaseRunner(PhpIni ini, Map<String,String> env, HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+	public HttpTestCaseRunner(PhpIni ini, Map<String,String> env, HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, IPhptTestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
 		super(ini, thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 		this.params = params;
 		this.httpproc = httpproc;
@@ -71,8 +71,8 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			this.env = new HashMap<String,String>(7);
 			this.env.putAll(env);
 			
-			this.env.put("TEMP", active_test_pack.getDirectory()+"/"+Host.dirname(test_case.getName()));
-			this.env.put("TMP", active_test_pack.getDirectory()+"/"+Host.dirname(test_case.getName()));
+			this.env.put("TEMP", active_test_pack.getDirectory()+"/"+AHost.dirname(test_case.getName()));
+			this.env.put("TMP", active_test_pack.getDirectory()+"/"+AHost.dirname(test_case.getName()));
 		} else {
 			this.env = env;
 		}
@@ -93,7 +93,7 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	 * @return
 	 * @throws Exception
 	 */
-	public static boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, Host host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+	public static boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
 		if (AbstractPhptTestCaseRunner.willSkip(cm, twriter, host, scenario_set, type, build, test_case)) {
 			return true;
 		} else if (test_case.containsSection(EPhptSection.STDIN)) {
@@ -277,8 +277,8 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	} // end protected String http_execute
 
 	protected String do_http_execute(String path, EPhptSection section, boolean is_replacement) throws Exception {
-		path = Host.toUnixPath(path);
-		if (path.startsWith(Host.toUnixPath(active_test_pack.getDirectory())))
+		path = AHost.toUnixPath(path);
+		if (path.startsWith(AHost.toUnixPath(active_test_pack.getDirectory())))
 			path = path.substring(active_test_pack.getDirectory().length());
 		if (!path.startsWith("/"))
 			path = "/" + path;
@@ -471,7 +471,7 @@ public class HttpTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		
 		if (env!=null&&env.containsKey("REQUEST_URI")) {
 			// ex: ext/phar/tests/frontcontroller17.phpt
-			request_uri = Host.dirname(request_uri)+"/"+env.get("REQUEST_URI");
+			request_uri = AHost.dirname(request_uri)+"/"+env.get("REQUEST_URI");
 		}
 		
 		if (test_case.containsSection(EPhptSection.GET)) {

@@ -26,7 +26,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
-import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.results.PhptResultPack;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.AbstractTestPackRunner.ETestPackRunnerState;
@@ -49,10 +49,10 @@ public class PhptHostTab extends JSplitPane {
 	protected JList test_list;
 	protected JScrollPane test_list_jsp;
 	protected ConsoleTextEditor host_console;
-	protected Host host;
+	protected AHost host;
 	protected final JRadioButtonMenuItem list_fail_rb, list_xfail_rb, list_crash_rb, list_xfail_works_rb, list_skip_rb, list_xskip_rb, list_pass_rb, list_bork_rb, list_unsupported_rb, list_test_exceptions_rb;
 	
-	public PhptHostTab(Host host, final PhptTestPackRunner phpt_test_pack_runner) {
+	public PhptHostTab(AHost host, final PhptTestPackRunner phpt_test_pack_runner) {
 		super(JSplitPane.VERTICAL_SPLIT);
 		this.host = host;
 		setOneTouchExpandable(true);

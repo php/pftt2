@@ -4,7 +4,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.List;
 
-import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhptSourceTestPack;
 import com.mostc.pftt.model.phpt.PhptTestCase;
@@ -12,7 +12,7 @@ import com.mostc.pftt.scenario.ScenarioSet;
 
 public abstract class PhptTestPackRunner extends AbstractTestPackRunner {
 
-	public PhptTestPackRunner(ScenarioSet scenario_set, PhpBuild build, Host host) {
+	public PhptTestPackRunner(ScenarioSet scenario_set, PhpBuild build, AHost host) {
 		super(scenario_set, build, host);
 	}
 	

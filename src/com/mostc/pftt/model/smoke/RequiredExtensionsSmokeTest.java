@@ -1,12 +1,13 @@
 package com.mostc.pftt.model.smoke;
 
+import com.github.mattficken.io.StringUtil;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.ESAPIType;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
-import com.mostc.pftt.util.StringUtil;
 
 /** Smoke test that verifies a PHP Build has all the required extensions.
  * 
@@ -81,7 +82,7 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 		"zlib"
 	};
 	
-	public ESmokeTestStatus test(PhpBuild build, ConsoleManager cm, Host host, ESAPIType type) {
+	public ESmokeTestStatus test(PhpBuild build, ConsoleManager cm, AHost host, ESAPIType type) {
 		if (!host.isWindows())
 			// non-Windows PHP builds can have whatever extensions they want
 			return ESmokeTestStatus.XSKIP;

@@ -1,11 +1,18 @@
 package com.mostc.pftt.host;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintStream;
+
 import org.kxml2.io.KXmlParser;
 import org.kxml2.io.KXmlSerializer;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
+import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.model.phpt.EPhptTestStatus;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.phpt.PhpDebugPack;
@@ -27,6 +34,9 @@ public abstract class PSCAgentServer implements ConsoleManager, IPhptTestResultR
 	protected final KXmlParser parser;
 	protected final KXmlSerializer serial;
 	protected final LocalHost host;
+	protected InputStream parser_in;
+	protected OutputStream serial_out;
+	private boolean no_result_file_for_pass_xskip_skip;
 	
 	public PSCAgentServer() {
 		host = new LocalHost();
@@ -36,8 +46,12 @@ public abstract class PSCAgentServer implements ConsoleManager, IPhptTestResultR
 	}
 
 	public void run() throws Exception {
-		parser.setInput(System.in, "utf-8");
-		serial.setOutput(System.out, "utf-8");
+		// @see #simulate
+		// @see #generateSimulation
+		if (parser_in==null)
+			parser.setInput(parser_in = System.in, "utf-8");
+		if (serial_out==null)
+			serial.setOutput(serial_out = System.out, "utf-8");
 		
 		Thread t = new Thread() {
 				public void run() {
@@ -76,6 +90,10 @@ public abstract class PSCAgentServer implements ConsoleManager, IPhptTestResultR
 					PhpBuild build = new PhpBuild(parser.getAttributeValue(null, "path"));
 					build.open(this, host);
 					setBuild(build);
+				} else if (tag_name.equals("config")) {
+					
+					no_result_file_for_pass_xskip_skip = StringUtil.equalsCS("true", parser.getAttributeValue(null, "no_result_file_for_pass_xskip_skip")); 
+					
 				} else if (tag_name.equals("start")) {
 					Thread t = new Thread() {
 							public void run() {
@@ -107,10 +125,18 @@ public abstract class PSCAgentServer implements ConsoleManager, IPhptTestResultR
 
 	protected void notifyStopped(String reason) {
 		sendMessage("<stop>"+reason+"</stop>");
+		
+		flush();
+	}
+	
+	protected void flush() {
+		try {
+			serial.flush();
+		} catch ( Exception ex ) {}
 	}
 	
 	@Override
-	public void addResult(Host this_host, ScenarioSet this_scenario_set, PhptTestResult result) {
+	public void addResult(AHost this_host, ScenarioSet this_scenario_set, PhptTestResult result) {
 		try {
 			sendResult(result);
 		} catch ( Exception ex ) {
@@ -121,13 +147,26 @@ public abstract class PSCAgentServer implements ConsoleManager, IPhptTestResultR
 	}
 	
 	protected void sendResult(PhptTestResult result) throws IllegalArgumentException, IllegalStateException, IOException {
+		// if controller won't be storing this result, don't bother sending it
+		/* TODO if (isNoResultFileForPassSkipXSkip() && !PhptTestResult.shouldStoreAllInfo(result.status)) {
+			return;
+		}*/
+		
 		// don't send PhptTestCase (saves bandwidth). pftt client already has a copy of it
+		
+		// TODO String name = result.test_case.getName();
+		
 		result.test_case = null;
 		
-		synchronized(System.out) {
-			result.serialize(serial);
+		synchronized(serial_out) {
+			// don't do #startDocument -> all it does is print the <?xml header
+			//serial.startDocument("utf-8", Boolean.FALSE);
+			result.serialize(serial);// TODO , name);
+			// important: call #endDocument or all results will be buffered until last result sent
+			serial.endDocument();
+			serial_out.write('\n');
 		}
-	}
+	} // end protected void sendResult
 	
 	@Override
 	public void setTotalCount(int size) {
@@ -146,21 +185,22 @@ public abstract class PSCAgentServer implements ConsoleManager, IPhptTestResultR
 	
 	@Override
 	public void println(EPrintType type, String ctx_str, String string) {
-		sendMessage("<println type="+type+" ctx=\""+ctx_str+"\">"+string+"</println>");
+		sendMessage("<println type=\""+type+"\" ctx=\""+ctx_str+"\">"+string+"</println>");
 	}
 	
 	@Override
 	public void addGlobalException(EPrintType type, String ctx_str, Exception ex, String msg, Object a, Object b, Object c) {
 		String err_str = ErrorUtil.toString(ex)+"\nmsg="+msg+"\na="+a+" b="+b+" c="+c;
 		
-		sendMessage("<globalException type="+type+" ctx=\""+ctx_str+"\">"+err_str+"</globalException>");
+		sendMessage("<globalException type=\""+type+"\" ctx=\""+ctx_str+"\">"+err_str+"</globalException>");
 	}
 	
 	protected boolean sendMessage(String msg_str) {
 		try {
 			byte[] msg_bytes = msg_str.getBytes();
-			synchronized(System.out) {
-				System.out.write(msg_bytes);
+			synchronized(serial_out) {
+				serial_out.write(msg_bytes);
+				serial_out.write('\n');
 			}
 			return true;
 		} catch ( Exception ex ) {
@@ -175,6 +215,11 @@ public abstract class PSCAgentServer implements ConsoleManager, IPhptTestResultR
 	protected abstract void setTestPack(PhptActiveTestPack test_pack);
 	protected abstract void stop();
 	protected abstract void start();
+	
+	@Override
+	public boolean isNoResultFileForPassSkipXSkip() {
+		return no_result_file_for_pass_xskip_skip;
+	}
 	
 	@Override
 	public boolean isDisableDebugPrompt() {
@@ -199,7 +244,7 @@ public abstract class PSCAgentServer implements ConsoleManager, IPhptTestResultR
 
 	@Override
 	public void println(EPrintType type, Class<?> clazz, String string) {
-		println(type, clazz.getSimpleName(), string);
+		println(type, Host.toContext(clazz), string);
 	}
 
 	@Override
@@ -219,7 +264,7 @@ public abstract class PSCAgentServer implements ConsoleManager, IPhptTestResultR
 
 	@Override
 	public void addGlobalException(EPrintType type, Class<?> clazz, String method_name, Exception ex, String msg, Object a, Object b, Object c) {
-		addGlobalException(type, clazz.getSimpleName()+"#"+method_name, ex, msg, a, b, c);
+		addGlobalException(type, Host.toContext(clazz, method_name), ex, msg, a, b, c);
 	}
 
 	@Override
@@ -264,10 +309,10 @@ public abstract class PSCAgentServer implements ConsoleManager, IPhptTestResultR
 		return null;
 	}
 	
-	public void addTestException(Host this_host, ScenarioSet this_scenario_set, PhptTestCase test_file, Throwable ex, Object a) {
+	public void addTestException(AHost this_host, ScenarioSet this_scenario_set, PhptTestCase test_file, Throwable ex, Object a) {
 		addTestException(this_host, this_scenario_set, test_file, ex, a, null);
 	}
-	public void addTestException(Host this_host, ScenarioSet this_scenario_set, PhptTestCase test_case, Throwable ex, Object a, Object b) {
+	public void addTestException(AHost this_host, ScenarioSet this_scenario_set, PhptTestCase test_case, Throwable ex, Object a, Object b) {
 		String ex_str = ErrorUtil.toString(ex);
 		if (a!=null)
 			ex_str += " a="+a;
@@ -281,5 +326,51 @@ public abstract class PSCAgentServer implements ConsoleManager, IPhptTestResultR
 		// count exceptions as a result (the worst kind of failure, a pftt failure)
 		addResult(this_host, this_scenario_set, new PhptTestResult(host, EPhptTestStatus.TEST_EXCEPTION, test_case, ex_str, null, null, null, null, null, null, null, null, null, null, null));
 	}
+	
+	protected void simulate() throws XmlPullParserException {
+		String str = 
+			//"<?xml version=\"1.0\"?>" + // TODO
+			"<phptResult status=\"PASS\" />" +  
+			"<phptResult status=\"PASS\" />" + 
+			"<restartingAndRetrying testCase=\"ext/standard/strings/strpos.phpt\" />" + 
+			"<phptResult status=\"PASS\" />" + 
+			"<phptResult status=\"SKIP\" />" + 
+			"<phptResult status=\"PASS\" />" + 
+			"<println type=\"CLUE\" ctx=\"setup\">setup finished</println>" + 
+			"<phptResult status=\"PASS\" />" + 
+			"<phptResult status=\"PASS\" />";
+		System.setIn(parser_in = new ByteArrayInputStream(str.getBytes()));
+		this.parser.setInput(parser_in, "utf-8");
+	}
+	
+	protected void generateSimulation(AHost host, ScenarioSet scenario_set) throws IOException {
+		final PrintStream orig_ps = System.out;
+		ByteArrayOutputStream out = new ByteArrayOutputStream(4096);
+		try {
+			PrintStream ps = new PrintStream(out);
+			this.serial_out = ps;
+			this.serial.setOutput(this.serial_out, "utf-8");
+			System.setOut(ps);
+			
+			addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.PASS, null, "", null, null, null, null, null, null, null, null, null, null, null));
+			addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.PASS, null, "", null, null, null, null, null, null, null, null, null, null, null));
+			restartingAndRetryingTest("ext/standard/strings/strpos.phpt");
+			addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.PASS, null, "", null, null, null, null, null, null, null, null, null, null, null));
+			addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.SKIP, null, "", null, null, null, null, null, null, null, null, null, null, null));
+			addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.PASS, null, "", null, null, null, null, null, null, null, null, null, null, null));
+			println(EPrintType.CLUE, "setup", "setup finished");
+			addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.PASS, null, "", null, null, null, null, null, null, null, null, null, null, null));
+			addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.PASS, null, "", null, null, null, null, null, null, null, null, null, null, null));
+			
+			//
+			flush();
+			ps.flush();
+		} finally {
+			this.serial_out = orig_ps;
+			System.setOut(orig_ps);
+		}
+		
+		System.out.println(StringUtil.toJava(out.toString()));
+	} // end protected void generateSimulation
 	
 } // end public abstract class PSCAgentServer

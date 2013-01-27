@@ -3,8 +3,8 @@ package com.mostc.pftt.host;
 import java.io.PrintStream;
 import java.nio.charset.Charset;
 
+import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.util.StringUtil;
 
 public class ExecOutput {
 	/** output of executed program */
@@ -37,16 +37,16 @@ public class ExecOutput {
 	public boolean isCrashed() {
 		return exit_code != 0;
 	}
-	public ExecOutput printOutputIfCrash(Class<?> ctx, ConsoleManager cm) {
-		return printOutputIfCrash(ctx.getSimpleName(), cm);
+	public ExecOutput printOutputIfCrash(Class<?> clazz, ConsoleManager cm) {
+		return printOutputIfCrash(Host.toContext(clazz), cm);
 	}
 	public ExecOutput printOutputIfCrash(String ctx, ConsoleManager cm) {
 		if (cm==null||cm.isResultsOnly())
 			return this;
 		return printOutputIfCrash(ctx, System.err);
 	}
-	public ExecOutput printOutputIfCrash(Class<?> ctx, PrintStream ps) {
-		return printOutputIfCrash(ctx.getSimpleName(), ps);
+	public ExecOutput printOutputIfCrash(Class<?> clazz, PrintStream ps) {
+		return printOutputIfCrash(Host.toContext(clazz), ps);
 	}
 	public ExecOutput printOutputIfCrash(String ctx, PrintStream ps) {
 		if (ps!=null && isCrashed()) {

@@ -1,5 +1,6 @@
 package com.mostc.pftt.scenario.app;
 
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
@@ -20,7 +21,7 @@ public abstract class ZipApplication extends ApplicationScenario {
 		
 		String zip_file = getZipAppFileName();
 		
-		String app_dir = host.joinIntoOnePath(web.getDefaultDocroot(host, build), Host.removeFileExt(Host.basename(zip_file)));
+		String app_dir = host.joinIntoOnePath(web.getDefaultDocroot(host, build), AHost.removeFileExt(AHost.basename(zip_file)));
 		
 		if (!host.exists(app_dir)) {
 			//
