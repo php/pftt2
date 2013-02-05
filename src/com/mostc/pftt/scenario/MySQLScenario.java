@@ -3,8 +3,9 @@ package com.mostc.pftt.scenario;
 import java.util.Map;
 
 import com.mostc.pftt.host.Host;
-import com.mostc.pftt.model.phpt.PhpBuild;
+import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.runner.AbstractPhpUnitTestCaseRunner;
 
 /** Sets up a MySQL database and tests the mysql, mysqli and pdo_mysql extensions against it. (NOT IMPLEMENTED)
  * 
@@ -18,6 +19,7 @@ public class MySQLScenario extends AbstractDatabaseScenario {
 	// can do SQL Server,  SMB share, date, HTTP, FTP, IMAP servers (to download, upload files, email)
 	//
 	String host, db_name, static_db_name, user, password;
+	String dsn, username, database;
 	int port;
 	/*MySQLScenario(String host, int port, String db_name, String user, String password) {
 		this.host = host; 	this.port = port;		this.user = user;		this.password = password;
@@ -98,5 +100,9 @@ public class MySQLScenario extends AbstractDatabaseScenario {
 	public void getENV(Map<String, String> env) {
 		// TODO Auto-generated method stub
 		
+	}
+	@Override
+	public void setGlobals(Map<String, String> globals) {
+		AbstractPhpUnitTestCaseRunner.addDatabaseConnection(dsn, username, password, database, globals);
 	}	
 } // end class MySQLScenario

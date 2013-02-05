@@ -7,8 +7,8 @@ import javax.annotation.concurrent.ThreadSafe;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
-import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.model.phpt.PhpIni;
+import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
@@ -32,6 +32,7 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 	@Override
 	protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String, String> env, String docroot, String listen_address, int port) {
 		// run `php.exe -S listen_address:NNNN` in docroot
+		// TODO ensureDefault();
 		return new BuiltinWebServerInstance(this, host, build, build.getPhpExe()+" -S "+listen_address+":"+port+" "+(ini==null?"":ini.toCliArgString(host)), ini, env, listen_address, port);
 	}
 	

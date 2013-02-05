@@ -5,20 +5,22 @@ import javax.swing.JFrame;
 
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
-import com.mostc.pftt.model.phpt.PhpDebugPack;
-import com.mostc.pftt.model.phpt.PhptTestCase;
-import com.mostc.pftt.model.phpt.EPhptTestStatus;
-import com.mostc.pftt.runner.PhptTestPackRunner;
+import com.mostc.pftt.model.TestCase;
+import com.mostc.pftt.model.core.EPhptTestStatus;
+import com.mostc.pftt.model.core.PhpDebugPack;
+import com.mostc.pftt.model.core.PhptTestCase;
+import com.mostc.pftt.runner.LocalPhptTestPackRunner;
 import com.mostc.pftt.ui.PhptDebuggerFrame;
 import com.mostc.pftt.util.ErrorUtil;
 
 public class LocalConsoleManager implements ConsoleManager {
-	protected final boolean force, windebug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug, no_result_file_for_pass_xskip_skip;
+	protected final boolean force, windebug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug, no_result_file_for_pass_xskip_skip, randomize_order;
+	protected final int run_times;
 	protected String source_pack;
 	protected PhpDebugPack debug_pack;
 	protected PhptDebuggerFrame gui;
 		
-	public LocalConsoleManager(String source_pack, PhpDebugPack debug_pack, boolean force, boolean windebug, boolean results_only, boolean show_gui, boolean disable_debug_prompt, boolean dont_cleanup_test_pack, boolean phpt_not_in_place, boolean pftt_debug, boolean no_result_file_for_pass_xskip_skip) {
+	public LocalConsoleManager(String source_pack, PhpDebugPack debug_pack, boolean force, boolean windebug, boolean results_only, boolean show_gui, boolean disable_debug_prompt, boolean dont_cleanup_test_pack, boolean phpt_not_in_place, boolean pftt_debug, boolean no_result_file_for_pass_xskip_skip, boolean randomize_order, int run_times) {
 		this.source_pack = source_pack;
 		this.debug_pack = debug_pack;
 		this.force = force;
@@ -30,9 +32,11 @@ public class LocalConsoleManager implements ConsoleManager {
 		this.phpt_not_in_place = phpt_not_in_place;
 		this.pftt_debug = pftt_debug;
 		this.no_result_file_for_pass_xskip_skip = no_result_file_for_pass_xskip_skip;
+		this.randomize_order = randomize_order;
+		this.run_times = run_times;
 	}
 	
-	public void showGUI(PhptTestPackRunner test_pack_runner) {
+	public void showGUI(LocalPhptTestPackRunner test_pack_runner) {
 		if (show_gui) {
 			if (gui!=null)
 				((JFrame)gui.getRootPane().getParent()).dispose();
@@ -72,7 +76,7 @@ public class LocalConsoleManager implements ConsoleManager {
 	}
 	
 	@Override
-	public void restartingAndRetryingTest(PhptTestCase test_case) {
+	public void restartingAndRetryingTest(TestCase test_case) {
 		restartingAndRetryingTest(test_case.getName());
 	}
 	
@@ -129,7 +133,7 @@ public class LocalConsoleManager implements ConsoleManager {
 		addGlobalException(type, Host.toContext(clazz, method_name), ex, msg, a, b, c);
 	}
 
-	protected PhptResultPackWriter w;
+	protected PhpResultPackWriter w;
 	@Override
 	public void addGlobalException(EPrintType type, String ctx_str, Exception ex, String msg) {
 		addGlobalException(type, ctx_str, ex, msg, null);
@@ -185,6 +189,16 @@ public class LocalConsoleManager implements ConsoleManager {
 	@Override
 	public boolean isNoResultFileForPassSkipXSkip() {
 		return no_result_file_for_pass_xskip_skip;
+	}
+
+	@Override
+	public int getRunTestTimes() {
+		return run_times;
+	}
+
+	@Override
+	public boolean isRandomizeTestOrder() {
+		return randomize_order;
 	}
 	
 } // end public class ConsoleManager

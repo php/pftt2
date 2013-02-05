@@ -275,6 +275,15 @@ public abstract class Host {
 		return new File(path).getName();
 	}
 	
+	/** splits path using either Windows or Unix path separator
+	 * 
+	 * @param path
+	 * @return
+	 */
+	public static String[] splitPath(String path) {
+		return path.split("[/|\\\\]");
+	} 
+	
 	/** takes string in form C:\\ and returns `C`. anything else, and null is returned
 	 * 
 	 * @param path
@@ -289,9 +298,13 @@ public abstract class Host {
 		}
 		return null;
 	}
+	
+	public static boolean hasDrive(String path) {
+		return StringUtil.isNotEmpty(drive(path));
+	}
 
 	public String mktempname(String ctx_str) {
-		return mktempname(ctx_str, null);
+		return mktempname(ctx_str, (String) null);
 	}
 	/** returns Host's preferred directory for storing temporary files
 	 * 
@@ -306,13 +319,23 @@ public abstract class Host {
 	 * @return
 	 */
 	public String mktempname(String ctx_str, String suffix) {
+		return mktempname(getTempDir(), ctx_str, suffix);
+	}
+	/** generates the name of a temporary file in a custom directory
+	 * 
+	 * @param temp_dir
+	 * @param ctx_str
+	 * @param suffix
+	 * @return
+	 */
+	public String mktempname(String temp_dir, String ctx_str, String suffix) {
 		StringBuilder sb = new StringBuilder(50);
 		String str = null;
 		
 		// generate random filename until one found that isn't in use
 		int j;
 		for ( int i=0 ; i < 65535 ; i++ ) {
-			sb.append(getTempDir());
+			sb.append(temp_dir);
 			//sb.append(dirSeparator()); // getTempDir() returns path ending with / or \
 			sb.append("PFTT-");
 			if (StringUtil.isNotEmpty(ctx_str)) {
@@ -341,6 +364,12 @@ public abstract class Host {
 	}
 	public String mktempname(Class<?> clazz) {
 		return mktempname(toContext(clazz));
+	}
+	public String mktempname(String temp_dir, Class<?> clazz, String suffix) {
+		return mktempname(temp_dir, toContext(clazz), suffix);
+	}
+	public String mktempname(String temp_dir, Class<?> clazz) {
+		return mktempname(temp_dir, toContext(clazz), null);
 	}
 	
 	/** saves text in given file
@@ -373,6 +402,16 @@ public abstract class Host {
 	 * @throws Exception
 	 */
 	public abstract boolean copy(String src, String dst) throws IllegalStateException, Exception ;
+	
+	/** moves file/directory
+	 * 
+	 * @param src
+	 * @param dst
+	 * @return
+	 * @throws IllegalStateException
+	 * @throws Exception
+	 */
+	public abstract boolean move(String src, String dst) throws IllegalStateException, Exception ;
 
 	/** returns the character to separate directories within one path
 	 * 
@@ -397,7 +436,7 @@ public abstract class Host {
 	
 	public static String toWindowsPath(String path) {
 		return StringUtil.replaceAll(PAT_bs, "\\\\", StringUtil.replaceAll(PAT_fs, "\\\\", path));
-	}
+	} 
 	
 	/** converts file path to Unix format (using / instead of Windows \)
 	 * 
@@ -576,7 +615,10 @@ public abstract class Host {
 	 */
 	public static String pathFrom(String from, String to) {
 		if (to.startsWith(from)) {
-			return to.substring(from.length());
+			String path = to.substring(from.length());
+			if (path.startsWith("/")||path.startsWith("\\"))
+				path = path.substring(1);
+			return path;
 		} else {
 			return to;
 		}

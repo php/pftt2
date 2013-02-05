@@ -4,10 +4,15 @@ com.mostc.pftt.host
 com.mostc.pftt.main
 com.mostc.pftt.model
 com.mostc.pftt.model.app
-com.mostc.pftt.model.phpt
+com.mostc.pftt.model.core
+com.mostc.pftt.model.custom
+com.mostc.pftt.model.performance
+com.mostc.pftt.model.sapi
 com.mostc.pftt.model.smoke
 com.mostc.pftt.report
+com.mostc.pftt.results
 com.mostc.pftt.runner
 com.mostc.pftt.scenario
+com.mostc.pftt.scenario.app
 com.mostc.pftt.ui
 com.mostc.pftt.util

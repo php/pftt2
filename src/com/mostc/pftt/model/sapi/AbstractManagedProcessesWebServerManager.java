@@ -11,8 +11,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.host.AHost.ExecHandle;
-import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.model.phpt.PhpIni;
+import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.util.DebuggerManager;
 import com.mostc.pftt.util.DebuggerManager.Debugger;
@@ -52,7 +52,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 	}
 	
 	@Override
-	protected WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, Object server_name) {
+	protected WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, final String docroot, Object server_name) {
 		String sapi_output = "";
 		int port_attempts;
 		boolean found_port;

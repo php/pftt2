@@ -11,7 +11,7 @@ import java.util.Map;
 import javax.annotation.Nullable;
 
 import com.mostc.pftt.host.AHost;
-import com.mostc.pftt.model.phpt.PhpBuild;
+import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 
 /** A Set of Scenarios to test PHP under.

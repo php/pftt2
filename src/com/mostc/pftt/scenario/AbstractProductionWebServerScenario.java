@@ -1,9 +1,7 @@
 package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.AHost;
-import com.mostc.pftt.model.phpt.PhpBuild;
 import com.mostc.pftt.model.sapi.WebServerManager;
-import com.mostc.pftt.results.ConsoleManager;
 
 public abstract class AbstractProductionWebServerScenario extends AbstractWebServerScenario {
 

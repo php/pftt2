@@ -3,8 +3,8 @@ package com.mostc.pftt.util;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost.LocalExecHandle;
-import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.model.phpt.PhptTestCase;
+import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 

@@ -221,6 +221,23 @@ public class HostGroup extends Host implements List<Host> {
 		}
 	}
 	@Override
+	public boolean move(String src, String dst) throws IllegalStateException, Exception {
+		for (Host h : this) {
+			if (!h.move(src, dst))
+				return false;
+		}
+		return true;
+	}
+	public void move(String src, String dst, BooleanCollector c) {
+		for (Host h : this) {
+			try {
+				c.collect(h, h.move(src, dst));
+			} catch (Throwable t) {
+				c.collect(h, false);
+			}
+		}
+	}
+	@Override
 	public String dirSeparator() {
 		for (Host h : this)
 			return h.dirSeparator();

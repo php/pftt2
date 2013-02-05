@@ -1,15 +1,15 @@
 package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.AHost;
-import com.mostc.pftt.model.phpt.ESAPIType;
-import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.model.phpt.PhpIni;
-import com.mostc.pftt.model.phpt.PhptTestCase;
-import com.mostc.pftt.model.phpt.PhptSourceTestPack;
-import com.mostc.pftt.model.phpt.PhptActiveTestPack;
+import com.mostc.pftt.model.core.ESAPIType;
+import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhpIni;
+import com.mostc.pftt.model.core.PhptActiveTestPack;
+import com.mostc.pftt.model.core.PhptSourceTestPack;
+import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.IPhptTestResultReceiver;
+import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 
@@ -50,11 +50,11 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 	 * @param active_test_pack
 	 * @return
 	 */
-	public abstract AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, IPhptTestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack);
+	public abstract AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack);
 
-	public abstract boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception;
+	public abstract boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception;
 	
-	public boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpIni ini, PhpBuild build, PhptTestCase test_case) throws Exception {
+	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpIni ini, PhpBuild build, PhptTestCase test_case) throws Exception {
 		return AbstractPhptTestCaseRunner.willSkip(cm, twriter, host, scenario_set, type, ini, build, test_case);
 	}
 	
@@ -86,5 +86,5 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 	public abstract TestCaseGroupKey createTestGroupKey(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack active_test_pack, PhptTestCase test_case, TestCaseGroupKey group_key) throws Exception;
 	
 	public abstract PhpIni createIniForTest(ConsoleManager cm, AHost host, PhpBuild build, PhptActiveTestPack active_test_pack, ScenarioSet scenario_set);
-
+	
 } // end public abstract class AbstractSAPIScenario

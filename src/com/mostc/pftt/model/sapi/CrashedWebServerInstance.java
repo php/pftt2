@@ -2,7 +2,7 @@ package com.mostc.pftt.model.sapi;
 
 import java.util.Map;
 
-import com.mostc.pftt.model.phpt.PhpIni;
+import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 
 /** special marker for WebServerInstances that crashed on startup/couldn't be started.

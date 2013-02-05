@@ -8,8 +8,8 @@ package com.mostc.pftt.main
  * 
  */
 
-import com.mostc.pftt.model.phpt.EBuildBranch;
-import com.mostc.pftt.model.phpt.EBuildType;
+import com.mostc.pftt.model.core.EBuildBranch;
+import com.mostc.pftt.model.core.EBuildType;
 import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.model.smoke.RequiredFeaturesSmokeTest;
 

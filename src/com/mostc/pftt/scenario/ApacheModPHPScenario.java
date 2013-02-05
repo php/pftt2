@@ -1,6 +1,6 @@
 package com.mostc.pftt.scenario;
 
-import com.mostc.pftt.model.phpt.ESAPIType;
+import com.mostc.pftt.model.core.ESAPIType;
 
 /** Tests PHP running under Apache's mod_php module. 
  * 

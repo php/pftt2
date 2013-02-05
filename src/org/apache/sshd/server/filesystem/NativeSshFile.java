@@ -180,7 +180,7 @@ public class NativeSshFile implements SshFile {
      * Check file write permission.
      */
     public boolean isWritable() {
-        LOG.debug("Checking if file exists");
+        LOG.debug("Checking if file exists "+file.getAbsolutePath());
         if (file.exists()) {
             LOG.debug("Checking can write: " + file.canWrite());
             return file.canWrite();

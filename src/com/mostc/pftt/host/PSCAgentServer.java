@@ -13,13 +13,14 @@ import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
 import com.github.mattficken.io.StringUtil;
-import com.mostc.pftt.model.phpt.EPhptTestStatus;
-import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.model.phpt.PhpDebugPack;
-import com.mostc.pftt.model.phpt.PhptActiveTestPack;
-import com.mostc.pftt.model.phpt.PhptTestCase;
+import com.mostc.pftt.model.TestCase;
+import com.mostc.pftt.model.app.PhpUnitTestResult;
+import com.mostc.pftt.model.core.EPhptTestStatus;
+import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhpDebugPack;
+import com.mostc.pftt.model.core.PhptActiveTestPack;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.IPhptTestResultReceiver;
+import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
@@ -30,13 +31,14 @@ import com.mostc.pftt.util.ErrorUtil;
  *
  */
 
-public abstract class PSCAgentServer implements ConsoleManager, IPhptTestResultReceiver {
+public abstract class PSCAgentServer implements ConsoleManager, ITestResultReceiver {
 	protected final KXmlParser parser;
 	protected final KXmlSerializer serial;
 	protected final LocalHost host;
 	protected InputStream parser_in;
 	protected OutputStream serial_out;
-	private boolean no_result_file_for_pass_xskip_skip;
+	private boolean no_result_file_for_pass_xskip_skip, randomize_order;
+	private int run_test_times;
 	
 	public PSCAgentServer() {
 		host = new LocalHost();
@@ -84,7 +86,7 @@ public abstract class PSCAgentServer implements ConsoleManager, IPhptTestResultR
 						addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "handleIncomingmessages", ex, "parsing Scenario from PSC stream");
 					}
 				} else if (tag_name.equals("test_pack")) {
-					PhptActiveTestPack test_pack = new PhptActiveTestPack(parser.getAttributeValue(null, "path"));
+					PhptActiveTestPack test_pack = new PhptActiveTestPack(parser.getAttributeValue(null, "running_dir"), parser.getAttributeValue(null, "storage_dir"));
 					setTestPack(test_pack);
 				} else if (tag_name.equals("build")) {
 					PhpBuild build = new PhpBuild(parser.getAttributeValue(null, "path"));
@@ -92,12 +94,24 @@ public abstract class PSCAgentServer implements ConsoleManager, IPhptTestResultR
 					setBuild(build);
 				} else if (tag_name.equals("config")) {
 					
-					no_result_file_for_pass_xskip_skip = StringUtil.equalsCS("true", parser.getAttributeValue(null, "no_result_file_for_pass_xskip_skip")); 
+					no_result_file_for_pass_xskip_skip = StringUtil.equalsCS("true", parser.getAttributeValue(null, "no_result_file_for_pass_xskip_skip"));
+					randomize_order = StringUtil.equalsCS("true", parser.getAttributeValue(null, "randomize_order"));
+					run_test_times = StringUtil.parseInt(parser.getAttributeValue(null, "run_test_times"));
 					
-				} else if (tag_name.equals("start")) {
+				} else if (tag_name.equals("startSetup")) {
 					Thread t = new Thread() {
 							public void run() {
-								start();
+								startSetup();
+								notifySetupFinished("");
+							}
+						};
+					t.setDaemon(true);
+					t.start();
+				} else if (tag_name.equals("startRun")) {
+					Thread t = new Thread() {
+							public void run() {
+								startRun();
+								notifyRunFinished("");
 							}
 						};
 					t.setDaemon(true);
@@ -123,8 +137,14 @@ public abstract class PSCAgentServer implements ConsoleManager, IPhptTestResultR
 		} // end while
 	} // end protected void handleIncomingMessages
 
-	protected void notifyStopped(String reason) {
-		sendMessage("<stop>"+reason+"</stop>");
+	protected void notifyRunFinished(String reason) {
+		sendMessage("<runFinished>"+reason+"</runFinished>");
+		
+		flush();
+	}
+	
+	protected void notifySetupFinished(String reason) {
+		sendMessage("<setupFinished>"+reason+"</setupFinished>");
 		
 		flush();
 	}
@@ -144,6 +164,11 @@ public abstract class PSCAgentServer implements ConsoleManager, IPhptTestResultR
 			
 			ex.printStackTrace(System.err); // System.err
 		}
+	}
+	
+	@Override
+	public void addResult(AHost host, ScenarioSet scenario_set, PhpUnitTestResult phpUnitTestResult) {
+		
 	}
 	
 	protected void sendResult(PhptTestResult result) throws IllegalArgumentException, IllegalStateException, IOException {
@@ -174,7 +199,7 @@ public abstract class PSCAgentServer implements ConsoleManager, IPhptTestResultR
 	}
 	
 	@Override
-	public void restartingAndRetryingTest(PhptTestCase test_case) {
+	public void restartingAndRetryingTest(TestCase test_case) {
 		restartingAndRetryingTest(test_case.getName());
 	}
 	
@@ -214,11 +239,22 @@ public abstract class PSCAgentServer implements ConsoleManager, IPhptTestResultR
 	protected abstract void setBuild(PhpBuild build);
 	protected abstract void setTestPack(PhptActiveTestPack test_pack);
 	protected abstract void stop();
-	protected abstract void start();
+	protected abstract void startSetup();
+	protected abstract void startRun();
 	
 	@Override
 	public boolean isNoResultFileForPassSkipXSkip() {
 		return no_result_file_for_pass_xskip_skip;
+	}
+	
+	@Override
+	public int getRunTestTimes() {
+		return run_test_times;
+	}
+
+	@Override
+	public boolean isRandomizeTestOrder() {
+		return randomize_order;
 	}
 	
 	@Override
@@ -309,10 +345,10 @@ public abstract class PSCAgentServer implements ConsoleManager, IPhptTestResultR
 		return null;
 	}
 	
-	public void addTestException(AHost this_host, ScenarioSet this_scenario_set, PhptTestCase test_file, Throwable ex, Object a) {
+	public void addTestException(AHost this_host, ScenarioSet this_scenario_set, TestCase test_file, Throwable ex, Object a) {
 		addTestException(this_host, this_scenario_set, test_file, ex, a, null);
 	}
-	public void addTestException(AHost this_host, ScenarioSet this_scenario_set, PhptTestCase test_case, Throwable ex, Object a, Object b) {
+	public void addTestException(AHost this_host, ScenarioSet this_scenario_set, TestCase test_case, Throwable ex, Object a, Object b) {
 		String ex_str = ErrorUtil.toString(ex);
 		if (a!=null)
 			ex_str += " a="+a;
@@ -324,7 +360,7 @@ public abstract class PSCAgentServer implements ConsoleManager, IPhptTestResultR
 		}
 		
 		// count exceptions as a result (the worst kind of failure, a pftt failure)
-		addResult(this_host, this_scenario_set, new PhptTestResult(host, EPhptTestStatus.TEST_EXCEPTION, test_case, ex_str, null, null, null, null, null, null, null, null, null, null, null));
+		// TODO addResult(this_host, this_scenario_set, new PhptTestResult(host, EPhptTestStatus.TEST_EXCEPTION, test_case, ex_str, null, null, null, null, null, null, null, null, null, null, null));
 	}
 	
 	protected void simulate() throws XmlPullParserException {
@@ -338,7 +374,9 @@ public abstract class PSCAgentServer implements ConsoleManager, IPhptTestResultR
 			"<phptResult status=\"PASS\" />" + 
 			"<println type=\"CLUE\" ctx=\"setup\">setup finished</println>" + 
 			"<phptResult status=\"PASS\" />" + 
-			"<phptResult status=\"PASS\" />";
+			"<phptResult status=\"PASS\" />" +
+			"<startSetup />" +
+			"<startRun />";
 		System.setIn(parser_in = new ByteArrayInputStream(str.getBytes()));
 		this.parser.setInput(parser_in, "utf-8");
 	}

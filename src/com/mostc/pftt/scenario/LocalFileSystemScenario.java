@@ -4,7 +4,8 @@ import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
-/** Placeholder scenario for storing a PHP build and its test pack on the local file system as opposed to remotely somewhere.
+/** Placeholder scenario for storing a PHP build and its test pack on the local 
+ * file system as opposed to remotely somewhere.
  * 
  * @author Matt Ficken
  *
@@ -21,7 +22,15 @@ public class LocalFileSystemScenario extends AbstractFileSystemScenario {
 				return host.getPhpSdkDir();
 			}
 			@Override
-			public boolean delete(ConsoleManager cm, AHost host) {
+			public String getRemotePath(AHost host) {
+				return host.getPhpSdkDir();
+			}
+			@Override
+			public boolean disposeIfEmpty(ConsoleManager cm, AHost local_host) {
+				return true; // don't actually delete php sdk
+			}
+			@Override
+			public boolean disposeForce(ConsoleManager cm, AHost local_host) {
 				return true; // don't actually delete php sdk
 			}
 		};

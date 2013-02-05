@@ -27,10 +27,10 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
 import com.mostc.pftt.host.AHost;
-import com.mostc.pftt.results.PhptResultPack;
+import com.mostc.pftt.results.PhpResultPack;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.AbstractTestPackRunner.ETestPackRunnerState;
-import com.mostc.pftt.runner.PhptTestPackRunner;
+import com.mostc.pftt.runner.LocalPhptTestPackRunner;
 
 import se.datadosen.component.RiverLayout;
 
@@ -52,7 +52,7 @@ public class PhptHostTab extends JSplitPane {
 	protected AHost host;
 	protected final JRadioButtonMenuItem list_fail_rb, list_xfail_rb, list_crash_rb, list_xfail_works_rb, list_skip_rb, list_xskip_rb, list_pass_rb, list_bork_rb, list_unsupported_rb, list_test_exceptions_rb;
 	
-	public PhptHostTab(AHost host, final PhptTestPackRunner phpt_test_pack_runner) {
+	public PhptHostTab(AHost host, final LocalPhptTestPackRunner phpt_test_pack_runner) {
 		super(JSplitPane.VERTICAL_SPLIT);
 		this.host = host;
 		setOneTouchExpandable(true);
@@ -92,16 +92,16 @@ public class PhptHostTab extends JSplitPane {
 		pass_bar.setStringPainted(true);
 		panel.add("left", new JLabel("Pass"));
 		panel.add("left", pass_label = new JLabel("0"));
-		panel.add("left", new JLabel("Fail"));
-		panel.add("left", fail_label = new JLabel("0"));
-		panel.add(new JLabel("CRASH"));
-		panel.add(crash_label = new JLabel("0"));
 		panel.add("left", new JLabel("XFail"));
 		panel.add("left", xfail_label = new JLabel("0"));
 		panel.add("left", new JLabel("XSkip"));
 		panel.add(xskip_label = new JLabel("0"));
 		panel.add("left", new JLabel("Skip"));
 		panel.add("left", skip_label = new JLabel("0"));
+		panel.add("left", new JLabel("Fail"));
+		panel.add("left", fail_label = new JLabel("0"));
+		panel.add(new JLabel("CRASH"));
+		panel.add(crash_label = new JLabel("0"));
 		panel.add(new JLabel("Bork"));
 		panel.add(bork_label = new JLabel("0"));
 		panel.add("left", new JLabel("XFail Works"));
@@ -305,7 +305,7 @@ public class PhptHostTab extends JSplitPane {
 						fail++;
 						fail_label.setText(Integer.toString(fail));
 						
-						pass_bar.setString(Float.toString(PhptResultPack.round1( (float)( ( 100.0f * pass) / ((float)( pass + fail +crash )) )))+"%"); // 1 decimal place nn.y
+						pass_bar.setString(Float.toString(PhpResultPack.round1( (float)( ( 100.0f * pass) / ((float)( pass + fail +crash )) )))+"%"); // 1 decimal place nn.y
 						pass_bar.setMaximum(fail+pass);
 						total_label.setText(""+(fail+pass+crash));
 						
@@ -350,7 +350,7 @@ public class PhptHostTab extends JSplitPane {
 						break;
 					case PASS:
 						pass++;
-						pass_bar.setString(Float.toString(PhptResultPack.round1( (float)( ( 100.0f * pass) / ((float)( pass + fail + crash )) )))+"%"); // 1 decimal place nn.y
+						pass_bar.setString(Float.toString(PhpResultPack.round1( (float)( ( 100.0f * pass) / ((float)( pass + fail + crash )) )))+"%"); // 1 decimal place nn.y
 						
 						
 						pass_bar.setValue(pass);

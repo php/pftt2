@@ -4,13 +4,14 @@ import java.util.ArrayList;
 
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.host.PSCAgentServer;
-import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.model.phpt.PhptActiveTestPack;
-import com.mostc.pftt.model.phpt.PhptTestCase;
+import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhptActiveTestPack;
+import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.runner.AbstractTestPackRunner.ETestPackRunnerState;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.util.HostEnvUtil;
 
 public class PfttAgentMain extends PSCAgentServer {
 	protected ScenarioSet scenario_set;
@@ -24,10 +25,13 @@ public class PfttAgentMain extends PSCAgentServer {
 	}
 	
 	@Override
-	protected void start() {
+	protected void startSetup() {
 		test_pack_runner = new LocalPhptTestPackRunner(this, this, scenario_set, build, host);
 		
 		try {
+			// important: don't want to get WER popups on Windows (user isn't there to close them)
+			HostEnvUtil.prepareHostEnv(host, this, false);
+			
 			if (test_names.isEmpty()) {
 				// run all test cases in test-pack
 				ArrayList<PhptTestCase> test_cases = new ArrayList<PhptTestCase>(12600);
@@ -40,7 +44,12 @@ public class PfttAgentMain extends PSCAgentServer {
 		} catch ( Exception ex ) {
 			this.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "start",  ex, "test-pack runner exception");
 		}
-	} // end public void start
+	} // end protected void startSetup
+	
+	@Override
+	protected void startRun() {
+		
+	}
 	
 	@Override
 	protected void addTestName(String name) {

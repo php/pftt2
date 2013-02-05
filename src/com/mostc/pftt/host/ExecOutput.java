@@ -5,6 +5,7 @@ import java.nio.charset.Charset;
 
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
 public class ExecOutput {
 	/** output of executed program */
@@ -13,6 +14,7 @@ public class ExecOutput {
 	public Charset charset;
 	/** exit code for program. if 0, program exited successfully */
 	public int exit_code;
+	/** command line that was executed */
 	public String cmd;
 	
 	/** returns the output split into lines.
@@ -58,4 +60,21 @@ public class ExecOutput {
 		}
 		return this;
 	}
+
+	public ExecOutput printCommandAndOutput(EPrintType type, Class<?> clazz, ConsoleManager cm) {
+		return printCommandAndOutput(type, Host.toContext(clazz), cm);
+	}
+	
+	public ExecOutput printCommandAndOutput(EPrintType type, String ctx, ConsoleManager cm) {
+		String output_str = output.trim();
+		if (StringUtil.isEmpty(output_str))
+			output_str = "<No Output>";
+		
+		cm.println(type, ctx, "cmd "+cmd);
+		cm.println(type, ctx, "exit_code "+exit_code);
+		cm.println(type, ctx, output_str);
+		
+		return this;
+	}
+	
 } // end public class ExecOutput

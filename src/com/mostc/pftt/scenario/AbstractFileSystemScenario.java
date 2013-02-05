@@ -40,13 +40,37 @@ public abstract class AbstractFileSystemScenario extends AbstractSerialScenario 
 		 */
 		String getLocalPath(AHost local_host);
 		
-		/** returns TRUE if storage dir deleted
+		/** returns remote path to access storage directory on the remote host.
 		 * 
+		 * for local file systems this will be the same as #getLocalPath.
+		 * 
+		 * for remote file systems, this is the path on the remote host (which will be different
+		 * than local path #getLocalPath)
+		 * 
+		 * @param local_host
+		 * @return
+		 */
+		String getRemotePath(AHost local_host);
+		
+		/** disposes of this StorageDirectory if its empty (if it has no files or folders)
+		 * 
+		 * 
+		 * @see #disposeForce
 		 * @param cm
 		 * @param host
 		 * @return
 		 */
-		boolean delete(ConsoleManager cm, AHost local_host);
+		boolean disposeIfEmpty(ConsoleManager cm, AHost local_host);
+		
+		/** disposes of the directory, deleting all files, shares, namespaces, etc... that
+		 * back this StorageDirectory
+		 * 
+		 * @see #disposeIfEmpty
+		 * @param cm
+		 * @param local_host
+		 * @return
+		 */
+		boolean disposeForce(ConsoleManager cm, AHost local_host);
 	} // end public interface ITestPackStorageDir
 	
 	public abstract ITestPackStorageDir createStorageDir(ConsoleManager cm, AHost host);

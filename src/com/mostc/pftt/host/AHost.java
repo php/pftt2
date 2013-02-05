@@ -186,17 +186,17 @@ public abstract class AHost extends Host {
 	 * 
 	 * @param cm
 	 * @param ctx_str
-	 * @param src_host
 	 * @param src
+	 * @param dst_host
 	 * @param dst
 	 * @throws IllegalStateException
 	 * @throws IOException
 	 * @throws Exception
 	 */
-	public abstract void downloadCompressWith7Zip(ConsoleManager cm, String ctx_str, AHost src_host, String src, String dst) throws IllegalStateException, IOException, Exception;
+	public abstract void downloadCompressWith7Zip(ConsoleManager cm, String ctx_str, String src, AHost dst_host, String dst) throws IllegalStateException, IOException, Exception;
 	
 	public void downloadCompressWith7Zip(ConsoleManager cm, Class<?> clazz, AHost src_host, String src, String dst) throws IllegalStateException, IOException, Exception {
-		downloadCompressWith7Zip(cm, toContext(clazz), src_host, src, dst);
+		downloadCompressWith7Zip(cm, toContext(clazz), src, src_host, dst);
 	}
 	
 	/** downloads file from remote source to local destination
@@ -214,17 +214,17 @@ public abstract class AHost extends Host {
 	 * 
 	 * @param cm
 	 * @param ctx
+	 * @param src_host
 	 * @param src
-	 * @param dst_host
 	 * @param dst
 	 * @throws IllegalStateException
 	 * @throws IOException
 	 * @throws Exception
 	 */
-	public abstract void uploadCompressWith7Zip(ConsoleManager cm, String ctx_str, String src, AHost dst_host, String dst) throws IllegalStateException, IOException, Exception;
+	public abstract void uploadCompressWith7Zip(ConsoleManager cm, String ctx_str, AHost src_host, String src, String dst) throws IllegalStateException, IOException, Exception;
 	
-	public void uploadCompressWith7Zip(ConsoleManager cm, Class<?> clazz, String src, AHost dst_host, String dst) throws IllegalStateException, IOException, Exception {
-		uploadCompressWith7Zip(cm, toContext(clazz), src, dst_host, dst);
+	public void uploadCompressWith7Zip(ConsoleManager cm, Class<?> clazz, String src, AHost src_host, String dst) throws IllegalStateException, IOException, Exception {
+		uploadCompressWith7Zip(cm, toContext(clazz), src_host, src, dst);
 	}
 	
 	@Override
@@ -449,7 +449,17 @@ public abstract class AHost extends Host {
 	 * @return
 	 */
 	public String toCmd(String cmd) {
-		return isWindows() ? "cmd /C "+cmd : "bash -c "+cmd;
+		if (isWindows()) {
+			if (cmd.startsWith("cmd /C "))
+				return cmd;
+			else
+				return "cmd /C "+cmd;
+		} else {
+			if (cmd.startsWith ("bash -c "))
+				return cmd;
+			else
+				return "bash -c "+cmd;
+		}
 	}
 		
 	public void upload7ZipAndDecompress(ConsoleManager cm, Class<?> clazz, AHost src_host, String src, String dst) throws IllegalStateException, IOException, Exception {
@@ -526,16 +536,16 @@ public abstract class AHost extends Host {
 	}
 	
 	private static void install7Zip(ConsoleManager cm, AHost src_host, AHost dst_host) throws Exception {
-		final String dst_7z_path = dst_host.getPfttDir()+"\\bin\\7z.exe";
-		
-		if (dst_host.exists(dst_7z_path)) {
-			cm.println(EPrintType.CLUE, "install7Zip", "7z.exe already installed on: "+dst_host);
+		final String src_7z_path = src_host.getPfttDir()+"\\bin\\7za.exe";
+		if (!src_host.exists(src_7z_path)) {
+			cm.println(EPrintType.CLUE, "install7Zip", "7za.exe not found on source: "+src_host);
 			return;
 		}
 		
-		final String src_7z_path = src_host.getPfttDir()+"\\bin\\7z.exe";
-		if (!src_host.exists(src_7z_path)) {
-			cm.println(EPrintType.CLUE, "install7Zip", "7z.exe not found on source: "+src_host);
+		final String dst_7z_path = dst_host.getPfttDir()+"\\bin\\7za.exe";
+		
+		if (dst_host.exists(dst_7z_path) && src_host.getSize(src_7z_path)==dst_host.getSize(dst_7z_path)) {
+			cm.println(EPrintType.CLUE, "install7Zip", "7za.exe already installed on: "+dst_host);
 			return;
 		}
 		
@@ -563,10 +573,14 @@ public abstract class AHost extends Host {
 	public void decompress(ConsoleManager cm, AHost ohost, String zip7_file, String dst) throws IllegalStateException, IOException, Exception {
 		ensure7Zip(cm, ohost);
 		
-		String base_dir = AHost.basename(dst);
-		mkdirs(base_dir);
+		String output_dir = dst;
+		mkdirs(output_dir);
 		
-		exec(silenceCmd(getPfttDir()+"\\bin\\7z x -mx=9 -mmt="+getCPUCount()+" -bd -y "+zip7_file), AHost.FOUR_HOURS, base_dir);
+		if (cm!=null)
+			cm.println(EPrintType.IN_PROGRESS, getClass(), "decompress output_dir="+output_dir+" zip7_file="+zip7_file);
+		
+		String cmd = silenceCmd(getPfttDir()+"\\bin\\7za x -mx=9 -mmt="+getCPUCount()+" -bd -y -o"+output_dir+" "+zip7_file);
+		execOut(cmd, AHost.ONE_HOUR);
 	}
 	
 	/** compresses source directory into destination 7zip file
@@ -582,11 +596,21 @@ public abstract class AHost extends Host {
 	public void compress(ConsoleManager cm, AHost ohost, String src, String zip7_file) throws IllegalStateException, IOException, Exception {
 		ensure7Zip(cm, ohost);
 		
+		if (isDirectory(src)) {
+			// IMPORTANT: make path point to contents of directory otherwise,
+			//            it'll create a directory in the archive
+			src += isWindows() ? "\\**" : "/**";
+		}
+		
 		// @see http://docs.bugaco.com/7zip/MANUAL/switches/method.htm
 		// x=9 => highest compression
 		// mt=[cpus] => use several threads == number of cpus => maximizes speed
 		// bd => no progress bar
-		exec(silenceCmd(getPfttDir()+"\\bin\\7z a -mx=9 -mmt="+getCPUCount()+" -bd "+zip7_file+" "+src), AHost.FOUR_HOURS, src);
+		final String cmd = silenceCmd(getPfttDir()+"\\bin\\7za a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on -mmt="+getCPUCount()+" -bd "+zip7_file+" "+src);
+
+		if (cm!=null)
+			cm.println(EPrintType.IN_PROGRESS, getClass(), "compress zip7_file="+zip7_file+" src="+src);
+		execOut(cmd, AHost.ONE_HOUR);
 	}
 	
 	/** modifies command to silence any output. returns modified command that can
@@ -598,7 +622,7 @@ public abstract class AHost extends Host {
 	 */
 	public String silenceCmd(String cmd) {
 		if (isWindows())
-			return cmd + " > NUL";
+			return toCmd(cmd) + " > NUL";
 		else
 			return cmd + " > /dev/null";
 	}
@@ -906,6 +930,37 @@ public abstract class AHost extends Host {
 	@Override
 	public boolean execElevated(ConsoleManager cm, String ctx_str, String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread test_thread, int slow_timeout_sec) throws Exception {
 		return execElevatedOut(cmd, timeout_sec, env, stdin_data, charset, chdir, test_thread, slow_timeout_sec).printOutputIfCrash(ctx_str, cm).isSuccess();
+	}
+
+	/** deletes all files in directory with extension
+	 * 
+	 * deleteFileExtension(".", ".tmp"); => deletes all .tmp files
+	 * 
+	 * @param dir
+	 * @param ext
+	 */
+	public boolean deleteFileExtension(String dir, String ext) {
+		if (!ext.startsWith("."))
+			ext = "." + ext;
+		try {
+			if (isWindows()) {
+				cmd("forfiles /p "+dir+" /s /m *"+ext+" /c \"cmd /C del /Q @path\"", ONE_MINUTE*20);
+			} else {
+				exec("rm -rF "+dir+"/*"+ext, ONE_MINUTE*20);
+			}
+			return true;
+		} catch ( Exception ex ) {
+			return false;
+		}
+	}
+	
+	/** returns TRUE if host is a Windows Server (2008, 2008r2, 2012) or FALSE
+	 * if its not (Windows Vista, 7, 8, Linux, BSD, etc...)
+	 * 
+	 * @return
+	 */
+	public boolean isWindowsServer() {
+		return getOSNameLong().contains("Server");
 	}
 	
 } // end public abstract class AHost

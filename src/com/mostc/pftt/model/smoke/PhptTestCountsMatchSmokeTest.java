@@ -1,8 +1,8 @@
 package com.mostc.pftt.model.smoke;
 
-import com.mostc.pftt.model.phpt.EPhptTestStatus;
+import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
-import com.mostc.pftt.results.PhptResultPackWriter;
+import com.mostc.pftt.results.PhpResultPackWriter;
 
 /** compares the count of tests completed to the total of each test status and the total number of
  * tests loaded from the test pack.
@@ -15,7 +15,7 @@ import com.mostc.pftt.results.PhptResultPackWriter;
 
 public class PhptTestCountsMatchSmokeTest extends SmokeTest {
 
-	public ESmokeTestStatus test(PhptResultPackWriter tmgr) {
+	public ESmokeTestStatus test(PhpResultPackWriter tmgr) {
 		int completion = 0;
 		for ( EPhptTestStatus status : EPhptTestStatus.values() ) {
 			switch(status) {

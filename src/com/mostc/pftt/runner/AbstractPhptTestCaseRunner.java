@@ -4,18 +4,18 @@ import java.io.IOException;
 import java.util.Map;
 
 import com.mostc.pftt.host.AHost;
-import com.mostc.pftt.model.phpt.EPhptSection;
-import com.mostc.pftt.model.phpt.EPhptTestStatus;
-import com.mostc.pftt.model.phpt.ESAPIType;
-import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.model.phpt.PhpIni;
-import com.mostc.pftt.model.phpt.PhptTestCase;
+import com.mostc.pftt.model.core.EPhptSection;
+import com.mostc.pftt.model.core.EPhptTestStatus;
+import com.mostc.pftt.model.core.ESAPIType;
+import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhpIni;
+import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.IPhptTestResultReceiver;
+import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.scenario.ScenarioSet;
 
-public abstract class AbstractPhptTestCaseRunner {
+public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner {
 	public static final String ENV_SCRIPT_FILENAME = "SCRIPT_FILENAME";
 	public static final String ENV_PATH_TRANSLATED = "PATH_TRANSLATED";
 	public static final String ENV_TEST_PHP_EXECUTABLE = "TEST_PHP_EXECUTABLE";
@@ -59,7 +59,7 @@ public abstract class AbstractPhptTestCaseRunner {
 	 * @return
 	 * @throws Exception
 	 */
-	public static boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+	public static boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
 		if (host.isWindows()) {
 			if (test_case.getName().contains("sysvmsg")||test_case.getName().contains("sysvshm")||test_case.getName().contains("gettext")||test_case.getName().contains("exif")||test_case.getName().contains("readline")||test_case.getName().contains("posix")) {
 				// extensions not supported on Windows
@@ -95,7 +95,7 @@ public abstract class AbstractPhptTestCaseRunner {
 		}
 	} // end public static boolean willSkip
 	
-	public static boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpIni ini, PhpBuild build, PhptTestCase test_case) throws Exception {
+	public static boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpIni ini, PhpBuild build, PhptTestCase test_case) throws Exception {
 		if (test_case.isExtensionTest() && !build.isExtensionEnabled(cm, host, type, ini, test_case.getExtensionName())) {
 			// if extension-under-test is not loaded, don't bother running test since it'll just be skipped (or false fail)
 			

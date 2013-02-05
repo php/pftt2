@@ -35,8 +35,9 @@ import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.MultiCharsetByLineReader;
 import com.github.mattficken.io.NoCharsetByLineReader;
 import com.github.mattficken.io.StringUtil;
-import com.mostc.pftt.model.phpt.PhptTestCase;
+import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
 import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.Kernel32;
@@ -174,7 +175,7 @@ public class LocalHost extends AHost {
 		return exec_impl(splitCmdString(commandline), env, chdir, NO_TIMEOUT, stdin_data);
 	}
 	@Override
-	public ExecOutput execOut(String commandline, int timeout, Map<String,String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread thread, int thread_slow_sec) throws Exception {
+	public ExecOutput execOut(final String commandline, int timeout, Map<String,String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread thread, int thread_slow_sec) throws Exception {
 		ThreadSlowTask task = null;
 		if (thread!=null && thread_slow_sec>NO_TIMEOUT) {
 			task = new ThreadSlowTask(thread);
@@ -188,7 +189,7 @@ public class LocalHost extends AHost {
 		if (task!=null)
 			task.cancel();
 		
-		ExecOutput out = new ExecOutput();
+		final ExecOutput out = new ExecOutput();
 		out.cmd = commandline;
 		out.output = eh.getOutput();
 		out.charset = eh.charset;
@@ -260,6 +261,21 @@ public class LocalHost extends AHost {
 		}
 		return true;
 	} // end public boolean copy
+	
+	@Override
+	public boolean move(String src, String dst) throws Exception {
+		if (isWindows()) {
+			src = toWindowsPath(src);
+			dst = toWindowsPath(dst);
+			
+			cmd("move \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
+		} else {
+			src = toUnixPath(src);
+			dst = toUnixPath(dst);
+			exec("mv \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
+		}
+		return true;
+	} // end public boolean move
 
 	@Override
 	public String getUsername() {
@@ -592,10 +608,10 @@ public class LocalHost extends AHost {
 
 	    LocalExecHandle h = new LocalExecHandle(process, stdin, stdout, stderr, cmd_array);
 	    
-	    if (timeout>NO_TIMEOUT) {
+	    /* TODO if (timeout>NO_TIMEOUT) {
 	    	h.task = new ExitMonitorTask(h);
-			timer.schedule(h.task, 5*1000);
-	    }
+			timer.schedule(h.task, timeout*1000);
+	    }*/
 	    
 	    return h;
 	} // end protected LocalExecHandle exec_impl
@@ -626,6 +642,11 @@ public class LocalHost extends AHost {
 	public boolean equals(Object o) {
 		return o == this || o instanceof LocalHost;
 	}
+	
+	@Override
+	public int hashCode() {
+		return Integer.MAX_VALUE;
+	}
 
 	@Override
 	public String getHostname() {
@@ -643,7 +664,9 @@ public class LocalHost extends AHost {
 	}
 
 	@Override
-	public void downloadCompressWith7Zip(ConsoleManager cm, String ctx_str, AHost src_host, String src, String dst) throws IllegalStateException, IOException, Exception {
+	public void downloadCompressWith7Zip(ConsoleManager cm, String ctx_str, String src, AHost src_host, String dst) throws IllegalStateException, IOException, Exception {
+		if (cm!=null)
+			cm.println(EPrintType.IN_PROGRESS, ctx_str, "copying src="+src+" dst="+dst);
 		download(src, dst);
 	}
 
@@ -653,7 +676,9 @@ public class LocalHost extends AHost {
 	}
 
 	@Override
-	public void uploadCompressWith7Zip(ConsoleManager cm, String ctx_str, String src, AHost dst_host, String dst) throws IllegalStateException, IOException, Exception {
+	public void uploadCompressWith7Zip(ConsoleManager cm, String ctx_str, AHost dst_host, String src, String dst) throws IllegalStateException, IOException, Exception {
+		if (cm!=null)
+			cm.println(EPrintType.IN_PROGRESS, ctx_str, "copying src="+src+" dst="+dst);
 		upload(src, dst);
 	}
 

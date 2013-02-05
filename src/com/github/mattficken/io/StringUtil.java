@@ -1,5 +1,6 @@
 package com.github.mattficken.io;
 
+import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -255,6 +256,30 @@ public final class StringUtil {
 	public static int hashCode(String a) {
 		return a == null ? 0 : a.hashCode();
 	}
+	
+	public static String join(ArrayList<String> strings, String delim) {
+		return join(strings, 0, strings.size(), delim);
+	}
+	
+	public static String join(ArrayList<String> strings, int off, String delim) {
+		return join(strings, off, strings.size() - off, delim);
+	}
+	
+	public static String join(ArrayList<String> strings, int off, int len, String delim) {
+		if (strings.size() <= 0)
+			return EMPTY;
+		else if (strings.size() == 1)
+			return strings.get(0);
+		
+		StringBuilder sb = new StringBuilder(256);
+		sb.append(strings.get(off));
+		off++;
+		for ( int i=0 ; i < len && off < strings.size() ; i++, off++ ) {
+			sb.append(delim);
+			sb.append(strings.get(off));
+		}
+		return sb.toString();
+	}
 
 	public static String join(String[] parts, String delim) {
 		return join(parts, 0, parts.length, delim);
@@ -378,6 +403,27 @@ public final class StringUtil {
 		}
 		return sb.toString();
 	} // end public static String toJava
+	
+	public static int parseIntEx(String str) {
+		return isEmpty(str) ? 0 : Integer.parseInt(str);
+	}
+	
+	public static int parseInt(String str) {
+		try {
+			return parseIntEx(str);
+		} catch ( NumberFormatException ex ) {
+			return 0;
+		}
+	}
+	
+	/** escapes special values in string so that it can be included in Java, PHP, etc... code
+	 * 
+	 * @param value
+	 * @return
+	 */
+	public static String cslashes(String value) {
+		return value.replace("\\", "\\\\");
+	}
 	
 	private StringUtil() {}
 	

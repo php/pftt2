@@ -1,7 +1,7 @@
 package com.mostc.pftt.scenario.app;
 
 import com.mostc.pftt.host.Host;
-import com.mostc.pftt.model.phpt.PhpBuild;
+import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.scenario.ApplicationScenario;
 import com.mostc.pftt.scenario.ScenarioSet;

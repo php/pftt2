@@ -10,8 +10,8 @@ import org.htmlcleaner.HtmlCleaner;
 import org.htmlcleaner.SimpleXmlSerializer;
 
 import com.mostc.pftt.host.AHost;
-import com.mostc.pftt.model.phpt.EBuildType;
-import com.mostc.pftt.model.phpt.EBuildBranch;
+import com.mostc.pftt.model.core.EBuildType;
+import com.mostc.pftt.model.core.EBuildBranch;
 
 /** Util for parsing the Snapshot download pages on windows.php.net to find
  * newest snapshot to download

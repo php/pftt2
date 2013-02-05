@@ -5,7 +5,7 @@ import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.RemoteHost;
 import com.mostc.pftt.host.TempFileExecOutput;
-import com.mostc.pftt.model.phpt.PhpBuild;
+import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
@@ -66,7 +66,10 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 	public DeduplicatedSMBStorageDir createStorageDir(ConsoleManager cm, AHost local_host) {
 		// check that its win8
 		if (!remote_host.isWin8OrLater()) {
-			cm.println(EPrintType.XSKIP_OPERATION, getName(), "Scenario can only be run against a Windows 8/2012+ host");
+			cm.println(EPrintType.XSKIP_OPERATION, getName(), "Scenario can only be run against a Windows 2012+ Server");
+			return null;
+		} else if (!remote_host.isWindowsServer()) {
+			cm.println(EPrintType.XSKIP_OPERATION, getName(), "Scenario can only be run against a Windows Server, not a Windows client. "+remote_host.getOSNameLong()+" "+remote_host);
 			return null;
 		} else if (volume.equals("C:")||remote_host.getSystemDrive().equalsIgnoreCase(volume)) {
 			cm.println(EPrintType.XSKIP_OPERATION, getName(), "Can not use Deduplication on a Windows System Drive (ex: C:\\)");
@@ -102,7 +105,10 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 			try {
 				// run deduplication job (on test-pack) -wait for completion
 				cm.println(EPrintType.IN_PROGRESS, getName(), "Running deduplication job... unc="+unc_path+" local="+local_path+" remote_file="+remote_path+" url="+url_path);
-				if (remote_host.powershell(getClass(), cm, "Start-Dedupjob -Volume "+volume+" -Type Optimization", AHost.FOUR_HOURS).printOutputIfCrash(getClass(), cm).isSuccess()) {
+				
+				final TempFileExecOutput eo = remote_host.powershell(getClass(), cm, "Start-Dedupjob -Volume "+volume+" -Type Optimization -Wait", AHost.FOUR_HOURS);
+				eo.printCommandAndOutput(EPrintType.CLUE, getClass(), cm);
+				if (eo.cleanupIfSuccess(remote_host)) {
 					
 					//
 					// log REPARSEPOINT QUERY to show if reparse point/deduplication was really setup
@@ -157,9 +163,9 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 			// 
 			cm.println(EPrintType.IN_PROGRESS, getName(), "Starting to Install Deduplication on: "+remote_host);
 			TempFileExecOutput teo = remote_host.powershell(getClass(), cm, ps_sb, AHost.ONE_MINUTE * 10);
-			if (teo.printOutputIfCrash(getClass(), cm).isSuccess()) {
+			teo.printCommandAndOutput(EPrintType.CLUE, getClass(), cm);
+			if (teo.cleanupIfSuccess(remote_host)) {
 				// don't delete tmp_file if it failed to help user see why
-				teo.cleanup(remote_host);
 				
 				cm.println(EPrintType.IN_PROGRESS, getName(), "Deduplication Feature Installed.");
 				

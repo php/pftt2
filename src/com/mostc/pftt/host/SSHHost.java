@@ -16,6 +16,7 @@ import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Timer;
@@ -32,6 +33,8 @@ import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.MultiCharsetByLineReader;
 import com.github.mattficken.io.NoCharsetByLineReader;
 import com.github.mattficken.io.StringUtil;
+import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
 import com.sshtools.j2ssh.SftpClient;
 import com.sshtools.j2ssh.SshClient;
@@ -41,6 +44,7 @@ import com.sshtools.j2ssh.connection.ChannelState;
 import com.sshtools.j2ssh.io.IOStreamConnector;
 import com.sshtools.j2ssh.session.SessionChannelClient;
 import com.sshtools.j2ssh.sftp.FileAttributes;
+import com.sshtools.j2ssh.sftp.SftpFile;
 import com.sshtools.j2ssh.transport.HostKeyVerification;
 import com.sshtools.j2ssh.transport.TransportProtocolException;
 import com.sshtools.j2ssh.transport.publickey.SshPublicKey;
@@ -133,6 +137,18 @@ public class SSHHost extends RemoteHost {
 	
 	protected String normalizePath(String path) {
 		return path;
+	}
+	
+	@Override
+	public boolean ensureConnected(ConsoleManager cm) {
+		try {
+			ensureSshOpen();
+			return true;
+		} catch ( Exception ex ) {
+			if (cm!=null)
+				cm.addGlobalException(EPrintType.CLUE, getClass(), "ensureConnected", ex, "can't connect to remote ssh host"); 
+			return false;
+		}
 	}
 	
 	protected void ensureSshOpen() throws IllegalStateException, IOException, UnknownHostException {
@@ -255,6 +271,21 @@ public class SSHHost extends RemoteHost {
 	
 	@Override
 	public boolean copy(String src, String dst) throws Exception {
+		if (isWindows()) {
+			src = toWindowsPath(src);
+			dst = toWindowsPath(dst);
+			
+			cmd("move \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
+		} else {
+			src = toUnixPath(src);
+			dst = toUnixPath(dst);
+			exec("mv \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
+		}
+		return true;
+	}
+	
+	@Override
+	public boolean move(String src, String dst) throws Exception {
 		src = normalizePath(src);
 		dst = normalizePath(dst);
 		if (isWindows()) {
@@ -336,8 +367,21 @@ public class SSHHost extends RemoteHost {
 		// prepare to execute
 		if (StringUtil.isNotEmpty(chdir)) {
 			// would be nice if there were a better way to do this
-			cmd = "cd \""+chdir+"\" && "+cmd;
+			if (isWindows()) {
+				if (cmd.startsWith("cmd /C "))
+					cmd = cmd.substring("cmd /C ".length());
+				
+				// 'cd' is not a program
+				cmd = "cmd /C cd \""+chdir+"\" && "+cmd;
+			} else {
+				if (cmd.startsWith("bash -c "))
+					cmd = cmd.substring("bash -c ".length());
+				
+				cmd = "bash -c cd \""+chdir+"\" && "+cmd;
+			}
 		}
+		//
+		
 		if (env!=null) {
 			for (String name : env.keySet())
 				session.setEnvironmentVariable(name, env.get(name));
@@ -346,7 +390,6 @@ public class SSHHost extends RemoteHost {
 			session.getOutputStream().write(stdin_post);
 		}
 		//
-		
 		if (session.executeCommand(cmd)) {
 			IOStreamConnector output = new IOStreamConnector();
 			output.connect(session.getInputStream(), out);
@@ -354,7 +397,7 @@ public class SSHHost extends RemoteHost {
 		} else {
 			throw new IllegalStateException("command not executed: "+cmd);
 		}
-	}
+	} // end protected SessionChannelClient do_exec
 	
 	@Override
 	public ExecHandle execThread(String cmd, Map<String, String> env, String chdir, byte[] stdin_post) throws Exception {
@@ -522,13 +565,41 @@ public class SSHHost extends RemoteHost {
 	@Override
 	public boolean mkdirs(String path) throws IllegalStateException, IOException {
 		ensureSftpOpen();
-		sftp.mkdirs(normalizePath(path));
+		path = normalizePath(path);
+		
+		if (isWindows()) {
+			try {
+				sftp.stat(path);
+				return true; // already exists
+			} catch ( Exception ex ) {
+			}
+			StringBuilder ppath_sb = new StringBuilder(path.length());
+			String ppath = "";
+			for ( String part : Host.splitPath(path) ) {
+				if (ppath_sb.length()==0 && part.length()==2 && part.charAt(1)==':' && Character.isLetter(part.charAt(0))) {
+					// drive letter support
+					ppath_sb.append(part);
+					continue;
+				}
+				ppath_sb.append('\\');
+				ppath_sb.append(part);
+				ppath = ppath_sb.toString();
+				try {
+					sftp.stat(ppath);
+				} catch ( Exception ex ) {
+					sftp.mkdir(ppath);
+				}
+			}
+		} else {
+			sftp.mkdirs(normalizePath(path));
+		}
 		return true;
-	}
+	} // end public boolean mkdirs
 
 	@Override
 	public boolean download(String src, String dst) throws IllegalStateException, IOException, Exception {
 		ensureSftpOpen();
+		new File(dst).getParentFile().mkdirs();
 		sftp.get(normalizePath(src), new BufferedOutputStream(new FileOutputStream(dst)));
 		return true;
 	}
@@ -551,6 +622,7 @@ public class SSHHost extends RemoteHost {
 		dst = normalizePath(dst);
 		
 		File fsrc = new File(src);
+		mkdirs(dirname(dst));
 		if (fsrc.isDirectory()) {
 			do_upload(src, fsrc.listFiles(), dst);
 		} else {
@@ -639,13 +711,17 @@ public class SSHHost extends RemoteHost {
 		return false;
 	}
 
-	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@SuppressWarnings({ "rawtypes"})
 	@Override
 	public String[] list(String path) {
 		try {
 			ensureSftpOpen();
 			List list = sftp.ls(normalizePath(path));
-			return (String[]) list.toArray(new String[list.size()]);
+			ArrayList<String> names = new ArrayList<String>(list.size());
+			for (Object f : list) {
+				names.add(((SftpFile)f).getFilename());
+			}
+			return (String[]) names.toArray(new String[names.size()]);
 		} catch ( Exception ex ) {
 			ex.printStackTrace();
 		}

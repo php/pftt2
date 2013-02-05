@@ -15,16 +15,16 @@ import org.incava.util.diff.Diff;
 
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
-import com.mostc.pftt.model.phpt.EPhptSection;
-import com.mostc.pftt.model.phpt.EPhptTestStatus;
-import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.model.phpt.PhpIni;
-import com.mostc.pftt.model.phpt.PhptOverrideManager;
-import com.mostc.pftt.model.phpt.PhptTestCase;
-import com.mostc.pftt.model.phpt.PhptSourceTestPack;
-import com.mostc.pftt.model.phpt.PhptActiveTestPack;
+import com.mostc.pftt.model.core.EPhptSection;
+import com.mostc.pftt.model.core.EPhptTestStatus;
+import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhpIni;
+import com.mostc.pftt.model.core.PhptActiveTestPack;
+import com.mostc.pftt.model.core.PhptOverrideManager;
+import com.mostc.pftt.model.core.PhptSourceTestPack;
+import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.IPhptTestResultReceiver;
+import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 import com.mostc.pftt.scenario.ScenarioSet;
@@ -33,7 +33,7 @@ import com.mostc.pftt.util.StringUtil2.LengthLimitStringWriter;
 
 public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRunner {
 	protected final ConsoleManager cm;
-	protected final IPhptTestResultReceiver twriter;
+	protected final ITestResultReceiver twriter;
 	protected final AHost host;
 	protected final PhpBuild build;
 	protected final PhptSourceTestPack src_test_pack;
@@ -58,8 +58,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			// test is SKIP BORK EXCEPTION etc...
 			return;
 		
-		
-		if (skipif_file == null || !evalSkipIf(executeSkipIf())) {
+		if (skipif_file == null || ( !evalSkipIf(executeSkipIf()) && not_crashed) ) {
 			// no SKIPIF section or executed SKIPIF says to execute the TEST section
 			prepareTest();
 			//
@@ -76,7 +75,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		}
 	}
 	
-	public AbstractPhptTestCaseRunner2(PhpIni ini, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, IPhptTestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+	public AbstractPhptTestCaseRunner2(PhpIni ini, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
 		this.ini = ini;
 		this.thread = thread;
 		this.test_case = test_case;
@@ -109,7 +108,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			return false;
 		}
 		
-		test_dir = host.joinIntoOnePath(active_test_pack.getDirectory(), AHost.dirname(test_case.getName()));
+		test_dir = host.joinIntoOnePath(active_test_pack.getStorageDirectory(), AHost.dirname(test_case.getName()));
 		
 		// CRITICAL
 		// TODO must be done for -auto - should be more efficient
@@ -137,16 +136,9 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			host.saveTextFile(test_clean, test_case.get(EPhptSection.CLEAN));
 		} // else test_clean = null;
 		
-		/*
-		if (StringUtil.isEmpty(ini.getExtensionDir()))
-			// this is done in PhpIni#createDefaultIniCopy if the host is Windows
-			// but for Linux/non-Windows, this won't have been done
-			ini.setExtensionDir(build.getDefaultExtensionDir());
-		*/
 		
 		return true;
 	} // end boolean prepare
-	static final Pattern PAT_bs = Pattern.compile("\"");
 	
 	/** executes SKIPIF section and returns output
 	 * 
@@ -162,20 +154,48 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	 * @return TRUE - skip test
 	 * @throws IOException
 	 */
-	public boolean evalSkipIf(String output) throws IOException {
+	protected boolean evalSkipIf(String output) throws IOException {
 		String lc_output = output.toLowerCase();
-		if (lc_output.contains("skip")) {
+		//
+		// find 'skip ' or 'skip...' or 'skip' but ignore '404 error, file not found abc.skip.php'
+		int skip_idx = -1, next;
+		char nextc;
+		boolean skip = false;
+		main_loop:
+		for (int i=0;i<32;i++) {
+			skip_idx = lc_output.indexOf("skip", skip_idx+1);
+			if (skip_idx==-1)
+				break main_loop;
+			next = skip_idx+"skip".length()+1;
+			period_loop:
+			for (;;) {
+				if (next>lc_output.length()) {
+					skip = true;
+					break main_loop;
+				}	
+				nextc = lc_output.charAt(next);
+				if (nextc!='.')
+					break period_loop;
+				next++;
+			}
+			if (Character.isWhitespace(nextc)) {
+				skip = true;
+				break main_loop;
+			}
+		} // end for
+		if (skip) {
 			// test is to be skipped
 						
 			// decide to mark test SKIP or XSKIP (could test be executed on this OS?)
+			// CRITICAL: spaces around words - avoids misinterpretting an HTTP 404 error
 			if (host.isWindows()) {
-				if ( (lc_output.contains("only")&&lc_output.contains("linux"))||(lc_output.contains("not")&&lc_output.contains("windows")))
+				if ( (lc_output.contains("only ")&&(lc_output.contains(" linux")||lc_output.contains(" non windows")||lc_output.contains(" non-windows")))||(lc_output.contains("not ")&&lc_output.contains(" windows")))
 					// can"t run this test on this OS
 					twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, output, null, null, null, ini, null, null, null, null, null, null, null));
 				else
 					twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.SKIP, test_case, output, null, null, null, ini, null, null, null, null, null, null, null));
 			} else {
-				if ( (lc_output.contains("only")&&lc_output.contains("windows"))||(lc_output.contains("not")&&lc_output.contains("linux")))
+				if ( (lc_output.contains("only ")&&lc_output.contains(" windows"))||(lc_output.contains("not ")&&lc_output.contains(" linux")))
 					// can"t run this test on this OS
 					twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, output, null, null, null, ini, null, null, null, null, null, null, null));
 				else
@@ -188,7 +208,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 
 		// execute this test, don't skip it
 		return false;
-	} // end void evalSkipIf
+	} // end protected void evalSkipIf
 	
 	static final Pattern PATTERN_CONTENT_TYPE = Pattern.compile("Content-Type:(.*)");
 	/** prepares to execute the test after the SKIPIF section is executed (if any)
@@ -232,7 +252,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 
 						setContentType(content_type);
 						first_ct = false;
-						if (this instanceof HttpTestCaseRunner)
+						if (this instanceof HttpPhptTestCaseRunner)
 							continue; // TODO 
 					} else if (first_ct) {
 						// content type may look like this:
@@ -355,8 +375,6 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		this.content_type = content_type;
 	}
 	
-	static final Pattern PAT_dollar = Pattern.compile("\\$");
-	
 	/** executes the test (the TEST section of PhptTestCase) and returns the actual output
 	 *
 	 * must not return null
@@ -373,24 +391,13 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	 */
 	protected abstract void executeClean() throws Exception;
 	
-	/** returns output from SAPI (ex: Web Server) used to run the test,
-	 * if it crashed. if SAPI did not crash, returns null.
-	 * 
-	 * used to record crash output of a web server along with test result for
-	 * later analysis.
-	 * 
-	 * @see WebserverInstance#getSAPIOutput
-	 * @return
-	 */
-	protected abstract String getCrashedSAPIOutput();
-	
 	/** evaluates the output of the executed test and reports the result
 	 * 
 	 * @param output
 	 * @param charset
 	 * @throws Throwable
 	 */
-	public void evalTest(String output, Charset charset) throws Throwable {
+	protected void evalTest(String output, Charset charset) throws Throwable {
 		// line endings are already made consistent by Host#exec
 		String expected, preoverride_actual = null;
 	
@@ -446,7 +453,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 						
 			output = remove_header_from_output(output);
 			
-			if (equalsNoWS(output, expected)||output.contains("<html>")||(test_case.isNamed("ext/phar/tests/zip/phar_commitwrite.phpt")&&expected.contains(output.substring(50, 60)))||(test_case.isNamed("ext/phar/tests/tar/phar_commitwrite.phpt")&&expected.contains(output.substring(60, 70)))) {
+			if (equalsNoWS(output, expected)||(output.contains("<html>")&&!output.contains("404"))||(test_case.isNamed("ext/phar/tests/zip/phar_commitwrite.phpt")&&expected.contains(output.substring(50, 60)))||(test_case.isNamed("ext/phar/tests/tar/phar_commitwrite.phpt")&&expected.contains(output.substring(60, 70)))) {
 				
 				twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
 						
@@ -474,7 +481,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			output = remove_header_from_output(output);
 			String output_trim = output.trim();
 			
-			if (StringUtil.isEmpty(output_trim)||output.contains("<html>")) {
+			if (StringUtil.isEmpty(output_trim)||(output.contains("<html>")&&!output.contains("404"))) {
 				twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
 				
 				return;
@@ -525,7 +532,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		//
 		
 		twriter.addResult(host, scenario_set, result);
-	} // end void evalTest
+	} // end protected void evalTest
 	
 	protected PhptTestResult notifyFail(PhptTestResult result) {
 		return result;

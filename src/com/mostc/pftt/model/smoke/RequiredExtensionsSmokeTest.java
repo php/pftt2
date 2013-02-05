@@ -3,9 +3,9 @@ package com.mostc.pftt.model.smoke;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
-import com.mostc.pftt.model.phpt.ESAPIType;
-import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.model.phpt.PhpIni;
+import com.mostc.pftt.model.core.ESAPIType;
+import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
@@ -118,6 +118,7 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 	public static PhpIni createDefaultIniCopy(Host host, PhpBuild build) {
 		PhpIni ini = new PhpIni();
 		ini.putSingle("default_mimetype", "text/plain");
+		ini.putSingle("date.timezone", "'UTC'"); // TODO ' matters?
 		ini.putMulti(PhpIni.OUTPUT_HANDLER, StringUtil.EMPTY);
 		ini.putMulti(PhpIni.OPEN_BASEDIR, StringUtil.EMPTY);
 		ini.putMulti(PhpIni.SAFE_MODE, 0);

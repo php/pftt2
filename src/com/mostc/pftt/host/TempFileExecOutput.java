@@ -8,6 +8,7 @@ public class TempFileExecOutput extends ExecOutput {
 	}
 	
 	public TempFileExecOutput(String temp_file, ExecOutput eo) {
+		this.cmd = eo.cmd;
 		this.charset = eo.charset;
 		this.exit_code = eo.exit_code;
 		this.output = eo.output;

@@ -1,14 +1,17 @@
 package com.mostc.pftt.scenario;
 
+import java.io.File;
+
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.RemoteHost;
-import com.mostc.pftt.model.phpt.PhpBuild;
+import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
-/** Scenarios that test PHP using builds and test packs that are stored remotely and accessed using SMB.
+/** Scenarios that test PHP using builds and test packs that are stored remotely and 
+ * accessed using SMB/CIFS.
  *
  * This testing is important even on recent PHP versions, as proven by php bug #63241.
  * 
@@ -22,20 +25,23 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 	
 	public AbstractSMBScenario(RemoteHost remote_host, String base_file_path, String base_share_name) {
 		this.remote_host = remote_host;
-		//
-		if (StringUtil.isEmpty(base_file_path))
-			// fallback to a default path, @see SMBDeduplicationScenario
-			base_file_path = remote_host.isWindows() ? "C:\\PFTT-Share" : "/var/data/PFTT-Share";
-		else if (StringUtil.isEmpty(AHost.basename(base_file_path)))
-			// base_file_path ~= C:\
-			base_file_path += "\\PFTT-Share";
+		
 		if (StringUtil.isNotEmpty(base_share_name))
 			base_share_name = base_share_name.trim();
 		if (StringUtil.isEmpty(base_share_name)) {
 			base_share_name = AHost.basename(base_file_path);
 			if (StringUtil.isEmpty(base_share_name))
-				base_share_name = "\\PFTT-Share";
+				base_share_name = "PFTT-Share";
 		}
+		//
+		if (StringUtil.isEmpty(base_file_path))
+			// fallback to a default path, @see SMBDeduplicationScenario
+			base_file_path = remote_host.isWindows() ? remote_host.getSystemDrive()+"\\" + base_share_name : "/var/data/" + base_share_name;
+		else if (StringUtil.isEmpty(AHost.basename(base_file_path)))
+			// base_file_path ~= C:\
+			base_file_path += "\\" + base_share_name;
+		else if (!AHost.hasDrive(base_file_path) && remote_host.isWindows())
+			base_file_path = remote_host.getSystemDrive() + "\\" + base_file_path;
 		//
 		this.base_file_path = base_file_path;
 		this.base_share_name = base_share_name;
@@ -53,21 +59,21 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 	 * a test-pack can then be installed on that File Share.
 	 * 
 	 * @param cm
-	 * @param host
+	 * @param local_host
 	 * @return TRUE on success, FALSE on failure (can't use this storage if failure)
 	 */
 	@Override
-	public SMBStorageDir createStorageDir(ConsoleManager cm, AHost host) {
+	public SMBStorageDir createStorageDir(ConsoleManager cm, AHost local_host) {
 		SMBStorageDir dir = newSMBStorageDir();
 		
 		if ( createShare(dir, cm) ) {
-			if ( connect(dir, cm, host) ) {
+			if ( connect(dir, cm, local_host) ) {
 				return dir;
 			}
 		}
 		
 		// failed, try cleaning up
-		dir.delete(cm, host);
+		dir.disposeForce(cm, local_host);
 		
 		return null;
 	}
@@ -87,13 +93,28 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		}
 		
 		@Override
-		public boolean delete(ConsoleManager cm, AHost local_host) {
+		public boolean disposeIfEmpty(ConsoleManager cm, AHost local_host) {
+			if (new File(local_path).list().length > 0) {
+				cm.println(EPrintType.CANT_CONTINUE, getClass(), "Unable to dispose of Storage Directory. It is not empty: local="+local_path);
+				return false;
+			} else {
+				return disposeForce(cm, local_host);
+			}
+		}
+		
+		@Override
+		public boolean disposeForce(ConsoleManager cm, AHost local_host) {
 			return disconnect(this, cm, local_host) && deleteShare(this, cm, local_host);
 		}
 
 		@Override
 		public String getLocalPath(AHost local_host) {
 			return local_path; // H: I: J: ... Y:
+		}
+		
+		@Override
+		public String getRemotePath(AHost local_host) {
+			return remote_path;
 		}
 		
 	} // end public class SMBStorageDir
@@ -161,12 +182,9 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 	}
 	
 	protected boolean doCreateShareWindows(ConsoleManager cm, String remote_path, String share_name) throws Exception {
-		remote_path = remote_path.replace("C", "G"); // TODO
-		
 		remote_host.mkdirs(remote_path);
 		
 		String cmd = "NET SHARE "+share_name+"="+remote_path+" /Grant:"+remote_host.getUsername()+",Full";
-		System.out.println("cmd "+cmd);
 		return remote_host.execElevated(cm, getClass(), cmd, AHost.FOUR_HOURS);
 	}
 	
@@ -230,7 +248,8 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 	
 	protected boolean doDeleteShareWindows(ConsoleManager cm, String remote_path) {
 		try {
-			if (remote_host.execElevated(cm, getClass(), "NET SHARE "+remote_path+" /DELETE", AHost.ONE_MINUTE)) {
+			// CRITICAL: without /Y it may ask for confirmation/block forever
+			if (remote_host.execElevated(cm, getClass(), "NET SHARE "+remote_path+" /DELETE /Y", AHost.ONE_MINUTE)) {
 				try {
 					remote_host.delete(remote_path);
 					
@@ -247,7 +266,8 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 	
 	protected boolean disconnect(SMBStorageDir dir, ConsoleManager cm, AHost host) {
 		try {
-			if (host.exec(cm, getClass(), "NET USE "+dir.local_path+" /DELETE", AHost.ONE_MINUTE)) {
+			// CRITICAL: /Y or it may block
+			if (host.exec(cm, getClass(), "NET USE "+dir.local_path+" /DELETE /Y", AHost.ONE_MINUTE)) {
 				cm.println(EPrintType.IN_PROGRESS, getClass(), "Disconnected share: local="+dir.local_path);
 			}
 		} catch ( Exception ex ) {

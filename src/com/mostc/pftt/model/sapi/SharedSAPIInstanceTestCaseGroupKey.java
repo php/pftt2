@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.mostc.pftt.host.AHost;
-import com.mostc.pftt.model.phpt.PhpIni;
+import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 
 /**

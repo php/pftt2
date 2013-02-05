@@ -7,6 +7,8 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 
+import javax.annotation.Nullable;
+
 import org.apache.http.impl.DefaultHttpClientConnection;
 import org.apache.http.impl.io.AbstractSessionInputBuffer;
 import org.apache.http.impl.io.AbstractSessionOutputBuffer;
@@ -18,7 +20,7 @@ import org.apache.http.params.HttpParams;
 public class DebuggingHttpClientConnection extends DefaultHttpClientConnection {
 	protected final ByteArrayOutputStream response, request;
 	
-	public DebuggingHttpClientConnection(ByteArrayOutputStream request, ByteArrayOutputStream response) {
+	public DebuggingHttpClientConnection(@Nullable ByteArrayOutputStream request, ByteArrayOutputStream response) {
 		this.request = request;
 		this.response = response;
 	}
@@ -51,14 +53,16 @@ public class DebuggingHttpClientConnection extends DefaultHttpClientConnection {
 		@Override
 		public int read(byte[] buf, int off, int len) throws IOException {
 			len = real.read(buf, off, len);
-			bin.write(buf, off, len);
+			if (len!=-1)
+				bin.write(buf, off, len);
 			return len;
 		}
 		
 		@Override
 		public int read(byte[] buf) throws IOException {
 			int len = real.read(buf);
-			bin.write(buf, 0, len);
+			if (len!=-1)
+				bin.write(buf, 0, len);
 			return len;
 		}
 		
@@ -89,25 +93,29 @@ public class DebuggingHttpClientConnection extends DefaultHttpClientConnection {
 		@Override
 		public void write(byte[] buf, int off, int len) throws IOException {
 			real.write(buf, off, len);
-			bout.write(buf, off, len);
+			if (bout!=null)
+				bout.write(buf, off, len);
 		}
 		
 		@Override
 		public void write(byte[] buf) throws IOException {
 			real.write(buf);
-			bout.write(buf);
+			if (bout!=null)
+				bout.write(buf);
 		}
 		
 		@Override
 		public void write(int b) throws IOException {
 			real.write(b);
-			bout.write(b);
+			if (bout!=null)
+				bout.write(b);
 		}
 		
 		@Override
 		public void close() throws IOException {
 			real.close();
-			bout.close();
+			if (bout!=null)
+				bout.close();
 		}
 		
 	} // end protected static class DebuggingOutputStream

@@ -1,19 +1,29 @@
 package com.mostc.pftt.runner;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.List;
+
 import com.mostc.pftt.host.AHost;
-import com.mostc.pftt.model.phpt.PhpBuild;
+import com.mostc.pftt.model.SourceTestPack;
+import com.mostc.pftt.model.TestCase;
+import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.scenario.ScenarioSet;
 
-public abstract class AbstractTestPackRunner {
+public abstract class AbstractTestPackRunner<S extends SourceTestPack, T extends TestCase> {
 	protected final PhpBuild build;
-	protected final AHost host;
+	protected AHost storage_host, runner_host; // TODO final
 	protected final ScenarioSet scenario_set;
 	
-	public AbstractTestPackRunner(ScenarioSet scenario_set, PhpBuild build, AHost host) {
+	public AbstractTestPackRunner(ScenarioSet scenario_set, PhpBuild build, AHost storage_host, AHost runner_host) {
 		this.scenario_set = scenario_set;
 		this.build = build;
-		this.host = host;
+		this.storage_host = storage_host;
+		this.runner_host = runner_host;
 	}
+	
+	public abstract void runAllTests(S test_pack) throws FileNotFoundException, IOException, Exception;
+	public abstract void runTestList(S test_pack, List<T> test_cases) throws Exception;
 	
 	public static enum ETestPackRunnerState {
 		/** either stopped or paused or finished*/

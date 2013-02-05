@@ -23,7 +23,7 @@ import se.datadosen.component.RiverLayout;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.results.PhptTestResult;
-import com.mostc.pftt.runner.PhptTestPackRunner;
+import com.mostc.pftt.runner.LocalPhptTestPackRunner;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 @SuppressWarnings("serial")
@@ -36,7 +36,7 @@ public class PhptDebuggerFrame extends JPanel {
 	protected JMenu scenario_menu;
 	protected JTextField status_field;
 	
-	public PhptDebuggerFrame(PhptTestPackRunner phpt_test_pack_runner) {
+	public PhptDebuggerFrame(LocalPhptTestPackRunner phpt_test_pack_runner) {
 		super(new RiverLayout(5, 2));
 		
 		JSplitPane jsp = new JSplitPane(JSplitPane.VERTICAL_SPLIT);

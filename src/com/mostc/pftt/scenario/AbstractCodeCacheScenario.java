@@ -1,6 +1,6 @@
 package com.mostc.pftt.scenario;
 
-import com.mostc.pftt.model.phpt.EAcceleratorType;
+import com.mostc.pftt.model.core.EAcceleratorType;
 
 public abstract class AbstractCodeCacheScenario extends AbstractINIScenario {
 	public static final AbstractCodeCacheScenario WINCACHE = new WinCacheScenario();

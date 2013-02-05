@@ -12,16 +12,16 @@ import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
-import com.mostc.pftt.model.phpt.EPhptSection;
-import com.mostc.pftt.model.phpt.EPhptTestStatus;
-import com.mostc.pftt.model.phpt.ESAPIType;
-import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.model.phpt.PhpIni;
-import com.mostc.pftt.model.phpt.PhptTestCase;
-import com.mostc.pftt.model.phpt.PhptSourceTestPack;
-import com.mostc.pftt.model.phpt.PhptActiveTestPack;
+import com.mostc.pftt.model.core.EPhptSection;
+import com.mostc.pftt.model.core.EPhptTestStatus;
+import com.mostc.pftt.model.core.ESAPIType;
+import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhpIni;
+import com.mostc.pftt.model.core.PhptActiveTestPack;
+import com.mostc.pftt.model.core.PhptSourceTestPack;
+import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.IPhptTestResultReceiver;
+import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 import com.mostc.pftt.scenario.ScenarioSet;
@@ -38,7 +38,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected ExecOutput output;
 	protected String selected_php_exe, shell_script, test_cmd, skip_cmd, ini_settings, shell_file, ini_dir;
 	
-	public static boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+	public static boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
 		if (AbstractPhptTestCaseRunner2.willSkip(cm, twriter, host, scenario_set, type, build, test_case)) {
 			return true;
 		} else if (cm.isDisableDebugPrompt()&&test_case.isNamed(
@@ -133,7 +133,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		return false;
 	}
 	
-	public CliPhptTestCaseRunner(PhpIni ini, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, IPhptTestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+	public CliPhptTestCaseRunner(PhpIni ini, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
 		super(ini, thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 	}
 	
@@ -285,7 +285,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				env.put(ENV_SCRIPT_FILENAME, skipif_file);
 			
 			// execute SKIPIF (60 second timeout)
-			output = host.execOut(skip_cmd, AHost.ONE_MINUTE, env, null, active_test_pack.getDirectory());
+			output = host.execOut(skip_cmd, AHost.ONE_MINUTE, env, null, active_test_pack.getStorageDirectory());
 						
 			return output.output;
 		}
@@ -296,7 +296,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected String executeTest() throws Exception { 
 		// execute PHP to execute the TEST code ... allow up to 60 seconds for execution
 		//      if test is taking longer than 40 seconds to run, spin up an additional thread to compensate (so other non-slow tests can be executed)
-		output = host.execOut(shell_file, AHost.ONE_MINUTE, env, stdin_post, test_case.isNon8BitCharset()?test_case.getCommonCharset():null, active_test_pack.getDirectory(), thread, 40);
+		output = host.execOut(shell_file, AHost.ONE_MINUTE, env, stdin_post, test_case.isNon8BitCharset()?test_case.getCommonCharset():null, active_test_pack.getStorageDirectory(), thread, 40);
 		
 		if (output.isCrashed() && StringUtil.isWhitespaceOrEmpty(output.output)) {
 			not_crashed = false; // @see #runTest
@@ -310,12 +310,12 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	@Override
 	protected void executeClean() throws Exception {
 		// execute cleanup script
-		host.exec(cm, getClass(), selected_php_exe+" "+test_clean, AHost.ONE_MINUTE, env, null, active_test_pack.getDirectory());
+		host.exec(cm, getClass(), selected_php_exe+" "+test_clean, AHost.ONE_MINUTE, env, null, active_test_pack.getStorageDirectory());
 		
 	} // end void executeClean
 
 	@Override
-	protected String getCrashedSAPIOutput() {
+	public String getCrashedSAPIOutput() {
 		if (output.isCrashed()) 
 			return output.isEmpty() ? 
 				"PFTT: test printed nothing. was expected to print something. exited with non-zero code (probably crash): "+output.exit_code 
@@ -330,11 +330,11 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		// create a .cmd (Windows batch script) or .sh (shell script) that will actually execute PHP
 		// this enables PHP to be executed like what PFTT does, but using a shell|batch script
 		shell_file = test_file + (host.isWindows() ? ".cmd" : ".sh" );
-		if (shell_file.startsWith(active_test_pack.getDirectory())) {
-			shell_file = shell_file.substring(active_test_pack.getDirectory().length());
+		if (shell_file.startsWith(active_test_pack.getStorageDirectory())) {
+			shell_file = shell_file.substring(active_test_pack.getStorageDirectory().length());
 			if (shell_file.startsWith("/")||shell_file.startsWith("\\"))
 				shell_file = shell_file.substring(1);
-			shell_file = this.active_test_pack.getDirectory()+"/"+shell_file;
+			shell_file = this.active_test_pack.getStorageDirectory()+"/"+shell_file;
 		}
 		StringWriter sw = new StringWriter();
 		PrintWriter fw = new PrintWriter(sw);
@@ -349,8 +349,8 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			if (value==null)
 				value = "";
 			else
-				value = StringUtil.replaceAll(PAT_bs, "\\\\\"", StringUtil.replaceAll(PAT_dollar, "\\\\\\$", value));
-			
+				value = StringUtil.cslashes(value);
+			 
 			if (host.isWindows()) {
 				if (value.contains(" "))
 					// important: on Windows, don't use " " for script variables unless you have to
@@ -373,17 +373,17 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		
 		if (!host.isWindows()) {
 			// make shell script executable on linux
-			host.exec(cm, getClass(), "chmod +x \""+shell_file+"\"", AHost.FOUR_HOURS, null, null, active_test_pack.getDirectory());
+			host.exec(cm, getClass(), "chmod +x \""+shell_file+"\"", AHost.FOUR_HOURS, null, null, active_test_pack.getStorageDirectory());
 		}
 	} // end protected void createShellScript
 
 	protected void prepareSTDIN() throws IOException {
 		String stdin_file = test_file + ".stdin";
-		if (stdin_file.startsWith(active_test_pack.getDirectory())) {
-			stdin_file = stdin_file.substring(active_test_pack.getDirectory().length());
+		if (stdin_file.startsWith(active_test_pack.getStorageDirectory())) {
+			stdin_file = stdin_file.substring(active_test_pack.getStorageDirectory().length());
 			if (stdin_file.startsWith("/")||stdin_file.startsWith("\\"))
 				stdin_file = stdin_file.substring(1);
-			stdin_file = this.active_test_pack.getDirectory()+"/"+stdin_file;
+			stdin_file = this.active_test_pack.getStorageDirectory()+"/"+stdin_file;
 		}
 		new File(stdin_file).getParentFile().mkdirs();
 		if (stdin_post!=null) {

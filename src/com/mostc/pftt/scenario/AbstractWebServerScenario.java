@@ -19,22 +19,22 @@ import org.apache.http.protocol.RequestUserAgent;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.HostGroup;
-import com.mostc.pftt.model.phpt.EPhptSection;
-import com.mostc.pftt.model.phpt.ESAPIType;
-import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.model.phpt.PhpIni;
-import com.mostc.pftt.model.phpt.PhptTestCase;
-import com.mostc.pftt.model.phpt.PhptSourceTestPack;
-import com.mostc.pftt.model.phpt.PhptActiveTestPack;
+import com.mostc.pftt.model.core.EPhptSection;
+import com.mostc.pftt.model.core.ESAPIType;
+import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhpIni;
+import com.mostc.pftt.model.core.PhptActiveTestPack;
+import com.mostc.pftt.model.core.PhptSourceTestPack;
+import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.model.sapi.SharedSAPIInstanceTestCaseGroupKey;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.model.sapi.WebServerInstance;
 import com.mostc.pftt.model.sapi.WebServerManager;
 import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.IPhptTestResultReceiver;
+import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
-import com.mostc.pftt.runner.HttpTestCaseRunner;
+import com.mostc.pftt.runner.HttpPhptTestCaseRunner;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 
 /** scenarios for testing PHP while its running under a web server
@@ -87,7 +87,7 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 	 * @param docroot
 	 * @return
 	 */
-	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, String docroot) {
+	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, final String docroot) {
 		if (host instanceof AHost) {
 			return smgr.getWebServerInstance(cm, (AHost)host, build, null, null, docroot, null, this).isRunning() ? EScenarioStartState.STARTED : EScenarioStartState.FAILED_TO_START;
 		} else {
@@ -120,8 +120,8 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 	}
 	
 	@Override
-	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, IPhptTestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
-		return new HttpTestCaseRunner(group_key.getPhpIni(), group_key.getEnv(), params, httpproc, httpexecutor, smgr, (WebServerInstance) ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance(), thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
+	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+		return new HttpPhptTestCaseRunner(group_key.getPhpIni(), group_key.getEnv(), params, httpproc, httpexecutor, smgr, (WebServerInstance) ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance(), thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 	}
 	
 	@Override
@@ -160,8 +160,8 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 	}
 	
 	@Override
-	public boolean willSkip(ConsoleManager cm, IPhptTestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
-		return HttpTestCaseRunner.willSkip(cm, twriter, host, scenario_set, type, build, test_case);
+	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+		return HttpPhptTestCaseRunner.willSkip(cm, twriter, host, scenario_set, type, build, test_case);
 	}
 	
 } // end public abstract class AbstractWebServerScenario

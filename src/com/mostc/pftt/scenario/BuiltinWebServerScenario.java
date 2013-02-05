@@ -2,9 +2,9 @@ package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
-import com.mostc.pftt.model.phpt.EBuildBranch;
-import com.mostc.pftt.model.phpt.ESAPIType;
-import com.mostc.pftt.model.phpt.PhpBuild;
+import com.mostc.pftt.model.core.EBuildBranch;
+import com.mostc.pftt.model.core.ESAPIType;
+import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.sapi.BuiltinWebServerManager;
 import com.mostc.pftt.results.ConsoleManager;
 

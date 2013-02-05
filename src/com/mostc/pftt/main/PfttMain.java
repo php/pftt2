@@ -13,45 +13,66 @@ import java.io.InputStreamReader;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
+import org.apache.http.HttpRequestInterceptor;
+import org.apache.http.HttpVersion;
+import org.apache.http.params.HttpParams;
+import org.apache.http.params.HttpProtocolParams;
+import org.apache.http.params.SyncBasicHttpParams;
+import org.apache.http.protocol.HttpProcessor;
+import org.apache.http.protocol.HttpRequestExecutor;
+import org.apache.http.protocol.ImmutableHttpProcessor;
+import org.apache.http.protocol.RequestConnControl;
+import org.apache.http.protocol.RequestContent;
+import org.apache.http.protocol.RequestExpectContinue;
+import org.apache.http.protocol.RequestTargetHost;
+import org.apache.http.protocol.RequestUserAgent;
 import org.codehaus.groovy.tools.shell.Groovysh;
 import org.codehaus.groovy.tools.shell.IO;
 
 import com.github.mattficken.io.StringUtil;
-import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.host.SSHHost;
-import com.mostc.pftt.model.app.PhpUnitAppTestPack;
-import com.mostc.pftt.model.phpt.EBuildBranch;
-import com.mostc.pftt.model.phpt.EBuildType;
-import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.model.phpt.PhpDebugPack;
-import com.mostc.pftt.model.phpt.PhptTestCase;
-import com.mostc.pftt.model.phpt.PhptSourceTestPack;
+import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
+import com.mostc.pftt.model.app.JoomlaPlatform;
+import com.mostc.pftt.model.app.PhpUnitTestCase;
+import com.mostc.pftt.model.app.Symfony;
+import com.mostc.pftt.model.core.EBuildBranch;
+import com.mostc.pftt.model.core.EBuildType;
+import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhpDebugPack;
+import com.mostc.pftt.model.core.PhptSourceTestPack;
+import com.mostc.pftt.model.core.PhptTestCase;
+import com.mostc.pftt.model.sapi.ApacheManager;
+import com.mostc.pftt.model.sapi.WebServerInstance;
+import com.mostc.pftt.model.sapi.WebServerManager;
 import com.mostc.pftt.model.smoke.ESmokeTestStatus;
 import com.mostc.pftt.model.smoke.PhptTestCountsMatchSmokeTest;
 import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.model.smoke.RequiredFeaturesSmokeTest;
-import com.mostc.pftt.report.ABCReportGen;
 import com.mostc.pftt.report.AbstractReportGen;
-import com.mostc.pftt.report.FBCReportGen;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.LocalConsoleManager;
-import com.mostc.pftt.results.PhptResultPackReader;
-import com.mostc.pftt.results.PhptResultPackWriter;
+import com.mostc.pftt.results.PhpResultPackReader;
+import com.mostc.pftt.results.PhpResultPackWriter;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
-import com.mostc.pftt.runner.PhpUnitTestPackRunner;
+import com.mostc.pftt.runner.AbstractPhpUnitTestCaseRunner;
+import com.mostc.pftt.runner.CliPhpUnitTestCaseRunner;
+import com.mostc.pftt.runner.HttpPhpUnitTestCaseRunner;
+import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner;
-import com.mostc.pftt.runner.PhptTestPackRunner;
 import com.mostc.pftt.scenario.AbstractSAPIScenario;
+import com.mostc.pftt.scenario.AbstractSMBScenario.SMBStorageDir;
 import com.mostc.pftt.scenario.SMBDFSScenario;
 import com.mostc.pftt.scenario.SMBDeduplicationScenario;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
-import com.mostc.pftt.scenario.AbstractSMBScenario.SMBStorageDir;
 import com.mostc.pftt.util.DownloadUtil;
 import com.mostc.pftt.util.HostEnvUtil;
 import com.mostc.pftt.util.WinDebugManager;
@@ -89,11 +110,11 @@ public class PfttMain {
 		return file;
 	}
 	
-	protected PhptResultPackReader last_telem(PhptResultPackWriter not) throws FileNotFoundException {
+	protected PhpResultPackReader last_telem(PhpResultPackWriter not) throws FileNotFoundException {
 		File[] files = telem_dir().listFiles();
 		File last_file = null;
 		for (File file : files) {
-			if (PhptResultPackReader.isTelemDir(file)) {
+			if (PhpResultPackReader.isTelemDir(file)) {
 				if (not!=null && file.equals(not.getTelemetryDir()))
 					// be sure to not find the telemetry that is being written presently
 					continue;
@@ -101,7 +122,7 @@ public class PfttMain {
 					last_file = file;
 			}
 		}
-		return last_file == null ? null : PhptResultPackReader.open(host, last_file);
+		return last_file == null ? null : PhpResultPackReader.open(host, last_file);
 	}
 
 	public void run_all(LocalConsoleManager cm, PhpBuild build, PhptSourceTestPack test_pack, List<ScenarioSet> scenario_sets) throws Exception {
@@ -133,9 +154,11 @@ public class PfttMain {
 			}
 			//
 			
-			PhptResultPackWriter tmgr = new PhptResultPackWriter(host, cm, telem_dir(), build, test_pack, scenario_set);
-			PhptTestPackRunner test_pack_runner = new LocalPhptTestPackRunner(tmgr.getConsoleManager(), tmgr, scenario_set, build, host);
+			PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, telem_dir(), build, test_pack, scenario_set);
+			LocalPhptTestPackRunner test_pack_runner = new LocalPhptTestPackRunner(tmgr.getConsoleManager(), tmgr, scenario_set, build, host);
 			cm.showGUI(test_pack_runner);
+			
+			test_pack.cleanup(cm);
 			
 			test_pack_runner.runAllTests(test_pack);
 			
@@ -157,8 +180,8 @@ public class PfttMain {
 		}
 	} // end public void run_all
 	
-	protected void phpt_report(ConsoleManager cm, PhptResultPackWriter test_telem) throws FileNotFoundException {	
-		PhptResultPackWriter base_telem = test_telem; // TODO temp last_telem(test_telem);
+	protected void phpt_report(ConsoleManager cm, PhpResultPackWriter test_telem) throws FileNotFoundException {	
+		PhpResultPackWriter base_telem = test_telem; // TODO temp last_telem(test_telem);
 		if (base_telem==null) {
 			// this isn't an error, so don't interrupt the test run or anything
 			System.err.println("User Info: run again (with different build and/or different test-pack) and PFTT");
@@ -201,13 +224,13 @@ public class PfttMain {
 			
 			LinkedList<PhptTestCase> test_cases = new LinkedList<PhptTestCase>();
 			
-			PhptResultPackWriter tmgr = new PhptResultPackWriter(host, cm, telem_dir(), build, test_pack, scenario_set);
-			test_pack.cleanup();
+			PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, telem_dir(), build, test_pack, scenario_set);
+			test_pack.cleanup(cm);
 			cm.println(EPrintType.IN_PROGRESS, "PhptSourceTestPack", "enumerating test cases from test-pack...");
-			test_pack.read(test_cases, names, tmgr.getConsoleManager(), tmgr, build);
+			test_pack.read(test_cases, names, tmgr.getConsoleManager(), tmgr, build, true); // TODO true?
 			cm.println(EPrintType.IN_PROGRESS, "PhptSourceTestPack", "enumerated test cases.");
 			
-			PhptTestPackRunner test_pack_runner = new LocalPhptTestPackRunner(tmgr.getConsoleManager(), tmgr, scenario_set, build, host);
+			LocalPhptTestPackRunner test_pack_runner = new LocalPhptTestPackRunner(tmgr.getConsoleManager(), tmgr, scenario_set, build, host);
 			cm.showGUI(test_pack_runner);
 			
 			test_pack_runner.runTestList(test_pack, test_cases);
@@ -264,8 +287,8 @@ public class PfttMain {
 		System.out.println("-force - disables confirmation dialogs and forces proceeding anyway");
 		System.out.println("-src_pack <path> - folder with the source code");
 		System.out.println("-debug_pack <path> - folder with debugger symbols (usually folder with .pdb files)");
-		System.out.println("-stress_each <0+> - runs each test-case N times consecutively");
-		System.out.println("-stress_all <0+> - runs all tests N times in loop");
+		System.out.println("-randomize_order <0+> - randomizes test case run order");
+		System.out.println("-run_test_times <0+> - runs each test-case N times consecutively");
 		System.out.println("-results_only - displays only test results and no other information (for automation).");
 		System.out.println("-pftt-debug - shows additional information to help debug problems with PFTT itself");
 		System.out.println("-disable_debug_prompt - disables asking you if you want to debug PHP crashes (for automation. default=enabled)");
@@ -353,11 +376,15 @@ public class PfttMain {
 		LinkedList<String> tests = new LinkedList<String>();
 		String line;
 		while ( ( line = fr.readLine() ) != null ) {
-			if (line.startsWith(";")||line.startsWith("#")||line.startsWith("//"))
+			if (line.startsWith(";")||line.startsWith("#")||line.startsWith("//")) {
 				// line is a comment, ignore it
 				continue;
-			else if (line.length() > 0)
-				tests.add(line);
+			} else if (line.length() > 0) {
+				line = PhptTestCase.normalizeTestCaseName(line);
+				if (!tests.contains(line))
+					// eliminate duplicates
+					tests.add(line);
+			}
 		}
 		fr.close();
 		
@@ -580,11 +607,11 @@ public class PfttMain {
 		int args_i = 0;
 		
 		Config config = null;
-		boolean is_uac = false, windebug = false, no_result_file_for_pass_xskip_skip = false, pftt_debug = false, show_gui = false, force = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false;
+		boolean is_uac = false, windebug = false, randomize_order = false, no_result_file_for_pass_xskip_skip = false, pftt_debug = false, show_gui = false, force = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false;
+		int run_test_times = 1;
 		String source_pack = null;
 		PhpDebugPack debug_pack = null;
 		LinkedList<File> config_files = new LinkedList<File>();
-		int stress_all = 0, stress_each = 0;
 		
 		//
 		for ( ; args_i < args.length ; args_i++ ) {
@@ -680,10 +707,10 @@ public class PfttMain {
 				phpt_not_in_place = true;
 				is_uac = true;
 				no_result_file_for_pass_xskip_skip = true;
-			} else if (args[args_i].equals("-stress_each")) {
-				stress_each = Integer.parseInt(args[args_i++]);
-			} else if (args[args_i].equals("-stress_all")) {
-				stress_all = Integer.parseInt(args[args_i++]);
+			} else if (args[args_i].equals("-randomize_order")) {
+				randomize_order = true;
+			} else if (args[args_i].equals("-run_test_times")) {
+				run_test_times = Integer.parseInt(args[args_i++]);
 			} else if (args[args_i].equals("-disable_debug_prompt")) {
 				disable_debug_prompt = true; 
 			} else if (args[args_i].equals("-results_only")) {
@@ -724,21 +751,33 @@ public class PfttMain {
 		}
 		//
 		
-		if (stress_each>0||stress_all>0) {
-			System.err.println("PFTT: not implemented: stress_each="+stress_each+" stress_all="+stress_all+" ignored");
-		}
 		
-		LocalConsoleManager cm = new LocalConsoleManager(source_pack, debug_pack, force, windebug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug, no_result_file_for_pass_xskip_skip);
+		LocalConsoleManager cm = new LocalConsoleManager(source_pack, debug_pack, force, windebug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug, no_result_file_for_pass_xskip_skip, randomize_order, run_test_times);
 		
 		//
 		/*
-		SSHHost remote_host = new SSHHost("10.200.48.119", "administrator", "password01!");
+		SSHHost remote_host = new SSHHost("192.168.1.117", "administrator", "password01!");
 		System.out.println(remote_host.isWindows());
-		//SMBDeduplicationScenario d = new SMBDeduplicationScenario(remote_host, "F:");
-		SMBDFSScenario d = new SMBDFSScenario(remote_host);
+		SMBDeduplicationScenario d = new SMBDeduplicationScenario(remote_host, "F:");
+		//SMBDFSScenario d = new SMBDFSScenario(remote_host);
 		SMBStorageDir dir = d.createStorageDir(cm, rt.host);
 		System.out.println(dir.getLocalPath(rt.host));
 		System.out.println(dir.notifyTestPackInstalled(cm, rt.host));
+		*/
+		
+		/*{
+			ScenarioSet scenario_set = ScenarioSet.getDefaultScenarioSets().get(0);
+			PhpBuild build = new PhpBuild("c:/php-sdk/php-5.5-ts-windows-vc9-x86-re6bde1f");
+			build.open(cm, rt.host);
+			
+			PhpUnitSourceTestPack test_pack = new PhpUnitSourceTestPack();
+			
+			//new Symfony().setup(test_pack);
+			new JoomlaPlatform().setup(test_pack);
+			
+			LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, null, scenario_set, build, rt.host);
+			r.runAllTests(test_pack);
+		} //
 		
 		System.exit(0);
 		*/

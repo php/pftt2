@@ -11,13 +11,13 @@ import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
-import com.mostc.pftt.model.phpt.EPhptTestStatus;
-import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.model.phpt.PhpIni;
-import com.mostc.pftt.model.phpt.PhptTestCase;
+import com.mostc.pftt.model.core.EPhptTestStatus;
+import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhpIni;
+import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
-import com.mostc.pftt.results.IPhptTestResultReceiver;
+import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.DownloadUtil;
@@ -110,7 +110,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		return host.exec(cm, getClass(), httpd(apache_version, host)+" -V", AHost.ONE_MINUTE);
 	}
 	
-	public static boolean isSupported(ConsoleManager cm, IPhptTestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptTestCase test_case) {
+	public static boolean isSupported(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptTestCase test_case) {
 		if (build.isNTS(host)) {
 			cm.println(EPrintType.SKIP_OPERATION, ApacheManager.class, "Error Apache requires TS Php Build. NTS Php Builds aren't supported with Apache mod_php.");
 			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "NTS Build not supported", null, null, null, null, null, null, null, null, null, null, null));
@@ -136,7 +136,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 	private Host cache_host;
 	private String cache_httpd;
 	@Override
-	protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String, String> env, String docroot, String listen_address, int port) {
+	protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String, String> env, final String docroot, String listen_address, int port) {
 		EApacheVersion apache_version = decideApacheVersion(cm, host, build, this._apache_version);
 		
 		String httpd = httpd(apache_version, host);
@@ -170,10 +170,10 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 					VisualStudioUtil.setExeStackSize(cm, host, httpd, VisualStudioUtil.SIXTEEN_MEGABYTES);
 					
 					// check OpenSSL version
-					/* TODO if (!checkOpenSSLVersion(cm, host, build, apache_version, Host.dirname(Host.dirname(httpd)))) {
+					if (!checkOpenSSLVersion(cm, host, build, apache_version, Host.dirname(Host.dirname(httpd)))) {
 						cm.println(EPrintType.SKIP_OPERATION, getClass(), "Apache built with different version of OpenSSL than the version PHP is built with. Can't use this Apache build!");
 						return null;
-					}*/
+					}
 					
 					this.cache_host = host;
 					this.cache_httpd = httpd;
@@ -385,9 +385,12 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			sb.append("EnableMMAP off\n");
 			sb.append("EnableSendfile off\n");
 		}
-		// CRITICAL: for a few tests (ex: ext/standard/tests/file/bug/61637.phpt), make sure that response is NOT wrapped in html tags
-		//sb.append("DefaultType text/plain\n");
-		// TODO
+		//
+		// a few tests (ex: ext/standard/tests/file/bug/61637.phpt), have been observed to add
+		// html wrapper to their response sometimes... adding DefaultType doesn't fix that
+		// sb.append("DefaultType text/plain\n");
+		// -- solution is just to try ignoring those html wrapper tags.
+		//
 		sb.append("<Directory />\n");
 		//sb.append("    ForceType text/plain\n");
 		sb.append("    AllowOverride none\n");

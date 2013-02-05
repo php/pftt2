@@ -8,8 +8,8 @@ import java.util.Map;
 import javax.annotation.concurrent.ThreadSafe;
 
 import com.github.mattficken.io.StringUtil;
-import com.mostc.pftt.model.phpt.PhpIni;
-import com.mostc.pftt.model.phpt.PhptTestCase;
+import com.mostc.pftt.model.TestCase;
+import com.mostc.pftt.model.core.PhpIni;
 
 /** an instance of a web server
  * 
@@ -20,7 +20,7 @@ import com.mostc.pftt.model.phpt.PhptTestCase;
 
 @ThreadSafe
 public abstract class WebServerInstance extends SAPIInstance {
-	protected final List<PhptTestCase> active_test_cases, all_test_cases;
+	protected final List<TestCase> active_test_cases, all_test_cases;
 	private boolean crashed = false;
 	private String sapi_output = "";
 	private Object sync_lock = new Object();
@@ -35,8 +35,8 @@ public abstract class WebServerInstance extends SAPIInstance {
 		this.cmd_array = cmd_array;
 		this.ini = ini;
 		this.env = env;
-		active_test_cases = new LinkedList<PhptTestCase>();
-		all_test_cases = new ArrayList<PhptTestCase>(256);
+		active_test_cases = new LinkedList<TestCase>();
+		all_test_cases = new ArrayList<TestCase>(256);
 	}
 	
 	@Override
@@ -111,7 +111,7 @@ public abstract class WebServerInstance extends SAPIInstance {
 	public void getActiveTestListString(StringBuilder sb) {
 		synchronized(active_test_cases) {
 			sb.append("PFTT: while running these tests("+active_test_cases.size()+"):\n");
-			for (PhptTestCase test_case : active_test_cases ) {
+			for (TestCase test_case : active_test_cases ) {
 				sb.append("PFTT: ");
 				sb.append(test_case.getName());
 				sb.append('\n');
@@ -128,7 +128,7 @@ public abstract class WebServerInstance extends SAPIInstance {
 	public void getAllTestListString(StringBuilder sb) {
 		synchronized(all_test_cases) {
 			sb.append("PFTT: these tests were run against this web server instance during its lifetime("+all_test_cases.size()+"):\n");
-			for (PhptTestCase test_case : all_test_cases ) {
+			for (TestCase test_case : all_test_cases ) {
 				sb.append("PFTT: ");
 				sb.append(test_case.getName());
 				sb.append('\n');
@@ -146,7 +146,7 @@ public abstract class WebServerInstance extends SAPIInstance {
 	 * 
 	 * @param test_case
 	 */
-	public void notifyTestPreRequest(PhptTestCase test_case) {
+	public void notifyTestPreRequest(TestCase test_case) {
 		synchronized(all_test_cases) {
 			all_test_cases.add(test_case);
 		}
@@ -162,7 +162,7 @@ public abstract class WebServerInstance extends SAPIInstance {
 	 * 
 	 * @param test_case
 	 */
-	public void notifyTestPostResponse(PhptTestCase test_case) {
+	public void notifyTestPostResponse(TestCase test_case) {
 		synchronized(active_test_cases) {
 			active_test_cases.remove(test_case);
 		}

@@ -1,10 +1,11 @@
 package com.mostc.pftt.scenario;
 
+import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.RemoteHost;
 import com.mostc.pftt.host.TempFileExecOutput;
-import com.mostc.pftt.model.phpt.PhpBuild;
+import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
@@ -34,11 +35,20 @@ public class SMBDFSScenario extends AbstractSMBScenario {
 	
 	public SMBDFSScenario(RemoteHost remote_host) {
 		// default: create PFTT-NS-n(namespace), PFTT-DFS-n(folder) and PFTT-SHARE-n(target)
-		this(remote_host, null, null, "PFTT-NS", "PFTT-NS", "PFTT-DFS");
+		this(remote_host, null, "PFTT-TARGET", "PFTT-NS", "PFTT-NS", "PFTT-DFS");
 	}
 	
 	public SMBDFSScenario(RemoteHost remote_host, String base_file_path, String base_share_name, String base_remote_namespace, String base_namespace, String base_folder) {
 		super(remote_host, base_file_path, base_share_name);
+		
+		if (StringUtil.isEmpty(base_remote_namespace))
+			base_remote_namespace = remote_host.isWindows() ? remote_host.getSystemDrive()+"\\PFTT-NS" : "/var/data/PFTT-NS";
+		else if (StringUtil.isEmpty(AHost.basename(base_remote_namespace)))
+			// base_remote_namespace ~= C:\
+			base_remote_namespace += "\\PFTT-NS";
+		else if (!AHost.hasDrive(base_remote_namespace) && remote_host.isWindows())
+			base_remote_namespace = remote_host.getSystemDrive() + "\\" + base_remote_namespace;
+		
 		this.base_remote_namespace = base_remote_namespace;
 		this.base_namespace = base_namespace;
 		this.base_folder = base_folder;
@@ -57,9 +67,12 @@ public class SMBDFSScenario extends AbstractSMBScenario {
 	@Override
 	public DFSSMBStorageDir createStorageDir(ConsoleManager cm, AHost local_host) {
 		if (!remote_host.isWindows()) {
-			cm.println(EPrintType.XSKIP_OPERATION, getName(), "Scenario can only be run against a Windows host");
+			cm.println(EPrintType.XSKIP_OPERATION, getName(), "Scenario can only be run against a Windows Server: "+remote_host);
 			return null;
-		} else {
+		} else if (!remote_host.isWindowsServer()) {
+			cm.println(EPrintType.XSKIP_OPERATION, getName(), "Scenario can only be run against a Windows Server, not a Windows client. "+remote_host.getOSNameLong()+" "+remote_host);
+			return null;
+		} else if (installDFSFeature(cm, local_host)) {
 			DFSSMBStorageDir dir = (DFSSMBStorageDir) super.createStorageDir(cm, local_host);
 			if (dir==null)
 				return dir; // already would've done error msg
@@ -67,6 +80,9 @@ public class SMBDFSScenario extends AbstractSMBScenario {
 			cm.println(EPrintType.COMPLETED_OPERATION, getClass(), "Created DFS Share: unc_path="+dir.unc_path+" url="+dir.url_path+" (namespace="+dir.namespace+" folder="+dir.target+" local="+dir.local_path+")");
 			
 			return dir;
+		} else {
+			// not windows or dfs install failure => nothing to do
+			return null;
 		}
 	} // end public DFSSMBStorageDir createStorageDir
 	
@@ -90,7 +106,10 @@ public class SMBDFSScenario extends AbstractSMBScenario {
 		protected String url_namespace_path, url_target;
 		
 		@Override
-		public boolean delete(ConsoleManager cm, AHost local_host) {
+		public boolean disposeForce(ConsoleManager cm, AHost local_host) {
+			// its more graceful to disconnect first, then delete the DFS namespace/share/target
+			disconnect(this, cm, local_host);
+			
 			try {
 				// delete folder and link
 				if (!remote_host.execElevated(cm, getClass(), "DFSUTIL LINK REMOVE "+unc_path, AHost.ONE_MINUTE*10)) {
@@ -115,8 +134,8 @@ public class SMBDFSScenario extends AbstractSMBScenario {
 					return false;
 				}
 				
-				// delete target share and disconnect
-				if (super.delete(cm, local_host)) {
+				// delete target share
+				if (deleteShare(this, cm, local_host)) {
 					cm.println(EPrintType.COMPLETED_OPERATION, getClass(), "Removed DFS share successfully.");
 					
 					return true;
@@ -140,10 +159,9 @@ public class SMBDFSScenario extends AbstractSMBScenario {
 		for ( int i=1 ; i < 65535 ; i++ ) {
 			dir.remote_path = base_file_path + "-" + i;
 			dir.share_name = base_share_name + "-" + i;
-			// TODO getSystemDrive here
-			dfs_dir.remote_namespace = "G:\\"+base_remote_namespace + "-" + i;
-			dfs_dir.namespace = base_namespace + i;
-			dfs_dir.target = base_folder + i;
+			dfs_dir.remote_namespace = base_remote_namespace + "-" + i;
+			dfs_dir.namespace = base_namespace + "-" + i;
+			dfs_dir.target = base_folder + "-" + i;
 			
 			if (!remote_host.exists(dir.remote_path) && !remote_host.exists(dfs_dir.remote_namespace)) {
 				// share may still exist, but at a different remote file path (double check to avoid `net share` failure)
@@ -156,11 +174,11 @@ public class SMBDFSScenario extends AbstractSMBScenario {
 		// IMPORTANT: use IP addresses. there may be problems with name resolution on larger networks (ex: Microsoft CorpNet)
 		dfs_dir.unc_path = "\\\\"+remote_host.getAddress()+"\\"+dfs_dir.namespace+"\\"+dfs_dir.target; // for Windows
 		dfs_dir.unc_namespace_path = "\\\\"+remote_host.getAddress()+"\\"+dfs_dir.namespace;
-		dfs_dir.unc_target = "\\\\"+remote_host.getAddress()+"\\"+dfs_dir.target;
+		dfs_dir.unc_target = "\\\\"+remote_host.getAddress()+"\\"+dfs_dir.share_name;
 		//
 		dfs_dir.url_path = "smb://"+remote_host.getAddress()+"/"+dfs_dir.namespace+"/"+dfs_dir.target; // for linux
 		dfs_dir.url_namespace_path = "smb://"+remote_host.getAddress()+"/"+dfs_dir.namespace;
-		dfs_dir.url_target = "smb://"+remote_host.getAddress()+"/"+dfs_dir.target;
+		dfs_dir.url_target = "smb://"+remote_host.getAddress()+"/"+dfs_dir.share_name;
 	} // end protected void makeShareName
 	
 	@Override
@@ -187,7 +205,7 @@ public class SMBDFSScenario extends AbstractSMBScenario {
 		if (remote_host.execElevated(cm, getClass(), "DFSUTIL LINK ADD "+dfs_dir.unc_path+" "+dfs_dir.unc_target, AHost.ONE_MINUTE*10)) {
 			cm.println(EPrintType.IN_PROGRESS, getClass(), "DFS link created");
 			
-			cm.println(EPrintType.COMPLETED_OPERATION, getClass(), "DFS Share created. Done. unc_path=");
+			cm.println(EPrintType.COMPLETED_OPERATION, getClass(), "DFS Share created. Done. unc_path="+dfs_dir.unc_path);
 			
 			return true;
 		} else {
@@ -212,9 +230,8 @@ public class SMBDFSScenario extends AbstractSMBScenario {
 		
 		try {
 			TempFileExecOutput teo = remote_host.powershell(getClass(), cm, ps_sb, AHost.FOUR_HOURS);
-			
-			if (teo.printOutputIfCrash(getClass(), cm).isSuccess()) {
-				teo.cleanup(remote_host);
+			teo.printCommandAndOutput(EPrintType.CLUE, getClass(), cm);
+			if (teo.cleanupIfSuccess(remote_host)) {
 				
 				cm.println(EPrintType.COMPLETED_OPERATION, getName(), "DFS Feature Installed");
 					

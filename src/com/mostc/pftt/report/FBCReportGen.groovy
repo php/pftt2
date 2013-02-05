@@ -4,17 +4,17 @@ import java.io.StringWriter;
 
 import org.apache.commons.collections.ListUtils;
 
-import com.mostc.pftt.model.phpt.EPhptTestStatus;
-import com.mostc.pftt.model.phpt.EBuildBranch;
+import com.mostc.pftt.model.core.EPhptTestStatus;
+import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.results.PhptTestResult;
-import com.mostc.pftt.results.PhptResultPack;
+import com.mostc.pftt.results.PhpResultPack;
 
 class FBCReportGen extends AbstractReportGen {
-	final PhptResultPack base_telem, test_telem;
+	final PhpResultPack base_telem, test_telem;
 	int row = 1;
 	StringWriter sw;
 	
-	public FBCReportGen(PhptResultPack base_telem, PhptResultPack test_telem) {
+	public FBCReportGen(PhpResultPack base_telem, PhpResultPack test_telem) {
 		this.base_telem = base_telem;
 		this.test_telem = test_telem;
 		

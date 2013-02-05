@@ -13,6 +13,9 @@ import org.columba.ristretto.smtp.SMTPProtocol;
 
 import com.github.mattficken.io.IOUtil;
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.model.app.PhpUnitTestCase;
+import com.mostc.pftt.model.core.PhptSourceTestPack;
+import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.scenario.ApplicationScenario;
@@ -71,6 +74,10 @@ public final class Config {
 		hosts = new LinkedList<AHost>();
 		scenario_sets = new LinkedList<ScenarioSet>();
 	}
+	
+	/*public List<TestPack> getTestPacks() {
+		
+	}*/
 	
 	public List<AHost> getHosts() {
 		return hosts;
@@ -179,6 +186,8 @@ public final class Config {
 		// a hack to import common classes for configuration files (XXX do this a better way)
 		StringBuilder sb = new StringBuilder(128+code.length());
 		// import all standard Scenarios and Host types
+		sb.append("import ");sb.append(PhpUnitTestCase.class.getPackage().getName());sb.append(".*;\n");
+		sb.append("import ");sb.append(PhptTestCase.class.getPackage().getName());sb.append(".*;\n");
 		sb.append("import ");sb.append(ApplicationScenario.class.getPackage().getName());sb.append(".*;\n");
 		sb.append("import ");sb.append(Scenario.class.getPackage().getName());sb.append(".*;\n");
 		sb.append("import ");sb.append(AHost.class.getPackage().getName());sb.append(".*;\n");

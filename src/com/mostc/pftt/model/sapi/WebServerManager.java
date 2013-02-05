@@ -9,8 +9,8 @@ import javax.annotation.concurrent.ThreadSafe;
 
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
-import com.mostc.pftt.model.phpt.PhpBuild;
-import com.mostc.pftt.model.phpt.PhpIni;
+import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 
 /** Manages a certain type of web server, such as PHP's builtin web server.
@@ -85,7 +85,7 @@ public abstract class WebServerManager extends SAPIManager {
 	 * @param server_name null or unique name of server (could be list of test cases)
 	 * @return
 	 */
-	public WebServerInstance getWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, WebServerInstance assigned, Object server_name) {
+	public WebServerInstance getWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, final String docroot, WebServerInstance assigned, Object server_name) {
 		WebServerInstance sapi;
 		if (assigned!=null) {
 			if (assigned.isRunning())

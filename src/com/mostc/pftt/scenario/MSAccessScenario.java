@@ -3,8 +3,9 @@ package com.mostc.pftt.scenario;
 import java.util.Map;
 
 import com.mostc.pftt.host.Host;
-import com.mostc.pftt.model.phpt.PhpBuild;
+import com.mostc.pftt.model.core.PhpBuild; 
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.runner.AbstractPhpUnitTestCaseRunner;
 
 /** Scenario for testing the pdo_odbc and odbc extensions against a Microsoft Access database. (NOT IMPLEMENTED)
  * 
@@ -16,6 +17,7 @@ import com.mostc.pftt.results.ConsoleManager;
  */
 
 public class MSAccessScenario extends AbstractODBCScenario {
+	String dsn, username, password, database;
 
 	@Override
 	protected void name_exists(String name) {
@@ -48,6 +50,11 @@ public class MSAccessScenario extends AbstractODBCScenario {
 	@Override
 	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		return EScenarioStartState.SKIP;
+	}
+
+	@Override
+	public void setGlobals(Map<String, String> globals) {
+		AbstractPhpUnitTestCaseRunner.addDatabaseConnection(dsn, username, password, database, globals);
 	}
 
 }

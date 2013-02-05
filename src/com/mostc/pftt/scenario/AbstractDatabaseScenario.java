@@ -3,7 +3,7 @@ package com.mostc.pftt.scenario;
 import java.util.Map;
 
 import com.mostc.pftt.host.Host;
-import com.mostc.pftt.model.phpt.PhpBuild;
+import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 
 /** A Scenario that sets up a database service for (an) extension(s) to test.
@@ -27,6 +27,12 @@ public abstract class AbstractDatabaseScenario extends AbstractParallelScenario 
 	 */
 	@Override
 	public abstract void getENV(Map<String, String> env);
+	
+	/** PHPUnitTestCases get their database configuration from here
+	 * 
+	 * @param globals
+	 */
+	public abstract void setGlobals(Map<String, String> globals);
 
 	/** PHPTs use ENV vars to receive database configuration
 	 * 

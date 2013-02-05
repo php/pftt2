@@ -3,10 +3,16 @@ package com.mostc.pftt.host;
 import java.io.IOException;
 
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
 public abstract class RemoteHost extends AHost {
 	
 	public abstract boolean isClosed();
+	public abstract boolean ensureConnected(ConsoleManager cm);
+	
+	public boolean ensureConnected() {
+		return ensureConnected(null);
+	}
 	
 	@Override
 	protected String getOSNameOnWindows() {
@@ -36,7 +42,30 @@ public abstract class RemoteHost extends AHost {
 	}
 	
 	@Override
-	public void downloadCompressWith7Zip(ConsoleManager cm, String ctx_str, AHost src_host, String src, String dst) throws IllegalStateException, IOException, Exception {
+	public void downloadCompressWith7Zip(ConsoleManager cm, String ctx_str, String src, AHost dst_host, String dst) throws IllegalStateException, IOException, Exception {
+		if (cm!=null)
+			cm.println(EPrintType.IN_PROGRESS, ctx_str, "downloadCompressWith7Zip src="+src+" dst_host="+dst_host+" dst="+dst);
+		ensure7Zip(cm, dst_host);
+		dst_host.ensure7Zip(cm, this);
+		
+		String src_zip7_file = mktempname(ctx_str, ".7z");
+		
+		String dst_zip7_file = dst_host.mktempname(ctx_str, ".7z");
+		
+		compress(cm, dst_host, src, src_zip7_file);
+		
+		download(src_zip7_file, dst_zip7_file);
+		
+		dst_host.decompress(cm, this, dst_zip7_file, dst);
+		
+		dst_host.delete(src_zip7_file);
+		delete(dst_zip7_file);
+	}
+	
+	@Override
+	public void uploadCompressWith7Zip(ConsoleManager cm, String ctx_str, AHost src_host, String src, String dst) throws IllegalStateException, IOException, Exception {
+		if (cm!=null)
+			cm.println(EPrintType.IN_PROGRESS, ctx_str, "uploadCompressWith7Zip src_host="+src_host+" src="+src+" dst="+dst);
 		ensure7Zip(cm, src_host);
 		src_host.ensure7Zip(cm, this);
 		
@@ -52,25 +81,6 @@ public abstract class RemoteHost extends AHost {
 		
 		src_host.delete(src_zip7_file);
 		delete(dst_zip7_file);
-	}
-	
-	@Override
-	public void uploadCompressWith7Zip(ConsoleManager cm, String ctx_str, String src, AHost dst_host, String dst) throws IllegalStateException, IOException, Exception {
-		ensure7Zip(cm, dst_host);
-		dst_host.ensure7Zip(cm, this);
-		
-		String src_zip7_file = mktempname(ctx_str, ".7z");
-		
-		String dst_zip7_file = dst_host.mktempname(ctx_str, ".7z");
-		
-		compress(cm, dst_host, src, src_zip7_file);
-		
-		download(src_zip7_file, dst_zip7_file);
-		
-		dst_host.decompress(cm, this, dst_zip7_file, dst);
-		
-		dst_host.delete(dst_zip7_file);
-		delete(src_zip7_file);
 	}
 	
 } // end public abstract class RemoteHost

@@ -1,7 +1,9 @@
 package com.mostc.pftt.results;
 
-import com.mostc.pftt.model.phpt.PhpDebugPack;
-import com.mostc.pftt.model.phpt.PhptTestCase;
+import javax.annotation.Nonnegative;
+
+import com.mostc.pftt.model.TestCase;
+import com.mostc.pftt.model.core.PhpDebugPack;
 
 public interface ConsoleManager {
 	
@@ -11,7 +13,7 @@ public interface ConsoleManager {
 	public boolean isPfttDebug();
 	public boolean isNoResultFileForPassSkipXSkip();
 	
-	public void restartingAndRetryingTest(PhptTestCase test_case);
+	public void restartingAndRetryingTest(TestCase test_case);
 	public void restartingAndRetryingTest(String test_case_name);
 	public void println(EPrintType type, String ctx_str, String string);
 	public static enum EPrintType {
@@ -38,5 +40,16 @@ public interface ConsoleManager {
 	public boolean isPhptNotInPlace();
 	public PhpDebugPack getDebugPack();
 	public String getSourcePack();
+	/** number of times a test case is run (typically 1)
+	 * 
+	 * @return
+	 */
+	@Nonnegative
+	public int getRunTestTimes();
+	/** should test cases be run in (TRUE) random order (different order every time) or normal order (FALSE) 
+	 * 
+	 * @return
+	 */
+	public boolean isRandomizeTestOrder();
 	
 } // end public class ConsoleManager

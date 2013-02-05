@@ -20,17 +20,17 @@ import org.xmlpull.v1.XmlSerializer;
 import com.github.mattficken.io.StringUtil;
 import com.ibm.icu.charset.CharsetICU;
 import com.mostc.pftt.host.AHost;
-import com.mostc.pftt.model.phpt.EPhptTestStatus;
-import com.mostc.pftt.model.phpt.PhpIni;
-import com.mostc.pftt.model.phpt.PhptSourceTestPack;
-import com.mostc.pftt.model.phpt.PhptTestCase;
+import com.mostc.pftt.model.core.EPhptTestStatus;
+import com.mostc.pftt.model.core.PhpIni;
+import com.mostc.pftt.model.core.PhptSourceTestPack;
+import com.mostc.pftt.model.core.PhptTestCase;
 
 /** result of running a PhptTestCase
  * 
  * the status of PhptTestCase is determined by:
  * -executing SKIPIF section(optional)
  * -comparing the actual and EXPECT, EXPECTF or EXPECTREGEX sections
- * -certain sections(ENV, STDIN) if present, are skipped for HTTP testing
+ * -certain sections are skipped for HTTP testing
  * 
  * @author Matt Ficken
  *

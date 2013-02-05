@@ -1,7 +1,7 @@
 package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.Host;
-import com.mostc.pftt.model.phpt.PhpBuild;
+import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 
 /** placeholder scenario to indicate that SSLSocketScenario is not being used
