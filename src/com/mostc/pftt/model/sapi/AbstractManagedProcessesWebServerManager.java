@@ -52,7 +52,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 	}
 	
 	@Override
-	protected WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, final String docroot, Object server_name) {
+	protected WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, final String docroot, final Object server_name) {
 		String sapi_output = "";
 		int port_attempts;
 		boolean found_port;
@@ -138,11 +138,14 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 						public void run() {
 							if (!handlef.isRunning()) {
 								try {
-									if (handlef.isCrashed())
+									if (handlef.isCrashed()) {
+										if (handlef.getExitCode()!=1)
+											new IllegalStateException("server_name="+server_name+" exit_code="+handlef.getExitCode()).printStackTrace(); // TODO
 										// notify of web server crash
 										//
 										// provide output and exit code
 										web.notifyCrash(handlef.getOutput(), handlef.getExitCode());
+									}
 								} finally {
 									// don't need to check any more
 									cancel();

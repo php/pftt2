@@ -157,33 +157,9 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	protected boolean evalSkipIf(String output) throws IOException {
 		String lc_output = output.toLowerCase();
 		//
-		// find 'skip ' or 'skip...' or 'skip' but ignore '404 error, file not found abc.skip.php'
-		int skip_idx = -1, next;
-		char nextc;
-		boolean skip = false;
-		main_loop:
-		for (int i=0;i<32;i++) {
-			skip_idx = lc_output.indexOf("skip", skip_idx+1);
-			if (skip_idx==-1)
-				break main_loop;
-			next = skip_idx+"skip".length()+1;
-			period_loop:
-			for (;;) {
-				if (next>lc_output.length()) {
-					skip = true;
-					break main_loop;
-				}	
-				nextc = lc_output.charAt(next);
-				if (nextc!='.')
-					break period_loop;
-				next++;
-			}
-			if (Character.isWhitespace(nextc)) {
-				skip = true;
-				break main_loop;
-			}
-		} // end for
-		if (skip) {
+		// find 'skip ' or 'skip...' or 'skip.. ' or 'skip' but ignore '404 error, file not found abc.skip.php'
+		//    (don't need to check for multiple occurences of 'skip', just one... finding abc.skip.php would be a TEST_EXCEPTION or FAIL anyway)
+		if (lc_output.contains("skip") && ( !( this instanceof HttpPhptTestCaseRunner ) || !lc_output.contains("404")) ) {
 			// test is to be skipped
 						
 			// decide to mark test SKIP or XSKIP (could test be executed on this OS?)
@@ -227,6 +203,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 					AHost.dirname(test_case.getName()), 
 					test_case.getTrim(EPhptSection.FILE_EXTERNAL).replaceAll("\\.\\.", "")
 				);
+			System.out.println("copy test="+test_case+" src="+src_file+" dst="+test_file);
 			host.copy(src_file, test_file);
 			
 		} else {

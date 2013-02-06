@@ -20,6 +20,7 @@ import com.mostc.pftt.util.ErrorUtil;
  *
  */
 
+// XXX need process handle for each IIS process in order to tell for sure if the process crashes
 // this class only has to work on windows vista+
 @ThreadSafe
 public class IISManager extends WebServerManager {

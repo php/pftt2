@@ -281,12 +281,21 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 
 	protected String do_http_execute(String path, EPhptSection section, boolean is_replacement) throws Exception {
 		path = AHost.toUnixPath(path);
+		if (path.startsWith(AHost.toUnixPath(active_test_pack.getRunningDirectory())))
+			// important: convert to path web server is serving up
+			path = path.substring(active_test_pack.getRunningDirectory().length());
 		if (path.startsWith(AHost.toUnixPath(active_test_pack.getStorageDirectory())))
 			// important: convert to path web server is serving up
 			path = path.substring(active_test_pack.getStorageDirectory().length());
 		if (!path.startsWith("/"))
 			path = "/" + path;
-		
+		if (test_case.getName().contains("phar")) {
+			if (!path.startsWith("/ext/phar/")) {// TODO tests/") && !path.startsWith("/ext/phar//tests/") && !path.startsWith("/ext/phar/tests//") && !path.startsWith("/ext/phar//tests//")) {
+				if (!path.startsWith("/tests/"))
+					path = "/tests/" + path;
+				path = "/ext/phar/"+path; // TODO
+			}
+		}
 		try {
 			if (web!=null) {
 				synchronized(web) {

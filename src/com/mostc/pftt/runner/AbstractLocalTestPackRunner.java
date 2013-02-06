@@ -81,13 +81,13 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		runner_state = new AtomicReference<ETestPackRunnerState>();
 		
 		storage_host = new LocalHost();
-		
+		/*
 		SSHHost remote_host = new SSHHost("10.200.50.135", "administrator", "password01!");
 		this.storage_host = remote_host; // for LocalPhptTestPackRunner#setupStorageDir
 		// TODO 
-		file_scenario = new SMBDeduplicationScenario(remote_host, "F:"); // TODO "B:");
-		//file_scenario = new SMBDFSScenario(remote_host);
-		 
+		//file_scenario = new SMBDeduplicationScenario(remote_host, "B:");
+		file_scenario = new SMBDFSScenario(remote_host);
+		*/
 	}
 	
 	public void runTestList(S test_pack, List<T> test_cases) throws Exception {
@@ -282,7 +282,18 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		//        -exceed this number and there will be threads that won't have any tests to run
 		// 3. limit to MAX_THREAD_COUNT
 		// 4. if debugging
-		int thread_count = sapi_scenario.getTestThreadCount(runner_host);
+		// TODO temp 2*
+		/*<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2//EN">
+		<html>
+		<head>
+		<title></title>
+		</head>
+		<body>
+		
+		</body>
+		</html>
+*/
+		int thread_count = 2 * sapi_scenario.getTestThreadCount(runner_host);
 		if (thread_count > thread_safe_test_count + non_thread_safe_exts.size())
 			thread_count = thread_safe_test_count + non_thread_safe_exts.size();
 		if (thread_count > MAX_THREAD_COUNT)
@@ -422,14 +433,14 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 						}
 					}
 					
-					// TODO for ( int i=0 ; i < run_test_times ; i++ ) {
+					for ( int i=0 ; i < run_test_times ; i++ ) {
 						// CRITICAL: catch exception to record with test
 						try {
 							runTest(group_key, test_case);
 						} catch ( Throwable ex ) {
 							twriter.addTestException(storage_host, scenario_set, test_case, ex, sa);
 						}
-					//}
+					}
 					
 					test_count.incrementAndGet();
 					Thread.yield();

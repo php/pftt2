@@ -251,7 +251,8 @@ public class LocalHost extends AHost {
 				}
 			}
 			if (cmd==null)
-				cmd = "cmd /C copy \""+src+"\" \""+dst+"\"";
+				// /B => binary file copy
+				cmd = "cmd /C copy /B /Y \""+src+"\" \""+dst+"\"";
 			
 			exec(cmd, NO_TIMEOUT);
 		} else {

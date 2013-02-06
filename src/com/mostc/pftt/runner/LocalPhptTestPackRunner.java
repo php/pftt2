@@ -43,8 +43,9 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 			long millis = System.currentTimeMillis();
 			for ( int i=0 ; i < 131070 ; i++ ) {
 				// try to include version, branch info etc... from name of test-pack
-				local_test_pack_dir = local_path + "/PFTT-" + AHost.basename(src_test_pack.getSourceDirectory()) + (i==0?"":"-" + millis);
-				remote_test_pack_dir = remote_path + "/PFTT-" + AHost.basename(src_test_pack.getSourceDirectory()) + (i==0?"":"-" + millis);
+				// CRITICAL: that directory paths end with / (@see {PWD} in PhpIni)
+				local_test_pack_dir = local_path + "/PFTT-" + AHost.basename(src_test_pack.getSourceDirectory()) + (i==0?"":"-" + millis) + "/";
+				remote_test_pack_dir = remote_path + "/PFTT-" + AHost.basename(src_test_pack.getSourceDirectory()) + (i==0?"":"-" + millis) + "/";
 				if (!storage_host.exists(remote_test_pack_dir) || !runner_host.exists(local_test_pack_dir))
 					break;
 				millis++;

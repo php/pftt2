@@ -1,9 +1,13 @@
 package com.mostc.pftt.util;
 
+import java.io.IOException;
+
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
+import com.mostc.pftt.model.core.EBuildBranch;
+import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
@@ -15,9 +19,9 @@ import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
 public final class HostEnvUtil {
 	
-	public static void prepareHostEnv(AHost host, ConsoleManager cm, boolean enable_debug_prompt) throws Exception {
+	public static void prepareHostEnv(AHost host, ConsoleManager cm, PhpBuild build, boolean enable_debug_prompt) throws Exception {
 		if (host.isWindows()) {
-			prepareWindows(host, cm, enable_debug_prompt);
+			prepareWindows(host, cm, build, enable_debug_prompt);
 		} else {
 			// emerge dev-vcs/subversion
 		}
@@ -30,16 +34,17 @@ public final class HostEnvUtil {
 	 *     should be false. Windows Error Reporting popups will interfere with automated testing
 	 * -disables firewall, for network services like SOAP, HTTP, etc...
 	 * -creates a php-sdk share pointing to %SYSTEMDRIVE%\\php-sdk
-	 * -installs VC9 runtime if its not Windows 7/2008r2 or Windows 8/2012 (which don't need it to run PHP)
+	 * -installs VC runtime
 	 * 
 	 * If enable_debug_prompt and if WinDebug is installed, enables it for debugging PHP.
 	 * 
 	 * @param host
 	 * @param cm
+	 * @param build
 	 * @param enable_debug_prompt
 	 * @throws Exception
 	 */
-	public static void prepareWindows(AHost host, ConsoleManager cm, boolean enable_debug_prompt) throws Exception {
+	public static void prepareWindows(AHost host, ConsoleManager cm, PhpBuild build, boolean enable_debug_prompt) throws Exception {
 		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "preparing Windows host to run PHP...");
 		// have to fix Windows Error Reporting from popping up and blocking execution:
 		
@@ -87,27 +92,75 @@ public final class HostEnvUtil {
 			host.execElevated(cm, HostEnvUtil.class, "NET SHARE PHP_SDK="+host.getPhpSdkDir()+" /Grant:"+host.getUsername()+",Full", AHost.ONE_MINUTE);
 		}
 			
-		if (host.isVistaOrBefore()) {
-			// install VC9 runtime (win7+ don't need this)
-			if (host.dirContainsFragment(host.getSystemRoot()+"\\WinSxS", "vc9")) {
-				cm.println(EPrintType.CLUE, HostEnvUtil.class, "VC9 Runtime alread installed");
-			} else {
-				String local_file = LocalHost.getLocalPfttDir()+"/bin/vc9_vcredist_x86.exe";
-				String remote_file = null;
-				if (host.isRemote()) {
-					remote_file = host.mktempname(HostEnvUtil.class, ".exe");
-					
-					cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Uploading VC9 Runtime");
-					host.upload(local_file, remote_file);
-				}
-				cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Installing VC9 Runtime");
-				host.execElevated(cm, HostEnvUtil.class, remote_file+" /Q", AHost.FOUR_HOURS);
-				if (remote_file!=null)
-					host.delete(remote_file);
-			}
-		}
+		installVCRuntime(host, cm, build);
 		cm.println(EPrintType.COMPLETED_OPERATION, HostEnvUtil.class, "Windows host prepared to run PHP.");
 	} // end public static void prepareWindows
+	
+	/** PHP on Windows requires Microsoft's VC Runtime to be installed. This method ensures that the correct version is installed.
+	 * 
+	 * PHP 5.3 and 5.4 require the VC9 x86 Runtime
+	 * PHP 5.5+ require the VC11 x86 Runtime
+	 * 
+	 * Windows 7+ already has the VC9 x86 Runtime
+	 * Windows 8+ already has the VC11 x86 Runtime 
+	 * 
+	 * @param host
+	 * @param cm
+	 * @throws Exception 
+	 * @throws IOException 
+	 * @throws IllegalStateException 
+	 */
+	public static void installVCRuntime(AHost host, ConsoleManager cm, PhpBuild build) throws IllegalStateException, IOException, Exception {
+		if (host.isWindows()) {
+			return;
+		}
+		
+		switch (build.getVersionBranch(cm, host)) {
+		case PHP_5_3:
+		case PHP_5_4:
+			if (host.isVistaOrBefore()) {
+				// install VC9 runtime (win7+ don't need this)
+				if (host.dirContainsFragment(host.getSystemRoot()+"\\WinSxS", "vc9")) {
+					cm.println(EPrintType.CLUE, HostEnvUtil.class, "VC9 Runtime alread installed");
+				} else {
+					String local_file = LocalHost.getLocalPfttDir()+"/bin/vc9_vcredist_x86.exe";
+					String remote_file = null;
+					if (host.isRemote()) {
+						remote_file = host.mktempname(HostEnvUtil.class, ".exe");
+						
+						cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Uploading VC9 Runtime");
+						host.upload(local_file, remote_file);
+					}
+					cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Installing VC9 Runtime");
+					host.execElevated(cm, HostEnvUtil.class, remote_file+" /Q", AHost.FOUR_HOURS);
+					if (remote_file!=null)
+						host.delete(remote_file);
+				}
+			}
+			break;
+		default: 
+			// PHP_5_5+ and master
+			if (!host.isWin8OrLater()) {
+				if (host.dirContainsFragment(host.getSystemRoot()+"\\WinSxS", "vc11")) {
+					cm.println(EPrintType.CLUE, HostEnvUtil.class, "VC11 Runtime alread installed");
+				} else {
+					String local_file = LocalHost.getLocalPfttDir()+"/bin/vc11_vcredist_x86.exe";
+					String remote_file = null;
+					if (host.isRemote()) {
+						remote_file = host.mktempname(HostEnvUtil.class, ".exe");
+						
+						cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Uploading VC11 Runtime");
+						host.upload(local_file, remote_file);
+					}
+					cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Installing VC11 Runtime");
+					host.execElevated(cm, HostEnvUtil.class, remote_file+" /Q", AHost.FOUR_HOURS);
+					if (remote_file!=null)
+						host.delete(remote_file);
+				}
+			}
+			break;
+		} // end switch
+	} // end public static void installVCRuntime
 	
 	public static final String REG_DWORD = "REG_DWORD";
 	/** checks if a registry key matches the given value. if it does, returns true.

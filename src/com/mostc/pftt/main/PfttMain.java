@@ -839,7 +839,7 @@ public class PfttMain {
 				cm.println(EPrintType.IN_PROGRESS, "Build", build.toString());
 				cm.println(EPrintType.IN_PROGRESS, "Test-Pack", test_pack.toString());
 				
-				HostEnvUtil.prepareHostEnv(rt.host, cm, !cm.isDisableDebugPrompt());
+				HostEnvUtil.prepareHostEnv(rt.host, cm, build, !cm.isDisableDebugPrompt());
 				cmd_phpt_named(rt, cm, config, build, test_pack, names);
 				
 				System.out.println("PFTT: finished");
@@ -878,7 +878,7 @@ public class PfttMain {
 				cm.println(EPrintType.IN_PROGRESS, "Build", build.toString());
 				cm.println(EPrintType.IN_PROGRESS, "Test-Pack", test_pack.toString());
 				
-				HostEnvUtil.prepareHostEnv(rt.host, cm, !cm.isDisableDebugPrompt());
+				HostEnvUtil.prepareHostEnv(rt.host, cm, build, !cm.isDisableDebugPrompt());
 				cmd_phpt_list(rt, cm, config, build, test_pack, list_file);		
 				
 				System.out.println("PFTT: finished");
@@ -916,7 +916,7 @@ public class PfttMain {
 				checkUAC(is_uac, false, config, cm);
 				
 				// run all tests
-				HostEnvUtil.prepareHostEnv(rt.host, cm, !cm.isDisableDebugPrompt());
+				HostEnvUtil.prepareHostEnv(rt.host, cm, build, !cm.isDisableDebugPrompt());
 				cmd_phpt_all(rt, cm, config, build, test_pack);
 				
 				System.out.println("PFTT: finished");

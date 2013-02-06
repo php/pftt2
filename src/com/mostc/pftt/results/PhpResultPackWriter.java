@@ -56,7 +56,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	protected boolean run = true;
 	protected XmlSerializer serial;
 	
-	protected static File makeName(ConsoleManager cm, AHost host, File base, PhpBuild build, ScenarioSet scenario_set, int i) throws Exception {
+	protected static File makeName(ConsoleManager cm, AHost host, File base, PhpBuild build, ScenarioSet scenario_set) throws Exception {
 		StringBuilder sb = new StringBuilder();
 		sb.append("/");
 		sb.append(build.getVersionBranch(cm, host));
@@ -85,10 +85,6 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		sb.append('-');
 		sb.append(scenario_set.getShortName());
 		
-		if (i>0) {
-			sb.append("-");
-			sb.append(i);
-		}
 		return new File(base.getAbsolutePath() + sb);
 	}
 	
@@ -110,7 +106,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		this.scenario_set = scenario_set;
 		this.build = build;
 		this.test_pack = test_pack;
-		this.telem_dir = new File(host.uniqueNameFromBase(makeName(cm, host, telem_base_dir, build, scenario_set, 0).getAbsolutePath()));
+		this.telem_dir = new File(host.uniqueNameFromBase(makeName(cm, host, telem_base_dir, build, scenario_set).getAbsolutePath()));
 		this.telem_dir.mkdirs();
 		
 		results = new LinkedBlockingQueue<ResultQueueEntry>();
@@ -379,7 +375,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		
 		
 		//
-		if (store_all || !cm.isNoResultFileForPassSkipXSkip()) {
+		if (false) { // TODO store_all || !cm.isNoResultFileForPassSkipXSkip()) {
 			// may want to skip storing result files for PASS, SKIP or XSKIP tests
 			try {
 				File result_file = new File(this_telem_dir, test_case_base_name+".xml");

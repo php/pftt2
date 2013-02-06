@@ -287,7 +287,7 @@ public class PhptTestCase extends TestCase {
 	public PhpIni getINI(PhptActiveTestPack active_test_pack, AHost host) {
 		PhpIni this_ini;
 		String this_ini_pwd;
-		String ini_pwd = active_test_pack.getStorageDirectory()+host.dirSeparator()+AHost.dirname(name);
+		String ini_pwd = active_test_pack.getStorageDirectory()+"/"+AHost.dirname(name);
 		if (this.ini_pwd!=null) {
 			this_ini_pwd = this.ini_pwd.get();
 			if (this_ini_pwd != null && this_ini_pwd.equals(ini_pwd)) {

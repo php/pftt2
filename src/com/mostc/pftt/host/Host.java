@@ -50,7 +50,7 @@ public abstract class Host {
 	public String uniqueNameFromBase(String base) {
 		if (exists(base)) {
 			String name;
-			for ( int i=1 ; ; i++ ) {
+			for ( int i=2 ; ; i++ ) {
 				name = base + "-" + i;
 				if (!exists(name))
 					return name;
