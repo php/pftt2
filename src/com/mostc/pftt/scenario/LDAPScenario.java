@@ -16,4 +16,9 @@ public class LDAPScenario extends AbstractNetworkedServiceScenario {
 		return false;
 	}
 
+	@Override
+	public String getNameWithVersionInfo() {
+		return "LDAP"; // XXX -[server implementation and server version]
+	}
+
 }

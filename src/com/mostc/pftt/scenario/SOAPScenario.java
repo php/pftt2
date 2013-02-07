@@ -18,4 +18,9 @@ public class SOAPScenario extends AbstractNetworkedServiceScenario {
 		return false;
 	}
 
+	@Override
+	public String getNameWithVersionInfo() {
+		return "SOAP"; // XXX -[server implementation and server version]
+	}
+
 }

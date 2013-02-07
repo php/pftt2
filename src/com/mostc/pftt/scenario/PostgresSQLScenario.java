@@ -54,4 +54,9 @@ public class PostgresSQLScenario extends AbstractDatabaseScenario {
 		AbstractPhpUnitTestCaseRunner.addDatabaseConnection(dsn, username, password, database, globals);
 	}
 
+	@Override
+	public String getNameWithVersionInfo() {
+		return "PostgresSQL"; // XXX -[server implementation and server version]
+	}
+
 } // end public class PostgresSQLScenario

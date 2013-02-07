@@ -15,6 +15,11 @@ import com.mostc.pftt.results.ConsoleManager;
 public class APCScenario extends AbstractCodeCacheScenario {
 
 	@Override
+	public String getNameWithVersionInfo() {
+		return "APC-3.1.13";
+	}
+	
+	@Override
 	public String getName() {
 		return "APC";
 	}

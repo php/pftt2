@@ -57,4 +57,9 @@ public class MSAccessScenario extends AbstractODBCScenario {
 		AbstractPhpUnitTestCaseRunner.addDatabaseConnection(dsn, username, password, database, globals);
 	}
 
+	@Override
+	public String getNameWithVersionInfo() {
+		return "ODBC-Access"; // XXX -[server implementation and server version]
+	}
+
 }

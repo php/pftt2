@@ -20,6 +20,12 @@ public enum EAcceleratorType {
 		public AbstractCodeCacheScenario getCodeCacheScenario() {
 			return AbstractCodeCacheScenario.NO;
 		}
+	},
+	ZEND_OPTIMIZER_PLUS {
+		@Override
+		public AbstractCodeCacheScenario getCodeCacheScenario() {
+			return AbstractCodeCacheScenario.ZEND_OPTIMIZER_PLUS;
+		}
 	};
 	
 	public abstract AbstractCodeCacheScenario getCodeCacheScenario();

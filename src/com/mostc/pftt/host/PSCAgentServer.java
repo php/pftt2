@@ -210,6 +210,9 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 	
 	@Override
 	public void println(EPrintType type, String ctx_str, String string) {
+		if (type==EPrintType.TIP)
+			return; // ignore
+		
 		sendMessage("<println type=\""+type+"\" ctx=\""+ctx_str+"\">"+string+"</println>");
 	}
 	

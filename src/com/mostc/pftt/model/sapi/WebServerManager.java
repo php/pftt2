@@ -2,7 +2,7 @@ package com.mostc.pftt.model.sapi;
 
 import java.io.IOException;
 import java.net.Socket;
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.Map;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -23,10 +23,10 @@ import com.mostc.pftt.results.ConsoleManager;
 public abstract class WebServerManager extends SAPIManager {
 	public static final String LOCALHOST = "localhost";
 	//
-	protected final LinkedList<WebServerInstance> instances;
+	protected final ArrayList<WebServerInstance> instances;
 	
 	public WebServerManager() {
-		instances = new LinkedList<WebServerInstance>();
+		instances = new ArrayList<WebServerInstance>(100);
 	}
 	
 	/** sets up the web server
@@ -145,5 +145,7 @@ public abstract class WebServerManager extends SAPIManager {
 			return false;
 		}
 	}
+
+	public abstract String getNameWithVersionInfo();
 	
 } // end public abstract class WebServerManager

@@ -54,4 +54,9 @@ public class SQLite3Scenario extends AbstractDatabaseScenario {
 		AbstractPhpUnitTestCaseRunner.addDatabaseConnection(dsn, username, password, database, globals);
 	}
 
+	@Override
+	public String getNameWithVersionInfo() {
+		return "SQLite3"; // XXX -[server implementation and server version]
+	}
+
 }

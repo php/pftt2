@@ -126,8 +126,13 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 				//
 				//
 				// if -windebug console option, run web server with windebug
-				if (cm.isWinDebug() && host.isWindows() && handle instanceof LocalHost.LocalExecHandle)
+				if (cm.isWinDebug() && host.isWindows() && handle instanceof LocalHost.LocalExecHandle) {
+					// TODO -windebug_list
+					if (server_name!=null&&server_name.toString().contains("bug61115-2")) {
+					
 					web.debug_handle = dbg_mgr.newDebugger(cm, host, server_name, build, (LocalHost.LocalExecHandle) handle);
+					}
+				}
 				//
 				
 				web.setProcess(handle);
@@ -170,11 +175,11 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 		
 		// return this failure message to client code
 		return new CrashedWebServerInstance(this, ini, env, sapi_output);
-	} // end protected synchronized WebServerInstance createWebServerInstance
+	} // end protected WebServerInstance createWebServerInstance
 	
 	protected abstract ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String, String> env, String docroot, String listen_address, int port);
 	
-	public static abstract class ManagedProcessWebServerInstance extends WebServerInstance {
+	public abstract class ManagedProcessWebServerInstance extends WebServerInstance {
 		protected Debugger debug_handle;
 		protected final int port;
 		protected final String hostname, cmd;
@@ -217,13 +222,16 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 
 		@Override
 		protected void do_close() {
-			if (isCrashed() && this.debug_handle!=null)
+			timer.schedule(new TimerTask() {
+				public void run() {
+			if (isCrashed() && debug_handle!=null)
 				// leave process running so it can be debugged
 				return;
-			if (this.debug_handle!=null)
-				this.debug_handle.close();
+			if (debug_handle!=null)
+				debug_handle.close();
 			
 			process.close();
+				}}, 5000);
 		}
 
 		@Override

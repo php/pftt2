@@ -104,5 +104,9 @@ public class MySQLScenario extends AbstractDatabaseScenario {
 	@Override
 	public void setGlobals(Map<String, String> globals) {
 		AbstractPhpUnitTestCaseRunner.addDatabaseConnection(dsn, username, password, database, globals);
+	}
+	@Override
+	public String getNameWithVersionInfo() {
+		return "MySQL"; // XXX -[server implementation and server version]
 	}	
 } // end class MySQLScenario

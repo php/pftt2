@@ -107,6 +107,9 @@ public class LocalConsoleManager implements ConsoleManager {
 		case CLUE:
 			System.out.println(type+": "+ctx_str+": "+string);
 			break;
+		case TIP:
+			System.out.println("PFTT: "+string);
+			break;
 		default:
 			System.out.println("PFTT: "+ctx_str+": "+string);
 		}

@@ -70,7 +70,7 @@ public class ScenarioSet extends ArrayList<Scenario> {
 				continue;
 			else if (sb.length()>0)
 				sb.append('_');
-			str = s.toString();
+			str = s.getName();
 			sb.append(str);
 		}
 		this.str = sb.toString();
@@ -93,7 +93,33 @@ public class ScenarioSet extends ArrayList<Scenario> {
 		return getName();
 	}
 	
+	/** returns this ScenarioSet's name and important version info (mainly just for reports)
+	 * 
+	 * @see #getName - normally, use getName, its shorter. 
+	 * @return
+	 */
+	public String getNameWithVersionInfo() {
+		StringBuilder sb = new StringBuilder(50);
+		String str;
+		for ( Scenario s : this ) {
+			if (s.isPlaceholder())
+				continue;
+			else if (sb.length()>0)
+				sb.append('_');
+			str = s.getNameWithVersionInfo();
+			sb.append(str);
+		}
+		return sb.toString();
+	}
+	
+	/** returns the name of this ScenarioSet (the names of the contained Scenarios) as a String
+	 * 
+	 * @see #getNameWithVersionInfo - returns a longer string with version info, etc...
+	 * @return
+	 */
 	public String getName() {
+		// used by #toString, so this has to be fast
+		// whereas #getNameWithVersionInfo isn't used much
 		ensureSorted();
 		return str; // @see #sort
 	}
@@ -298,6 +324,11 @@ public class ScenarioSet extends ArrayList<Scenario> {
 		scenario_sets = permuteScenarioSets(Arrays.asList(Scenario.getAllDefaultScenarios()));
 	}
 	
+	/** ensures ScenarioSet has a FileSystem and SAPIScenario by adding the default filesystem (local) or
+	 * default SAPIScenario (cli) if needed.
+	 * 
+	 * @param scenario_set
+	 */
 	public static void ensureSetHasFileSystemAndSAPI(ScenarioSet scenario_set) {
 		boolean match = false;
 		for ( Scenario scenario : scenario_set ) {

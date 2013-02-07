@@ -59,4 +59,9 @@ public class MSSQLScenario extends AbstractDatabaseScenario {
 		AbstractPhpUnitTestCaseRunner.addDatabaseConnection(dsn, username, password, database, globals);
 	}
 
+	@Override
+	public String getNameWithVersionInfo() {
+		return "MSSQL"; // XXX -[server implementation and server version]
+	}
+
 } // end public class MSSQLScenario

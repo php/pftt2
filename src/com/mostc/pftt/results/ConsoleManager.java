@@ -24,7 +24,8 @@ public interface ConsoleManager {
 		CANT_CONTINUE,
 		IN_PROGRESS,
 		COMPLETED_OPERATION,
-		OPERATION_FAILED_CONTINUING
+		OPERATION_FAILED_CONTINUING,
+		TIP
 	}
 	public void println(EPrintType type, Class<?> clazz, String string);
 	public void addGlobalException(EPrintType type, Class<?> clazz, String method_name, Exception ex, String msg);

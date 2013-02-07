@@ -6,38 +6,32 @@ import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 
-/** Tests the WinCache code caching extension (NOT IMPLEMENTED)
- * 
- * @author Matt Ficken
- *
- */
-
-public class WinCacheScenario extends AbstractCodeCacheScenario {
+public class ZendOptimizerPlusScenario extends AbstractCodeCacheScenario {
 
 	@Override
 	public String getNameWithVersionInfo() {
-		return "WinCache"; // XXX version
-	}
-	
-	@Override
-	public String getName() {
-		return "WinCache";
-	}
-	
-	@Override
-	public boolean isImplemented() {
-		return false;
-	}
-
-	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
-		// TODO download and install wincache.dll
-		return false;
+		return "ZendOptimizer+"; // XXX version
 	}
 
 	@Override
 	public EAcceleratorType getAcceleratorType() {
-		return EAcceleratorType.WINCACHE;
+		return EAcceleratorType.ZEND_OPTIMIZER_PLUS;
 	}
 
+	@Override
+	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public String getName() {
+		return "ZendOptimizer+";
+	}
+
+	@Override
+	public boolean isImplemented() {
+		return false;
+	}
+	
 }

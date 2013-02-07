@@ -304,4 +304,9 @@ public class IISManager extends WebServerManager {
 		return host.getSystemDrive() + "\\inetpub\\wwwroot";
 	}
 
+	@Override
+	public String getNameWithVersionInfo() {
+		return "IIS";
+	}
+
 } // end public class IISManager

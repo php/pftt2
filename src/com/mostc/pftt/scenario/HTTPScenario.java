@@ -18,4 +18,9 @@ public class HTTPScenario extends AbstractStreamsScenario {
 		return false;
 	}
 
+	@Override
+	public String getNameWithVersionInfo() {
+		return "HTTP"; // XXX -[server implementation and server version]
+	}
+
 }

@@ -12,7 +12,7 @@ import com.mostc.pftt.results.ConsoleManager;
 *
 */
 
-public abstract class AbstractDatabaseScenario extends AbstractParallelScenario {
+public abstract class AbstractDatabaseScenario extends AbstractNetworkedServiceScenario {
 	
 	@Override
 	public boolean isUACRequiredForSetup() {

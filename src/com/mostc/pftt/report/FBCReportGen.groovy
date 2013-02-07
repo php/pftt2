@@ -9,6 +9,7 @@ import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.results.PhpResultPack;
 
+// XXX including warning if -no-nts console option was used
 class FBCReportGen extends AbstractReportGen {
 	final PhpResultPack base_telem, test_telem;
 	int row = 1;

@@ -98,6 +98,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		
 		LinkedList<PhptTestCase> redirect_targets = new LinkedList<PhptTestCase>();
 		
+		// (some) names may be exact names of tests, check for those first
 		Iterator<String> name_it = names.iterator();
 		String name;
 		File file;
@@ -157,12 +158,16 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		for ( File f : files ) {
 			if (f.getName().toLowerCase().endsWith(PhptTestCase.PHPT_FILE_EXTENSION)) {
 				if (names!=null) {
+					boolean match = false;
 					for(String name: names) {
-						if (f.getName().toLowerCase().contains(name))
+						if (f.getName().toLowerCase().contains(name)) {
+							match = true;
 							break;
+						}
 					}
 					// test doesn't match any name, ignore it
-					continue main_loop;
+					if (!match)
+						continue main_loop;
 				}
 					
 				String test_name = f.getAbsolutePath().substring(test_pack.length());

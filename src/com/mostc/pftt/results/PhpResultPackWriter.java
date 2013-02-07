@@ -39,6 +39,8 @@ import com.mostc.pftt.util.ErrorUtil;
  *
  */
  
+//TODO log cli args to result-pack
+//-warn if -no-nts is used
 // TODO store consolemanager logs in result-pack
 //   -including smoke checks from dfs and deduplication scenrios
 public class PhpResultPackWriter extends PhpResultPack implements ITestResultReceiver {

@@ -18,4 +18,9 @@ public class XMLRPCScenario extends AbstractNetworkedServiceScenario {
 		return false;
 	}
 
+	@Override
+	public String getNameWithVersionInfo() {
+		return "XMLRPC"; // XXX -[server implementation and server version]
+	}
+
 }

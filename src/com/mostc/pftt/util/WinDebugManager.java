@@ -24,6 +24,7 @@ import com.mostc.pftt.results.ConsoleManager.EPrintType;
 public class WinDebugManager extends DebuggerManager {
 	private String win_dbg_exe;
 	private AHost win_dbg_host;
+	private boolean displayed_windbg_tips = false;
 	
 	protected void ensureFindWinDbgExe(ConsoleManager cm, AHost host) {
 		if (this.win_dbg_host==host)
@@ -41,18 +42,34 @@ public class WinDebugManager extends DebuggerManager {
 	@Override
 	public WinDebug newDebugger(ConsoleManager cm, AHost host, Object server_name, PhpBuild build, int process_id) {
 		ensureFindWinDbgExe(cm, host);
+		
+		WinDebug dbg = null;
 		if (StringUtil.isNotEmpty(win_dbg_exe)) {
 			ensureFindSourceAndDebugPack(cm, host, build);
 			
 			try {
-				return new WinDebug(host, win_dbg_exe, toServerName(server_name), src_path, debug_path, build.getBuildPath(), process_id);
+				dbg = new WinDebug(host, win_dbg_exe, toServerName(server_name), src_path, debug_path, build.getBuildPath(), process_id);
 			} catch ( Exception ex ) {
 				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "newDebugger", ex, "", host, win_dbg_exe);
 			}
+			
+			if (dbg != null && dbg.attached) {
+				if (!displayed_windbg_tips) {
+					displayed_windbg_tips = true;
+					
+					displayWindebugTips(cm);
+				}
+			}			
 		}
-		return null;
+		return dbg;
 	}
 	
+	protected void displayWindebugTips(ConsoleManager cm) {
+		cm.println(EPrintType.TIP, getClass(), "  WinDebug command: k       - show callstack");
+		cm.println(EPrintType.TIP, getClass(), "  WinDebug command: g       - go (until next exception)");
+		cm.println(EPrintType.TIP, getClass(), "  WinDebug command: <F9>    - set breakpoint");
+	}
+
 	public static class WinDebug extends Debugger {
 		protected final ExecHandle debug_handle;
 		protected final String log_file;

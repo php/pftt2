@@ -50,6 +50,14 @@ public abstract class Scenario {
 	public abstract String getName();
 	public abstract boolean isImplemented();
 	
+	/**
+	 * 
+	 * @return
+	 */
+	public String getNameWithVersionInfo() {
+		return getName();
+	}
+	
 	/** @see ScenarioSet#getENV
 	 * 
 	 * @param env

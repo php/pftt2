@@ -164,7 +164,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			//            to run php+phpt so they pass on CLI, but too small for apache+php+phpt so they crash on apache)
 			// NOTE: this returns false (no exception) if visual studio not installed
 			// NOTE: this returns false (no exception) if apache binary can't be edited (already running, UAC privileges not elevated)
-			if (host!=this.cache_host||this.cache_httpd==null||this.cache_httpd.equals(httpd)) {
+			/* TODO if (host!=this.cache_host||this.cache_httpd==null||this.cache_httpd.equals(httpd)) {
 				// do this once
 				synchronized(host) {
 					VisualStudioUtil.setExeStackSize(cm, host, httpd, VisualStudioUtil.SIXTEEN_MEGABYTES);
@@ -178,7 +178,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 					this.cache_host = host;
 					this.cache_httpd = httpd;
 				}
-			}
+			}*/
 		} else {
 			dll = "modules/mod_php.so";
 		}
@@ -450,6 +450,11 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		EApacheVersion apache_version = decideApacheVersion(null, host, build, _apache_version);
 		
 		return host.isWindows() ? apache_version==EApacheVersion.APACHE_2_2 ? host.getSystemDrive() + "\\Apache2\\htdocs" : host.getSystemDrive() + "\\Apache24\\htdocs" : "/var/www/localhost/htdocs";
+	}
+
+	@Override
+	public String getNameWithVersionInfo() {
+		return "Apache-2.4"; // TODO
 	}
 	
 } // end public class ApacheManager

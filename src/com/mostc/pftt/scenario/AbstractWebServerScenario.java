@@ -51,6 +51,11 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 		return scenario_set.getScenario(AbstractWebServerScenario.class, null);
 	}
 	
+	@Override
+	public String getNameWithVersionInfo() {
+		return smgr.getNameWithVersionInfo();
+	}
+	
 	protected final HttpParams params;
 	protected final HttpProcessor httpproc;
 	protected final HttpRequestExecutor httpexecutor;

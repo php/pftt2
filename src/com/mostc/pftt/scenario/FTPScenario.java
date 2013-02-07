@@ -18,4 +18,9 @@ public class FTPScenario extends AbstractStreamsScenario {
 		return false;
 	}
 
+	@Override
+	public String getNameWithVersionInfo() {
+		return "FTP"; // XXX -[ftp server implementation and server version]
+	}
+
 }

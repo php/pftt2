@@ -3,9 +3,10 @@ package com.mostc.pftt.scenario;
 import com.mostc.pftt.model.core.EAcceleratorType;
 
 public abstract class AbstractCodeCacheScenario extends AbstractINIScenario {
-	public static final AbstractCodeCacheScenario WINCACHE = new WinCacheScenario();
-	public static final AbstractCodeCacheScenario NO = new NoCodeCacheScenario();
-	public static final AbstractCodeCacheScenario APC = new APCScenario();
+	public static final WinCacheScenario WINCACHE = new WinCacheScenario();
+	public static final NoCodeCacheScenario NO = new NoCodeCacheScenario();
+	public static final APCScenario APC = new APCScenario();
+	public static final ZendOptimizerPlusScenario ZEND_OPTIMIZER_PLUS = new ZendOptimizerPlusScenario();
 	
 	@Override
 	public Class<?> getSerialKey() {

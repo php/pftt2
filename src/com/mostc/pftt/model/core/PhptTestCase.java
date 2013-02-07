@@ -52,7 +52,10 @@ import com.mostc.pftt.util.apache.regexp.REProgram;
  */
 
 public class PhptTestCase extends TestCase {
-	/** extensions (& name fragments) that have non-thread-safe tests (only 1 test of an NTS extension will be run at a time) processed in order*/
+	/** extensions (& name fragments) that have non-thread-safe tests (only 1 test of an NTS extension will be run at a time) processed in order
+	 * 
+	 * Reminder: if -no-nts console option is used, this list is ignored (that option allows tests to be run on any thread regardless of thread-safety)
+	 * */
 	public static final String[][] NON_THREAD_SAFE_EXTENSIONS = new String[][]{
 			// split up the ext/standard/tests/file PHPTs
 			// they can be run in 1 thread, but split them into several threads so they'll all finish faster

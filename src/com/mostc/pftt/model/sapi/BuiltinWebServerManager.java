@@ -36,7 +36,7 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 		return new BuiltinWebServerInstance(this, host, build, build.getPhpExe()+" -S "+listen_address+":"+port+" "+(ini==null?"":ini.toCliArgString(host)), ini, env, listen_address, port);
 	}
 	
-	public static class BuiltinWebServerInstance extends ManagedProcessWebServerInstance {
+	public class BuiltinWebServerInstance extends ManagedProcessWebServerInstance {
 		protected final PhpBuild build;
 		protected final AHost host;
 		
@@ -88,6 +88,11 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 	@Override
 	public String getDefaultDocroot(Host host, PhpBuild build) {
 		return build.getBuildPath();
+	}
+
+	@Override
+	public String getNameWithVersionInfo() {
+		return getName();
 	}
 
 } // end public class BuiltinWebServerManager

@@ -88,9 +88,6 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
  */
 
 // TODO phpt_all, etc... should display location of result-pack being written
-// XXX ? only compress .xml result files that are for FAIL or XFAIL_WORKS or CRASH or TEST_EXPCEPTION
-//           -then discard if PASS, SKIP or XSKIP
-//         -would still save list of tests for each status
 public class PfttMain {
 	protected AHost host;
 	
@@ -710,7 +707,8 @@ public class PfttMain {
 			} else if (args[args_i].equals("-randomize_order")) {
 				randomize_order = true;
 			} else if (args[args_i].equals("-run_test_times")) {
-				run_test_times = Integer.parseInt(args[args_i++]);
+				args_i++;
+				run_test_times = Integer.parseInt(args[args_i]);
 			} else if (args[args_i].equals("-disable_debug_prompt")) {
 				disable_debug_prompt = true; 
 			} else if (args[args_i].equals("-results_only")) {
@@ -809,7 +807,7 @@ public class PfttMain {
 			if (command.equals("phpt_named")||command.equals("phptnamed")||command.equals("phptn")||command.equals("pn")) {
 				if (!(args.length > args_i+3)) {
 					System.err.println("User Error: must specify build, test-pack and name(s) and/or name fragment(s)");
-					System.out.println("usage: pftt phpt_named <path to PHP build> <path to PHPT test-pack> <test case names or name fragments>");
+					System.out.println("usage: pftt phpt_named <path to PHP build> <path to PHPT test-pack> <test case names or name fragments (separated by spaces)>");
 					System.exit(-255);
 					return;
 				}
@@ -827,7 +825,7 @@ public class PfttMain {
 					System.exit(-255);
 					return;
 				}				
-				args_i += 2; // skip over build and test_pack
+				args_i += 3; // skip over build and test_pack
 				
 				checkUAC(is_uac, false, config, cm);
 				
