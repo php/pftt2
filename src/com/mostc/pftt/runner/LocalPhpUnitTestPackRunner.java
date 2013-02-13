@@ -47,8 +47,8 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 	final HttpRequestExecutor httpexecutor;
 	final ApacheManager smgr;
 	
-	public LocalPhpUnitTestPackRunner(ConsoleManager cm, ITestResultReceiver twriter, ScenarioSet scenario_set, PhpBuild build, AHost host) {
-		super(cm, twriter, scenario_set, build, host);
+	public LocalPhpUnitTestPackRunner(ConsoleManager cm, ITestResultReceiver twriter, ScenarioSet scenario_set, PhpBuild build, AHost storage_host, AHost runner_host) {
+		super(cm, twriter, scenario_set, build, storage_host, runner_host);
 		
 		params = new SyncBasicHttpParams();
 		HttpProtocolParams.setVersion(params, HttpVersion.HTTP_1_1);

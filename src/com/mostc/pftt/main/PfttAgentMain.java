@@ -26,7 +26,7 @@ public class PfttAgentMain extends PSCAgentServer {
 	
 	@Override
 	protected void startSetup() {
-		test_pack_runner = new LocalPhptTestPackRunner(this, this, scenario_set, build, host);
+		test_pack_runner = new LocalPhptTestPackRunner(this, this, scenario_set, build, host, host);
 		
 		try {
 			// important: don't want to get WER popups on Windows (user isn't there to close them)

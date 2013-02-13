@@ -92,7 +92,7 @@ public abstract class Scenario {
 		return false;
 	}
 	
-	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build) {
+	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		return true;
 	}
 	
@@ -106,20 +106,17 @@ public abstract class Scenario {
 	public static final AbstractSAPIScenario DEFAULT_SAPI_SCENARIO = CLI_SCENARIO;
 	public static final AbstractFileSystemScenario DEFAULT_FILESYSTEM_SCENARIO = LOCALFILESYSTEM_SCENARIO;
 	
-	// 90 ScenarioSets => (APC, WinCache, No) * (CLI, Buitlin-WWW, Apache, IIS-FastCGI, IIS-Express-FastCGI) * ( local filesystem, the 5 types of SMB )
 	public static Scenario[] getAllDefaultScenarios() {
 		return new Scenario[]{
-				// sockets
 				new PlainSocketScenario(),
-				new SSLSocketScenario(),
-				// code caches
 				new NoCodeCacheScenario(),
-				new APCScenario(),
-				new WinCacheScenario(),
-				// SAPIs
 				CLI_SCENARIO,
-				// filesystems
-				LOCALFILESYSTEM_SCENARIO
+				LOCALFILESYSTEM_SCENARIO,
+				// these database scenarios can be here because they don't require any special configuration
+				// (like connecting to a database server that the user would have to setup. those scenarios
+				//  have to be in configuration files (in the 'conf' directory))
+				new MSAccessScenario(), // ignored if MS-Access not installed
+				new SQLite3Scenario()
 			};
 	} // end public static Scenario[] getAllDefaultScenarios
 	

@@ -296,10 +296,20 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				path = "/ext/phar/"+path; // TODO
 			}
 		}
+		/* TODO strip from test output (sometimes gets returned by apache for some reason) <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2//EN">
+		<html>
+		<head>
+		<title></title>
+		</head>
+		<body>
+		
+		</body>
+		</html>
+*/
 		try {
 			if (web!=null) {
 				synchronized(web) {
-					WebServerInstance _web = smgr.getWebServerInstance(cm, host, build, ini, env, active_test_pack.getStorageDirectory(), web, test_case);
+					WebServerInstance _web = smgr.getWebServerInstance(cm, host, build, ini, env, active_test_pack.getStorageDirectory(), web, false, test_case);
 					if (_web!=this.web) {
 						this.web = _web;
 						is_replacement = true;
@@ -318,7 +328,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			if (web==null) {
 				// test should be a FAIL or CRASH
 				// its certainly the fault of a test (not PFTT) if not this test
-				this.web = smgr.getWebServerInstance(cm, host, build, ini, env, active_test_pack.getStorageDirectory(), web, test_case);
+				this.web = smgr.getWebServerInstance(cm, host, build, ini, env, active_test_pack.getStorageDirectory(), web, false, test_case);
 				
 				if (web==null||web.isCrashed()) {
 					markTestAsCrash();

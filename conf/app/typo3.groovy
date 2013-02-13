@@ -1,4 +1,4 @@
 
 def scenarios() {
-	[new Typo3Scenario()]
+	new Typo3Scenario()
 }

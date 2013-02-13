@@ -117,8 +117,8 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 	 */
 	public static PhpIni createDefaultIniCopy(Host host, PhpBuild build) {
 		PhpIni ini = new PhpIni();
-		// TODO ini.putSingle("default_mimetype", "text/plain");
-		// TODO ini.putSingle("date.timezone", "'UTC'"); // TODO ' matters?
+		// ini.putSingle("default_mimetype", "text/plain");
+		// ini.putSingle("date.timezone", "'UTC'");
 		ini.putMulti(PhpIni.OUTPUT_HANDLER, StringUtil.EMPTY);
 		ini.putMulti(PhpIni.OPEN_BASEDIR, StringUtil.EMPTY);
 		ini.putMulti(PhpIni.SAFE_MODE, 0);

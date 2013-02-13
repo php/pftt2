@@ -12,7 +12,7 @@ import com.mostc.pftt.scenario.ScenarioSet;
 
 public abstract class AbstractTestPackRunner<S extends SourceTestPack, T extends TestCase> {
 	protected final PhpBuild build;
-	protected AHost storage_host, runner_host; // TODO final
+	protected final AHost storage_host, runner_host;
 	protected final ScenarioSet scenario_set;
 	
 	public AbstractTestPackRunner(ScenarioSet scenario_set, PhpBuild build, AHost storage_host, AHost runner_host) {

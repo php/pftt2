@@ -1,4 +1,4 @@
 
 def scenarios() {
-	[new BuiltinWebServerScenario()]
+	new BuiltinWebServerScenario()
 }

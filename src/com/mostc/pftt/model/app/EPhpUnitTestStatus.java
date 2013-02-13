@@ -11,6 +11,8 @@ import com.mostc.pftt.model.core.EPhptTestStatus;
  * @see http://www.phpunit.de/manual/current/en/textui.html
  * @see EPhptTestStatus - statuses for PHPTs, the Core test format.
  * @author Matt Ficken
+ * 
+ * @see PhpUnitTemplate and @see PhpUnitResultWriter - to see how PFTT translates to/from PhpUnit's original statuses and this modified set 
  *
  */
 

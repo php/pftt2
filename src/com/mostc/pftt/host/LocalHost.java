@@ -184,14 +184,16 @@ public class LocalHost extends AHost {
 
 		LocalExecHandle eh = exec_impl(splitCmdString(commandline), env, chdir, timeout, stdin_data); 
 			
-		eh.run(charset);
+		StringBuilder output_sb = new StringBuilder(1024);
+		
+		eh.run(output_sb, charset);
 		
 		if (task!=null)
 			task.cancel();
 		
 		final ExecOutput out = new ExecOutput();
 		out.cmd = commandline;
-		out.output = eh.getOutput();
+		out.output = output_sb.toString();
 		out.charset = eh.charset;
 		out.exit_code = eh.getExitCode();
 		
@@ -290,7 +292,6 @@ public class LocalHost extends AHost {
 		protected ExitMonitorTask task;
 		protected String image_name;
 		protected Charset charset;
-		protected StringBuilder output_sb;
 		
 		public LocalExecHandle(Process process, OutputStream stdin, InputStream stdout, InputStream stderr, String[] cmd_array) {
 			this.process = process;
@@ -432,8 +433,7 @@ public class LocalHost extends AHost {
 			}
 		}
 		
-		protected void run(Charset charset) throws IOException, InterruptedException {
-			output_sb = new StringBuilder(1024);
+		protected void run(StringBuilder output_sb, Charset charset) throws IOException, InterruptedException {
 			exec_copy_lines(output_sb, stdout, charset);
 			//
 			// ignores STDERR
@@ -473,9 +473,8 @@ public class LocalHost extends AHost {
 		}
 
 		@Override
-		public String getOutput() {
-			StringBuilder sb = output_sb;
-			return sb == null ? "" : sb.toString();
+		public String getOutput(int max_len)  throws IOException {
+			return IOUtil.toString(getSTDOUT(), max_len);
 		}
 
 		@Override
@@ -600,21 +599,21 @@ public class LocalHost extends AHost {
 		OutputStream stdin = process.getOutputStream();
 		
 		if (stdin_data!=null && stdin_data.length>0) {
-	    	stdin.write(stdin_data);
-	    	stdin.flush();
-	    }
+			stdin.write(stdin_data);
+			stdin.flush();
+		}
 		
-	    InputStream stdout = process.getInputStream();
-	    InputStream stderr = process.getErrorStream();
+		InputStream stdout = process.getInputStream();
+		InputStream stderr = process.getErrorStream();
 
-	    LocalExecHandle h = new LocalExecHandle(process, stdin, stdout, stderr, cmd_array);
-	    
-	    /* TODO if (timeout>NO_TIMEOUT) {
-	    	h.task = new ExitMonitorTask(h);
+		LocalExecHandle h = new LocalExecHandle(process, stdin, stdout, stderr, cmd_array);
+		
+		if (timeout>NO_TIMEOUT) {
+			h.task = new ExitMonitorTask(h);
 			timer.schedule(h.task, timeout*1000);
-	    }*/
-	    
-	    return h;
+		}
+		
+		return h;
 	} // end protected LocalExecHandle exec_impl
 		
 	protected static class ExitMonitorTask extends TimerTask {
@@ -801,6 +800,25 @@ public class LocalHost extends AHost {
 	@Override
 	public long getSize(String file) {
 		return new File(file).length();
+	}
+
+	@Override
+	public boolean deleteFileExtension(String dir_str, String ext) {
+		_deleteFileExtension(new File(dir_str), ext);
+		return true;
+	}
+	
+	protected void _deleteFileExtension(File dir, String ext) {
+		File[] files = dir.listFiles();
+		if (files==null)
+			return;
+		for ( File file : files ) {
+			if ( file.isDirectory() )
+				_deleteFileExtension(file, ext);
+			else if ( file.getName().endsWith(ext) )
+				file.delete();
+		}
+		
 	}
 	
 } // end public class Host

@@ -4,14 +4,14 @@ This is the default location to store PFTT configuration files.
 You provide them to PFTT like so:
 pftt -config <file1>,<file2, etc...> <command>
 
-PFTT search conf, conf/internal and conf/examples. If your config file is in another folder,
+PFTT searches conf and conf/internal and conf/app. If your config file is in another folder,
 you must specify the path to it.
 
-This folder has these 3 sub-folders
- * apps - configurations for Application testing (you may store app configs anywhere, this is just the default location)
- * examples - example complex configuration files (network services - SMB, Databases, etc...)
+This folder has these 2 sub-folders
+ * app - configurations for Applications (you may store app configs anywhere, this is just the default location)
  * internal - store your internal use only configuration files (usually network services, addresses
  and credentials you don't want to share. the internal folder is ignored by git)
+ * internal_example - not read by PFTT, but show examples of what to put in your own 'internal' 
 
 Examples:
 

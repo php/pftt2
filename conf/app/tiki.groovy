@@ -1,4 +1,4 @@
 
 def scenarios() {
-	[new TikiScenario()]
+	new TikiScenario()
 }

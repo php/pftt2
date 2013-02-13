@@ -52,7 +52,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 	}
 	
 	@Override
-	protected WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, final String docroot, final Object server_name) {
+	protected WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, final String docroot, final boolean debugger_attached, final Object server_name) {
 		String sapi_output = "";
 		int port_attempts;
 		boolean found_port;
@@ -125,13 +125,9 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 				}
 				//
 				//
-				// if -windebug console option, run web server with windebug
-				if (cm.isWinDebug() && host.isWindows() && handle instanceof LocalHost.LocalExecHandle) {
-					// TODO -windebug_list
-					if (server_name!=null&&server_name.toString().contains("bug61115-2")) {
-					
+				// if -debug_all or -debug_list console option, run web server with windebug
+				if (debugger_attached) {
 					web.debug_handle = dbg_mgr.newDebugger(cm, host, server_name, build, (LocalHost.LocalExecHandle) handle);
-					}
 				}
 				//
 				
@@ -146,10 +142,17 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 									if (handlef.isCrashed()) {
 										if (handlef.getExitCode()!=1)
 											new IllegalStateException("server_name="+server_name+" exit_code="+handlef.getExitCode()).printStackTrace(); // TODO
+										
+										String output_str;
+										try {
+											output_str = handlef.getOutput();
+										} catch ( Exception ex ) {
+											output_str = ErrorUtil.toString(ex);
+										}
 										// notify of web server crash
 										//
 										// provide output and exit code
-										web.notifyCrash(handlef.getOutput(), handlef.getExitCode());
+										web.notifyCrash(output_str, handlef.getExitCode());
 									}
 								} finally {
 									// don't need to check any more
@@ -219,19 +222,27 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 		public boolean isCrashed() {
 			return super.isCrashed() || process.isCrashed();
 		}
+		
+		@Override
+		public boolean isDebuggerAttached() {
+			return debug_handle != null && debug_handle.isRunning();
+		}
 
 		@Override
 		protected void do_close() {
-			timer.schedule(new TimerTask() {
-				public void run() {
-			if (isCrashed() && debug_handle!=null)
+			if (debug_handle!=null)// && debug_handle.isRunning())
+				return; // TODO
+			
+			//timer.schedule(new TimerTask() {
+				//public void run() {
+			//if (isCrashed() && debug_handle!=null)
 				// leave process running so it can be debugged
-				return;
-			if (debug_handle!=null)
-				debug_handle.close();
+				//return;
+			//if (debug_handle!=null)
+				//debug_handle.close();
 			
 			process.close();
-				}}, 5000);
+				//}}, 5000);
 		}
 
 		@Override

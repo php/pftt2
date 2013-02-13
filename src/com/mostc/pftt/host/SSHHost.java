@@ -25,6 +25,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.annotation.Nullable;
 
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.ConsoleAppender;
+import org.apache.log4j.varia.NullAppender;
+
 import com.github.mattficken.io.ByLineReader;
 import com.github.mattficken.io.ByteArrayIOStream;
 import com.github.mattficken.io.CharsetByLineReader;
@@ -86,6 +90,7 @@ import com.sshtools.j2ssh.transport.publickey.SshPublicKey;
  * 
  */
 
+@SuppressWarnings("unused")
 public class SSHHost extends RemoteHost {
 	private static final Timer timer = new Timer();
 	protected String address, hostname;
@@ -101,6 +106,14 @@ public class SSHHost extends RemoteHost {
 	protected SshClient ssh;
 	@Nullable
 	protected SftpClient sftp;
+	
+	static {
+		if (DEV>0)
+			BasicConfigurator.configure(new ConsoleAppender());
+		else
+			// suppress any log4j warning message on first call to SSHHost#<init>
+			BasicConfigurator.configure(new NullAppender());
+	}
 	
 	public SSHHost(String hostname, String username, String password) {
 		this(hostname, 22, username, password);
@@ -431,7 +444,7 @@ public class SSHHost extends RemoteHost {
 		}
 
 		@Override
-		public String getOutput() {
+		public String getOutput(int max_len) {
 			return out.toString();
 		}
 
@@ -761,6 +774,22 @@ public class SSHHost extends RemoteHost {
 			sftp.put(new ByteBufferInputStream(bbuf), filename);
 		}
 		return true;
+	}
+	
+	@Override
+	public boolean deleteFileExtension(String dir, String ext) {
+		if (!ext.startsWith("."))
+			ext = "." + ext;
+		try {
+			if (isWindows()) {
+				cmd("forfiles /p "+dir+" /s /m *"+ext+" /c \"cmd /C del /Q @path\"", ONE_MINUTE*20);
+			} else {
+				exec("rm -rF "+dir+"/*"+ext, ONE_MINUTE*20);
+			}
+			return true;
+		} catch ( Exception ex ) {
+			return false;
+		}
 	}
 	
 	protected static class ByteBufferInputStream extends InputStream {

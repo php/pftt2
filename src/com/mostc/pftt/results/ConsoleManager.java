@@ -1,5 +1,7 @@
 package com.mostc.pftt.results;
 
+import java.util.List;
+
 import javax.annotation.Nonnegative;
 
 import com.mostc.pftt.model.TestCase;
@@ -9,7 +11,30 @@ public interface ConsoleManager {
 	
 	public boolean isDisableDebugPrompt();
 	public boolean isForce();
-	public boolean isWinDebug();
+	/**
+	 * 
+	 * @see -debug_all console option
+	 * @return
+	 */
+	public boolean isDebugAll();
+	/**
+	 * 
+	 * @see -debug_list console option
+	 * @param test_case
+	 * @return
+	 */
+	public boolean isInDebugList(TestCase test_case);
+	/**
+	 * @see -debug_list console option
+	 * @return
+	 */
+	public boolean isDebugList();
+	/**
+	 * @see -skip_list console option
+	 * @param test_case
+	 * @return
+	 */
+	public boolean isInSkipList(TestCase test_case);
 	public boolean isPfttDebug();
 	public boolean isNoResultFileForPassSkipXSkip();
 	
@@ -46,11 +71,34 @@ public interface ConsoleManager {
 	 * @return
 	 */
 	@Nonnegative
-	public int getRunTestTimes();
+	public int getRunTestTimesAll();
 	/** should test cases be run in (TRUE) random order (different order every time) or normal order (FALSE) 
 	 * 
+	 * @see -randomize_order console option
 	 * @return
 	 */
 	public boolean isRandomizeTestOrder();
+	/**
+	 * 
+	 * @see -no_nts console option
+	 * @return
+	 */
+	public boolean isThreadSafety();
+	public int getRunGroupTimesAll();
+	/**
+	 * @see -run_test_times_list console option
+	 * @param test_case
+	 * @return
+	 */
+	public boolean isInRunTestTimesList(TestCase test_case);
+	/** 
+	 * 
+	 * @see -run_test_times_list console option
+	 * @return
+	 */
+	public int getRunTestTimesListTimes();
+	public int getRunGroupTimesListTimes();
+	public List<String> getRunGroupTimesList();
+	public boolean isRunGroupTimesList();
 	
 } // end public class ConsoleManager

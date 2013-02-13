@@ -24,8 +24,14 @@ public class SSLSocketScenario extends AbstractSocketScenario {
 
 	@Override
 	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
-		// TODO Auto-generated method stub
+		// TODO configure HttpPhptTestCaseRunner and HttpPhpUnitTestCaseRunner to use SSL
 		return false;
+	}
+	
+	@Override
+	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		// only work with AbstractWebServerScenario
+		return AbstractWebServerScenario.getWebServerScenario(scenario_set) != null;
 	}
 
 }

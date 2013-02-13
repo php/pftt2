@@ -134,7 +134,7 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 		try {
 			if (web!=null) {
 				synchronized(web) {
-					WebServerInstance _web = smgr.getWebServerInstance(cm, host, build, ini, env, my_temp_dir, web, test_case);
+					WebServerInstance _web = smgr.getWebServerInstance(cm, host, build, ini, env, my_temp_dir, web, false, test_case);
 					if (_web!=this.web) {
 						this.web = _web;
 						is_replacement = true;
@@ -153,7 +153,7 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 			if (web==null) {
 				// test should be a FAIL or CRASH
 				// its certainly the fault of a test (not PFTT) if not this test
-				this.web = smgr.getWebServerInstance(cm, host, build, ini, env, my_temp_dir, web, test_case);
+				this.web = smgr.getWebServerInstance(cm, host, build, ini, env, my_temp_dir, web, false, test_case);
 				
 				if (web==null||web.isCrashed()) {
 					markTestAsCrash();

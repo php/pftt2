@@ -1,4 +1,4 @@
 
 def scenarios() {
-	[new PhpPgAdminScenario()]
+	new PhpPgAdminScenario()
 }

@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.util.LinkedList;
+import java.util.List;
 
 import org.kxml2.io.KXmlParser;
 import org.kxml2.io.KXmlSerializer;
@@ -14,13 +16,13 @@ import org.xmlpull.v1.XmlPullParserException;
 
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.model.TestCase;
-import com.mostc.pftt.model.app.PhpUnitTestResult;
 import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpDebugPack;
 import com.mostc.pftt.model.core.PhptActiveTestPack;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
+import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
@@ -37,11 +39,16 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 	protected final LocalHost host;
 	protected InputStream parser_in;
 	protected OutputStream serial_out;
-	private boolean no_result_file_for_pass_xskip_skip, randomize_order;
-	private int run_test_times;
+	protected boolean no_result_file_for_pass_xskip_skip, randomize_order, thread_safety;
+	protected int run_test_times_all = 1, run_test_times_list_times = 1, run_group_times_list_times = 1, run_group_times = 1;
+	protected final LinkedList<String> run_test_times_list, run_group_times_list, skip_list;
 	
 	public PSCAgentServer() {
 		host = new LocalHost();
+		
+		run_test_times_list = new LinkedList<String>();
+		run_group_times_list = new LinkedList<String>();
+		skip_list = new LinkedList<String>();
 		
 		parser = new KXmlParser();
 		serial = new KXmlSerializer();
@@ -96,7 +103,11 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 					
 					no_result_file_for_pass_xskip_skip = StringUtil.equalsCS("true", parser.getAttributeValue(null, "no_result_file_for_pass_xskip_skip"));
 					randomize_order = StringUtil.equalsCS("true", parser.getAttributeValue(null, "randomize_order"));
-					run_test_times = StringUtil.parseInt(parser.getAttributeValue(null, "run_test_times"));
+					run_test_times_all = StringUtil.parseInt(parser.getAttributeValue(null, "run_test_times_all"));
+					thread_safety = StringUtil.equalsCS("true", parser.getAttributeValue(null, "thread_safety"));
+					run_test_times_list_times = StringUtil.parseInt(parser.getAttributeValue(null, "run_test_times_list_times"));
+					run_group_times = StringUtil.parseInt(parser.getAttributeValue(null, "run_group_times"));
+					run_group_times_list_times = StringUtil.parseInt(parser.getAttributeValue(null, "run_group_times_list_times"));
 					
 				} else if (tag_name.equals("startSetup")) {
 					Thread t = new Thread() {
@@ -129,6 +140,12 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 				
 				if (tag_name.equals("test_name")) {
 					addTestName(parser.getText());
+				} else if (tag_name.equals("run_test_times_list")) {
+					run_test_times_list.add(parser.getText());
+				} else if (tag_name.equals("run_group_times_list")) {
+					run_group_times_list.add(parser.getText());
+				} else if (tag_name.equals("skip_list")) {
+					skip_list.add(parser.getText());
 				}
 				
 				break;
@@ -173,20 +190,20 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 	
 	protected void sendResult(PhptTestResult result) throws IllegalArgumentException, IllegalStateException, IOException {
 		// if controller won't be storing this result, don't bother sending it
-		/* TODO if (isNoResultFileForPassSkipXSkip() && !PhptTestResult.shouldStoreAllInfo(result.status)) {
+		if (isNoResultFileForPassSkipXSkip() && !PhptTestResult.shouldStoreAllInfo(result.status)) {
 			return;
-		}*/
+		}
 		
 		// don't send PhptTestCase (saves bandwidth). pftt client already has a copy of it
 		
-		// TODO String name = result.test_case.getName();
+		final String test_name = result.test_case.getName();
 		
 		result.test_case = null;
 		
 		synchronized(serial_out) {
 			// don't do #startDocument -> all it does is print the <?xml header
 			//serial.startDocument("utf-8", Boolean.FALSE);
-			result.serialize(serial);// TODO , name);
+			result.serialize(serial);// TODO , test_name);
 			// important: call #endDocument or all results will be buffered until last result sent
 			serial.endDocument();
 			serial_out.write('\n');
@@ -251,8 +268,8 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 	}
 	
 	@Override
-	public int getRunTestTimes() {
-		return run_test_times;
+	public int getRunTestTimesAll() {
+		return run_test_times_all;
 	}
 
 	@Override
@@ -272,8 +289,58 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 	}
 
 	@Override
-	public boolean isWinDebug() {
+	public boolean isDebugAll() {
 		return false;
+	}
+	
+	@Override
+	public boolean isInDebugList(TestCase test_case) {
+		return false;
+	}
+
+	@Override
+	public boolean isDebugList() {
+		return false;
+	}
+
+	@Override
+	public boolean isThreadSafety() {
+		return thread_safety;
+	}
+
+	@Override
+	public int getRunGroupTimesAll() {
+		return run_group_times;
+	}
+
+	@Override
+	public boolean isInRunTestTimesList(TestCase test_case) {
+		return run_test_times_list.contains(test_case.getName());
+	}
+	
+	@Override
+	public boolean isInSkipList(TestCase test_case) {
+		return skip_list.contains(test_case.getName());
+	}
+
+	@Override
+	public int getRunTestTimesListTimes() {
+		return run_test_times_list_times;
+	}
+	
+	@Override
+	public int getRunGroupTimesListTimes() {
+		return run_group_times_list_times;
+	}
+
+	@Override
+	public List<String> getRunGroupTimesList() {
+		return run_group_times_list;
+	}
+
+	@Override
+	public boolean isRunGroupTimesList() {
+		return run_group_times_list.size() > 0;
 	}
 
 	@Override

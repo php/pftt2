@@ -4,6 +4,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
@@ -20,9 +21,6 @@ import com.mostc.pftt.model.ActiveTestPack;
 import com.mostc.pftt.model.SourceTestPack;
 import com.mostc.pftt.model.TestCase;
 import com.mostc.pftt.model.core.PhpBuild;
-import com.mostc.pftt.model.core.PhpIni;
-import com.mostc.pftt.model.core.PhptTestCase;
-import com.mostc.pftt.model.sapi.ApacheManager;
 import com.mostc.pftt.model.sapi.SAPIInstance;
 import com.mostc.pftt.model.sapi.SharedSAPIInstanceTestCaseGroupKey;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
@@ -39,7 +37,6 @@ import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.AbstractFileSystemScenario.ITestPackStorageDir;
 
-// TODO both -run_group_times and -run_test_times
 public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S extends SourceTestPack<A,T>, T extends TestCase> extends AbstractTestPackRunner<S, T> {
 	protected static final int MAX_THREAD_COUNT = 64;
 	protected S src_test_pack;
@@ -81,18 +78,26 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			c.test_cases.addAll(this.test_cases);
 			return c;
 		}
+
+		public boolean containsTestNamed(String name) {
+			for ( T test_case : test_cases ) {
+				if (test_case.getName().equals(name))
+					return true;
+			}
+			return false;
+		}
 	}
 	
-	public AbstractLocalTestPackRunner(ConsoleManager cm, ITestResultReceiver twriter, ScenarioSet scenario_set, PhpBuild build, AHost host) {
-		super(scenario_set, build, null, host);
+	public AbstractLocalTestPackRunner(ConsoleManager cm, ITestResultReceiver twriter, ScenarioSet scenario_set, PhpBuild build, AHost storage_host, AHost runner_host) {
+		super(scenario_set, build, storage_host, runner_host);
 		this.cm = cm;
 		this.twriter = twriter;
 		
 		runner_state = new AtomicReference<ETestPackRunnerState>();
-		
-		storage_host = new LocalHost();
+
+		//storage_host = new LocalHost();
 		/*
-		SSHHost remote_host = new SSHHost("10.200.50.135", "administrator", "password01!");
+		SSHHost remote_host = new SSHHost("J-2012sp0", "administrator", "password01!");
 		this.storage_host = remote_host; // for LocalPhptTestPackRunner#setupStorageDir
 		// TODO 
 		//file_scenario = new SMBDeduplicationScenario(remote_host, "B:");
@@ -124,7 +129,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		
 		runner_state.set(ETestPackRunnerState.RUNNING);
 		sapi_scenario = AbstractSAPIScenario.getSAPIScenario(scenario_set);
-		if (file_scenario==null) // TODO
+		if (file_scenario==null) // TODO temp allow file_scenario to be set in <init> and don't override it
 			file_scenario = AbstractFileSystemScenario.getFileSystemScenario(scenario_set);
 		
 		if (storage_host instanceof RemoteHost) {
@@ -206,7 +211,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 	
 	public void close() {
 		// don't kill procs we're debugging 
-		sapi_scenario.close(cm.isWinDebug());
+		sapi_scenario.close(cm.isDebugAll() || cm.isDebugList());
 	}
 	
 	protected void preGroup(List<T> test_cases) {
@@ -223,19 +228,22 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		
 		for (T test_case : test_cases) {
 			try {
-				if (group_key==null) // TODO share 1 key
-					group_key = createGroupKey(test_case, group_key);
+				if (cm.isInSkipList(test_case))
+					continue; // skip
+				group_key = createGroupKey(test_case, group_key);
 				
 				if (group_key==null)
-					continue;
+					continue; // skip
 			} catch ( Exception ex ) {
 				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "groupTestCases", ex, "", storage_host, test_case, sapi_scenario);
 				
 				continue;
 			}
 			
-			// TODO if (!handleNTS(group_key, test_case)) {
-				// test case is thread-safe
+			// @see -no_nts console option- if used, all test cases should go to #handleTS
+			// if -no_nts not used, see if #handleNTS wants to handle them
+			// TODO if (!cm.isThreadSafety() || !handleNTS(group_key, test_case)) {
+				// test case is thread-safe or we're ignoring thread-safety (-no_nts)
 				handleTS(thread_safe_list, group_key, test_case);
 			// TODO }
 			//
@@ -244,31 +252,77 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		//
 		postGroup(thread_safe_list, test_cases);
 		
-		if (true) { // TODO cm.isRandomizeTestOrder()) {
-			/* TODO for ( @SuppressWarnings("rawtypes") NonThreadSafeExt ext : non_thread_safe_exts ) {
-				for ( Object group : ext.test_groups ) 
-					randomizeGroup((TestCaseGroup<T>) group);
-			}*/
-			
-			//
-			for (TestCaseGroup<T> group : thread_safe_list) {
-				//randomizeGroup(group);
+		// @see -run_group_times_all console option
+		final int run_group_times_all = cm.getRunGroupTimesAll();
+		
+		// @see -randomize_order console option
+		if (cm.isRandomizeTestOrder()) {
+			for ( @SuppressWarnings("rawtypes") NonThreadSafeExt ext : non_thread_safe_exts ) {
+				Iterator<TestCaseGroup<T>> it = ext.test_groups.iterator();
+				int run_group_times = run_group_times_all;
+				while ( it.hasNext() ) {
+					run_group_times = runGroupTimes(run_group_times, it.next());
+					if (run_group_times != run_group_times_all)
+						break; // found matching group
+				}
 				
-				// TODO
-				for ( int i=0 ; i < 2000 ; i++) {
+				//
+				if (run_group_times > 1) {
+					// can't iterate over ext.test_groups and add elements (clones) to it at the same time
+					LinkedBlockingQueue<TestCaseGroup<T>> clones = new LinkedBlockingQueue<TestCaseGroup<T>>();
+					
+					for ( Object group : ext.test_groups ) {
+						for ( int i=0 ; i < run_group_times ; i++ ) {
+							TestCaseGroup<T> c = ((TestCaseGroup<T>) group).clone();
+	
+							clones.add(c);
+						}
+					}
+					
+					ext.test_groups = clones;
+				}
+				//
+				
+				for ( Object group : ext.test_groups )
+					randomizeGroup((TestCaseGroup<T>) group);
+			} // end for
+		} // end if
+		
+		for (TestCaseGroup<T> group : thread_safe_list) {
+			int run_group_times = runGroupTimes(run_group_times_all, group);
+			
+			if (run_group_times > 1) {
+				for ( int i=0  ; i < run_group_times ; i++ ) {
 					TestCaseGroup<T> c = group.clone();
-					
-					randomizeGroup(c);
-					
+				
+					// @see -randomize_order console option
+					if (cm.isRandomizeTestOrder())
+						randomizeGroup(c);
 					thread_safe_groups.add(c);
 				}
-			}
-		} else {
-			for (TestCaseGroup<T> group : thread_safe_list)
+			} else {
+				if (cm.isRandomizeTestOrder())
+					randomizeGroup(group);
+				
 				thread_safe_groups.add(group);
+			}
 		}
+		
+		// finally, test cases are all grouped
 	} // end protected void groupTestCases
 	
+	// @see -run_group_times_list support
+	private int runGroupTimes(int run_group_times_all, TestCaseGroup<T> group) {
+		if (!cm.isRunGroupTimesList())
+			return run_group_times_all;
+		
+		for ( String name : cm.getRunGroupTimesList() ) {
+			if ( group.containsTestNamed(name) ) 
+				return cm.getRunGroupTimesListTimes();
+		}
+		return run_group_times_all;
+	}
+
 	private Random r = new Random();
 	private void randomizeGroup(TestCaseGroup<T> group) {
 		LinkedList<T> a = new LinkedList<T>();
@@ -305,23 +359,14 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		//        -exceed this number and there will be threads that won't have any tests to run
 		// 3. limit to MAX_THREAD_COUNT
 		// 4. if debugging
-		// TODO temp 2*
-		/*<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2//EN">
-		<html>
-		<head>
-		<title></title>
-		</head>
-		<body>
 		
-		</body>
-		</html>
-*/
 		int thread_count = sapi_scenario.getTestThreadCount(runner_host);
-		/* TODO if (thread_count > thread_safe_test_count + non_thread_safe_exts.size())
+		if (thread_count > thread_safe_test_count + non_thread_safe_exts.size())
 			thread_count = thread_safe_test_count + non_thread_safe_exts.size(); 
 		if (thread_count > MAX_THREAD_COUNT)
-			thread_count = MAX_THREAD_COUNT;*/
-		if (cm.isWinDebug()) {
+			thread_count = MAX_THREAD_COUNT;
+		thread_count = 16; // TODO
+		if (cm.isDebugAll()) {
 			// run fewer threads b/c we're running WinDebug
 			// (can run WinDebug w/ same number of threads, but UI responsiveness will be SLoow)
 			thread_count = Math.max(1, thread_count / 2);
@@ -347,54 +392,36 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		TestPackThread<T> t = createTestPackThread(parallel);
 		// if running Swing UI, run thread minimum priority in favor of Swing EDT
 		t.setPriority(Thread.MIN_PRIORITY);
-		/*Runnable r = new Runnable() {
-			public void run() {
-				a.getWebServerInstance(cm, runner_host, build, new PhpIni(), null, "C:\\", null, Thread.currentThread().getName());
-			}
-		};
-		Thread t = new Thread(r);*/
 		t.setDaemon(true);
 		t.start();
-		//t.run();
-		//*/
-		//a.getWebServerInstance(cm, runner_host, build, new PhpIni(), null, "C:\\", null, Thread.currentThread().getName());
 	}
 	
 	protected abstract TestPackThread<T> createTestPackThread(boolean parallel);
-	ApacheManager a = new ApacheManager(); // TODO
 	public abstract class TestPackThread<t extends T> extends SlowReplacementTestPackRunnerThread {
 		protected final AtomicBoolean run_thread;
 		protected final boolean parallel;
-		protected int run_test_times; // TODO final?
+		protected final int run_test_times_all;
 		
 		protected TestPackThread(boolean parallel) {
 			this.run_thread = new AtomicBoolean(true);
 			this.parallel = parallel;
 			
-			run_test_times = Math.max(1, cm.getRunTestTimes());
+			// @see -run_test_times_all console option
+			run_test_times_all = Math.max(1, cm.getRunTestTimesAll());
 		}
 				
 		@Override
 		public void run() {
-			/*
-			a.getWebServerInstance(cm, runner_host, build, new PhpIni(), null, "C:\\", null, Thread.currentThread().getName());
-			
-			if (true)
-				return;
-			*/
-			
 			// pick a non-thread-safe(NTS) extension that isn't already running then run it
 			//
 			// keep doing that until they're all done, then execute all the thread-safe tests
 			// (if there aren't enough NTS extensions to fill all the threads, some threads will only execute thread-safe tests)
 			//
 			try {
-				//while(true) {// TODO
 				runNonThreadSafe(); 
 				
 				// execute any remaining thread safe jobs
 				runThreadSafe();
-				//}
 			} catch ( Exception ex ) {
 				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "run", ex, "", storage_host, build, scenario_set);
 			} finally {
@@ -435,8 +462,6 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 					continue;
 				} else {
 					exec_jobs(group.group_key, group.test_cases, test_count);
-					//if (group.test_cases.isEmpty())
-						//thread_safe_groups.remove(group);
 				}
 			}
 		} // end protected void runThreadSafe
@@ -460,58 +485,42 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 					completed_tests.add(test_case);
 					
 					if (parallel) {
+						// -windebug_all and -windebug_list console options
+						final boolean debugger_attached = (cm.isDebugAll() || cm.isInDebugList(test_case));
+						
+						
 						// @see HttpTestCaseRunner#http_execute which calls #notifyCrash
 						// make sure a WebServerInstance is still running here, so it will be shared with each
 						// test runner instance (otherwise each test runner will create its own instance, which is slow)
 						if (sapi_scenario instanceof AbstractWebServerScenario) { // TODO temp
 							//SAPIInstance 
 							sa = ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance();
-							if (sa==null||sa.isCrashed()) {
+							if (sa==null||sa.isCrashed()||(debugger_attached && !((WebServerInstance)sa).isDebuggerAttached())) {
 								//((SharedSAPIInstanceTestCaseGroupKey)group_key).setSAPIInstance(
-								// TODO sa = ((AbstractWebServerScenario)sapi_scenario).smgr.getWebServerInstance(cm, host, build, group_key.getPhpIni(), group_key.getEnv(), active_test_pack.getDirectory(), (WebServerInstance) sa, completed_tests);
-								sa = ((AbstractWebServerScenario)sapi_scenario).smgr.getWebServerInstance(cm, runner_host, build, group_key.getPhpIni(), group_key.getEnv(), active_test_pack.getStorageDirectory(), (WebServerInstance) sa, completed_tests);
+								sa = ((AbstractWebServerScenario)sapi_scenario).smgr.getWebServerInstance(cm, runner_host, build, group_key.getPhpIni(), group_key.getEnv(), active_test_pack.getStorageDirectory(), (WebServerInstance) sa, debugger_attached, completed_tests);
 								//);
 								
 								// TODO don't store sa on group_key! (don't share sa between threads)
-								// TODO ((SharedSAPIInstanceTestCaseGroupKey)group_key).setSAPIInstance(cm, host, sa); // TODO temp
-								((SharedSAPIInstanceTestCaseGroupKey)group_key).setSAPIInstance(cm, new LocalHost(), sa); // TODO temp
+								((SharedSAPIInstanceTestCaseGroupKey)group_key).setSAPIInstance(cm, runner_host, sa); // TODO temp
 							}
 						}
 					}
 					
-					/*run_test_times = 2;
-					if (((PhptTestCase)test_case).isNamed(
-							"ext/standard/tests/file/bug38450_1.phpt",
-							"ext/standard/tests/file/stream_supports_lock.phpt",
-							"ext/zip/tests/oo_namelocate.phpt",
-							"ext/spl/tests/splfileobject_fputcsv_variation8.phpt",
-							//"ext/phar/tests/phar_stub_write_file.phpt",
-							"ext/date/tests/date_default_timezone_get-1-win32.phpt",
-							"ext/phar/tests/readfile.phpt",
-							"ext/intl/tests/dateformat_parse.phpt",
-							"ext/date/tests/date_create_from_format_basic.phpt",
-							"ext/date/tests/date_default_timezone_get-2.phpt",
-							"ext/intl/tests/dateformat_set_timezone_id2.phpt",
-							"ext/standard/tests/network/shutdown.phpt",
-							//"ext/phar/tests/cache_list/copyonwrite3.phar.phpt",
-							"ext/standard/tests/strings/fprintf_variation_004.phpt",
-							"ext/standard/tests/assert/assert_error1.phpt"
-							)) {
-						run_test_times = 500;
-						// TODO -run_all
-						// TODO -run_test_times_list
-						// TODO -windebug_all
-						// TODO -windebug_list
+					int a = run_test_times_all;
+					
+					// @see -run_test_times_list console option
+					if (cm.isInRunTestTimesList(test_case)) {
+						a = cm.getRunTestTimesListTimes();
 					}
-					*/
-					//for ( int i=0 ; i < run_test_times ; i++ ) {
+					
+					for ( int i=0 ; i < a ; i++ ) {
 						// CRITICAL: catch exception to record with test
 						try {
 							runTest(group_key, test_case);
 						} catch ( Throwable ex ) {
 							twriter.addTestException(storage_host, scenario_set, test_case, ex, sa);
 						}
-					//}
+					}
 					
 					test_count.incrementAndGet();
 					Thread.yield();
@@ -564,7 +573,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 
 	@Override
 	public void runAllTests(S test_pack) throws FileNotFoundException, IOException, Exception {
-		ArrayList<T> test_cases = new ArrayList<T>(12600);
+		ArrayList<T> test_cases = new ArrayList<T>(13000);
 			
 		test_pack.cleanup(cm);
 		
@@ -578,7 +587,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 	}
 
 	public void runAllTests(A test_pack) throws FileNotFoundException, IOException, Exception {
-		ArrayList<T> test_cases = new ArrayList<T>(12600);
+		ArrayList<T> test_cases = new ArrayList<T>(13000);
 		
 		
 		runTestList(test_pack, test_cases);

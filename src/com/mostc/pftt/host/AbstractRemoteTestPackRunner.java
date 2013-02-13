@@ -134,7 +134,7 @@ public abstract class AbstractRemoteTestPackRunner<A extends ActiveTestPack, S e
 				} else if (tag_name.equals("restartingAndRetrying")) {
 					tmgr.getConsoleManager().restartingAndRetryingTest(parser.getText());
 				} else if (tag_name.equals("stop")) {
-					tmgr.close(remote_host);
+					tmgr.close();
 					
 					notifyStop(remote_host, parser.getText());
 				} else if (tag_name.equals("totalCount")) {

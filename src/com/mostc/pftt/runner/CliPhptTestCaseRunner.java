@@ -102,7 +102,6 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				"ext/phar/tests/cache_list/frontcontroller8.phpt",
 				"ext/phar/tests/cache_list/frontcontroller28.phpt",
 				"ext/phar/tests/cache_list/frontcontroller10.phpt",
-				"ext/date/tests/bug62852.phpt",
 				"tests/basic/028.phpt",
 				"ext/filter/tests/041.phpt",
 				"tests/basic/032.phpt",
@@ -112,6 +111,22 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				"ext/phar/tests/phar_get_supportedcomp3.phpt",
 				"ext/phar/tests/phar_create_in_cwd.phpt",
 				"ext/phar/tests/phar_get_supported_signatures_002.phpt",
+				//
+				"zend/tests/errmsg_021.phpt",
+				"tests/lang/short_tags.002.phpt",
+				"tests/basic/bug29971.phpt",
+				"ext/standard/tests/file/bug41655_1.phpt",
+				"ext/session/tests/bug60860.phpt",
+				"ext/pcre/tests/backtrack_limit.phpt",
+				"ext/reflection/tests/015.phpt",
+				"ext/pcre/tests/recursion_limit.phpt",
+				"ext/standard/tests/strings/htmlentities05.phpt",
+				"ext/wddx/tests/004.phpt",
+				"ext/zlib/tests/bug55544-win.phpt",
+				"ext/wddx/tests/005.phpt",
+				"ext/phar/tests/bug45218_slowtest.phpt",
+				"ext/phar/tests/phar_buildfromdirectory6.phpt",
+				"tests/security/open_basedir_glob_variation.phpt",
 				//
 				"ext/standard/tests/streams/stream_get_meta_data_socket_variation2.phpt",
 				"ext/standard/tests/streams/stream_get_meta_data_socket_variation1.phpt",
@@ -298,7 +313,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		//      if test is taking longer than 40 seconds to run, spin up an additional thread to compensate (so other non-slow tests can be executed)
 		output = host.execOut(shell_file, AHost.ONE_MINUTE, env, stdin_post, test_case.isNon8BitCharset()?test_case.getCommonCharset():null, active_test_pack.getStorageDirectory(), thread, 40);
 		
-		if (output.isCrashed() && StringUtil.isWhitespaceOrEmpty(output.output)) {
+		if (output.isCrashed()) {
 			not_crashed = false; // @see #runTest
 			
 			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, "PFTT: exit_code="+output.exit_code+"\n"+output.output, null, null, null, ini, env, null, stdin_post, null, null, null, null, output.output));

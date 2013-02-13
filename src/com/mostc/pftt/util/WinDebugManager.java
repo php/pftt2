@@ -1,5 +1,6 @@
 package com.mostc.pftt.util;
 
+import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.AHost.ExecHandle;
@@ -71,7 +72,7 @@ public class WinDebugManager extends DebuggerManager {
 	}
 
 	public static class WinDebug extends Debugger {
-		protected final ExecHandle debug_handle;
+		protected ExecHandle debug_handle;
 		protected final String log_file;
 		protected final AHost host;
 		protected boolean attached, wait;
@@ -80,6 +81,9 @@ public class WinDebugManager extends DebuggerManager {
 			this.host = host;
 			
 			log_file = host.mktempname(getClass(), ".log");
+			
+			if (true)
+				return; // TODO
 			
 			//
 			// generate windebug command (with lots of extra options, etc...)
@@ -130,11 +134,13 @@ public class WinDebugManager extends DebuggerManager {
 					break;
 				}
 			}
+			System.err.println("debug "+sb);
+			//System.err.println(IOUtil.toString(debug_handle.getSTDOUT(), IOUtil.HALF_MEGABYTE));
 		}
 		
 		@Override
 		public void close() {
-			debug_handle.close(true);
+			/* TODO debug_handle.close(true);
 			
 			wait = false;
 			
@@ -142,7 +148,12 @@ public class WinDebugManager extends DebuggerManager {
 				host.delete(log_file);
 			} catch (Exception e) {
 				e.printStackTrace();
-			}
+			}*/
+		}
+
+		@Override
+		public boolean isRunning() {
+			return true; // TODO debug_handle.isRunning();
 		}
 		
 	} // end public static class WinDebug

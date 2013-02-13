@@ -42,6 +42,8 @@ public abstract class WebServerInstance extends SAPIInstance {
 	@Override
 	public abstract String toString();
 	
+	public abstract boolean isDebuggerAttached();
+	
 	@Override
 	public int hashCode() {
 		return this.port() + StringUtil.hashCode(this.hostname());
@@ -75,7 +77,7 @@ public abstract class WebServerInstance extends SAPIInstance {
 			//
 			if (crashed) {
 				if (StringUtil.isNotEmpty(output)) {
-					// shouldn't happen, but capture this output if it does
+					// shouldn't happen(already crashed), but capture this output in case it does
 					StringBuilder sb = new StringBuilder();
 					if (sapi_output!=null)
 						sb.append(sapi_output);

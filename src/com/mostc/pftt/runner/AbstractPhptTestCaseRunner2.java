@@ -203,7 +203,6 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 					AHost.dirname(test_case.getName()), 
 					test_case.getTrim(EPhptSection.FILE_EXTERNAL).replaceAll("\\.\\.", "")
 				);
-			System.out.println("copy test="+test_case+" src="+src_file+" dst="+test_file);
 			host.copy(src_file, test_file);
 			
 		} else {

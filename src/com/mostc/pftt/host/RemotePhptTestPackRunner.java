@@ -57,7 +57,7 @@ public class RemotePhptTestPackRunner extends AbstractRemoteTestPackRunner<PhptA
 		
 		LocalHost host = new LocalHost();
 		
-		LocalConsoleManager cm = new LocalConsoleManager(null, null, false, false, false, false, true, false, true, false, false, false, 1);
+		LocalConsoleManager cm = new LocalConsoleManager(null, null, false, false, false, false, true, false, true, false, false, false, 1, true, 1, 1, 1, null, null, null, null);
 		
 		PhptSourceTestPack test_pack = new PhptSourceTestPack("C:\\php-sdk\\php-test-pack-5.5-nts-windows-vc9-x86-re6bde1f");
 		test_pack.open(cm, host);

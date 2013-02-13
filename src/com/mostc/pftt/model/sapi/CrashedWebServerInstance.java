@@ -72,4 +72,9 @@ public class CrashedWebServerInstance extends WebServerInstance {
 		return instance_info;
 	}
 
+	@Override
+	public boolean isDebuggerAttached() {
+		return false;
+	}
+
 }

@@ -12,6 +12,7 @@ import javax.annotation.concurrent.ThreadSafe;
 
 import com.github.mattficken.io.ByLineReader;
 import com.github.mattficken.io.CharsetDeciderDecoder;
+import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
@@ -359,9 +360,14 @@ public abstract class AHost extends Host {
 		/** immediately returns the output the process has returned (if process is still running, it may
 		 * return more output after this call)
 		 * 
+		 * @param max_len - maximum number of bytes to read
+		 * @throws IOException
 		 * @return
 		 */
-		public abstract String getOutput();
+		public abstract String getOutput(int max_len) throws IOException;
+		public String getOutput() throws IOException {
+			return getOutput(IOUtil.HALF_MEGABYTE);
+		}
 		/** returns the process's exit code
 		 * 
 		 * @see #isRunning - don't call this if the process is still running (call #isRunning first to check)
@@ -939,20 +945,7 @@ public abstract class AHost extends Host {
 	 * @param dir
 	 * @param ext
 	 */
-	public boolean deleteFileExtension(String dir, String ext) {
-		if (!ext.startsWith("."))
-			ext = "." + ext;
-		try {
-			if (isWindows()) {
-				cmd("forfiles /p "+dir+" /s /m *"+ext+" /c \"cmd /C del /Q @path\"", ONE_MINUTE*20);
-			} else {
-				exec("rm -rF "+dir+"/*"+ext, ONE_MINUTE*20);
-			}
-			return true;
-		} catch ( Exception ex ) {
-			return false;
-		}
-	}
+	public abstract boolean deleteFileExtension(String dir, String ext);
 	
 	/** returns TRUE if host is a Windows Server (2008, 2008r2, 2012) or FALSE
 	 * if its not (Windows Vista, 7, 8, Linux, BSD, etc...)

@@ -26,7 +26,7 @@ public class APCScenario extends AbstractCodeCacheScenario {
 	
 	@Override
 	public boolean isImplemented() {
-		return false;
+		return true;
 	}
 
 	@Override
@@ -46,4 +46,4 @@ public class APCScenario extends AbstractCodeCacheScenario {
 		return EAcceleratorType.APC;
 	}
 
-}
+} // end public class APCScenario

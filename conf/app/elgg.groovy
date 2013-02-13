@@ -1,4 +1,4 @@
 
 def scenario() {
-	[new ElggScenario()]
+	new ElggScenario()
 }

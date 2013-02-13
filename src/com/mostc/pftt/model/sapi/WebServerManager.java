@@ -82,29 +82,33 @@ public abstract class WebServerManager extends SAPIManager {
 	 * @param env
 	 * @param docroot
 	 * @param assigned
+	 * @param debugger_attached - if TRUE => returned instance must have a Debugger attached (will create a new instance if needed)
+	 *                   if FALSE and if assigned instance has a debugger, will still return that assigned instance (which has a debugger attached)
 	 * @param server_name null or unique name of server (could be list of test cases)
+	 * @see WebServerInstance#isDebuggerAttached
 	 * @return
 	 */
-	public WebServerInstance getWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, final String docroot, WebServerInstance assigned, Object server_name) {
+	public WebServerInstance getWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, final String docroot, WebServerInstance assigned, boolean debugger_attached, Object server_name) {
 		WebServerInstance sapi;
 		if (assigned!=null) {
-			if (assigned.isRunning())
+			if (assigned.isRunning() && (!debugger_attached||assigned.isDebuggerAttached()))
 				return assigned;
+			
 			synchronized(assigned) {
 				for (WebServerInstance c=assigned.replacement ; c != null ; c = c.replacement) {
 					synchronized(c) {
-						if (assigned.isRunning())
+						if (assigned.isRunning() && (!debugger_attached||c.isDebuggerAttached()))
 							return c;
 					}
 				}
 			}
 			
-			assigned.replacement = sapi = createWebServerInstance(cm, host, build, ini, env, docroot, server_name);
+			assigned.replacement = sapi = createWebServerInstance(cm, host, build, ini, env, docroot, debugger_attached, server_name);
 			synchronized(assigned.active_test_cases) {
 				sapi.active_test_cases.addAll(assigned.active_test_cases);
 			}
 		} else {
-			sapi = createWebServerInstance(cm, host, build, ini, env, docroot, server_name);
+			sapi = createWebServerInstance(cm, host, build, ini, env, docroot, debugger_attached, server_name);
 		}
 		if (sapi.isRunning()) {
 			synchronized(instances) {
@@ -114,7 +118,7 @@ public abstract class WebServerManager extends SAPIManager {
 		return sapi;
 	}
 	
-	protected abstract WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, Object server_name);
+	protected abstract WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, boolean debugger_attached, Object server_name);
 	
 	/** some web servers can only have one active instance at any one time
 	 * 

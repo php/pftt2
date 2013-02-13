@@ -71,7 +71,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 	 */
 	@Override
 	public void cleanup(ConsoleManager cm) {
-		/* TODO cm.println(EPrintType.IN_PROGRESS, getClass(), "cleaning source-test-pack from previous PFTT or run-test.php run");
+		cm.println(EPrintType.IN_PROGRESS, getClass(), "cleaning source-test-pack from previous PFTT or run-test.php run");
 		// these are symlinks(junctions) which may cause an infinite loop
 		//
 		// normally, they are deleted, but if certain tests were interrupted, they may still be there
@@ -85,7 +85,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		host.deleteFileExtension(test_pack, ".skip.php");
 		host.deleteFileExtension(test_pack, ".cmd");
 		host.deleteFileExtension(test_pack, ".sh");
-		host.deleteFileExtension(test_pack, ".php");*/
+		host.deleteFileExtension(test_pack, ".php");
 	}
 	
 	public void read(List<PhptTestCase> test_cases, List<String> names, ConsoleManager cm, PhpResultPackWriter twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {

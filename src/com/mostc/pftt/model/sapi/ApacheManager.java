@@ -164,7 +164,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			//            to run php+phpt so they pass on CLI, but too small for apache+php+phpt so they crash on apache)
 			// NOTE: this returns false (no exception) if visual studio not installed
 			// NOTE: this returns false (no exception) if apache binary can't be edited (already running, UAC privileges not elevated)
-			/* TODO if (host!=this.cache_host||this.cache_httpd==null||this.cache_httpd.equals(httpd)) {
+			if (host!=this.cache_host||this.cache_httpd==null||!this.cache_httpd.equals(httpd)) {
 				// do this once
 				synchronized(host) {
 					VisualStudioUtil.setExeStackSize(cm, host, httpd, VisualStudioUtil.SIXTEEN_MEGABYTES);
@@ -178,8 +178,9 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 					this.cache_host = host;
 					this.cache_httpd = httpd;
 				}
-			}*/
+			}
 		} else {
+			// if Linux
 			dll = "modules/mod_php.so";
 		}
 		

@@ -5,12 +5,13 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 import javax.annotation.Nullable;
 
-import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 
@@ -230,9 +231,9 @@ public class ScenarioSet extends ArrayList<Scenario> {
 	 * @param build
 	 * @return
 	 */
-	public boolean isSupported(ConsoleManager cm, AHost host, PhpBuild build) {
+	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build) {
 		for (Scenario s :this) {
-			if (!s.isSupported(cm, host, build))
+			if (!s.isSupported(cm, host, build, this))
 				return false;
 		}
 		return true;
@@ -282,6 +283,27 @@ public class ScenarioSet extends ArrayList<Scenario> {
 			remap.add(list);
 		return permute(remap);
 	}
+	/** filter out unsupported scenarios from permutations
+	 * 
+	 * @see #permuateScenarioSet
+	 * @see #isSupported
+	 * @param cm
+	 * @param host
+	 * @param build
+	 * @param scenarios
+	 * @return
+	 */
+	public static List<ScenarioSet> permuteScenarioSets(ConsoleManager cm, Host host, PhpBuild build, List<Scenario> scenarios) {
+		List<ScenarioSet> scenario_sets = permuteScenarioSets(scenarios);
+		Iterator<ScenarioSet> ss_it = scenario_sets.iterator();
+		ScenarioSet ss;
+		while (ss_it.hasNext()) {
+			ss = ss_it.next();
+			if (!ss.isSupported(cm, host, build))
+				ss_it.remove();
+		}
+		return scenario_sets;
+	}
 	protected static ArrayList<ScenarioSet> permute(List<List<Scenario>> input) {
 		ArrayList<ScenarioSet> output = new ArrayList<ScenarioSet>();
 		if (input.isEmpty()) {
@@ -295,11 +317,10 @@ public class ScenarioSet extends ArrayList<Scenario> {
 			List<ScenarioSet> subLists = new ArrayList<ScenarioSet>();
 			for (int i = 0; i <= permutations.size(); i++) {
 				for (int j=0 ; j < head.size(); j++) {
-					if (!head.get(j).isImplemented())
-						continue; // skip it
 					ScenarioSet subList = new ScenarioSet();
 					subList.addAll(permutations);
-					subList.add(i, head.get(j));
+					if (head.get(j).isImplemented())
+						subList.add(i, head.get(j));
 					if (!subList.contains(subList))
 						subLists.add(subList);
 				}

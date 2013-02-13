@@ -37,7 +37,7 @@ public class ExecOutput {
 		return exit_code == 0;
 	}
 	public boolean isCrashed() {
-		return exit_code != 0;
+		return exit_code < -1;
 	}
 	public ExecOutput printOutputIfCrash(Class<?> clazz, ConsoleManager cm) {
 		return printOutputIfCrash(Host.toContext(clazz), cm);

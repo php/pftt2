@@ -23,6 +23,10 @@ import com.mostc.pftt.scenario.ScenarioSet;
  */
 
 public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunner {
+	public static final String DB_DSN = "DB_DSN";
+	public static final String DB_USER = "DB_USER";
+	public static final String DB_PASSWD = "DB_PASSWD";
+	public static final String DB_DBNAME = "DB_DBNAME";
 	protected final Map<String, String> globals;
 	protected final Map<String, String> env;
 	protected final Map<String,String> constants;
@@ -72,7 +76,7 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 		return PhpUnitTemplate.renderTemplate(
 				host, 
 				test_case, 
-				test_case.php_unit_dist.src_test_pack.preamble_code,
+				test_case.php_unit_dist.src_test_pack.getPreambleCode(),
 				test_case.php_unit_dist.bootstrap_file == null ? null : test_case.php_unit_dist.bootstrap_file.getAbsolutePath(),
 				test_case.php_unit_dist.path.getAbsolutePath(),
 				include_path,
@@ -173,8 +177,14 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 		host.delete(my_temp_dir);
 	} // end public void runTest
 
-	/**
+	/** configures PhpUnit globals to use the given database.
 	 * 
+	 * Note: (because of how this is done) PhpUnit tests only test 1 database at a time (unlike PHPTs).
+	 * 
+	 * So if you want to test an application with multiple different databases (ex: MySQL and PostgresQL), you
+	 * will need to run all the PhpUnit tests twice (once for each database).
+	 * 
+	 * @see http://www.phpunit.de/manual/current/en/database.html
 	 * @param dsn
 	 * @param username
 	 * @param password
@@ -182,8 +192,10 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 	 * @param globals
 	 */
 	public static void addDatabaseConnection(String dsn, String username, String password, String database, Map<String, String> globals) {
-		// TODO Auto-generated method stub
-		
+		globals.put(DB_DSN, dsn);
+		globals.put(DB_USER, username);
+		globals.put(DB_PASSWD, password);
+		globals.put(DB_DBNAME, database);
 	}
 
 } // end public abstract class AbstractPhpUnitTestCaseRunner

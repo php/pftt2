@@ -2,6 +2,7 @@ package com.mostc.pftt.scenario;
 
 import java.util.Map;
 
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
@@ -21,6 +22,11 @@ public class MySQLScenario extends AbstractDatabaseScenario {
 	String host, db_name, static_db_name, user, password;
 	String dsn, username, database;
 	int port;
+	
+	public MySQLScenario(AHost host) {
+		
+	}
+	
 	/*MySQLScenario(String host, int port, String db_name, String user, String password) {
 		this.host = host; 	this.port = port;		this.user = user;		this.password = password;
 		this.static_db_name = db_name;

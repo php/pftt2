@@ -1,4 +1,4 @@
 
 def scenarios() {
-	[new MamboScenario()]
+	new MamboScenario()
 }

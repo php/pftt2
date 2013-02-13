@@ -1,6 +1,8 @@
 package com.mostc.pftt.results;
 
 import java.awt.Container;
+import java.util.List;
+
 import javax.swing.JFrame;
 
 import com.mostc.pftt.host.AHost;
@@ -14,17 +16,19 @@ import com.mostc.pftt.ui.PhptDebuggerFrame;
 import com.mostc.pftt.util.ErrorUtil;
 
 public class LocalConsoleManager implements ConsoleManager {
-	protected final boolean force, windebug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug, no_result_file_for_pass_xskip_skip, randomize_order;
-	protected final int run_times;
+	protected final boolean force, debug_all, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug, no_result_file_for_pass_xskip_skip, randomize_order, thread_safety;
+	protected final int run_test_times_all, run_test_times_list_times, run_group_times, run_group_times_list_times;
 	protected String source_pack;
 	protected PhpDebugPack debug_pack;
 	protected PhptDebuggerFrame gui;
+	protected PhpResultPackWriter w; // TODO
+	protected List<String> debug_list, run_test_times_list, run_group_times_list, skip_list;
 		
-	public LocalConsoleManager(String source_pack, PhpDebugPack debug_pack, boolean force, boolean windebug, boolean results_only, boolean show_gui, boolean disable_debug_prompt, boolean dont_cleanup_test_pack, boolean phpt_not_in_place, boolean pftt_debug, boolean no_result_file_for_pass_xskip_skip, boolean randomize_order, int run_times) {
+	public LocalConsoleManager(String source_pack, PhpDebugPack debug_pack, boolean force, boolean debug_all, boolean results_only, boolean show_gui, boolean disable_debug_prompt, boolean dont_cleanup_test_pack, boolean phpt_not_in_place, boolean pftt_debug, boolean no_result_file_for_pass_xskip_skip, boolean randomize_order, int run_test_times_all, boolean thread_safety, int run_test_times_list_times, int run_group_times, int run_group_times_list_times, List<String> debug_list, List<String> run_test_times_list, List<String> run_group_times_list, List<String> skip_list) {
 		this.source_pack = source_pack;
 		this.debug_pack = debug_pack;
 		this.force = force;
-		this.windebug = windebug;
+		this.debug_all = debug_all;
 		this.results_only = results_only;
 		this.show_gui = show_gui;
 		this.disable_debug_prompt = disable_debug_prompt;
@@ -33,7 +37,15 @@ public class LocalConsoleManager implements ConsoleManager {
 		this.pftt_debug = pftt_debug;
 		this.no_result_file_for_pass_xskip_skip = no_result_file_for_pass_xskip_skip;
 		this.randomize_order = randomize_order;
-		this.run_times = run_times;
+		this.run_test_times_all = run_test_times_all;
+		this.thread_safety = thread_safety;
+		this.run_test_times_list_times = run_test_times_list_times;
+		this.run_group_times = run_group_times;
+		this.run_group_times_list_times = run_group_times_list_times;
+		this.debug_list = debug_list;
+		this.run_test_times_list = run_test_times_list;
+		this.run_group_times_list = run_group_times_list; 
+		this.skip_list = skip_list;
 	}
 	
 	public void showGUI(LocalPhptTestPackRunner test_pack_runner) {
@@ -61,10 +73,6 @@ public class LocalConsoleManager implements ConsoleManager {
 	
 	public boolean isForce() {
 		return force;
-	}
-	
-	public boolean isWinDebug() {
-		return windebug;
 	}
 	
 	public boolean isPfttDebug() {
@@ -135,8 +143,6 @@ public class LocalConsoleManager implements ConsoleManager {
 	public void addGlobalException(EPrintType type, Class<?> clazz, String method_name, Exception ex, String msg, Object a, Object b, Object c) {
 		addGlobalException(type, Host.toContext(clazz, method_name), ex, msg, a, b, c);
 	}
-
-	protected PhpResultPackWriter w;
 	@Override
 	public void addGlobalException(EPrintType type, String ctx_str, Exception ex, String msg) {
 		addGlobalException(type, ctx_str, ex, msg, null);
@@ -195,13 +201,68 @@ public class LocalConsoleManager implements ConsoleManager {
 	}
 
 	@Override
-	public int getRunTestTimes() {
-		return run_times;
+	public int getRunTestTimesAll() {
+		return run_test_times_all;
 	}
 
 	@Override
 	public boolean isRandomizeTestOrder() {
 		return randomize_order;
+	}
+
+	@Override
+	public boolean isDebugAll() {
+		return debug_all;
+	}
+
+	@Override
+	public boolean isInDebugList(TestCase test_case) {
+		return debug_list != null && debug_list.contains(test_case.getName());
+	}
+
+	@Override
+	public boolean isDebugList() {
+		return debug_list != null && debug_list.size() > 0;
+	}
+
+	@Override
+	public boolean isThreadSafety() {
+		return thread_safety;
+	}
+
+	@Override
+	public int getRunGroupTimesAll() {
+		return run_group_times;
+	}
+
+	@Override
+	public boolean isInRunTestTimesList(TestCase test_case) {
+		return run_test_times_list != null && run_test_times_list.contains(test_case.getName());
+	}
+
+	@Override
+	public int getRunTestTimesListTimes() {
+		return run_test_times_list_times;
+	}
+
+	@Override
+	public int getRunGroupTimesListTimes() {
+		return run_group_times_list_times;
+	}
+
+	@Override
+	public List<String> getRunGroupTimesList() {
+		return run_group_times_list;
+	}
+
+	@Override
+	public boolean isRunGroupTimesList() {
+		return run_group_times_list != null && run_group_times_list.size() > 0;
+	}
+
+	@Override
+	public boolean isInSkipList(TestCase test_case) {
+		return skip_list != null && skip_list.contains(test_case.getName());
 	}
 	
 } // end public class ConsoleManager

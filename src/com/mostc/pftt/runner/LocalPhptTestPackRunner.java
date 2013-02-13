@@ -29,8 +29,8 @@ import com.mostc.pftt.scenario.AbstractFileSystemScenario.ITestPackStorageDir;
 
 public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptActiveTestPack, PhptSourceTestPack, PhptTestCase> {
 
-	public LocalPhptTestPackRunner(ConsoleManager cm, ITestResultReceiver twriter, ScenarioSet scenario_set, PhpBuild build, AHost host) {
-		super(cm, twriter, scenario_set, build, host);
+	public LocalPhptTestPackRunner(ConsoleManager cm, ITestResultReceiver twriter, ScenarioSet scenario_set, PhpBuild build, AHost storage_host, AHost runner_host) {
+		super(cm, twriter, scenario_set, build, storage_host, runner_host);
 	}
 	
 	@Override
@@ -124,8 +124,6 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 	
 	@Override
 	protected boolean handleNTS(TestCaseGroupKey group_key, PhptTestCase test_case) {
-		/* TODO if (no_nts)
-			return false; */
 		for (String[] ext_names:PhptTestCase.NON_THREAD_SAFE_EXTENSIONS) {
 			if (StringUtil.startsWithAnyIC(test_case.getName(), ext_names)) {
 				NonThreadSafeExt<PhptTestCase> ext = non_thread_safe_tests.get(ext_names);

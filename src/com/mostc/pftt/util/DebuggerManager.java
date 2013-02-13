@@ -1,5 +1,9 @@
 package com.mostc.pftt.util;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost.LocalExecHandle;
@@ -14,6 +18,7 @@ import com.mostc.pftt.results.ConsoleManager.EPrintType;
  *
  */
 
+// XXX support for GDB on Linux
 public abstract class DebuggerManager {
 	protected String src_path, debug_path;
 	
@@ -100,15 +105,24 @@ public abstract class DebuggerManager {
 		String str = null;
 		if (input instanceof Object[]) {
 			StringBuilder sb = new StringBuilder();
-			for ( Object a : ((Object[])input)) {
-				_toServerName(sb, a);
+			Object[] array = (Object[]) input;
+			// read in reverse order since the last element is probably the most important (most likely to be crashing)
+			for ( int i=array.length-1 ; i > -1 ; i++ ) {
+				_toServerName(sb, array[i]);
 				if (sb.length() > 100)
 					break; // limit length
 			}
 			str = sb.toString();
-		} else if (input instanceof Iterable<?>) { // Collection List LinkedBlockingQueue
+		} else if (input instanceof Collection<?>) { // Collection List LinkedBlockingQueue
+			@SuppressWarnings("unchecked")
+			Collection<Object> c = (Collection<Object>) input;
+			ArrayList<Object> list = new ArrayList<Object>(c.size());
+			list.addAll(c);
+			
+			// read in reverse order since the last element is probably the most important (most likely to be crashing)
+			Collections.reverse(list);
 			StringBuilder sb = new StringBuilder();
-			for ( Object a : ((Iterable<?>)input)) {
+			for ( Object a : list) {
 				_toServerName(sb, a);
 				if (sb.length() > 100)
 					break; // limit length
@@ -144,6 +158,7 @@ public abstract class DebuggerManager {
 	public static abstract class Debugger {
 
 		public abstract void close();
+		public abstract boolean isRunning();
 		
 	}
 	

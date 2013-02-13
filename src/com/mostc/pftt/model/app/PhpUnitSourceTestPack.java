@@ -41,15 +41,15 @@ import com.mostc.pftt.results.ITestResultReceiver;
  *
  */
 
-public class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitActiveTestPack, PhpUnitTestCase> {
+public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitActiveTestPack, PhpUnitTestCase> {
 	/** required: file path to test-pack */
-	public String test_pack_root;
+	protected String test_pack_root;
 	/** optional: PHP code to run before every test case. this is meant to do additional initialization
 	 * that a bootstrap file doesn't do (without having to modify that bootstrap file)
 	 * 
 	 * @see PhpUnitDist#bootstrap
 	 * */
-	public String preamble_code;
+	protected String preamble_code;
 	protected final ArrayList<PhpUnitDist> php_unit_dists;
 	protected final ArrayList<String> blacklist_test_names, whitelist_test_names, include_dirs, include_files;
 	protected final QuercusContext qctx;
@@ -296,5 +296,24 @@ public class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitActiveTestPa
 		// TODO Auto-generated method stub
 		return null;
 	}
+
+	public void setRoot(String test_pack_root) {
+		this.test_pack_root = test_pack_root;
+	}
+
+	public String getRoot() {
+		return this.test_pack_root;
+	}
+
+	public void setPreambleCode(String preamble_code) {
+		this.preamble_code = preamble_code;
+	}
 	
-} // end public class PhpUnitSourceTestPack
+	public String getPreambleCode() {
+		return preamble_code;
+	}
+	
+	public abstract String getVersionString();
+	public abstract boolean open(ConsoleManager cm, AHost host) throws Exception;
+	
+} // end public abstract class PhpUnitSourceTestPack

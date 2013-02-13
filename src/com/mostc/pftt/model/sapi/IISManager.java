@@ -155,14 +155,14 @@ public class IISManager extends WebServerManager {
 	
 	WebServerInstance wsi;
 	@Override
-	public synchronized WebServerInstance getWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, WebServerInstance assigned, Object server_name) {
+	public synchronized WebServerInstance getWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, WebServerInstance assigned, boolean debugger_attached, Object server_name) {
 		if (wsi==null)
-			wsi = super.getWebServerInstance(cm, host, build, ini, env, docroot, assigned, server_name);
+			wsi = super.getWebServerInstance(cm, host, build, ini, env, docroot, assigned, debugger_attached, server_name);
 		return wsi;
 	}
 	
 	@Override
-	protected WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, String doc_root, Object server_name) {
+	protected WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, String doc_root, boolean debugger_attached, Object server_name) {
 		final String listen_address = host.getLocalhostListenAddress();
 		final int listen_port = 80;
 		
@@ -255,6 +255,12 @@ public class IISManager extends WebServerManager {
 				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "getInstanceInfo", ex, "");
 				return StringUtil.EMPTY;
 			}
+		}
+
+		@Override
+		public boolean isDebuggerAttached() {
+			// TODO Auto-generated method stub
+			return false;
 		}
 		
 	} // end public class IISWebServerInstance

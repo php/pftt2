@@ -28,12 +28,6 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		
 		if (StringUtil.isNotEmpty(base_share_name))
 			base_share_name = base_share_name.trim();
-		if (StringUtil.isEmpty(base_share_name)) {
-			base_share_name = AHost.basename(base_file_path);
-			if (StringUtil.isEmpty(base_share_name))
-				base_share_name = "PFTT-Share";
-		}
-		//
 		if (StringUtil.isEmpty(base_file_path))
 			// fallback to a default path, @see SMBDeduplicationScenario
 			base_file_path = remote_host.isWindows() ? remote_host.getSystemDrive()+"\\" + base_share_name : "/var/data/" + base_share_name;
@@ -42,7 +36,11 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 			base_file_path += "\\" + base_share_name;
 		else if (!AHost.hasDrive(base_file_path) && remote_host.isWindows())
 			base_file_path = remote_host.getSystemDrive() + "\\" + base_file_path;
-		//
+		if (StringUtil.isEmpty(base_share_name)) {
+			base_share_name = AHost.basename(base_file_path);
+			if (StringUtil.isEmpty(base_share_name))
+				base_share_name = "PFTT-Share";
+		}
 		this.base_file_path = base_file_path;
 		this.base_share_name = base_share_name;
 	}

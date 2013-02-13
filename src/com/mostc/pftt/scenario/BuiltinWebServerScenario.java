@@ -28,7 +28,7 @@ public class BuiltinWebServerScenario extends AbstractWebServerScenario {
 	 * 
 	 */
 	@Override
-	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build) {
+	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		try {
 			return build.getVersionBranch(cm, host) != EBuildBranch.PHP_5_3;
 		} catch (Exception e) {

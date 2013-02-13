@@ -2,7 +2,6 @@ package com.mostc.pftt.results;
 
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.TestCase;
-import com.mostc.pftt.model.app.PhpUnitTestResult;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 public interface ITestResultReceiver {

@@ -23,7 +23,7 @@ BSD-3 Clause. See LICENSE.txt
 ### Important Classes
 
  - [CliPhptTestCaseRunner](doc/apidoc/com/mostc/pftt/runner/CliPhptTestCaseRunner.html) - Executes a single PHPT Test Case (using the CLI SAPI) and evaluates
- - [HttpTestCaseRunner](doc/apidoc/com/mostc/pftt/runner/HttpTestCaseRunner.html) - Executes a single PHPT Test Case against a PHP build running under a Web Server (Builtin, IIS, Apache)
+ - [HttpPhptTestCaseRunner](doc/apidoc/com/mostc/pftt/runner/HttpPhptTestCaseRunner.html) - Executes a single PHPT Test Case against a PHP build running under a Web Server (Builtin, IIS, Apache)
  - [Host](doc/apidoc/com/mostc/pftt/host/Host.html) - Abstracts host management so client code doesn't need to care if host is local or remote(ssh)
  - [ScenarioSet](doc/apidoc/com/mostc/pftt/scenario/ScenarioSet.html) - Models 90 sets of different [Scenarios](apidoc/com/mostc/pftt/scenario/Scenario.html) to test PHP in
  - [PhptTestCase](doc/apidoc/com/mostc/pftt/model/phpt/PhptTestCase.html) - Models a PHPT Test case
@@ -167,3 +167,45 @@ If you want to implement a Web Server scenario (IIS, Apache, etc...), implement 
 ### Adding a PHPUnit Application
 
 If the application uses PHPUnit, implement [PhpUnitAppTestPack](doc/apidoc/com/mostc/pftt/model/app/PhpUnitAppTestPack.html). If it uses something else or something custom (like Wordpress), implement [PhpAppTestPack](doc/apidoc/com/mostc/pftt/model/app/PhpAppTestPack.html).
+
+
+## Crash debugging
+
+### For crashes that happen every time
+
+1. Create a list of the tests that are crashing or might be crashing
+2. Run with -debug_all and phpt_list
+
+This will run all the tests in a Debugger (WinDebug for Windows and GDB for Linux). Do 1 first to reduce the number of tests to run since they'll run much slower in a debugger.
+
+When testing with Apache, this will run the Debugger on Apache to help trace Apache related problems.
+
+### For tests that crash occasionally
+
+These options may be useful with phpt_list or phpt_all or phpt_named. -run_group_times_all, -run_test_times and -debug_list especially. 
+
+-run_test_times_all <N> - runs each test N times in a row/consecutively
+-run_test_times_list <N> <list file> - runs tests in that list N times. if used with -run_test_times_all, tests not in list can be run different number of times from tests in list (ex: run listed tests 5 times, run all other tests 2 times).
+-debug_list <list files> - runs tests in list in Debugger
+-run_group_times_all <N> - runs all groups of tests N times (in same order every time, unless -randomize used)
+-run_group_times_list <N> <list file> - like grun_group_times_All and run_test_times_list (but for groups of tests) 
+-no_nts - runs tests in any thread, regardless of thread-safety. This can increase load/stress, but may lead to false FAILS/ERRORs, especially in file or database tests.
+
+### Crash Reporting
+
+When a PHP (or Apache) process crashes, PFTT will try running it a second time to confirm that that specific test really caused a crash before reporting the test as CRASH.
+
+On Windows, this double-crashing may cause 2 WER Popups (Windows Error Reporting) to appear for each test that crashed. This is normal, and its just PFTT being extra accurate about reporting CRASHes.
+
+#### Cleaning up an interrupted Test Run (Windows)
+
+Use `taskkill /im:php.exe /f /t` or `taskkill /im:httpd.exe /f /t` to kill off remaining php or apache processes
+
+Check `net use` and use `net use z: /delete` to take care of remaining remote file systems
+
+
+### Automation
+
+Be sure to use -auto console option to signal that its being run automatically. This will supress blocking warnings and change some other settings to make sure that it runs without you having to click any buttons, etc...
+
+On Windows, be sure to run PFTT under Admistrator privileges or you'll get a bunch of UAC popups that will block automation.

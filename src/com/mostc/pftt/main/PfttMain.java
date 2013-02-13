@@ -39,9 +39,7 @@ import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.host.SSHHost;
 import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
-import com.mostc.pftt.model.app.JoomlaPlatform;
 import com.mostc.pftt.model.app.PhpUnitTestCase;
-import com.mostc.pftt.model.app.Symfony;
 import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.EBuildType;
 import com.mostc.pftt.model.core.PhpBuild;
@@ -89,7 +87,7 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 
 // TODO phpt_all, etc... should display location of result-pack being written
 public class PfttMain {
-	protected AHost host;
+	protected LocalHost host;
 	
 	public PfttMain() {
 		host = new LocalHost();
@@ -122,7 +120,7 @@ public class PfttMain {
 		return last_file == null ? null : PhpResultPackReader.open(host, last_file);
 	}
 
-	public void run_all(LocalConsoleManager cm, PhpBuild build, PhptSourceTestPack test_pack, List<ScenarioSet> scenario_sets) throws Exception {
+	public void run_all(LocalConsoleManager cm, PhpBuild build, PhptSourceTestPack test_pack, AHost storage_host, List<ScenarioSet> scenario_sets) throws Exception {
 		for ( ScenarioSet scenario_set : scenario_sets ) {
 			/* TODO for ( Host host : config.getHosts() ) {
 				if (host.isRemote()) {
@@ -152,7 +150,7 @@ public class PfttMain {
 			//
 			
 			PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, telem_dir(), build, test_pack, scenario_set);
-			LocalPhptTestPackRunner test_pack_runner = new LocalPhptTestPackRunner(tmgr.getConsoleManager(), tmgr, scenario_set, build, host);
+			LocalPhptTestPackRunner test_pack_runner = new LocalPhptTestPackRunner(tmgr.getConsoleManager(), tmgr, scenario_set, build, storage_host, host);
 			cm.showGUI(test_pack_runner);
 			
 			test_pack.cleanup(cm);
@@ -200,7 +198,7 @@ public class PfttMain {
 		}
 	}
 
-	public void run_named_tests(LocalConsoleManager cm, PhpBuild build, PhptSourceTestPack test_pack, List<ScenarioSet> scenario_sets, List<String> names) throws Exception {
+	public void run_named_tests(LocalConsoleManager cm, PhpBuild build, PhptSourceTestPack test_pack, AHost storage_host, List<ScenarioSet> scenario_sets, List<String> names) throws Exception {
 		for ( ScenarioSet scenario_set : scenario_sets ) {
 			//
 			{
@@ -227,7 +225,7 @@ public class PfttMain {
 			test_pack.read(test_cases, names, tmgr.getConsoleManager(), tmgr, build, true); // TODO true?
 			cm.println(EPrintType.IN_PROGRESS, "PhptSourceTestPack", "enumerated test cases.");
 			
-			LocalPhptTestPackRunner test_pack_runner = new LocalPhptTestPackRunner(tmgr.getConsoleManager(), tmgr, scenario_set, build, host);
+			LocalPhptTestPackRunner test_pack_runner = new LocalPhptTestPackRunner(tmgr.getConsoleManager(), tmgr, scenario_set, build, storage_host, host);
 			cm.showGUI(test_pack_runner);
 			
 			test_pack_runner.runTestList(test_pack, test_cases);
@@ -285,7 +283,6 @@ public class PfttMain {
 		System.out.println("-src_pack <path> - folder with the source code");
 		System.out.println("-debug_pack <path> - folder with debugger symbols (usually folder with .pdb files)");
 		System.out.println("-randomize_order <0+> - randomizes test case run order");
-		System.out.println("-run_test_times <0+> - runs each test-case N times consecutively");
 		System.out.println("-results_only - displays only test results and no other information (for automation).");
 		System.out.println("-pftt-debug - shows additional information to help debug problems with PFTT itself");
 		System.out.println("-disable_debug_prompt - disables asking you if you want to debug PHP crashes (for automation. default=enabled)");
@@ -293,11 +290,15 @@ public class PfttMain {
 		System.out.println("-dont-cleanup-test-pack - doesn't delete temp dir created by -phpt-not-in-place or SMB scenario (default=delete)");
 		System.out.println("-auto - changes default options for automated testing (-uac -disable_debug_prompt -phpt-not-in-place)");
 		if (LocalHost.isLocalhostWindows()) {
-			// NOTE: -uac and UAC part of -auto and -windebug are implemented entirely in bin\pftt.cmd (batch script)
 			System.out.println("-uac - runs PFTT in Elevated Privileges so you only get 1 UAC popup dialog (when PFTT is started)");
-			System.out.println("-windebug - runs PHPT tests under WinDebug to debug any PHP crashes");
 		}
-		System.out.println("(note: stress options not useful against CLI without code caching)");
+		System.out.println("-run_test_times_all <N> - runs each test N times in a row/consecutively");
+		System.out.println("-run_test_times_list <N> <list file> - runs tests in that list N times. if used with -run_test_times_all, tests not in list can be run different number of times from tests in list (ex: run listed tests 5 times, run all other tests 2 times).");
+		System.out.println("-debug_list <list files> - runs tests in list in Debugger (exact name)");
+		System.out.println("-skip_list <list files> - skip tests in list (exact name)");
+		System.out.println("-run_group_times_all <N> - runs all groups of tests N times (in same order every time, unless -randomize used)");
+		System.out.println("-run_group_times_list <N> <list file> - just like run_group_times_all and run_test_times_list (but for groups of tests)");
+		System.out.println("-no_nts - runs tests in any thread, regardless of thread-safety. This can increase load/stress, but may lead to false FAILS/ERRORs, especially in file or database tests.");
 		System.out.println();
 	} // end protected static void cmd_help
 	
@@ -365,7 +366,8 @@ public class PfttMain {
 	}
 	
 	protected static void cmd_phpt_all(PfttMain rt, LocalConsoleManager cm, Config config, PhpBuild build, PhptSourceTestPack test_pack) throws Exception {
-		rt.run_all(cm, build, test_pack, getScenarioSets(config));
+		List<AHost> hosts = config.getHosts();
+		rt.run_all(cm, build, test_pack, hosts.isEmpty() ? new LocalHost() : hosts.get(0), getScenarioSets(config));
 	}
 	
 	protected static void cmd_phpt_list(PfttMain rt, LocalConsoleManager cm, Config config, PhpBuild build, PhptSourceTestPack test_pack, File list_file) throws Exception {
@@ -385,11 +387,13 @@ public class PfttMain {
 		}
 		fr.close();
 		
-		rt.run_named_tests(cm, build, test_pack, getScenarioSets(config), tests);
+		List<AHost> hosts = config.getHosts();
+		rt.run_named_tests(cm, build, test_pack, hosts.isEmpty() ? new LocalHost() : hosts.get(0), getScenarioSets(config), tests);
 	}
 	
 	protected static void cmd_phpt_named(PfttMain rt, LocalConsoleManager cm, Config config, PhpBuild build, PhptSourceTestPack test_pack, List<String> names) throws Exception {
-		rt.run_named_tests(cm, build, test_pack, getScenarioSets(config), names);
+		List<AHost> hosts = config.getHosts();
+		rt.run_named_tests(cm, build, test_pack, hosts.isEmpty() ? new LocalHost() : hosts.get(0), getScenarioSets(config), names);
 	}
 
 	protected static void cmd_ui() {
@@ -597,6 +601,18 @@ public class PfttMain {
 		cm.println(EPrintType.CLUE, "Note", "run pftt with -uac to avoid getting lots of UAC Dialog boxes (see -help)");
 	}
 
+	protected static void readStringListFromFile(LinkedList<String> list, String filename) throws IOException {
+		BufferedReader br = new BufferedReader(new FileReader(filename));
+		String line;
+		
+		while ( ( line = br.readLine() ) != null ) {
+			if ( StringUtil.isEmpty(line) || line.startsWith(";") || line.startsWith("#"))
+				continue;
+			list.add(line);
+		}
+		br.close();
+	}
+	
 	public static void main(String[] args) throws Throwable {
 		PfttMain rt = new PfttMain();
 		
@@ -604,8 +620,12 @@ public class PfttMain {
 		int args_i = 0;
 		
 		Config config = null;
-		boolean is_uac = false, windebug = false, randomize_order = false, no_result_file_for_pass_xskip_skip = false, pftt_debug = false, show_gui = false, force = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false;
-		int run_test_times = 1;
+		boolean is_uac = false, debug = false, randomize_order = false, no_result_file_for_pass_xskip_skip = false, pftt_debug = false, show_gui = false, force = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false, thread_safety = true;
+		int run_test_times_all = 1, run_test_times_list_times = 1, run_group_times_all = 1, run_group_times_list_times = 1;
+		LinkedList<String> debug_list = new LinkedList<String>();
+		LinkedList<String> run_test_times_list = new LinkedList<String>();
+		LinkedList<String> run_group_times_list = new LinkedList<String>();
+		LinkedList<String> skip_list = new LinkedList<String>();
 		String source_pack = null;
 		PhpDebugPack debug_pack = null;
 		LinkedList<File> config_files = new LinkedList<File>();
@@ -627,7 +647,6 @@ public class PfttMain {
 					//  3. search $PFTT_DIR/conf
 					//  4. search $PFTT_DIR/conf/internal
 					//  5. search $PFTT_DIR/conf/apps
-					//  6. search $PFTT_DIR/conf/examples
 					File config_file = new File(part);
 					if (config_file.exists()) {
 						if (!config_files.contains(config_file))
@@ -668,21 +687,9 @@ public class PfttMain {
 													if (!config_files.contains(config_file))
 														config_files.add(config_file);
 												} else {
-													config_file = new File(LocalHost.getLocalPfttDir()+"/conf/examples/"+part);
-													if (config_file.exists()) {
-														if (!config_files.contains(config_file))
-															config_files.add(config_file);
-													} else {
-														config_file = new File(LocalHost.getLocalPfttDir()+"/conf/examples/"+part+".groovy");
-														if (config_file.exists()) {
-															if (!config_files.contains(config_file))
-																config_files.add(config_file);
-														} else {
-															System.err.println("User Error: config file not found: "+config_file);
-															System.exit(-255);
-															break;
-														}
-													}
+													System.err.println("User Error: config file not found: "+config_file);
+													System.exit(-255);
+													break;
 												}
 											}
 										}
@@ -706,9 +713,34 @@ public class PfttMain {
 				no_result_file_for_pass_xskip_skip = true;
 			} else if (args[args_i].equals("-randomize_order")) {
 				randomize_order = true;
-			} else if (args[args_i].equals("-run_test_times")) {
+			} else if (args[args_i].equals("-run_test_times_all")) {
 				args_i++;
-				run_test_times = Integer.parseInt(args[args_i]);
+				run_test_times_all = Integer.parseInt(args[args_i]);
+			} else if (args[args_i].equals("-no_nts")) {
+				thread_safety = false;
+			} else if (args[args_i].equals("-run_group_times_all")) {
+				args_i++;
+				run_group_times_all = Integer.parseInt(args[args_i]);
+			} else if (args[args_i].equals("-run_group_times_list")) {
+				args_i++;
+				run_group_times_list_times = Integer.parseInt(args[args_i]);
+				args_i++;
+				readStringListFromFile(run_group_times_list, args[args_i]);
+			} else if (args[args_i].equals("-run_test_times_list")) {
+				args_i++;
+				run_test_times_list_times = Integer.parseInt(args[args_i]);
+				args_i++;
+				readStringListFromFile(run_test_times_list, args[args_i]);
+			} else if (args[args_i].equals("-debug_list")) {
+				args_i++;
+				readStringListFromFile(debug_list, args[args_i]);
+			} else if (args[args_i].equals("-skip_list")) {
+				args_i++;
+				readStringListFromFile(skip_list, args[args_i]);
+			} else if (args[args_i].startsWith("-debug_all")) {
+				// also intercepted and handled by bin/pftt.cmd batch script
+				debug = true;
+				
 			} else if (args[args_i].equals("-disable_debug_prompt")) {
 				disable_debug_prompt = true; 
 			} else if (args[args_i].equals("-results_only")) {
@@ -718,9 +750,6 @@ public class PfttMain {
 				is_uac = true;
 			} else if (args[args_i].startsWith("-pftt-debug")) {
 				pftt_debug = true;
-			} else if (args[args_i].startsWith("-windebug")) {
-				// also intercepted and handled by bin/pftt.cmd batch script
-				windebug = true;
 			} else if (args[args_i].equals("-src_pack")) {
 				source_pack = args[args_i++];
 			} else if (args[args_i].equals("-debug_pack")) {
@@ -750,7 +779,8 @@ public class PfttMain {
 		//
 		
 		
-		LocalConsoleManager cm = new LocalConsoleManager(source_pack, debug_pack, force, windebug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug, no_result_file_for_pass_xskip_skip, randomize_order, run_test_times);
+		LocalConsoleManager cm = new LocalConsoleManager(source_pack, debug_pack, force, debug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug, no_result_file_for_pass_xskip_skip, randomize_order, run_test_times_all, 
+				thread_safety, run_test_times_list_times, run_group_times_all, run_group_times_list_times, debug_list, run_test_times_list, run_group_times_list, skip_list);
 		
 		//
 		/*
@@ -791,13 +821,14 @@ public class PfttMain {
 		}
 
 		//
-		if (cm.isWinDebug() && rt.host.isWindows()) {
+		// help user find/install WinDebug properly
+		if ((cm.isDebugAll()||cm.isDebugList()) && rt.host.isWindows()) {
 			String win_dbg_exe = WinDebugManager.findWinDebugExe(rt.host);
 			
 			if (StringUtil.isEmpty(win_dbg_exe)) {
-				System.err.println("PFTT: -windebug console option given but WinDebug is not installed");
+				System.err.println("PFTT: -debug_all  or -debug_list console option given but WinDebug is not installed");
 				System.err.println("PFTT: searched for WinDebug at these locations: "+StringUtil.toString(WinDebugManager.getWinDebugPaths(rt.host)));
-				System.err.println("PFTT: install WinDebug or remove -windebug console option");
+				System.err.println("PFTT: install WinDebug or remove -debug_all or -debug_list console option");
 				System.exit(-245);
 			}
 		}

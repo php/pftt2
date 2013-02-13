@@ -94,7 +94,7 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 	 */
 	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, final String docroot) {
 		if (host instanceof AHost) {
-			return smgr.getWebServerInstance(cm, (AHost)host, build, null, null, docroot, null, this).isRunning() ? EScenarioStartState.STARTED : EScenarioStartState.FAILED_TO_START;
+			return smgr.getWebServerInstance(cm, (AHost)host, build, null, null, docroot, null, false, this).isRunning() ? EScenarioStartState.STARTED : EScenarioStartState.FAILED_TO_START;
 		} else {
 			EScenarioStartState state = EScenarioStartState.SKIP, _state = null;
 			for (Host h : (HostGroup)host ) {

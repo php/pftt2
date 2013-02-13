@@ -2,5 +2,5 @@
 import com.mostc.pftt.scenario.Scenario;
 
 def scenarios() {
-	[Scenario.CLI_SCENARIO];
+	Scenario.CLI_SCENARIO;
 }
