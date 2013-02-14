@@ -1,6 +1,9 @@
 package com.mostc.pftt.scenario;
 
+import java.util.Map;
+
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.EPhptSection;
 import com.mostc.pftt.model.core.ESAPIType;
 import com.mostc.pftt.model.core.PhpBuild;
@@ -11,8 +14,11 @@ import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
+import com.mostc.pftt.runner.AbstractPhpUnitTestCaseRunner;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
+import com.mostc.pftt.runner.CliPhpUnitTestCaseRunner;
 import com.mostc.pftt.runner.CliPhptTestCaseRunner;
+import com.mostc.pftt.runner.HttpPhpUnitTestCaseRunner;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 
 /** Tests the Command Line Interface(CLI) for running PHP.
@@ -83,6 +89,11 @@ public class CliScenario extends AbstractSAPIScenario {
 	@Override
  	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
 		return CliPhptTestCaseRunner.willSkip(cm, twriter, host, scenario_set, type, build, test_case);
+	}
+	
+	@Override
+	public AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(ConsoleManager cm, ITestResultReceiver twriter, Map<String, String> globals, Map<String, String> env, AHost runner_host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String, String> constants, String include_path, String[] include_files) {
+		return new CliPhpUnitTestCaseRunner(twriter, globals, env, cm, runner_host, scenario_set, build, test_case, my_temp_dir, constants, test_case.php_unit_dist.getIncludePath(), test_case.php_unit_dist.getIncludeFiles());
 	}
 
 } // end public class CliScenario

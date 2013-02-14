@@ -25,6 +25,7 @@ import com.mostc.pftt.scenario.ScenarioSet;
 
 import groovy.lang.GroovyClassLoader;
 import groovy.lang.GroovyObject;
+import groovy.lang.MetaMethod;
 
 /** Handles loading a configuration (hosts, scenarios, credentials, etc...) from a groovy script.
  * 
@@ -140,11 +141,10 @@ public final class Config {
 	 * @return
 	 */
 	public PhpUnitSourceTestPack getPhpUnitSourceTestPack(ConsoleManager cm) {
-		//this.get_php_unit_source_test_pack_method
 		if (get_php_unit_source_test_pack_method==null)
 			return null;
 		try {
-			return (PhpUnitSourceTestPack) get_php_unit_source_test_pack_method.invokeMethod(CONFIGURE_FTP_CLIENT_METHOD, null);
+			return (PhpUnitSourceTestPack) get_php_unit_source_test_pack_method.invokeMethod(GET_PHP_UNIT_SOURCE_TEST_PACK_METHOD, null);
 		} catch ( Exception ex ) {
 			if (cm==null)
 				ex.printStackTrace(System.err);
@@ -327,7 +327,7 @@ public final class Config {
 			}
 		}
 		try {
-			if (go.getProperty(CONFIGURE_SMTP_METHOD)!=null) {
+			if (hasMethod(go, CONFIGURE_SMTP_METHOD)) {
 				if (config.configure_smtp_method!=null)
 					cm.println(EPrintType.OPERATION_FAILED_CONTINUING, "Config", CONFIGURE_SMTP_METHOD+"("+config.configure_smtp_file+") overriden by : "+file_name);
 				config.configure_smtp_method = go;
@@ -344,7 +344,7 @@ public final class Config {
 			}
 		}
 		try {
-			if (go.getProperty(CONFIGURE_FTP_CLIENT_METHOD)!=null) {
+			if (hasMethod(go, CONFIGURE_FTP_CLIENT_METHOD)) {
 				if (config.configure_ftp_client_method!=null)
 					cm.println(EPrintType.OPERATION_FAILED_CONTINUING, "Config", CONFIGURE_FTP_CLIENT_METHOD+"("+config.configure_ftp_client_file+") overriden by : "+file_name);
 				config.configure_ftp_client_method = go;
@@ -361,7 +361,7 @@ public final class Config {
 			}
 		}
 		try {
-			if (go.getProperty(GET_PHP_UNIT_SOURCE_TEST_PACK_METHOD)!=null) {
+			if (hasMethod(go, GET_PHP_UNIT_SOURCE_TEST_PACK_METHOD)) {
 				if (config.get_php_unit_source_test_pack_method!=null)
 					cm.println(EPrintType.OPERATION_FAILED_CONTINUING, "Config", GET_PHP_UNIT_SOURCE_TEST_PACK_METHOD+"("+config.get_php_unit_source_test_pack_file+") overriden by : "+file_name);
 				config.get_php_unit_source_test_pack_method = go;
@@ -378,5 +378,13 @@ public final class Config {
 			}
 		}
 	} // end protected static void loadObjectToConfig
+	
+	protected static boolean hasMethod(GroovyObject go, String method_name) {
+		for ( MetaMethod mm : go.getMetaClass().getMethods() ) {
+			if ( mm.getName().equals(method_name) )
+				return true;
+		}
+		return false;
+	}
 	
 } // end public final class ConfigUtil

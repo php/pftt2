@@ -9,13 +9,14 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 public class CliPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	protected ExecOutput eo;
 
-	public CliPhpUnitTestCaseRunner(Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String, String> constants, String include_path, String[] include_files) {
-		super(globals, env, cm, host, scenario_set, build, test_case, my_temp_dir, constants, include_path, include_files);
+	public CliPhpUnitTestCaseRunner(ITestResultReceiver tmgr, Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String, String> constants, String include_path, String[] include_files) {
+		super(tmgr, globals, env, cm, host, scenario_set, build, test_case, my_temp_dir, constants, include_path, include_files);
 	}
 	
 	@Override

@@ -14,6 +14,8 @@ import com.mostc.pftt.model.app.PhpUnitTemplate;
 import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ITestResultReceiver;
+import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 /** runs a single PhpUnitTestCase
@@ -22,11 +24,22 @@ import com.mostc.pftt.scenario.ScenarioSet;
  *
  */
 
+// having PFTT directly run PhpUnit test cases itself, instead of just wrapping `phpunit` allows for:
+//   -faster execution (threads)
+//   -Web Server support ('cut closer to actual server')
+//      -more accurate results
+//      -usually only a slight or no difference
+//      -but if you care about accurate, quality or thorough testing
+//      -or if care about how well your software actually works
+//   -counting additional statuses (ex: xskip)
+//   -accurate crash detection
+//
 public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunner {
 	public static final String DB_DSN = "DB_DSN";
 	public static final String DB_USER = "DB_USER";
 	public static final String DB_PASSWD = "DB_PASSWD";
 	public static final String DB_DBNAME = "DB_DBNAME";
+	protected final ITestResultReceiver tmgr;
 	protected final Map<String, String> globals;
 	protected final Map<String, String> env;
 	protected final Map<String,String> constants;
@@ -40,7 +53,8 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 	protected final String my_temp_dir;
 	protected boolean is_crashed;
 
-	public AbstractPhpUnitTestCaseRunner(Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files) {
+	public AbstractPhpUnitTestCaseRunner(ITestResultReceiver tmgr, Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files) {
+		this.tmgr = tmgr;
 		this.globals = globals;
 		this.env = env;
 		this.cm = cm;
@@ -66,9 +80,13 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 		
 		// BN: some phpunit tests (symfony) seem to not cleanup files or directories they create, sometimes
 		// have a temporary directory used to run each test and forcibly clean it between each test run to avoid this problem
-		// set both TMP and TEMP!!!!
+		// set both TMP and TEMP and TMPDIR!!!!
 		env.put("TEMP", my_temp_dir);
 		env.put("TMP", my_temp_dir);
+		env.put("TMPDIR", my_temp_dir);
+		// these ENV vars are also set again in PHP code @see phpUnitTemplate to make sure that they're used
+		// @see PHP sys_get_temp_dir() - many Symfony filesystem tests use this
+		
 		
 		
 		//////// prepared, generate PHP code
@@ -83,7 +101,8 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 				include_files,
 				globals,
 				constants,
-				env
+				env,
+				my_temp_dir
 			);
 	}
 	
@@ -110,11 +129,11 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 			if (PAT_CLASS_NOT_FOUND.matcher(output).find()) {
 				status = EPhpUnitTestStatus.UNSUPPORTED;
 				
-				System.out.println(status+" "+test_case);
+				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output));
 			} else if (PAT_FATAL_ERROR.matcher(output).find()) {
 				status = EPhpUnitTestStatus.ERROR;
 				
-				System.out.println(status+" "+test_case);
+				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output));
 			} else {
 				// CRASH may really be a syntax error (BORK), check to make sure
 				final ExecOutput syntax_eo = host.execOut(build.getPhpExe()+" -l "+template_file, Host.ONE_MINUTE, test_case.php_unit_dist.path.getAbsolutePath());
@@ -122,13 +141,11 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 					// its a syntax error - BORK, as test case can't run
 					status = EPhpUnitTestStatus.BORK;
 					
-					//tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, syntax_eo.output));
-					System.out.println(status+" "+test_case);
+					tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, syntax_eo.output));
 				} else {
 					status = EPhpUnitTestStatus.CRASH;
 					
-					//tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, eo.output));
-					System.out.println(status+" "+test_case);
+					tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output));
 				}
 			}
 		} else {
@@ -166,11 +183,9 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 			if (status.isNotPass()) {
 				final String output_str = StringUtil.join(lines, 1, "\n");
 				
-				//tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output_str));
-				System.out.println(status+" "+test_case);
+				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output_str));
 			} else {
-				//tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, null));
-				System.out.println(status+" "+test_case);
+				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, null));
 			}
 		}
 		

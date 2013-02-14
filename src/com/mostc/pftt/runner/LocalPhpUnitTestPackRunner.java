@@ -25,6 +25,7 @@ import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
 import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.sapi.ApacheManager;
+import com.mostc.pftt.model.sapi.SharedSAPIInstanceTestCaseGroupKey;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
@@ -73,12 +74,12 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 
 	@Override
 	protected void setupStorageAndTestPack(ITestPackStorageDir storage_dir, List<PhpUnitTestCase> test_cases) {
-		
+		// TODO
 	}
 	
 	@Override
 	protected TestCaseGroupKey createGroupKey(PhpUnitTestCase test_case, TestCaseGroupKey group_key) throws Exception {
-		return new TestCaseGroupKey(null, null);
+		return group_key == null ? new SharedSAPIInstanceTestCaseGroupKey(null, null) : group_key;
 	}
 
 	@Override
@@ -101,8 +102,7 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 
 		@Override
 		protected void runTest(TestCaseGroupKey group_key, PhpUnitTestCase test_case) throws IOException, Exception, Throwable {
-			HttpPhpUnitTestCaseRunner r = new HttpPhpUnitTestCaseRunner(params, httpproc, httpexecutor, smgr, null, globals, env, cm, runner_host, scenario_set, build, test_case, my_temp_dir, constants, test_case.php_unit_dist.getIncludePath(), test_case.php_unit_dist.getIncludeFiles());
-			//CliPhpUnitTestCaseRunner r = new CliPhpUnitTestCaseRunner(globals, env, cm, rt.host, scenario_set, build, test_case, temp_dir, constants, test_case.php_unit_dist.getIncludePath(), test_case.php_unit_dist.getIncludeFiles());
+			AbstractPhpUnitTestCaseRunner r = sapi_scenario.createPhpUnitTestCaseRunner(cm, twriter, globals, env, runner_host, scenario_set, build, test_case, my_temp_dir, constants, test_case.php_unit_dist.getIncludePath(), test_case.php_unit_dist.getIncludeFiles());
 			r.runTest();
 		}
 		

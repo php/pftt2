@@ -25,6 +25,7 @@ import com.mostc.pftt.model.sapi.WebServerInstance;
 import com.mostc.pftt.model.sapi.WebServerManager;
 import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.ErrorUtil;
 
@@ -40,11 +41,11 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	protected final HttpRequestExecutor httpexecutor;
 	protected final PhpIni ini;
 
-	public HttpPhpUnitTestCaseRunner(
+	public HttpPhpUnitTestCaseRunner(ITestResultReceiver tmgr,
 			HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web,
 			Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build,
 			PhpUnitTestCase test_case, String my_temp_dir, Map<String, String> constants, String include_path, String[] include_files) {
-		super(globals, env, cm, host, scenario_set, build, test_case, my_temp_dir, constants, include_path, include_files);
+		super(tmgr, globals, env, cm, host, scenario_set, build, test_case, my_temp_dir, constants, include_path, include_files);
 		this.params = params;
 		this.httpproc = httpproc;
 		this.httpexecutor = httpexecutor;

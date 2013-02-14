@@ -1,5 +1,3 @@
-import com.mostc.pftt.model.app.Symfony;
-
 
 def scenarios() {
 	// install Joomla CMS

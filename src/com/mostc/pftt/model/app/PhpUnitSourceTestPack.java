@@ -197,7 +197,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 			} else if (file.getName().endsWith("Test.php")) {
 				String file_name = Host.pathFrom(php_unit_dist.path.getAbsolutePath(), file.getAbsolutePath());
 				
-				String test_name = PhpUnitTestCase.normalizeName(file_name);
+				String test_name = PhpUnitTestCase.normalizeFileName(file_name);
 				
 				if (blacklist_test_names.contains(test_name))
 					continue;

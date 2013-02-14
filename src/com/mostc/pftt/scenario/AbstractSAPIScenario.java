@@ -1,6 +1,9 @@
 package com.mostc.pftt.scenario;
 
+import java.util.Map;
+
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.ESAPIType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
@@ -10,6 +13,7 @@ import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
+import com.mostc.pftt.runner.AbstractPhpUnitTestCaseRunner;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 
@@ -86,5 +90,7 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 	public abstract TestCaseGroupKey createTestGroupKey(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack active_test_pack, PhptTestCase test_case, TestCaseGroupKey group_key) throws Exception;
 	
 	public abstract PhpIni createIniForTest(ConsoleManager cm, AHost host, PhpBuild build, PhptActiveTestPack active_test_pack, ScenarioSet scenario_set);
+
+	public abstract AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(ConsoleManager cm, ITestResultReceiver twriter, Map<String,String> globals, Map<String,String> env, AHost runner_host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files);
 	
 } // end public abstract class AbstractSAPIScenario

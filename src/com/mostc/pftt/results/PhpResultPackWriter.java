@@ -17,7 +17,6 @@ import com.mostc.pftt.model.core.ECPUArch;
 import com.mostc.pftt.model.core.ECompiler;
 import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.PhpBuild;
-import com.mostc.pftt.model.core.PhptSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.ErrorUtil;
@@ -41,7 +40,6 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	protected PrintWriter global_exception_writer;
 	protected LocalConsoleManager cm;
 	protected PhpBuild build;
-	protected PhptSourceTestPack test_pack;
 	protected LinkedBlockingQueue<ResultQueueEntry> results;
 	protected boolean run = true;
 	
@@ -77,7 +75,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		return new File(base.getAbsolutePath() + sb);
 	}
 	
-	public PhpResultPackWriter(LocalHost local_host, LocalConsoleManager cm, File telem_base_dir, PhpBuild build, PhptSourceTestPack test_pack, ScenarioSet scenario_set) throws Exception {
+	public PhpResultPackWriter(LocalHost local_host, LocalConsoleManager cm, File telem_base_dir, PhpBuild build, ScenarioSet scenario_set) throws Exception {
 		super(local_host);
 		
 		phpt_writer_map = new HashMap<AHost,HashMap<ScenarioSet,PhptResultWriter>>(16);
@@ -93,7 +91,6 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		this.local_host = local_host;
 		this.cm = cm;
 		this.build = build;
-		this.test_pack = test_pack;
 		this.telem_dir = new File(host.uniqueNameFromBase(makeName(cm, host, telem_base_dir, build, scenario_set).getAbsolutePath()));
 		this.telem_dir.mkdirs();
 		
@@ -160,6 +157,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 			w.handleResult(cm, this_host, this_scenario_set, this_result);
 			
 			// show on console
+			// TODO
 			System.out.println(this_result.status+" "+this_result.test_case);
 			
 			if (cm!=null) {
@@ -196,6 +194,10 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 			}
 			
 			w.writeResult(this_result);
+			
+			// show on console
+			// TODO
+			System.out.println(this_result.status+" "+this_result.test_case);
 		}
 		
 	} // end protected class PhpUnitResultQueueEntry

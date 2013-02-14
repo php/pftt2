@@ -149,7 +149,7 @@ public class PfttMain {
 			}
 			//
 			
-			PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, telem_dir(), build, test_pack, scenario_set);
+			PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, telem_dir(), build, scenario_set);
 			LocalPhptTestPackRunner test_pack_runner = new LocalPhptTestPackRunner(tmgr.getConsoleManager(), tmgr, scenario_set, build, storage_host, host);
 			cm.showGUI(test_pack_runner);
 			
@@ -219,7 +219,7 @@ public class PfttMain {
 			
 			LinkedList<PhptTestCase> test_cases = new LinkedList<PhptTestCase>();
 			
-			PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, telem_dir(), build, test_pack, scenario_set);
+			PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, telem_dir(), build, scenario_set);
 			test_pack.cleanup(cm);
 			cm.println(EPrintType.IN_PROGRESS, "PhptSourceTestPack", "enumerating test cases from test-pack...");
 			test_pack.read(test_cases, names, tmgr.getConsoleManager(), tmgr, build, true); // TODO true?
@@ -646,7 +646,7 @@ public class PfttMain {
 					//  2. search current dir / assume filename is absolute path
 					//  3. search $PFTT_DIR/conf
 					//  4. search $PFTT_DIR/conf/internal
-					//  5. search $PFTT_DIR/conf/apps
+					//  5. search $PFTT_DIR/conf/app
 					File config_file = new File(part);
 					if (config_file.exists()) {
 						if (!config_files.contains(config_file))
@@ -677,12 +677,12 @@ public class PfttMain {
 											if (!config_files.contains(config_file))
 												config_files.add(config_file);
 										} else {
-											config_file = new File(LocalHost.getLocalPfttDir()+"/conf/apps/"+part);
+											config_file = new File(LocalHost.getLocalPfttDir()+"/conf/app/"+part);
 											if (config_file.exists()) {
 												if (!config_files.contains(config_file))
 													config_files.add(config_file);
 											} else {
-												config_file = new File(LocalHost.getLocalPfttDir()+"/conf/apps/"+part+".groovy");
+												config_file = new File(LocalHost.getLocalPfttDir()+"/conf/app/"+part+".groovy");
 												if (config_file.exists()) {
 													if (!config_files.contains(config_file))
 														config_files.add(config_file);
@@ -782,35 +782,6 @@ public class PfttMain {
 		LocalConsoleManager cm = new LocalConsoleManager(source_pack, debug_pack, force, debug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug, no_result_file_for_pass_xskip_skip, randomize_order, run_test_times_all, 
 				thread_safety, run_test_times_list_times, run_group_times_all, run_group_times_list_times, debug_list, run_test_times_list, run_group_times_list, skip_list);
 		
-		//
-		/*
-		SSHHost remote_host = new SSHHost("192.168.1.117", "administrator", "password01!");
-		System.out.println(remote_host.isWindows());
-		SMBDeduplicationScenario d = new SMBDeduplicationScenario(remote_host, "F:");
-		//SMBDFSScenario d = new SMBDFSScenario(remote_host);
-		SMBStorageDir dir = d.createStorageDir(cm, rt.host);
-		System.out.println(dir.getLocalPath(rt.host));
-		System.out.println(dir.notifyTestPackInstalled(cm, rt.host));
-		*/
-		
-		/*{
-			ScenarioSet scenario_set = ScenarioSet.getDefaultScenarioSets().get(0);
-			PhpBuild build = new PhpBuild("c:/php-sdk/php-5.5-ts-windows-vc9-x86-re6bde1f");
-			build.open(cm, rt.host);
-			
-			PhpUnitSourceTestPack test_pack = new PhpUnitSourceTestPack();
-			
-			//new Symfony().setup(test_pack);
-			new JoomlaPlatform().setup(test_pack);
-			
-			LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, null, scenario_set, build, rt.host);
-			r.runAllTests(test_pack);
-		} //
-		
-		System.exit(0);
-		*/
-		//
-		
 		if (config_files.size()>0) {
 			config = Config.loadConfigFromFiles(cm, (File[])config_files.toArray(new File[config_files.size()]));
 			System.out.println("PFTT: Config: loaded "+config_files);
@@ -819,6 +790,24 @@ public class PfttMain {
 			config = Config.loadConfigFromFiles(cm, default_config_file);
 			System.out.println("PFTT: Config: no config files loaded... using defaults only ("+default_config_file+")");
 		}
+		
+		// TODO
+		{
+			ScenarioSet scenario_set = config.getScenarioSets().get(0);
+			PhpBuild build = new PhpBuild("c:/php-sdk/php-5.5-ts-windows-vc9-x86-re6bde1f");
+			build.open(cm, rt.host);
+			
+			PhpUnitSourceTestPack test_pack = config.getPhpUnitSourceTestPack(cm);
+			test_pack.open(cm, rt.host); // CRITICAL
+			
+			PhpResultPackWriter tmgr = new PhpResultPackWriter(rt.host, cm, new File(rt.host.getPhpSdkDir()), build, scenario_set);
+			LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, rt.host, rt.host);
+			r.runAllTests(test_pack);
+			
+			tmgr.close();
+		} //
+		
+		System.exit(0);
 
 		//
 		// help user find/install WinDebug properly

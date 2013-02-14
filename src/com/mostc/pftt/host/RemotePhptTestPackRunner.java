@@ -62,7 +62,7 @@ public class RemotePhptTestPackRunner extends AbstractRemoteTestPackRunner<PhptA
 		PhptSourceTestPack test_pack = new PhptSourceTestPack("C:\\php-sdk\\php-test-pack-5.5-nts-windows-vc9-x86-re6bde1f");
 		test_pack.open(cm, host);
 		
-		PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, new File(host.getPhpSdkDir()), build, test_pack, scenario_set);
+		PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, new File(host.getPhpSdkDir()), build, scenario_set);
 				
 		RemotePhptTestPackRunner runner = new RemotePhptTestPackRunner(tmgr, scenario_set, build, host, host);
 		if (args.length>0) {

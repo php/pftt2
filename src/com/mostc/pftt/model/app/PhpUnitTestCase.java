@@ -21,7 +21,11 @@ public class PhpUnitTestCase extends TestCase {
 	
 	protected PhpUnitTestCase(PhpUnitDist php_unit_dist, String filename, String className, String methodName) {
 		this.php_unit_dist = php_unit_dist;
+		// don't need to call #normalizeFilename here usually. it's called in PhpUnitSourcetestPack#readDir...
+		// calling it (again )here would be a performance hit
 		this.filename = filename;
+		// don't need to normalize classname:
+		// if it has \ thats ok b/c its legal PHP (namespaces) whereas it won't be / b/c that's illegal in PHP
 		this.className = className;
 		this.methodName = methodName;
 	}
@@ -36,7 +40,7 @@ public class PhpUnitTestCase extends TestCase {
 		return getName();
 	}
 
-	public static String normalizeName(String test_name) {
+	public static String normalizeFileName(String test_name) {
 		return Host.toUnixPath(test_name).toLowerCase();
 	}
 

@@ -19,6 +19,7 @@ import org.apache.http.protocol.RequestUserAgent;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.HostGroup;
+import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.EPhptSection;
 import com.mostc.pftt.model.core.ESAPIType;
 import com.mostc.pftt.model.core.PhpBuild;
@@ -33,7 +34,9 @@ import com.mostc.pftt.model.sapi.WebServerManager;
 import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
+import com.mostc.pftt.runner.AbstractPhpUnitTestCaseRunner;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
+import com.mostc.pftt.runner.HttpPhpUnitTestCaseRunner;
 import com.mostc.pftt.runner.HttpPhptTestCaseRunner;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 
@@ -167,6 +170,10 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 	@Override
 	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
 		return HttpPhptTestCaseRunner.willSkip(cm, twriter, host, scenario_set, type, build, test_case);
+	}
+	
+	public AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(ConsoleManager cm, ITestResultReceiver twriter, Map<String,String> globals, Map<String,String> env, AHost runner_host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files) {
+		return new HttpPhpUnitTestCaseRunner(twriter, params, httpproc, httpexecutor, smgr, null, globals, env, cm, runner_host, scenario_set, build, test_case, my_temp_dir, constants, include_path, include_files);
 	}
 	
 } // end public abstract class AbstractWebServerScenario

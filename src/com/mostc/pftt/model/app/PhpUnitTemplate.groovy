@@ -30,11 +30,11 @@ public class PhpUnitTemplate {
 	 * @param env - environment variables
 	 * @return
 	 */
-	public static String renderTemplate(AHost host, PhpUnitTestCase test_case, String preamble_code, String bootstrap_file, String cwd, String include_path, String[] included_files, Map<String, String> globals, Map<String, String> constants, HashMap<String, String> env) {
-		return renderTemplate(host, test_case, preamble_code, bootstrap_file, cwd, include_path, included_files, globals, constants, env, false);
+	public static String renderTemplate(AHost host, PhpUnitTestCase test_case, String preamble_code, String bootstrap_file, String cwd, String include_path, String[] included_files, Map<String, String> globals, Map<String, String> constants, HashMap<String, String> env, String my_temp_dir) {
+		return renderTemplate(host, test_case, preamble_code, bootstrap_file, cwd, include_path, included_files, globals, constants, env, my_temp_dir, false);
 	}
 	
-	public static String renderTemplate(AHost host, PhpUnitTestCase test_case, String preamble_code, String bootstrap_file, String cwd, String include_path, String[] included_files, Map<String, String> globals, Map<String, String> constants, HashMap<String, String> env, boolean strict) {
+	public static String renderTemplate(AHost host, PhpUnitTestCase test_case, String preamble_code, String bootstrap_file, String cwd, String include_path, String[] included_files, Map<String, String> globals, Map<String, String> constants, HashMap<String, String> env, String my_temp_dir, boolean strict) {
 		// XXX will need to get these values from PHP code 
 		// data source: PhpUnit_Framework_TestCase constructor (default value)
 		String data = "a:0:{}";
@@ -46,15 +46,25 @@ public class PhpUnitTemplate {
 		StringWriter sw = new StringWriter(16384);
 		PrintWriter pw = new PrintWriter(sw);
 		
+		my_temp_dir = StringUtil.cslashes(host.fixPath(my_temp_dir));
+		
 		// PFTT mod: need to set date.timezone=UTC... for some reason,
 		//           ini file doesn't work, date_default_timezone_set() and ini_set() must both
 		//           be used to suppress related errors symfony phpunit tests
+		//           
+		//           also set ENV vars in PHP for the temproary dir... for CLI or Apache, sometimes setting the
+		//           temporary dir ENV vars passed to AHost#exec doesn't always work
+		//           @see PHP sys_get_temp_dir() - many Symfony filesystem tests use this
 		pw.print(
 """<?php
 set_include_path('$include_path');
 date_default_timezone_set('UTC');
 ini_set('date.timezone', 'UTC');
 require 'PHPUnit/Autoload.php';
+putenv('TMP=$my_temp_dir');
+putenv('TEMP=$my_temp_dir');
+putenv('TMPDIR=$my_temp_dir');
+
 """)
 		if (StringUtil.isNotEmpty(bootstrap_file)) {
 			pw.print("""require_once '$bootstrap_file';

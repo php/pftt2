@@ -191,7 +191,9 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			System.out.println((run_time/1000)+" seconds"); // TODO console manager
 			
 			// if not -dont-cleanup-test-pack and if successful, delete test-pack (otherwise leave it behind for user to analyze the internal exception(s))
-			if (!cm.isDontCleanupTestPack() && 
+			if (!cm.isDontCleanupTestPack() &&
+					this.active_test_pack != null && // TODO phpunit?
+					this.active_test_pack.getStorageDirectory() != null && // TODO does phpunit need this?
 					!this.active_test_pack.getStorageDirectory().equals(
 							src_test_pack.getSourceDirectory())) {
 				cm.println(EPrintType.IN_PROGRESS, getClass(), "deleting/cleaning-up active test-pack: "+this.active_test_pack);
@@ -497,7 +499,10 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 							sa = ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance();
 							if (sa==null||sa.isCrashed()||(debugger_attached && !((WebServerInstance)sa).isDebuggerAttached())) {
 								//((SharedSAPIInstanceTestCaseGroupKey)group_key).setSAPIInstance(
-								sa = ((AbstractWebServerScenario)sapi_scenario).smgr.getWebServerInstance(cm, runner_host, build, group_key.getPhpIni(), group_key.getEnv(), active_test_pack.getStorageDirectory(), (WebServerInstance) sa, debugger_attached, completed_tests);
+								sa = ((AbstractWebServerScenario)sapi_scenario).smgr.getWebServerInstance(cm, runner_host, build, group_key.getPhpIni(), group_key.getEnv(), 
+										active_test_pack==null?null: // TODO phpunit
+										
+										active_test_pack.getStorageDirectory(), (WebServerInstance) sa, debugger_attached, completed_tests);
 								//);
 								
 								// TODO don't store sa on group_key! (don't share sa between threads)

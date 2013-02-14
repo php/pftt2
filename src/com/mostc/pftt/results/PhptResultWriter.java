@@ -7,7 +7,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 
 import org.kxml2.io.KXmlSerializer;
 
@@ -19,24 +21,52 @@ import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 public class PhptResultWriter {
-	final File dir;
-	final HashMap<EPhptTestStatus,PrintWriter> status_list_map;
-	final KXmlSerializer serial;
+	protected final File dir;
+	protected final HashMap<EPhptTestStatus,StatusListEntry> status_list_map;
+	protected final KXmlSerializer serial;
 	
-	PhptResultWriter(File dir) throws IOException {
+	public PhptResultWriter(File dir) throws IOException {
 		this.dir = dir;
 		
 		dir.mkdirs();
 		
-		status_list_map = new HashMap<EPhptTestStatus,PrintWriter>();
+		status_list_map = new HashMap<EPhptTestStatus,StatusListEntry>();
 		serial  = new KXmlSerializer();
 		// setup serializer to indent XML (pretty print) so its easy for people to read
 		serial.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
 		
-		for(EPhptTestStatus status:EPhptTestStatus.values()) {
-			File file = new File(dir+"/"+status+".txt");
-			PrintWriter pw = new PrintWriter(new FileWriter(file));
+		for(EPhptTestStatus status:EPhptTestStatus.values())
+			status_list_map.put(status, new StatusListEntry(status));
+	}
+	
+	protected class StatusListEntry {
+		protected final EPhptTestStatus status;
+		protected final File journal_file;
+		protected final PrintWriter journal_writer;
+		protected final LinkedList<String> test_names;
+		
+		public StatusListEntry(EPhptTestStatus status) throws IOException {
+			this.status = status;
 			
+			journal_file = new File(dir+"/"+status+".journal.txt");
+			journal_writer = new PrintWriter(new FileWriter(journal_file));
+			test_names = new LinkedList<String>();
+		}
+		
+		public void write(PhptTestResult result) {
+			final String test_name = result.test_case.getName();
+			
+			journal_writer.println(test_name);
+			
+			test_names.add(test_name);
+		}
+		public void close() throws IOException {
+			journal_writer.close();
+			
+			// sort alphabetically
+			Collections.sort(test_names);
+			
+			PrintWriter pw = new PrintWriter(new FileWriter(new File(dir+"/"+status+".txt")));
 			switch(status) {
 			case XSKIP:
 			case UNSUPPORTED:
@@ -49,16 +79,17 @@ public class PhptResultWriter {
 			default:
 				break;
 			} // end switch
-			
-			status_list_map.put(status, pw);
-		}
-	}
-
-	public void close() {
-		for ( PrintWriter pw : status_list_map.values() ) {
+			for ( String test_name : test_names )
+				pw.println(test_name);
 			pw.close();
+			
+			// if here, collecting the results and writing them in sorted-order has worked ... 
+			//   don't need journal anymore (pftt didn't crash, fail, etc...)
+			journal_file.delete();
 		}
-		
+	} // end protected class StatusListEntry
+
+	public void close() throws IOException {
 		// write tally file with 
 		try {
 			/*PhptTallyFile tally = new PhptTallyFile();
@@ -85,16 +116,13 @@ public class PhptResultWriter {
 		} catch ( Exception ex ) {
 			ex.printStackTrace();
 		}
+		
+		for ( StatusListEntry e : status_list_map.values() )
+			e.close();
 	} // end public void close
 	
 	protected void handleResult(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhptTestResult result) {
-		
-		try {
-			PrintWriter pw = status_list_map.get(result.status);
-			pw.println(result.test_case.getName());
-		} catch (Exception ex) {
-			ex.printStackTrace();
-		}
+		status_list_map.get(result.status).write(result);
 	
 		
 		final String test_case_base_name = result.test_case.getBaseName();
