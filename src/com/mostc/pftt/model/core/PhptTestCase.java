@@ -42,6 +42,10 @@ import com.mostc.pftt.util.apache.regexp.REProgram;
  * 
  * A PHPT test may be 'borked' (not runnable) or unsupported. This can be marked as such without bothering to run them at all.
  * 
+ * A PHPT can check $_ENV['PFTT_IS'] to tell if its running under PFTT.
+ * A PHPT can check $_ENV['PFTT_SCENARIO_SET'] to tell what scenarios its running under
+ * 
+ * 
  * @see #hasBorkInfo()
  * @see #hasUnsupportedInfo()
  * @see EPhptTestStatus

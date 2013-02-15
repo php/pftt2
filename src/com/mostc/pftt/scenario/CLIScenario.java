@@ -18,7 +18,7 @@ import com.mostc.pftt.runner.AbstractPhpUnitTestCaseRunner;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
 import com.mostc.pftt.runner.CliPhpUnitTestCaseRunner;
 import com.mostc.pftt.runner.CliPhptTestCaseRunner;
-import com.mostc.pftt.runner.HttpPhpUnitTestCaseRunner;
+import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 
 /** Tests the Command Line Interface(CLI) for running PHP.
@@ -92,7 +92,7 @@ public class CliScenario extends AbstractSAPIScenario {
 	}
 	
 	@Override
-	public AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(ConsoleManager cm, ITestResultReceiver twriter, Map<String, String> globals, Map<String, String> env, AHost runner_host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String, String> constants, String include_path, String[] include_files) {
+	public AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(PhpUnitThread thread, TestCaseGroupKey group_key, ConsoleManager cm, ITestResultReceiver twriter, Map<String, String> globals, Map<String, String> env, AHost runner_host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String, String> constants, String include_path, String[] include_files) {
 		return new CliPhpUnitTestCaseRunner(twriter, globals, env, cm, runner_host, scenario_set, build, test_case, my_temp_dir, constants, test_case.php_unit_dist.getIncludePath(), test_case.php_unit_dist.getIncludeFiles());
 	}
 

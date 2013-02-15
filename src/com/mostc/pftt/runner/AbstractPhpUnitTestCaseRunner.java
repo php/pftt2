@@ -68,10 +68,11 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 		this.include_files = include_files;
 	}
 	
-	protected static Pattern PAT_CLASS_NOT_FOUND, PAT_SYNTAX_ERROR, PAT_FATAL_ERROR;
+	protected static Pattern PAT_CLASS_NOT_FOUND, PAT_REQUIRE_ONCE_FAIL, PAT_SYNTAX_ERROR, PAT_FATAL_ERROR;
 	static {
-		PAT_CLASS_NOT_FOUND = Pattern.compile(".*Fatal error: Class '.*' not found.*");
-		PAT_FATAL_ERROR = Pattern.compile(".*Fatal error: .*");
+		PAT_CLASS_NOT_FOUND = Pattern.compile(".*Fatal error.*Class '.*' not found.*");
+		PAT_REQUIRE_ONCE_FAIL = Pattern.compile(".*Fatal error.*require_once.*Failed opening required.*");
+		PAT_FATAL_ERROR = Pattern.compile(".*Fatal error.*");
 		PAT_SYNTAX_ERROR = Pattern.compile(".*No syntax errors detected.*");
 	}
 	
@@ -113,19 +114,29 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 		
 		final String template_file = my_temp_dir+"/test.php";
 		
-		host.saveTextFile(template_file, generatePhpScript());
+		final String php_script = generatePhpScript();
 		
+		host.saveTextFile(template_file, php_script);
+				
 		final String output = execute(template_file);
 		
 		// show output from all on console for debugging
 		if (cm.isPfttDebug()) {
-			System.err.println(test_case.getName()+":");
-			System.err.println(output);
+			synchronized(System.err) {
+				System.err.println(test_case.getName()+":");
+				System.err.println(php_script);
+				System.err.println(test_case.getName()+":");
+				System.err.println(output);
+			}
 		}
 		//
-		
+
 		EPhpUnitTestStatus status;
-		if (is_crashed) {
+		if (PAT_REQUIRE_ONCE_FAIL.matcher(output).find() || output.contains("404 Not Found")) { // TODO only check 404 w/ Http
+			status = EPhpUnitTestStatus.TEST_EXCEPTION;
+			
+			tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output));
+		} else if (is_crashed) {
 			if (PAT_CLASS_NOT_FOUND.matcher(output).find()) {
 				status = EPhpUnitTestStatus.UNSUPPORTED;
 				
@@ -159,10 +170,20 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 			
 			// read status code
 			if (status_str.length() > 0) {
-				status = EPhpUnitTestStatus.valueOf(status_str);
+				status = null;
+				for ( EPhpUnitTestStatus s : EPhpUnitTestStatus.values()) { 
+					if (status_str.equals(s.toString())) {
+						status = s;
+						break;
+					}
+				}
 				
-				if (status==null)
-					status = EPhpUnitTestStatus.BORK;
+				if (status==null) {
+					if (output.contains("Fatal Error"))
+						status = EPhpUnitTestStatus.ERROR;
+					else
+						status = EPhpUnitTestStatus.FAILURE;
+				}
 			} else {
 				// if test had a 'Fatal Error', it might not have been able to print the status code at all
 				// (otherwise it should always have a status code)

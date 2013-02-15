@@ -16,6 +16,7 @@ import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner {
+	public static final String ENV_PHPRC = "PHPRC";
 	public static final String ENV_SCRIPT_FILENAME = "SCRIPT_FILENAME";
 	public static final String ENV_PATH_TRANSLATED = "PATH_TRANSLATED";
 	public static final String ENV_TEST_PHP_EXECUTABLE = "TEST_PHP_EXECUTABLE";

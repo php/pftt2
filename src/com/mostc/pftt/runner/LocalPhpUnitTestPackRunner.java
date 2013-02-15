@@ -32,12 +32,7 @@ import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.scenario.AbstractFileSystemScenario.ITestPackStorageDir;
 import com.mostc.pftt.scenario.ScenarioSet;
 
-// TODO sapiscenario support for creating testcase runner
 // TODO NTS testcase support
-//     file: __CG__SymfonyBridgeDoctrineTestsFixturesCompositeIdentEntity.php
-//     dir: symfony2_finder
-//     database
-// TODO result-pack support
 // TODO when RESTARTING_AND_RETRYING, should report CRASH
 public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpUnitActiveTestPack, PhpUnitSourceTestPack, PhpUnitTestCase> {
 	final Map<String,String> globals = new HashMap<String,String>();
@@ -88,21 +83,22 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 	}
 
 	@Override
-	protected PhpUnitThread createTestPackThread(boolean parallel) {
+	protected PhpUnitThread createTestPackThread(boolean parallel) throws IllegalStateException, IOException {
 		return new PhpUnitThread(parallel);
 	}
 	
 	public class PhpUnitThread extends TestPackThread<PhpUnitTestCase> {
 		final String my_temp_dir;
 
-		protected PhpUnitThread(boolean parallel) {
+		protected PhpUnitThread(boolean parallel) throws IllegalStateException, IOException {
 			super(parallel);
 			my_temp_dir = runner_host.fixPath(runner_host.mktempname(runner_host.getPhpSdkDir()+"/temp/", getClass()) + "/");
+			runner_host.mkdirs(my_temp_dir);
 		}
 
 		@Override
 		protected void runTest(TestCaseGroupKey group_key, PhpUnitTestCase test_case) throws IOException, Exception, Throwable {
-			AbstractPhpUnitTestCaseRunner r = sapi_scenario.createPhpUnitTestCaseRunner(cm, twriter, globals, env, runner_host, scenario_set, build, test_case, my_temp_dir, constants, test_case.php_unit_dist.getIncludePath(), test_case.php_unit_dist.getIncludeFiles());
+			AbstractPhpUnitTestCaseRunner r = sapi_scenario.createPhpUnitTestCaseRunner(this, group_key, cm, twriter, globals, env, runner_host, scenario_set, build, test_case, my_temp_dir, constants, test_case.php_unit_dist.getIncludePath(), test_case.php_unit_dist.getIncludeFiles());
 			r.runTest();
 		}
 		

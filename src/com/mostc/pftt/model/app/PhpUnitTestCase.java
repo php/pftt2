@@ -39,7 +39,7 @@ public class PhpUnitTestCase extends TestCase {
 	public String toString() {
 		return getName();
 	}
-
+	
 	public static String normalizeFileName(String test_name) {
 		return Host.toUnixPath(test_name).toLowerCase();
 	}

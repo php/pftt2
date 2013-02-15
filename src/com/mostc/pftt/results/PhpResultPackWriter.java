@@ -81,11 +81,6 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		phpt_writer_map = new HashMap<AHost,HashMap<ScenarioSet,PhptResultWriter>>(16);
 		phpunit_writer_map = new HashMap<AHost,HashMap<ScenarioSet,PhpUnitResultWriter>>(16);
 		
-		// setup serializer to indent XML (pretty print) so its easy for people to read
-		//serial = new KXmlSerializer();
-		// TODO serial.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
-		//
-		
 		cm.w = this;
 		
 		this.local_host = local_host;

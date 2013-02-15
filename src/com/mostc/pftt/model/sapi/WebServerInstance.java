@@ -215,5 +215,7 @@ public abstract class WebServerInstance extends SAPIInstance {
 	}
 	
 	protected abstract void do_close();
+
+	public abstract String getDocroot();
 	
 } // end public abstract class WebServerInstance

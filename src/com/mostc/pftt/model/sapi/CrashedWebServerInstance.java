@@ -77,4 +77,10 @@ public class CrashedWebServerInstance extends WebServerInstance {
 		return false;
 	}
 
+	@Override
+	public String getDocroot() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 }

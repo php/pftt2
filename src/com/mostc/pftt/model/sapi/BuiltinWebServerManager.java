@@ -11,6 +11,7 @@ import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.scenario.ScenarioSet;
 
 /** manages local instances of PHP's builtin web server
  * 
@@ -30,18 +31,21 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 	}
 	
 	@Override
-	protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String, String> env, String docroot, String listen_address, int port) {
+	protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String, String> env, String docroot, String listen_address, int port) {
 		// run `php.exe -S listen_address:NNNN` in docroot
 		// TODO ensureDefault();
-		return new BuiltinWebServerInstance(this, host, build, build.getPhpExe()+" -S "+listen_address+":"+port+" "+(ini==null?"":ini.toCliArgString(host)), ini, env, listen_address, port);
+		
+		// TODO env = prepareENV(env, php_conf_file, build, scenario_set, httpd);
+		
+		return new BuiltinWebServerInstance(this, host, build, docroot, build.getPhpExe()+" -S "+listen_address+":"+port+" "+(ini==null?"":ini.toCliArgString(host)), ini, env, listen_address, port);
 	}
 	
 	public class BuiltinWebServerInstance extends ManagedProcessWebServerInstance {
 		protected final PhpBuild build;
 		protected final AHost host;
 		
-		public BuiltinWebServerInstance(BuiltinWebServerManager ws_mgr, AHost host, PhpBuild build, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port) {
-			super(ws_mgr, cmd, ini, env, hostname, port);
+		public BuiltinWebServerInstance(BuiltinWebServerManager ws_mgr, AHost host, PhpBuild build, String docroot, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port) {
+			super(ws_mgr, docroot, cmd, ini, env, hostname, port);
 			this.host = host;
 			this.build = build;
 		}

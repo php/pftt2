@@ -38,6 +38,7 @@ import com.mostc.pftt.runner.AbstractPhpUnitTestCaseRunner;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
 import com.mostc.pftt.runner.HttpPhpUnitTestCaseRunner;
 import com.mostc.pftt.runner.HttpPhptTestCaseRunner;
+import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 
 /** scenarios for testing PHP while its running under a web server
@@ -97,7 +98,7 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 	 */
 	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, final String docroot) {
 		if (host instanceof AHost) {
-			return smgr.getWebServerInstance(cm, (AHost)host, build, null, null, docroot, null, false, this).isRunning() ? EScenarioStartState.STARTED : EScenarioStartState.FAILED_TO_START;
+			return smgr.getWebServerInstance(cm, (AHost)host, scenario_set, build, null, null, docroot, null, false, this).isRunning() ? EScenarioStartState.STARTED : EScenarioStartState.FAILED_TO_START;
 		} else {
 			EScenarioStartState state = EScenarioStartState.SKIP, _state = null;
 			for (Host h : (HostGroup)host ) {
@@ -172,8 +173,9 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 		return HttpPhptTestCaseRunner.willSkip(cm, twriter, host, scenario_set, type, build, test_case);
 	}
 	
-	public AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(ConsoleManager cm, ITestResultReceiver twriter, Map<String,String> globals, Map<String,String> env, AHost runner_host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files) {
-		return new HttpPhpUnitTestCaseRunner(twriter, params, httpproc, httpexecutor, smgr, null, globals, env, cm, runner_host, scenario_set, build, test_case, my_temp_dir, constants, include_path, include_files);
+	@Override
+	public AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(PhpUnitThread thread, TestCaseGroupKey group_key, ConsoleManager cm, ITestResultReceiver twriter, Map<String,String> globals, Map<String,String> env, AHost runner_host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files) {
+		return new HttpPhpUnitTestCaseRunner(twriter, params, httpproc, httpexecutor, smgr, (WebServerInstance) ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance(), globals, env, cm, runner_host, scenario_set, build, test_case, my_temp_dir, constants, include_path, include_files);
 	}
 	
 } // end public abstract class AbstractWebServerScenario

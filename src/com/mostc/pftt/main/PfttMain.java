@@ -85,6 +85,11 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
  * 
  */
 
+// TODO phpunit_list phpunit_all phpunit_named commands
+// TODO change how ScenarioSets are permuted
+//        can have multiple database scenarios in 1 ScenarioSet for PHPTs
+//        can only have 1 for applications
+//        can only have 1 for PhpUnit
 // TODO phpt_all, etc... should display location of result-pack being written
 public class PfttMain {
 	protected LocalHost host;
@@ -791,24 +796,6 @@ public class PfttMain {
 			System.out.println("PFTT: Config: no config files loaded... using defaults only ("+default_config_file+")");
 		}
 		
-		// TODO
-		{
-			ScenarioSet scenario_set = config.getScenarioSets().get(0);
-			PhpBuild build = new PhpBuild("c:/php-sdk/php-5.5-ts-windows-vc9-x86-re6bde1f");
-			build.open(cm, rt.host);
-			
-			PhpUnitSourceTestPack test_pack = config.getPhpUnitSourceTestPack(cm);
-			test_pack.open(cm, rt.host); // CRITICAL
-			
-			PhpResultPackWriter tmgr = new PhpResultPackWriter(rt.host, cm, new File(rt.host.getPhpSdkDir()), build, scenario_set);
-			LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, rt.host, rt.host);
-			r.runAllTests(test_pack);
-			
-			tmgr.close();
-		} //
-		
-		System.exit(0);
-
 		//
 		// help user find/install WinDebug properly
 		if ((cm.isDebugAll()||cm.isDebugList()) && rt.host.isWindows()) {
@@ -824,7 +811,26 @@ public class PfttMain {
 		//
 		
 		if (command!=null) {
-			if (command.equals("phpt_named")||command.equals("phptnamed")||command.equals("phptn")||command.equals("pn")) {
+			if (command.equals("phpunit_named")||command.equals("phpunitnamed")||command.equals("pun")) {
+				// TODO
+			} else if (command.equals("phpunit_list")||command.equals("phpunitist")||command.equals("pul")) {
+				// TODO
+			} else if (command.equals("phpunit_all")||command.equals("phpunitall")||command.equals("pua")) {
+				// TODO
+				ScenarioSet scenario_set = config.getScenarioSets().get(0);
+				// TODO
+				PhpBuild build = new PhpBuild("c:/php-sdk/php-5.5-ts-windows-vc9-x86-re6bde1f");
+				build.open(cm, rt.host);
+				
+				PhpUnitSourceTestPack test_pack = config.getPhpUnitSourceTestPack(cm);
+				test_pack.open(cm, rt.host); // CRITICAL
+				
+				PhpResultPackWriter tmgr = new PhpResultPackWriter(rt.host, cm, new File(rt.host.getPhpSdkDir()), build, scenario_set);
+				LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, rt.host, rt.host);
+				r.runAllTests(test_pack);
+				
+				tmgr.close();
+			} else if (command.equals("phpt_named")||command.equals("phptnamed")||command.equals("phptn")||command.equals("pn")) {
 				if (!(args.length > args_i+3)) {
 					System.err.println("User Error: must specify build, test-pack and name(s) and/or name fragment(s)");
 					System.out.println("usage: pftt phpt_named <path to PHP build> <path to PHPT test-pack> <test case names or name fragments (separated by spaces)>");

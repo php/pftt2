@@ -14,9 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.mostc.pftt.host.AHost;
-import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.host.RemoteHost;
-import com.mostc.pftt.host.SSHHost;
 import com.mostc.pftt.model.ActiveTestPack;
 import com.mostc.pftt.model.SourceTestPack;
 import com.mostc.pftt.model.TestCase;
@@ -28,11 +26,10 @@ import com.mostc.pftt.model.sapi.WebServerInstance;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
 import com.mostc.pftt.scenario.AbstractFileSystemScenario;
 import com.mostc.pftt.scenario.AbstractSAPIScenario;
 import com.mostc.pftt.scenario.AbstractWebServerScenario;
-import com.mostc.pftt.scenario.SMBDFSScenario;
-import com.mostc.pftt.scenario.SMBDeduplicationScenario;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.AbstractFileSystemScenario.ITestPackStorageDir;
@@ -94,15 +91,6 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		this.twriter = twriter;
 		
 		runner_state = new AtomicReference<ETestPackRunnerState>();
-
-		//storage_host = new LocalHost();
-		/*
-		SSHHost remote_host = new SSHHost("J-2012sp0", "administrator", "password01!");
-		this.storage_host = remote_host; // for LocalPhptTestPackRunner#setupStorageDir
-		// TODO 
-		//file_scenario = new SMBDeduplicationScenario(remote_host, "B:");
-		file_scenario = new SMBDFSScenario(remote_host);
-		*/
 	}
 	
 	public void runTestList(S test_pack, List<T> test_cases) throws Exception {
@@ -129,7 +117,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		
 		runner_state.set(ETestPackRunnerState.RUNNING);
 		sapi_scenario = AbstractSAPIScenario.getSAPIScenario(scenario_set);
-		if (file_scenario==null) // TODO temp allow file_scenario to be set in <init> and don't override it
+		if (file_scenario==null)
 			file_scenario = AbstractFileSystemScenario.getFileSystemScenario(scenario_set);
 		
 		if (storage_host instanceof RemoteHost) {
@@ -244,10 +232,10 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			
 			// @see -no_nts console option- if used, all test cases should go to #handleTS
 			// if -no_nts not used, see if #handleNTS wants to handle them
-			// TODO if (!cm.isThreadSafety() || !handleNTS(group_key, test_case)) {
+			if (!cm.isThreadSafety() || !handleNTS(group_key, test_case)) {
 				// test case is thread-safe or we're ignoring thread-safety (-no_nts)
 				handleTS(thread_safe_list, group_key, test_case);
-			// TODO }
+			}
 			//
 		} // end while
 		
@@ -354,25 +342,24 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		
 	}
 	
-	protected void executeTestCases(boolean parallel) throws InterruptedException {
+	protected void executeTestCases(boolean parallel) throws InterruptedException, IllegalStateException, IOException {
 		// decide number of threads
 		// 1. ask SAPI Scenario
 		// 2. limit to number of thread safe tests + number of NTS extensions (extensions with NTS tests)
 		//        -exceed this number and there will be threads that won't have any tests to run
-		// 3. limit to MAX_THREAD_COUNT
-		// 4. if debugging
+		// 3. if debugging
+		// 4. limit to MAX_THREAD_COUNT
 		
 		int thread_count = sapi_scenario.getTestThreadCount(runner_host);
 		if (thread_count > thread_safe_test_count + non_thread_safe_exts.size())
 			thread_count = thread_safe_test_count + non_thread_safe_exts.size(); 
-		if (thread_count > MAX_THREAD_COUNT)
-			thread_count = MAX_THREAD_COUNT;
-		thread_count = 16; // TODO
 		if (cm.isDebugAll()) {
 			// run fewer threads b/c we're running WinDebug
 			// (can run WinDebug w/ same number of threads, but UI responsiveness will be SLoow)
 			thread_count = Math.max(1, thread_count / 2);
 		}
+		if (thread_count > MAX_THREAD_COUNT)
+			thread_count = MAX_THREAD_COUNT;
 		cm.println(EPrintType.IN_PROGRESS, getClass(), "Starting up Test Threads: thread_count="+thread_count+" runner_host="+runner_host+" sapi_scenario="+sapi_scenario);
 			
 		test_count = new AtomicInteger(0);
@@ -390,7 +377,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		int c ; while ( ( c = active_thread_count.get() ) > 0 ) { Thread.sleep(c>3?1000:50); }
 	} // end protected void executeTestCases
 		
-	protected void start_thread(boolean parallel) {
+	protected void start_thread(boolean parallel) throws IllegalStateException, IOException {
 		TestPackThread<T> t = createTestPackThread(parallel);
 		// if running Swing UI, run thread minimum priority in favor of Swing EDT
 		t.setPriority(Thread.MIN_PRIORITY);
@@ -398,7 +385,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		t.start();
 	}
 	
-	protected abstract TestPackThread<T> createTestPackThread(boolean parallel);
+	protected abstract TestPackThread<T> createTestPackThread(boolean parallel) throws IllegalStateException, IOException;
 	public abstract class TestPackThread<t extends T> extends SlowReplacementTestPackRunnerThread {
 		protected final AtomicBoolean run_thread;
 		protected final boolean parallel;
@@ -497,15 +484,17 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 						if (sapi_scenario instanceof AbstractWebServerScenario) { // TODO temp
 							//SAPIInstance 
 							sa = ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance();
-							if (sa==null||sa.isCrashed()||(debugger_attached && !((WebServerInstance)sa).isDebuggerAttached())) {
+							if (sa==null||sa.isCrashed()) { // TODO ||(debugger_attached && !((WebServerInstance)sa).isDebuggerAttached())) {
 								//((SharedSAPIInstanceTestCaseGroupKey)group_key).setSAPIInstance(
-								sa = ((AbstractWebServerScenario)sapi_scenario).smgr.getWebServerInstance(cm, runner_host, build, group_key.getPhpIni(), group_key.getEnv(), 
-										active_test_pack==null?null: // TODO phpunit
+								sa = ((AbstractWebServerScenario)sapi_scenario).smgr.getWebServerInstance(cm, runner_host, scenario_set, build, group_key.getPhpIni(), 
+										group_key.getEnv(), this instanceof PhpUnitThread ? ((PhpUnitThread)this).my_temp_dir // TODO temp phpunit 
+												:
 										
 										active_test_pack.getStorageDirectory(), (WebServerInstance) sa, debugger_attached, completed_tests);
 								//);
 								
 								// TODO don't store sa on group_key! (don't share sa between threads)
+								// important: this closes sa
 								((SharedSAPIInstanceTestCaseGroupKey)group_key).setSAPIInstance(cm, runner_host, sa); // TODO temp
 							}
 						}
@@ -522,6 +511,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 						// CRITICAL: catch exception to record with test
 						try {
 							runTest(group_key, test_case);
+							// TODO -delay_between_ms console option Thread.sleep(1000000);
 						} catch ( Throwable ex ) {
 							twriter.addTestException(storage_host, scenario_set, test_case, ex, sa);
 						}
@@ -531,6 +521,11 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 					Thread.yield();
 				} // end while
 			} finally {
+				if (sa!=null) {
+					sa.close(); // TODO
+					sa = null;
+				}
+				
 				if (parallel) {
 					// @see HttpTestCaseRunner#http_execute which calls #notifyCrash
 					// make sure a WebServerInstance is still running here, so it will be shared with each
@@ -553,7 +548,11 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 
 		@Override
 		protected void createNewThread() {
+			try {
 			start_thread(parallel);
+			} catch ( Exception ex ) {
+				ex.printStackTrace();
+			}
 		}
 
 		@Override

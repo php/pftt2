@@ -12,6 +12,7 @@ import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.ErrorUtil;
 
 /** manages and monitors IIS and IIS express web servers
@@ -82,6 +83,8 @@ public class IISManager extends WebServerManager {
 		
 		String php_binary = build.getPhpCgiExe();
 		String c_section = "section:system.webServer";
+		
+		// TODO env = prepareENV(env, php_conf_file, build, scenario_set, httpd);
 
 		try {
 			ExecOutput eo;
@@ -155,14 +158,14 @@ public class IISManager extends WebServerManager {
 	
 	WebServerInstance wsi;
 	@Override
-	public synchronized WebServerInstance getWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, WebServerInstance assigned, boolean debugger_attached, Object server_name) {
+	public synchronized WebServerInstance getWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, WebServerInstance assigned, boolean debugger_attached, Object server_name) {
 		if (wsi==null)
-			wsi = super.getWebServerInstance(cm, host, build, ini, env, docroot, assigned, debugger_attached, server_name);
+			wsi = super.getWebServerInstance(cm, host, scenario_set, build, ini, env, docroot, assigned, debugger_attached, server_name);
 		return wsi;
 	}
 	
 	@Override
-	protected WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, String doc_root, boolean debugger_attached, Object server_name) {
+	protected WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String,String> env, String doc_root, boolean debugger_attached, Object server_name) {
 		final String listen_address = host.getLocalhostListenAddress();
 		final int listen_port = 80;
 		
@@ -261,6 +264,12 @@ public class IISManager extends WebServerManager {
 		public boolean isDebuggerAttached() {
 			// TODO Auto-generated method stub
 			return false;
+		}
+
+		@Override
+		public String getDocroot() {
+			// TODO Auto-generated method stub
+			return null;
 		}
 		
 	} // end public class IISWebServerInstance

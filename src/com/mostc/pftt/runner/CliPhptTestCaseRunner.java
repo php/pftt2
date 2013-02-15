@@ -252,8 +252,10 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		if (build.hasPhpCgiExe())
 			env.put(ENV_TEST_PHP_CGI_EXECUTABLE, build.getPhpCgiExe());
 		
+		//
+		env.put(ENV_PFTT_SCENARIO_SET, scenario_set.getNameWithVersionInfo());
+		env.put(AbstractPhptTestCaseRunner.ENV_PFTT_IS, "1");
 		
-		//env.put(ENV_CONTENT_TYPE, "application/x-www-form-urlencoded");
 		
 		prepareSTDIN();
 		createShellScript();

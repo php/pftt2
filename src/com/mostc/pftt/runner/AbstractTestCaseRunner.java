@@ -1,6 +1,11 @@
 package com.mostc.pftt.runner;
 
 public abstract class AbstractTestCaseRunner {
+	/** PFTT extension: this ENV var provides the ScenarioSet PFTT is running */
+	public static final String ENV_PFTT_SCENARIO_SET = "PFTT_SCENARIO_SET";
+	/** PFTT extension: tells test case its running under PFTT instead of run-test.php or phpunit */
+	public static final String ENV_PFTT_IS = "PFTT_IS";
+	
 	/** returns output from SAPI (ex: Web Server) used to run the test,
 	 * if it crashed. if SAPI did not crash, returns null.
 	 * 

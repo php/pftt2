@@ -14,6 +14,7 @@ import com.mostc.pftt.host.AHost.ExecHandle;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.DebuggerManager;
 import com.mostc.pftt.util.DebuggerManager.Debugger;
 import com.mostc.pftt.util.ErrorUtil;
@@ -52,7 +53,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 	}
 	
 	@Override
-	protected WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, final String docroot, final boolean debugger_attached, final Object server_name) {
+	protected WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String,String> env, final String docroot, final boolean debugger_attached, final Object server_name) {
 		String sapi_output = "";
 		int port_attempts;
 		boolean found_port;
@@ -91,7 +92,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 			AHost.ExecHandle handle = null;
 			try {
 				// provide a ManagedProcessWebServerInstance to handle the running web server instance
-				final ManagedProcessWebServerInstance web = createManagedProcessWebServerInstance(cm, host, build, ini, env, docroot, listen_address, port);
+				final ManagedProcessWebServerInstance web = createManagedProcessWebServerInstance(cm, host, scenario_set, build, ini, env, docroot, listen_address, port);
 				if (web==null)
 					break; // fall through to returning CrashedWebServerInstance
 				
@@ -180,19 +181,26 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 		return new CrashedWebServerInstance(this, ini, env, sapi_output);
 	} // end protected WebServerInstance createWebServerInstance
 	
-	protected abstract ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String, String> env, String docroot, String listen_address, int port);
+	protected abstract ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String, String> env, String docroot, String listen_address, int port);
 	
 	public abstract class ManagedProcessWebServerInstance extends WebServerInstance {
 		protected Debugger debug_handle;
 		protected final int port;
 		protected final String hostname, cmd;
+		protected final String docroot;
 		protected ExecHandle process;
 		
-		public ManagedProcessWebServerInstance(AbstractManagedProcessesWebServerManager ws_mgr, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port) {
+		public ManagedProcessWebServerInstance(AbstractManagedProcessesWebServerManager ws_mgr, String docroot, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port) {
 			super(ws_mgr, LocalHost.splitCmdString(cmd), ini, env);
+			this.docroot = docroot;
 			this.cmd = cmd;
 			this.hostname = hostname;
 			this.port = port;
+		}
+		
+		@Override
+		public String getDocroot() {
+			return docroot;
 		}
 		
 		@Override
@@ -230,6 +238,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 
 		@Override
 		protected void do_close() {
+			//new IllegalStateException("do_close").printStackTrace();
 			if (debug_handle!=null)// && debug_handle.isRunning())
 				return; // TODO
 			
@@ -241,6 +250,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 			//if (debug_handle!=null)
 				//debug_handle.close();
 			
+			// TODO why is #do_close called so much??
 			process.close();
 				//}}, 5000);
 		}

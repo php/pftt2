@@ -9,6 +9,8 @@ import java.util.List;
 
 import org.apache.commons.net.ftp.FTPClient;
 import org.codehaus.groovy.control.CompilationFailedException;
+import org.codehaus.groovy.control.CompilerConfiguration;
+import org.codehaus.groovy.control.customizers.ImportCustomizer;
 import org.codehaus.groovy.runtime.metaclass.MissingMethodExceptionNoStack;
 import org.codehaus.groovy.runtime.metaclass.MissingPropertyExceptionNoStack;
 import org.columba.ristretto.smtp.SMTPProtocol;
@@ -22,6 +24,7 @@ import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.scenario.ApplicationScenario;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.scenario.app.JoomlaScenario;
 
 import groovy.lang.GroovyClassLoader;
 import groovy.lang.GroovyObject;
@@ -181,6 +184,13 @@ public final class Config {
 	public static Config loadConfigFromFiles(ConsoleManager cm, File... files) throws CompilationFailedException, InstantiationException, IllegalAccessException, IOException {
 		GroovyClassLoader loader = new GroovyClassLoader(Config.class.getClassLoader());
 		
+		/*ImportCustomizer ic = new ImportCustomizer();
+		ic.addImports("");
+		
+		CompilerConfiguration cc;
+		cc.addCompilationCustomizers(ic);
+		*/
+		
 		Config config = new Config();
 		
 		// don't load default scenarios. configuration file(s) completely replace them (not merged)
@@ -190,7 +200,7 @@ public final class Config {
 		GroovyObject go;
 		Class<?> clazz;
 		for (File file : files) {
-			clazz = loader.parseClass(importString(IOUtil.toString(new FileInputStream(file), IOUtil.QUARTER_MEGABYTE)));
+			clazz = loader.parseClass(importString(IOUtil.toString(new FileInputStream(file), IOUtil.QUARTER_MEGABYTE)), file.getAbsolutePath());
 			
 			go = (GroovyObject) clazz.newInstance();
 			
@@ -207,7 +217,7 @@ public final class Config {
 		// import all standard Scenarios and Host types
 		sb.append("import ");sb.append(PhpUnitSourceTestPack.class.getPackage().getName());sb.append(".*;\n");
 		sb.append("import ");sb.append(PhptTestCase.class.getPackage().getName());sb.append(".*;\n");
-		sb.append("import ");sb.append(ApplicationScenario.class.getPackage().getName());sb.append(".*;\n");
+		sb.append("import ");sb.append(JoomlaScenario.class.getPackage().getName());sb.append(".*;\n");
 		sb.append("import ");sb.append(Scenario.class.getPackage().getName());sb.append(".*;\n");
 		sb.append("import ");sb.append(AHost.class.getPackage().getName());sb.append(".*;\n");
 		sb.append("import ");sb.append(SMTPProtocol.class.getName());sb.append(";\n");

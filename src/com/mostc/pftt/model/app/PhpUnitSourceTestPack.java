@@ -197,15 +197,15 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 			} else if (file.getName().endsWith("Test.php")) {
 				String file_name = Host.pathFrom(php_unit_dist.path.getAbsolutePath(), file.getAbsolutePath());
 				
-				String test_name = PhpUnitTestCase.normalizeFileName(file_name);
+				String test_file_name = PhpUnitTestCase.normalizeFileName(file_name);
 				
-				if (blacklist_test_names.contains(test_name))
+				if (blacklist_test_names.contains(test_file_name))
 					continue;
-				else if (!whitelist_test_names.isEmpty() && !whitelist_test_names.contains(test_name))
+				else if (!whitelist_test_names.isEmpty() && !whitelist_test_names.contains(test_file_name))
 					continue;
 				
 				try {
-					readTestFile(php_unit_dist, test_cases, file);
+					readTestFile(test_file_name, php_unit_dist, test_cases, file);
 				} catch ( QuercusParseException ex ) {
 					ex.printStackTrace();
 				}
@@ -216,12 +216,13 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	
 	/** reads PhpUnitTestCase(s) from given PHP file
 	 * 
+	 * @param test_file_name
 	 * @param php_unit_dist
 	 * @param test_cases
 	 * @param file
 	 * @throws IOException
 	 */
-	protected void readTestFile(PhpUnitDist php_unit_dist, List<PhpUnitTestCase> test_cases, File file) throws IOException {
+	protected void readTestFile(String test_file_name, PhpUnitDist php_unit_dist, List<PhpUnitTestCase> test_cases, File file) throws IOException {
 		FileInputStream fin = new FileInputStream(file);
 		QuercusParser p = new QuercusParser(qctx, new FilePath(file.getAbsolutePath()), new ReadStream(new FileReadStream(fin)));
 		QuercusProgram prog = p.parse();
@@ -239,7 +240,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 					// this is a test case
 					test_cases.add(new PhpUnitTestCase(
 							php_unit_dist,
-							file.getAbsolutePath(),
+							test_file_name,
 							// some PhpUnits use the namespace keyword and/or \\ in the class name (namespaces)
 							// InterpretedclassDef#getName will provide the absolute class name (including namespace)
 							// in such cases, so nothing special needs to be done here for them

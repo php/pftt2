@@ -2,7 +2,6 @@ package com.mostc.pftt.model.sapi;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
-import java.util.HashMap;
 import java.util.Map;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -59,14 +58,14 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		try {
 			if (!host.isWindows())
 				return true;
-			String os = apache_dir + "\\bin\\openssl.exe";
-			if (!host.exists(os)) {
+			final String openssl_exe = apache_dir + "\\bin\\openssl.exe";
+			if (!host.exists(openssl_exe)) {
 				// can't check
 				cm.println(EPrintType.SKIP_OPTIONAL, ApacheManager.class, "Can't find OpenSSL.exe (can't check OpenSSL version, assuming its ok)");
 				return true;
 			}
 		
-			ExecOutput eo = host.execOut("\""+os+"\" version", Host.ONE_MINUTE);
+			ExecOutput eo = host.execOut("\""+openssl_exe+"\" version", Host.ONE_MINUTE);
 			
 			return build.checkOpenSSLVersion(eo.output);
 		} catch ( Exception ex ) {
@@ -136,7 +135,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 	private Host cache_host;
 	private String cache_httpd;
 	@Override
-	protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String, String> env, final String docroot, String listen_address, int port) {
+	protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String, String> env, final String docroot, String listen_address, int port) {
 		EApacheVersion apache_version = decideApacheVersion(cm, host, build, this._apache_version);
 		
 		String httpd = httpd(apache_version, host);
@@ -197,7 +196,9 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		}
 		
 		// CRITICAL: must add extension dir (and fix path) AND it MUST end with \ (Windows) or / (Linux)
-		if (StringUtil.isEmpty(ini.getExtensionDir()))
+		if (ini==null)
+			ini = new PhpIni();
+		else if (StringUtil.isEmpty(ini.getExtensionDir()))
 			ini.setExtensionDir(host.fixPath(build.getDefaultExtensionDir())+host.dirSeparator());
 		else if (!ini.getExtensionDir().endsWith(host.dirSeparator()))
 			// extension dir already set, but doesn't end with / or \
@@ -208,13 +209,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		final String apache_conf_file = host.joinIntoOnePath(conf_dir, "httpd.conf");
 		final String error_log = host.joinIntoOnePath(conf_dir, "error.log");
 		
-		if (env==null)
-			env = new HashMap<String,String>(2);
-		// tell apache mod_php where to find php.ini
-		env.put("PHPRC", php_conf_file);
-		// these 2 env vars are needed for some phpts
-		env.put("TEST_PHP_EXECUTABLE", httpd);
-		env.put("TEST_PHP_CGI_EXECUTABLE", build.getPhpCgiExe());
+		env = prepareENV(env, php_conf_file, build, scenario_set, httpd);
 		
 		// apache configuration (also tells where to find php.ini. see PHPIniDir directive)
 		String conf_str = writeConfigurationFile(apache_version, host, dll, conf_dir, error_log, listen_address, port, docroot);
@@ -235,7 +230,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		final String cmdline = httpd+" -X -f "+host.fixPath(apache_conf_file);
 		
 		// @see #createWebServerInstance for where command is executed to create httpd.exe process
-		return new ApacheWebServerInstance(apache_version, this, cmdline, ini, env, listen_address, port, host, conf_dir, apache_conf_file, error_log);
+		return new ApacheWebServerInstance(apache_version, this, docroot, cmdline, ini, env, listen_address, port, host, conf_dir, apache_conf_file, error_log);
 	} // end protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance
 	
 	public class ApacheWebServerInstance extends ManagedProcessWebServerInstance {
@@ -244,8 +239,8 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		protected final EApacheVersion apache_version;
 		protected WeakReference<String> log_ref;
 		
-		public ApacheWebServerInstance(EApacheVersion apache_version, ApacheManager ws_mgr, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port, AHost host, String conf_dir, String apache_conf_file, String error_log) {
-			super(ws_mgr, cmd, ini, env, hostname, port);
+		public ApacheWebServerInstance(EApacheVersion apache_version, ApacheManager ws_mgr, String docroot, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port, AHost host, String conf_dir, String apache_conf_file, String error_log) {
+			super(ws_mgr, docroot, cmd, ini, env, hostname, port);
 			this.apache_version = apache_version;
 			this.host = host;
 			this.conf_dir = conf_dir;

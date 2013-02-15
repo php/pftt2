@@ -3,6 +3,7 @@ package com.mostc.pftt.model.sapi;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -12,6 +13,8 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
+import com.mostc.pftt.scenario.ScenarioSet;
 
 /** Manages a certain type of web server, such as PHP's builtin web server.
  * 
@@ -77,6 +80,7 @@ public abstract class WebServerManager extends SAPIManager {
 	 * 
 	 * @param cm
 	 * @param host
+	 * @param scenario_set
 	 * @param build
 	 * @param ini
 	 * @param env
@@ -88,7 +92,7 @@ public abstract class WebServerManager extends SAPIManager {
 	 * @see WebServerInstance#isDebuggerAttached
 	 * @return
 	 */
-	public WebServerInstance getWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, final String docroot, WebServerInstance assigned, boolean debugger_attached, Object server_name) {
+	public WebServerInstance getWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String,String> env, final String docroot, WebServerInstance assigned, boolean debugger_attached, Object server_name) {
 		WebServerInstance sapi;
 		if (assigned!=null) {
 			if (assigned.isRunning() && (!debugger_attached||assigned.isDebuggerAttached()))
@@ -103,12 +107,12 @@ public abstract class WebServerManager extends SAPIManager {
 				}
 			}
 			
-			assigned.replacement = sapi = createWebServerInstance(cm, host, build, ini, env, docroot, debugger_attached, server_name);
+			assigned.replacement = sapi = createWebServerInstance(cm, host, scenario_set, build, ini, env, docroot, debugger_attached, server_name);
 			synchronized(assigned.active_test_cases) {
 				sapi.active_test_cases.addAll(assigned.active_test_cases);
 			}
 		} else {
-			sapi = createWebServerInstance(cm, host, build, ini, env, docroot, debugger_attached, server_name);
+			sapi = createWebServerInstance(cm, host, scenario_set, build, ini, env, docroot, debugger_attached, server_name);
 		}
 		if (sapi.isRunning()) {
 			synchronized(instances) {
@@ -118,7 +122,21 @@ public abstract class WebServerManager extends SAPIManager {
 		return sapi;
 	}
 	
-	protected abstract WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, boolean debugger_attached, Object server_name);
+	protected Map<String,String> prepareENV(Map<String,String> env, String php_conf_file, PhpBuild build, ScenarioSet scenario_set, String httpd_exe) {
+		if (env==null)
+			env = new HashMap<String,String>(2);
+		// tell apache mod_php where to find php.ini
+		env.put(AbstractPhptTestCaseRunner.ENV_PHPRC, php_conf_file);
+		// these 2 env vars are needed for some phpts
+		env.put(AbstractPhptTestCaseRunner.ENV_TEST_PHP_EXECUTABLE, httpd_exe);
+		env.put(AbstractPhptTestCaseRunner.ENV_TEST_PHP_CGI_EXECUTABLE, build.getPhpCgiExe());
+		//
+		env.put(AbstractPhptTestCaseRunner.ENV_PFTT_SCENARIO_SET, scenario_set.getNameWithVersionInfo());
+		env.put(AbstractPhptTestCaseRunner.ENV_PFTT_IS, "1");
+		return env;
+	}
+	
+	protected abstract WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, boolean debugger_attached, Object server_name);
 	
 	/** some web servers can only have one active instance at any one time
 	 * 

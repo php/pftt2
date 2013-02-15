@@ -1,6 +1,7 @@
 package com.mostc.pftt.runner;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.Map;
@@ -29,7 +30,6 @@ import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.ErrorUtil;
 
-// TODO intl extension not available
 public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	protected final WebServerManager smgr;
 	protected final ByteArrayOutputStream response_bytes;
@@ -60,16 +60,19 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 
 	@Override
 	protected String execute(String template_file) throws IOException, Exception {
-		host.saveTextFile(my_temp_dir+"/php.ini", ini.toString());
+		// TODO handle INI with test-pack runner
+		// host.saveTextFile(my_temp_dir+"/php.ini", ini.toString());
+		if (web!=null && !new File(web.getDocroot()).equals(new File(my_temp_dir)))
+			web = null;
 		
 		String resp = http_execute("/test.php");
 		
-		if (resp.contains("404")) {
+		/*if (resp.contains("404")) {
 			System.out.println("404 "+web);
 			System.exit(0);
-		}
+		}*/
 			
-		web.close();
+		//web.close();
 		
 		return resp;
 	}
@@ -135,7 +138,7 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 		try {
 			if (web!=null) {
 				synchronized(web) {
-					WebServerInstance _web = smgr.getWebServerInstance(cm, host, build, ini, env, my_temp_dir, web, false, test_case);
+					WebServerInstance _web = smgr.getWebServerInstance(cm, host, scenario_set, build, ini, env, my_temp_dir, web, false, test_case);
 					if (_web!=this.web) {
 						this.web = _web;
 						is_replacement = true;
@@ -154,7 +157,7 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 			if (web==null) {
 				// test should be a FAIL or CRASH
 				// its certainly the fault of a test (not PFTT) if not this test
-				this.web = smgr.getWebServerInstance(cm, host, build, ini, env, my_temp_dir, web, false, test_case);
+				web = smgr.getWebServerInstance(cm, host, scenario_set, build, ini, env, my_temp_dir, web, false, test_case);
 				
 				if (web==null||web.isCrashed()) {
 					markTestAsCrash();
@@ -182,7 +185,6 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 					// debug them. if user doesn't, they'll click close in WER popup
 					web.close();
 				}
-			
 			}
 		}
 	}

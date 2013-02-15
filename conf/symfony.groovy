@@ -45,7 +45,7 @@ class SymfonyPhpUnitTestPack extends PhpUnitSourceTestPack {
 	} // end public boolean open
 	
 } // end class SymfonyPhpUnitTestPack
-
+getBinding().setVariable("SymfonyPhpUnitTestPack", SymfonyPhpUnitTestPack);
 def getPhpUnitSourceTestPack() {
 	// test symfony
 	return new SymfonyPhpUnitTestPack();

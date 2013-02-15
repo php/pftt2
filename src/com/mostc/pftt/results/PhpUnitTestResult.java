@@ -65,6 +65,8 @@ public class PhpUnitTestResult {
 			serial.text(output);
 			serial.endTag(null, "failure");
 			break;
+		default:
+			break;
 		}
 		serial.endTag(null, "testcase");
 	} // end public void serial
