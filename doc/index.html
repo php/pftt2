@@ -97,24 +97,24 @@ For convenience can do</p>
 <code>pftt rg MASTER TS rc165a0b</code>
 
 <p>Run all PHPTs from the test-pack</p>
-<code>pftt phpt_all C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567</code>
+<code>pftt core_all C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567</code>
 
 <p>Runs PHPTs only from list in SKIP_list_file (can add comments to lists with a ; or #)</p>
-<code>pftt phpt_list C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 SKIP_list_file</code>
+<code>pftt core_list C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 SKIP_list_file</code>
 
 <p>Runs PHPTs that contain 021 (name fragment) in their name</p>
-<code>pftt phpt_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 021</code>
+<code>pftt core_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 021</code>
 
 <p><b>NOTE:</b> On Windows PFTT will prompt you to elevate it to Administrator privileges for some operations to configure Windows Error Reporting and firewall</p>
 
 <p>If build or test-pack not in current directory, automatically checks php-sdk (so you can ommit c:\php-sdk, etc...)</p>
 
-<code>pftt phpt_all php-5.4.7-win32-vc9-x86 php-test-pack-5.4-r1234567</code>
+<code>pftt core_all php-5.4.7-win32-vc9-x86 php-test-pack-5.4-r1234567</code>
 
 <p>Opens a GUI to efficiently review large amounts of tests</p>
-<code>pftt -gui phpt_all C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567</code>
-<code>pftt -gui -config config_file phpt_list C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 </code>
-<code>pftt -gui -config config_file phpt_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567</code>
+<code>pftt -gui core_all C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567</code>
+<code>pftt -gui -config config_file core_list C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 </code>
+<code>pftt -gui -config config_file core_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567</code>
 
 <p><a href="PhptDebuggerFrame1.png" target="_new"><img src="PhptDebuggerFrame1.png" width="640" border="0"/></a></p>
 
@@ -122,26 +122,26 @@ For convenience can do</p>
 <code>pftt -help</code>
 
 <p>Run all PHPTs from the test-pack, running each PHPT 3 times</p> 
-<code>pftt -stress_each 3 phpt_all C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567</code>
+<code>pftt -stress_each 3 core_all C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567</code>
 
 <h2>Functional Build Comparison(FBC) Reports</h2>
 
 <p>Run one test pass</p>
 <code>
-pftt phpt_all C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567
+pftt core_all C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567
 <span>Or</span>
-pftt phpt_list C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 SKIP_list_file
+pftt core_list C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 SKIP_list_file
 <span>Or</span>
-pftt phpt_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 021
+pftt core_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 021
 </code>
 
 <p>Run a second test pass, using a different build and/or test-pack</p>
 <code>
 pftt pa C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234568
 <span>Or</span>
-pftt phpt_list C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234568 SKIP_list_file
+pftt core_list C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234568 SKIP_list_file
 <span>Or</span>
-pftt phpt_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234568 021
+pftt core_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234568 021
 </code>
 
 <p>PFTT will automatically generate an FBC report and display it using system default web browser</p>
@@ -150,7 +150,7 @@ pftt phpt_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-
 <code>pftt -config iis,wordpress,mysql setup</code>
 
 <p>Run PHPT tests on Apache (instead of CLI)</p>
-<code>pftt -config apache phpt_all C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 Or pftt phpt_list C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 SKIP_list_file Or pftt phpt_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 021</code>
+<code>pftt -config apache core_all C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 Or pftt core_list C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 SKIP_list_file Or pftt core_named C:\php-sdk\php-5.4.7-win32-vc9-x86 C:\php-sdk\php-test-pack-5.4-r1234567 021</code>
 
 
 <h1>Development</h1>
@@ -209,7 +209,7 @@ That should be it (PFTT comes with eclipse .project and .classpath files which a
 
 <ol>
 <li>Create a list of the tests that are crashing or might be crashing</li>
-<li>Run with -debug_all and phpt_list</li>
+<li>Run with -debug_all and core_list</li>
 </ol>
 
 <p>This will run all the tests in a Debugger (WinDebug for Windows and GDB for Linux). Do 1 first to reduce the number of tests to run since they'll run much slower in a debugger.</p>
@@ -218,7 +218,7 @@ That should be it (PFTT comes with eclipse .project and .classpath files which a
 
 <h3>For tests that crash occasionally</h3>
 
-<p>These options may be useful with phpt_list or phpt_all or phpt_named. -run_group_times_all, -run_test_times and -debug_list especially.</p> 
+<p>These options may be useful with core_list or core_all or core_named. -run_group_times_all, -run_test_times and -debug_list especially.</p> 
 
 <ul>
 <li>-run_test_times_all <N> - runs each test N times in a row/consecutively</li>

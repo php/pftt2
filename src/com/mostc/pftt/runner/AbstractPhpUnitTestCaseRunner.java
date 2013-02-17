@@ -13,6 +13,7 @@ import com.mostc.pftt.model.app.EPhpUnitTestStatus;
 import com.mostc.pftt.model.app.PhpUnitTemplate;
 import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhpUnitTestResult;
@@ -51,9 +52,10 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 	protected final PhpBuild build;
 	protected final PhpUnitTestCase test_case;
 	protected final String my_temp_dir;
+	protected final PhpIni ini;
 	protected boolean is_crashed;
 
-	public AbstractPhpUnitTestCaseRunner(ITestResultReceiver tmgr, Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files) {
+	public AbstractPhpUnitTestCaseRunner(ITestResultReceiver tmgr, Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini) {
 		this.tmgr = tmgr;
 		this.globals = globals;
 		this.env = env;
@@ -66,6 +68,7 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 		this.constants = constants;
 		this.include_path = include_path;
 		this.include_files = include_files;
+		this.ini = ini;
 	}
 	
 	protected static Pattern PAT_CLASS_NOT_FOUND, PAT_REQUIRE_ONCE_FAIL, PAT_SYNTAX_ERROR, PAT_FATAL_ERROR;
@@ -132,19 +135,19 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 		//
 
 		EPhpUnitTestStatus status;
-		if (PAT_REQUIRE_ONCE_FAIL.matcher(output).find() || output.contains("404 Not Found")) { // TODO only check 404 w/ Http
+		if (checkRequireOnceError(output)) {
 			status = EPhpUnitTestStatus.TEST_EXCEPTION;
 			
-			tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output));
+			tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, getCrashedSAPIOutput()));
 		} else if (is_crashed) {
 			if (PAT_CLASS_NOT_FOUND.matcher(output).find()) {
 				status = EPhpUnitTestStatus.UNSUPPORTED;
 				
-				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output));
+				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, getCrashedSAPIOutput()));
 			} else if (PAT_FATAL_ERROR.matcher(output).find()) {
 				status = EPhpUnitTestStatus.ERROR;
 				
-				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output));
+				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, getCrashedSAPIOutput()));
 			} else {
 				// CRASH may really be a syntax error (BORK), check to make sure
 				final ExecOutput syntax_eo = host.execOut(build.getPhpExe()+" -l "+template_file, Host.ONE_MINUTE, test_case.php_unit_dist.path.getAbsolutePath());
@@ -152,11 +155,11 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 					// its a syntax error - BORK, as test case can't run
 					status = EPhpUnitTestStatus.BORK;
 					
-					tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, syntax_eo.output));
+					tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, syntax_eo.output, ini, getCrashedSAPIOutput()));
 				} else {
 					status = EPhpUnitTestStatus.CRASH;
 					
-					tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output));
+					tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, getCrashedSAPIOutput()));
 				}
 			}
 		} else {
@@ -204,14 +207,22 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 			if (status.isNotPass()) {
 				final String output_str = StringUtil.join(lines, 1, "\n");
 				
-				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output_str));
+				tmgr.addResult(host, scenario_set, notifyNotPass(new PhpUnitTestResult(test_case, status, scenario_set, host, output_str, ini, getCrashedSAPIOutput())));
 			} else {
-				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, null));
+				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, null, ini, getCrashedSAPIOutput()));
 			}
 		}
 		
 		host.delete(my_temp_dir);
 	} // end public void runTest
+	
+	protected PhpUnitTestResult notifyNotPass(PhpUnitTestResult result) {
+		return result;
+	}
+	
+	protected boolean checkRequireOnceError(String output) {
+		return PAT_REQUIRE_ONCE_FAIL.matcher(output).find();
+	}
 
 	/** configures PhpUnit globals to use the given database.
 	 * 

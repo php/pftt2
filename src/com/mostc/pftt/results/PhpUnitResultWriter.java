@@ -16,8 +16,10 @@ import javax.annotation.concurrent.NotThreadSafe;
 
 import org.kxml2.io.KXmlSerializer;
 
+import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.model.app.EPhpUnitTestStatus;
-import com.mostc.pftt.util.PFTTVersionUtil;
+import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
+import com.mostc.pftt.scenario.ScenarioSet;
 
 /** Writes PhpUnitTestResults from a single test run with a single scenario set on a single host with a single build.
  * 
@@ -44,12 +46,12 @@ public class PhpUnitResultWriter {
 	private String last_test_suite_name;
 	private int test_count, percent_total, pass, failure, error, warning, notice, skip, deprecated, not_implemented, unsupported, test_exception, crash, bork, xskip;
 	
-	public PhpUnitResultWriter(File dir) throws FileNotFoundException, IOException {
+	public PhpUnitResultWriter(File dir, ScenarioSet scenario_set, PhpUnitSourceTestPack test_pack) throws FileNotFoundException, IOException {
 		this.dir = dir;
 		dir.mkdirs();
 		
-		// TODO include hosts or scenario-set in file name because that will make it easier to view a bunch of them in Notepad++ or other MDIs
-		File file = new File(dir+"/phpunit.xml");
+		// include scenario-set in file name to make it easier to view a bunch of them in Notepad++ or other MDIs
+		File file = new File(dir+"/phpunit_"+test_pack.getName()+"_"+scenario_set.getNameWithVersionInfo()+".xml");
 		
 		// XXX write host, scenario_set and build to file (do in #writeTally or #close)
 		serial  = new KXmlSerializer();
@@ -109,16 +111,15 @@ public class PhpUnitResultWriter {
 		
 		
 		// write file header
-		String test_suite_name = null; // TODO result.test_case.php_unit_dist.getName();
+		String test_suite_name = result.test_case.php_unit_dist!=null && result.test_case.php_unit_dist.path!=null ? result.test_case.php_unit_dist.path.getPath() : null;
 		if (is_first_result) {
 			serial.startDocument("utf-8",  null);
 			serial.setPrefix("pftt", "pftt");
 			serial.startTag(null, "testsuites");
-			if (test_suite_name==null)
-				writeTestSuiteStart(test_suite_name);
+			writeTestSuiteStart(test_suite_name);
 			
 			is_first_result = false;
-		} else if (test_suite_name!=null && last_test_suite_name != null && test_suite_name.equals(last_test_suite_name)) {
+		} else if (test_suite_name!=null && last_test_suite_name != null && !test_suite_name.equals(last_test_suite_name)) {
 			writeTestSuiteEnd();
 			writeTestSuiteStart(test_suite_name);
 		}
@@ -179,7 +180,8 @@ public class PhpUnitResultWriter {
 	
 	private void writeTestSuiteStart(String test_suite_name) throws IllegalArgumentException, IllegalStateException, IOException {
 		serial.startTag(null, "testsuite");
-		// TODO serial.attribute(null, "name", test_suite_name);
+		if (StringUtil.isNotEmpty(test_suite_name))
+			serial.attribute(null, "name", test_suite_name);
 	}
 	
 	private void writeTestSuiteEnd() throws IllegalArgumentException, IllegalStateException, IOException {

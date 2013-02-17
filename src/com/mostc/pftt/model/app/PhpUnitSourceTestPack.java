@@ -10,6 +10,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.Nullable;
+
 import com.caucho.quercus.QuercusContext;
 import com.caucho.quercus.function.AbstractFunction;
 import com.caucho.quercus.parser.QuercusParseException;
@@ -35,7 +37,12 @@ import com.mostc.pftt.results.ITestResultReceiver;
  *    and provide all the information from the phpunit.dist.xml file.
  *    the Javadoc on the PhpUnitDist methods explains which method matches which XML tag.
  * 4. provide files and directories to include to PhpUnitSourceTestPack (optional)
- * 5. you may provide some additional info to PhpUnitSourceTestPack (optional; mainly, its just doing steps 3 and 4) 
+ * 5. check if any tests are non-thread-safe (NTS) and if so, add their file names or partial file names
+ *    to the list returned by PhpUnitSourceTestPack#getNonThreadSafeTestFileNames
+ *    
+ *    To speed test running, making testing more convenient and thus done more frequently and thoroughly,
+ *    test running is threaded, so multiple tests are run at the same time except for NTS tests.
+ * 6. you may provide some additional info to PhpUnitSourceTestPack (optional; mainly, its just doing steps 3 and 4) 
  * 
  * @author Matt Ficken
  *
@@ -316,5 +323,23 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	
 	public abstract String getVersionString();
 	public abstract boolean open(ConsoleManager cm, AHost host) throws Exception;
+
+	public String getName() {
+		return getVersionString();
+	}
+
+	/** Sometimes there are multiple tests that share a common resource (such as a file directory
+	 * or database) and can not be run at the same time. Such tests are non-thread-safe (NTS).
+	 * 
+	 * Return the full or partial filenames of NTS tests here. The returned array is processed in
+	 * order. If any string from the same string array matches, all tests matching that array will
+	 * be run in the same thread.
+	 * 
+	 * @return
+	 */
+	@Nullable
+	public String[][] getNonThreadSafeTestFileNames() {
+		return null;
+	}
 	
 } // end public abstract class PhpUnitSourceTestPack

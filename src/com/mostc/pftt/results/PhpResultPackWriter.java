@@ -11,6 +11,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.TestCase;
+import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
 import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.EBuildSourceType;
 import com.mostc.pftt.model.core.ECPUArch;
@@ -177,13 +178,13 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 			PhpUnitResultWriter w;
 			if (smap==null) {
 				smap = new HashMap<ScenarioSet,PhpUnitResultWriter>();
-				w = new PhpUnitResultWriter(phpunit_telem_dir(this_host, this_scenario_set));
+				w = new PhpUnitResultWriter(phpunit_telem_dir(this_host, this_scenario_set, this_result.test_case.php_unit_dist.src_test_pack), this_scenario_set, this_result.test_case.php_unit_dist.src_test_pack);
 				phpunit_writer_map.put(this_host, smap);
 				smap.put(this_scenario_set, w);
 			} else {
 				w = smap.get(this_scenario_set);
 				if (w==null) {
-					w = new PhpUnitResultWriter(phpunit_telem_dir(this_host, this_scenario_set));
+					w = new PhpUnitResultWriter(phpunit_telem_dir(this_host, this_scenario_set, this_result.test_case.php_unit_dist.src_test_pack), this_scenario_set, this_result.test_case.php_unit_dist.src_test_pack);
 					smap.put(this_scenario_set, w);
 				}
 			}
@@ -268,8 +269,8 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		results.add(new PhptResultQueueEntry(this_host, this_scenario_set, result));
 	}
 	
-	protected File phpunit_telem_dir(AHost this_host, ScenarioSet this_scenario_set) {
-		return new File(host.joinIntoOnePath(telem_dir.getAbsolutePath(), this_host.getName(), "PhpUnit", this_scenario_set.toString()));
+	protected File phpunit_telem_dir(AHost this_host, ScenarioSet this_scenario_set, PhpUnitSourceTestPack test_pack) {
+		return new File(host.joinIntoOnePath(telem_dir.getAbsolutePath(), this_host.getName(), "PhpUnit", test_pack.getName(), this_scenario_set.toString()));
 	}
 	
 	protected File phpt_telem_dir(AHost this_host, ScenarioSet this_scenario_set) {

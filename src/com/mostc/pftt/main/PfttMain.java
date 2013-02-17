@@ -13,62 +13,35 @@ import java.io.InputStreamReader;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
-import org.apache.http.HttpRequestInterceptor;
-import org.apache.http.HttpVersion;
-import org.apache.http.params.HttpParams;
-import org.apache.http.params.HttpProtocolParams;
-import org.apache.http.params.SyncBasicHttpParams;
-import org.apache.http.protocol.HttpProcessor;
-import org.apache.http.protocol.HttpRequestExecutor;
-import org.apache.http.protocol.ImmutableHttpProcessor;
-import org.apache.http.protocol.RequestConnControl;
-import org.apache.http.protocol.RequestContent;
-import org.apache.http.protocol.RequestExpectContinue;
-import org.apache.http.protocol.RequestTargetHost;
-import org.apache.http.protocol.RequestUserAgent;
 import org.codehaus.groovy.tools.shell.Groovysh;
 import org.codehaus.groovy.tools.shell.IO;
 
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
-import com.mostc.pftt.host.SSHHost;
 import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
-import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.EBuildType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpDebugPack;
 import com.mostc.pftt.model.core.PhptSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
-import com.mostc.pftt.model.sapi.ApacheManager;
-import com.mostc.pftt.model.sapi.WebServerInstance;
-import com.mostc.pftt.model.sapi.WebServerManager;
 import com.mostc.pftt.model.smoke.ESmokeTestStatus;
 import com.mostc.pftt.model.smoke.PhptTestCountsMatchSmokeTest;
 import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.model.smoke.RequiredFeaturesSmokeTest;
 import com.mostc.pftt.report.AbstractReportGen;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.LocalConsoleManager;
 import com.mostc.pftt.results.PhpResultPackReader;
 import com.mostc.pftt.results.PhpResultPackWriter;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
-import com.mostc.pftt.runner.AbstractPhpUnitTestCaseRunner;
-import com.mostc.pftt.runner.CliPhpUnitTestCaseRunner;
-import com.mostc.pftt.runner.HttpPhpUnitTestCaseRunner;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner;
 import com.mostc.pftt.scenario.AbstractSAPIScenario;
-import com.mostc.pftt.scenario.AbstractSMBScenario.SMBStorageDir;
-import com.mostc.pftt.scenario.SMBDFSScenario;
-import com.mostc.pftt.scenario.SMBDeduplicationScenario;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.DownloadUtil;
@@ -83,14 +56,20 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
  * 
  * @author Matt Ficken
  * 
+ * To Learn about the details of PHP Testing, PHPT, PhpUnit, Debugging or Configuration, see these classes:
+ * -ApacheManager IISManager BuiltinWebServerManager
+ * -PhptTestCase AbstractPhptTestCaseRunner2
+ * -PhpBuild
+ * -PhpUnitTestCase AbstractPhpUnitTestCaseRunner
+ * 
+ * 
  */
 
-// TODO phpunit_list phpunit_all phpunit_named commands
 // TODO change how ScenarioSets are permuted
 //        can have multiple database scenarios in 1 ScenarioSet for PHPTs
 //        can only have 1 for applications
 //        can only have 1 for PhpUnit
-// TODO phpt_all, etc... should display location of result-pack being written
+// TODO core_all, etc... should display location of result-pack being written
 public class PfttMain {
 	protected LocalHost host;
 	
@@ -260,10 +239,10 @@ public class PfttMain {
 		System.out.println("Usage: pftt <optional options> <command>");
 		System.out.println();
 		System.out.println("Commands:");
-		System.out.println("phpt_all <build> <test-pack> - runs all tests in given test pack");
+		System.out.println("core_all <build> <test-pack> - runs all tests in given test pack");
 		System.out.println("phpt_repro <build> <test-pack> <XML result-pack file> - replays .XML file from previous result-pack run");
-		System.out.println("phpt_named <build> <test-pack> <test1> <test2> <test name fragment> - runs named tests or tests matching name pattern");
-		System.out.println("phpt_list <build> <test-pack> <file> - runs list of tests stored in file");
+		System.out.println("core_named <build> <test-pack> <test1> <test2> <test name fragment> - runs named tests or tests matching name pattern");
+		System.out.println("core_list <build> <test-pack> <file> - runs list of tests stored in file");
 		System.out.println("custom <build> - runs PFTT specific functional tests (bugs that can not be tested using PHP testsT)");
 		System.out.println("aut - runs Application (PHP)Unit Tests");
 		System.out.println("help");
@@ -370,12 +349,12 @@ public class PfttMain {
 		return config==null?ScenarioSet.getDefaultScenarioSets():config.getScenarioSets();
 	}
 	
-	protected static void cmd_phpt_all(PfttMain rt, LocalConsoleManager cm, Config config, PhpBuild build, PhptSourceTestPack test_pack) throws Exception {
+	protected static void cmd_core_all(PfttMain rt, LocalConsoleManager cm, Config config, PhpBuild build, PhptSourceTestPack test_pack) throws Exception {
 		List<AHost> hosts = config.getHosts();
 		rt.run_all(cm, build, test_pack, hosts.isEmpty() ? new LocalHost() : hosts.get(0), getScenarioSets(config));
 	}
 	
-	protected static void cmd_phpt_list(PfttMain rt, LocalConsoleManager cm, Config config, PhpBuild build, PhptSourceTestPack test_pack, File list_file) throws Exception {
+	protected static void cmd_core_list(PfttMain rt, LocalConsoleManager cm, Config config, PhpBuild build, PhptSourceTestPack test_pack, File list_file) throws Exception {
 		BufferedReader fr = new BufferedReader(new FileReader(list_file));
 		LinkedList<String> tests = new LinkedList<String>();
 		String line;
@@ -396,7 +375,7 @@ public class PfttMain {
 		rt.run_named_tests(cm, build, test_pack, hosts.isEmpty() ? new LocalHost() : hosts.get(0), getScenarioSets(config), tests);
 	}
 	
-	protected static void cmd_phpt_named(PfttMain rt, LocalConsoleManager cm, Config config, PhpBuild build, PhptSourceTestPack test_pack, List<String> names) throws Exception {
+	protected static void cmd_core_named(PfttMain rt, LocalConsoleManager cm, Config config, PhpBuild build, PhptSourceTestPack test_pack, List<String> names) throws Exception {
 		List<AHost> hosts = config.getHosts();
 		rt.run_named_tests(cm, build, test_pack, hosts.isEmpty() ? new LocalHost() : hosts.get(0), getScenarioSets(config), names);
 	}
@@ -811,11 +790,11 @@ public class PfttMain {
 		//
 		
 		if (command!=null) {
-			if (command.equals("phpunit_named")||command.equals("phpunitnamed")||command.equals("pun")) {
+			if (command.equals("app_named")||command.equals("appnamed")||command.equals("an")) {
 				// TODO
-			} else if (command.equals("phpunit_list")||command.equals("phpunitist")||command.equals("pul")) {
+			} else if (command.equals("app_list")||command.equals("applist")||command.equals("al")) {
 				// TODO
-			} else if (command.equals("phpunit_all")||command.equals("phpunitall")||command.equals("pua")) {
+			} else if (command.equals("app_all")||command.equals("appall")||command.equals("aa")) {
 				// TODO
 				ScenarioSet scenario_set = config.getScenarioSets().get(0);
 				// TODO
@@ -830,10 +809,10 @@ public class PfttMain {
 				r.runAllTests(test_pack);
 				
 				tmgr.close();
-			} else if (command.equals("phpt_named")||command.equals("phptnamed")||command.equals("phptn")||command.equals("pn")) {
+			} else if (command.equals("core_named")||command.equals("corenamed")||command.equals("cornamed")||command.equals("coren")||command.equals("cn")) {
 				if (!(args.length > args_i+3)) {
 					System.err.println("User Error: must specify build, test-pack and name(s) and/or name fragment(s)");
-					System.out.println("usage: pftt phpt_named <path to PHP build> <path to PHPT test-pack> <test case names or name fragments (separated by spaces)>");
+					System.out.println("usage: pftt core_named <path to PHP build> <path to PHPT test-pack> <test case names or name fragments (separated by spaces)>");
 					System.exit(-255);
 					return;
 				}
@@ -864,14 +843,14 @@ public class PfttMain {
 				cm.println(EPrintType.IN_PROGRESS, "Test-Pack", test_pack.toString());
 				
 				HostEnvUtil.prepareHostEnv(rt.host, cm, build, !cm.isDisableDebugPrompt());
-				cmd_phpt_named(rt, cm, config, build, test_pack, names);
+				cmd_core_named(rt, cm, config, build, test_pack, names);
 				
 				System.out.println("PFTT: finished");
-			} else if (command.equals("phpt_list")||command.equals("phptlist")||command.equals("phptl")||command.equals("pl")) {
+			} else if (command.equals("core_list")||command.equals("corelist")||command.equals("corlist")||command.equals("corel")||command.equals("cl")) {
 				if (!(args.length > args_i+3)) {
 					System.err.println("User Error: must specify build, test-pack and list file");
 					System.out.println("usage: list file must contain plain-text list names of tests to execute");
-					System.out.println("usage: pftt phpt_list <path to PHP build> <path to PHPT test-pack> <list file>");
+					System.out.println("usage: pftt core_list <path to PHP build> <path to PHPT test-pack> <list file>");
 					System.exit(-255);
 					return;
 				}
@@ -903,7 +882,7 @@ public class PfttMain {
 				cm.println(EPrintType.IN_PROGRESS, "Test-Pack", test_pack.toString());
 				
 				HostEnvUtil.prepareHostEnv(rt.host, cm, build, !cm.isDisableDebugPrompt());
-				cmd_phpt_list(rt, cm, config, build, test_pack, list_file);		
+				cmd_core_list(rt, cm, config, build, test_pack, list_file);		
 				
 				System.out.println("PFTT: finished");
 			} else if (command.equals("phpt_repro")||command.equals("phpt_replay")||command.equals("phpt_re")||command.equals("phptrepro")||command.equals("phptreplay")||command.equals("phptre")||command.equals("pr")) {
@@ -911,10 +890,10 @@ public class PfttMain {
 				
 				// TODO if -c gives config file(s) different from result-pack, show warning
 				
-			} else if (command.equals("phpt_all")||command.equals("phptall")||command.equals("phpta")||command.equals("pa")) {
+			} else if (command.equals("core_all")||command.equals("coreall")||command.equals("corall")||command.equals("corea")||command.equals("ca")) {
 				if (!(args.length > args_i+2)) {
 					System.err.println("User Error: must specify build and test-pack");
-					System.out.println("usage: pftt phpt_all <path to PHP build> <path to PHPT test-pack>");
+					System.out.println("usage: pftt core_all <path to PHP build> <path to PHPT test-pack>");
 					System.exit(-255);
 					return;
 				}
@@ -941,7 +920,7 @@ public class PfttMain {
 				
 				// run all tests
 				HostEnvUtil.prepareHostEnv(rt.host, cm, build, !cm.isDisableDebugPrompt());
-				cmd_phpt_all(rt, cm, config, build, test_pack);
+				cmd_core_all(rt, cm, config, build, test_pack);
 				
 				System.out.println("PFTT: finished");
 			} else if (command.equals("setup")||command.equals("set")||command.equals("setu")) {

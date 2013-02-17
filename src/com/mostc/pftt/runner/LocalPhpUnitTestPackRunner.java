@@ -19,6 +19,7 @@ import org.apache.http.protocol.RequestExpectContinue;
 import org.apache.http.protocol.RequestTargetHost;
 import org.apache.http.protocol.RequestUserAgent;
 
+import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.app.PhpUnitActiveTestPack;
 import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
@@ -27,13 +28,12 @@ import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.sapi.ApacheManager;
 import com.mostc.pftt.model.sapi.SharedSAPIInstanceTestCaseGroupKey;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
+import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.scenario.AbstractFileSystemScenario.ITestPackStorageDir;
 import com.mostc.pftt.scenario.ScenarioSet;
 
-// TODO NTS testcase support
-// TODO when RESTARTING_AND_RETRYING, should report CRASH
 public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpUnitActiveTestPack, PhpUnitSourceTestPack, PhpUnitTestCase> {
 	final Map<String,String> globals = new HashMap<String,String>();
 	final Map<String, String> env = new HashMap<String,String>();
@@ -74,11 +74,26 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 	
 	@Override
 	protected TestCaseGroupKey createGroupKey(PhpUnitTestCase test_case, TestCaseGroupKey group_key) throws Exception {
-		return group_key == null ? new SharedSAPIInstanceTestCaseGroupKey(null, null) : group_key;
+		return group_key == null ? new SharedSAPIInstanceTestCaseGroupKey(
+				// CRITICAL: provide the INI to run all PhpUnitTestCases
+				//           unlike PhptTestCases all PhpUnitTestCases share the same INI and environment variables
+				RequiredExtensionsSmokeTest.createDefaultIniCopy(runner_host, build), 
+				null) : 
+			group_key;
 	}
 
 	@Override
 	protected boolean handleNTS(TestCaseGroupKey group_key, PhpUnitTestCase test_case) {
+		final String[][] names = src_test_pack.getNonThreadSafeTestFileNames();
+		if (names==null)
+			return false;
+		for ( String[] ext_names : names ) {
+			if (StringUtil.containsAnyIC(test_case.filename, ext_names)) {
+				addNTSTestCase(ext_names, group_key, test_case);
+				
+				return true;				
+			}
+		}
 		return false;
 	}
 
@@ -98,7 +113,7 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 
 		@Override
 		protected void runTest(TestCaseGroupKey group_key, PhpUnitTestCase test_case) throws IOException, Exception, Throwable {
-			AbstractPhpUnitTestCaseRunner r = sapi_scenario.createPhpUnitTestCaseRunner(this, group_key, cm, twriter, globals, env, runner_host, scenario_set, build, test_case, my_temp_dir, constants, test_case.php_unit_dist.getIncludePath(), test_case.php_unit_dist.getIncludeFiles());
+			AbstractPhpUnitTestCaseRunner r = sapi_scenario.createPhpUnitTestCaseRunner(this, group_key, cm, twriter, globals, env, runner_host, scenario_set, build, test_case, my_temp_dir, constants, test_case.php_unit_dist.getIncludePath(), test_case.php_unit_dist.getIncludeFiles(), group_key.getPhpIni());
 			r.runTest();
 		}
 		

@@ -19,6 +19,7 @@ import com.mostc.pftt.model.ActiveTestPack;
 import com.mostc.pftt.model.SourceTestPack;
 import com.mostc.pftt.model.TestCase;
 import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.model.sapi.SAPIInstance;
 import com.mostc.pftt.model.sapi.SharedSAPIInstanceTestCaseGroupKey;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
@@ -327,6 +328,26 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 	
 	protected abstract boolean handleNTS(TestCaseGroupKey group_key, T test_case);
 	
+	protected void addNTSTestCase(String[] ext_names, TestCaseGroupKey group_key, T test_case) {
+		NonThreadSafeExt<T> ext = non_thread_safe_tests.get(ext_names);
+		if (ext==null) {
+			ext = new NonThreadSafeExt<T>(ext_names);
+			non_thread_safe_exts.add(ext);
+			non_thread_safe_tests.put(ext_names, ext);
+		}
+		
+		ext.test_groups_by_key.get(group_key);
+		
+		//
+		TestCaseGroup<T> group = ext.test_groups_by_key.get(group_key);
+		if (group==null) {
+			group = new TestCaseGroup<T>(group_key);
+			ext.test_groups.add(group);
+			ext.test_groups_by_key.put(group_key, group);
+		}
+		group.test_cases.add(test_case);
+	}
+	
 	protected void handleTS(LinkedList<TestCaseGroup<T>> thread_safe_list, TestCaseGroupKey group_key, T test_case) {
 		TestCaseGroup<T> group = thread_safe_tests.get(group_key);
 		if (group==null) {
@@ -521,11 +542,6 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 					Thread.yield();
 				} // end while
 			} finally {
-				if (sa!=null) {
-					sa.close(); // TODO
-					sa = null;
-				}
-				
 				if (parallel) {
 					// @see HttpTestCaseRunner#http_execute which calls #notifyCrash
 					// make sure a WebServerInstance is still running here, so it will be shared with each

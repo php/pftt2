@@ -1,6 +1,5 @@
 package com.mostc.pftt.util;
 
-import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.AHost.ExecHandle;

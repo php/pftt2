@@ -23,9 +23,11 @@ public class SharedSAPIInstanceTestCaseGroupKey extends TestCaseGroupKey {
 	}
 	
 	public void setSAPIInstance(ConsoleManager cm, AHost host, SAPIInstance sapi_instance) {
+		final Thread c = Thread.currentThread();
+		
 		SAPIInstance this_sapi_instance;
 		synchronized(sapi_instances) {
-			this_sapi_instance = sapi_instances.get(Thread.currentThread());
+			this_sapi_instance = sapi_instances.get(c);
 		}
 		
 		if (this_sapi_instance!=null&&this_sapi_instance!=sapi_instance) {
@@ -33,7 +35,7 @@ public class SharedSAPIInstanceTestCaseGroupKey extends TestCaseGroupKey {
 				this_sapi_instance.close();
 		}
 		
-		sapi_instances.put(Thread.currentThread(), sapi_instance);
+		sapi_instances.put(c, sapi_instance);
 	}
 	
 	public SAPIInstance getSAPIInstance() {

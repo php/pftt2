@@ -131,7 +131,7 @@ public class PhptResultWriter {
 		
 		
 		//
-		if (false) { // TODO store_all || !cm.isNoResultFileForPassSkipXSkip()) {
+		if (store_all || !cm.isNoResultFileForPassSkipXSkip()) {
 			// may want to skip storing result files for PASS, SKIP or XSKIP tests
 			try {
 				File result_file = new File(dir, test_case_base_name+".xml");

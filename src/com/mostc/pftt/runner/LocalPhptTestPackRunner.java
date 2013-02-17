@@ -126,24 +126,7 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 	protected boolean handleNTS(TestCaseGroupKey group_key, PhptTestCase test_case) {
 		for (String[] ext_names:PhptTestCase.NON_THREAD_SAFE_EXTENSIONS) {
 			if (StringUtil.startsWithAnyIC(test_case.getName(), ext_names)) {
-				NonThreadSafeExt<PhptTestCase> ext = non_thread_safe_tests.get(ext_names);
-				if (ext==null) {
-					ext = new NonThreadSafeExt<PhptTestCase>(ext_names);
-					non_thread_safe_exts.add(ext);
-					non_thread_safe_tests.put(ext_names, ext);
-				}
-				
-				ext.test_groups_by_key.get(group_key);
-				
-				//
-				TestCaseGroup<PhptTestCase> group = ext.test_groups_by_key.get(group_key);
-				if (group==null) {
-					group = new TestCaseGroup<PhptTestCase>(group_key);
-					ext.test_groups.add(group);
-					ext.test_groups_by_key.put(group_key, group);
-				}
-				group.test_cases.add(test_case);
-				//
+				addNTSTestCase(ext_names, group_key, test_case);
 				
 				return true;
 			}

@@ -1,10 +1,10 @@
 package com.mostc.pftt.runner;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
@@ -19,14 +19,15 @@ import org.apache.http.protocol.HttpRequestExecutor;
 
 import com.github.mattficken.io.IOUtil;
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.model.app.EPhpUnitTestStatus;
 import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.sapi.WebServerInstance;
 import com.mostc.pftt.model.sapi.WebServerManager;
-import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
+import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.ErrorUtil;
 
@@ -39,13 +40,12 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	protected final HttpParams params;
 	protected final HttpProcessor httpproc;
 	protected final HttpRequestExecutor httpexecutor;
-	protected final PhpIni ini;
 
 	public HttpPhpUnitTestCaseRunner(ITestResultReceiver tmgr,
 			HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web,
 			Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build,
-			PhpUnitTestCase test_case, String my_temp_dir, Map<String, String> constants, String include_path, String[] include_files) {
-		super(tmgr, globals, env, cm, host, scenario_set, build, test_case, my_temp_dir, constants, include_path, include_files);
+			PhpUnitTestCase test_case, String my_temp_dir, Map<String, String> constants, String include_path, String[] include_files, PhpIni ini) {
+		super(tmgr, globals, env, cm, host, scenario_set, build, test_case, my_temp_dir, constants, include_path, include_files, ini);
 		this.params = params;
 		this.httpproc = httpproc;
 		this.httpexecutor = httpexecutor;
@@ -54,27 +54,23 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 		
 		// don't need request_bytes, just doing a really basic HTTP GET
 		this.response_bytes = new ByteArrayOutputStream();
-		
-		ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(host, build);
 	}
 
 	@Override
 	protected String execute(String template_file) throws IOException, Exception {
-		// TODO handle INI with test-pack runner
-		// host.saveTextFile(my_temp_dir+"/php.ini", ini.toString());
-		if (web!=null && !new File(web.getDocroot()).equals(new File(my_temp_dir)))
-			web = null;
+		// Note: INI for test case provided in TestCaseGroupKey created in LocalPhpUnitTestPackRunner#createGroupKey
 		
-		String resp = http_execute("/test.php");
-		
-		/*if (resp.contains("404")) {
-			System.out.println("404 "+web);
-			System.exit(0);
-		}*/
-			
-		//web.close();
-		
-		return resp;
+		return http_execute("/test.php");
+	}
+	
+	protected static Pattern PAT_404_NOT_FOUND;
+	static {
+		PAT_404_NOT_FOUND = Pattern.compile(".*404 Not Found.*");
+	}
+	
+	@Override
+	protected boolean checkRequireOnceError(String output) {
+		return super.checkRequireOnceError(output) || PAT_404_NOT_FOUND.matcher(output).find();
 	}
 	
 	protected String http_execute(String path) throws Exception {
@@ -192,7 +188,18 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	protected void markTestAsCrash() {
 		is_crashed = true;
 		
-		// TODO tmgr.add(new Result(EPhpUnitTestStatus.CRASH));
+		tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, EPhpUnitTestStatus.CRASH, scenario_set, host, null));
+	}
+	
+	@Override
+	protected PhpUnitTestResult notifyNotPass(PhpUnitTestResult result) {
+		if (conn==null)
+			return super.notifyNotPass(result);
+		
+		// store the http response used in this test to help user diagnose the failure
+		result.http_response = response_bytes.toString();
+		
+		return super.notifyNotPass(result);
 	}
 	
 	protected String do_http_get(String path) throws Exception {

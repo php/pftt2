@@ -116,7 +116,8 @@ public abstract class Scenario {
 				// (like connecting to a database server that the user would have to setup. those scenarios
 				//  have to be in configuration files (in the 'conf' directory))
 				new MSAccessScenario(), // ignored if MS-Access not installed
-				new SQLite3Scenario()
+				new SQLite3Scenario(),
+				new NormalPathsScenario()
 			};
 	} // end public static Scenario[] getAllDefaultScenarios
 	

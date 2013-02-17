@@ -96,6 +96,8 @@ public class ScenarioSet extends ArrayList<Scenario> {
 	
 	/** returns this ScenarioSet's name and important version info (mainly just for reports)
 	 * 
+	 * Note: MUST be safe to use as part of a filename!
+	 * 
 	 * @see #getName - normally, use getName, its shorter. 
 	 * @return
 	 */
@@ -114,6 +116,8 @@ public class ScenarioSet extends ArrayList<Scenario> {
 	}
 	
 	/** returns the name of this ScenarioSet (the names of the contained Scenarios) as a String
+	 * 
+	 * Note: MUST be safe to use as part of a filename!
 	 * 
 	 * @see #getNameWithVersionInfo - returns a longer string with version info, etc...
 	 * @return
