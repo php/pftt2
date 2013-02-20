@@ -70,12 +70,16 @@ public final class HostEnvUtil {
 			
 			//
 			if (enable_debug_prompt) {
-				String win_dbg_exe = WinDebugManager.findWinDebugExe(host);
+				String win_dbg_exe = WinDebugManager.findWinDebugExe(host, build);
 				//
 				// reminder: can PHPTs with WinDebug using -windebug console option
 				if (StringUtil.isNotEmpty(win_dbg_exe)) {
 					cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Enabling WinDebug as the default debugger...");
-					
+					//
+					// for more windebug information:
+					// @see http://msdn.microsoft.com/en-us/library/windows/hardware/ff542967%28v=vs.85%29.aspx
+					// @see http://msdn.microsoft.com/en-us/library/ms680360.aspx
+					//
 					// make windebug the default debugger, otherwise, it probably won't even be an option in the WER popup
 					//  1. windebug is easier to setup for a php build than VS (will have lots of builds)
 					//  2. VS may have problems with PHP's pdb files

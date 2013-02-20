@@ -1,5 +1,7 @@
 package com.mostc.pftt.scenario;
 
+import java.util.Collection;
+
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.core.ESAPIType;
 import com.mostc.pftt.model.core.PhpBuild;
@@ -15,9 +17,14 @@ import com.mostc.pftt.results.ITestResultReceiver;
  */
 
 public abstract class AbstractApacheScenario extends AbstractProductionWebServerScenario {
-
+	
 	public AbstractApacheScenario() {
 		super(new ApacheManager());
+	}
+	
+	@Override
+	public void addToDebugPath(AHost host, Collection<String> debug_path) {
+		((ApacheManager)smgr).addToDebugPath(host, debug_path);
 	}
 	
 	@Override

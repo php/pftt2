@@ -420,7 +420,7 @@ public class SSHHost extends RemoteHost {
 		return new SSHExecHandle(session, out);
 	}
 	
-	protected static class SSHExecHandle extends ExecHandle {
+	protected class SSHExecHandle extends ExecHandle {
 		protected final SessionChannelClient session;
 		protected final ByteArrayOutputStream out;
 		
@@ -464,7 +464,7 @@ public class SSHHost extends RemoteHost {
 			return session.getOutputStream();
 		}
 		
-	} // end protected static class SSHExecHandle
+	} // end protected class SSHExecHandle
 	
 	@Override
 	public ExecOutput execOut(final String cmd, int timeout, Map<String, String> env, byte[] stdin_post, Charset charset, String chdir, final TestPackRunnerThread thread, int thread_slow_sec) throws Exception {

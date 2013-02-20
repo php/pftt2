@@ -2,6 +2,13 @@ package com.mostc.pftt.model.performance;
 
 import com.mostc.pftt.host.AHost;
 
+// XXX some requests may be returned a shorter page (ex: error message, but not detected because
+//      the status code is 200... this can happen if its an application not web server error)
+//    -this will affect results
+//       -ex: database connection couldn't be made 
+//    -download page 1 time first, to get the correct size
+//       -then compare the size when running wcat or after wcat finished using the average size
+//    -this is actually RyanB's technique which he found necessary to get accurate results
 abstract class WCATPerformanceTest extends PerformanceTest {
 
 	protected abstract String writeWCATSettings(String scenario_file, int virtual_clients);

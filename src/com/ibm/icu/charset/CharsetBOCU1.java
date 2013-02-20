@@ -762,7 +762,7 @@ class CharsetBOCU1 extends CharsetICU {
         /**
          * Function for BOCU-1 decoder; handles multi-byte trail bytes.
          *
-         * @param count number of remaining trail bytes including this one
+         * @param active_debugger_count number of remaining trail bytes including this one
          * @param b trail byte
          * @return new delta for diff including b - <0 indicates an error
          *

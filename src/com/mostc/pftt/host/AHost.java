@@ -17,6 +17,7 @@ import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
+import com.mostc.pftt.util.NTStatus;
 
 /** Abstracts host management so client code doesn't need to care if host is local or remote(ssh).
  * 
@@ -331,7 +332,7 @@ public abstract class AHost extends Host {
 		return execElevatedOut(cmd, timeout_sec, null, null, null, chdir, null, FOUR_HOURS);
 	}
 	@ThreadSafe
-	public static abstract class ExecHandle {
+	public abstract class ExecHandle {
 		public abstract InputStream getSTDOUT();
 		public abstract OutputStream getSTDIN();
 		/** KILLs process
@@ -355,7 +356,7 @@ public abstract class AHost extends Host {
 		}
 		public abstract boolean isRunning();
 		public boolean isCrashed() {
-			return getExitCode() != 0;
+			return isCrashExitCode(AHost.this, getExitCode());
 		}
 		/** immediately returns the output the process has returned (if process is still running, it may
 		 * return more output after this call)
@@ -370,11 +371,41 @@ public abstract class AHost extends Host {
 		}
 		/** returns the process's exit code
 		 * 
+		 * @see AHost#isCrashExitCode
 		 * @see #isRunning - don't call this if the process is still running (call #isRunning first to check)
 		 * @return
 		 */
 		public abstract int getExitCode();
-	} // end public static abstract class ExecHandle
+	} // end public abstract class ExecHandle
+	
+	public static boolean isCrashExitCode(AHost host, int e) {
+		if (host.isWindows()) {
+			// no strict standard other than 0 is success
+			// it may be an NTStatus(ntstatus.h) or possibly a WinError(winerror.h) or it could be something else
+		
+			switch(e) {
+			case 0: // exited normally
+			case 1: // closed (~sigterm~)
+				return false;
+			case NTStatus.STATUS_DEBUGGER_INACTIVE: // 0xC0000354
+				// windebug released (not crashed)
+			case NTStatus.STATUS_SYSTEM_SHUTDOWN:
+			case NTStatus.STATUS_SHUTDOWN_IN_PROGRESS:
+			case NTStatus.STATUS_SERVER_SHUTDOWN_IN_PROGRESS:
+			case NTStatus.STATUS_CONTEXT_MISMATCH:
+				// special non-zero exit-codes that aren't considered crashes
+				return false;
+				
+			case NTStatus.STATUS_STACK_OVERFLOW: // -1073741571 == 0xC00000FD STACK OVERFLOW
+			case NTStatus.STATUS_STACK_OVERFLOW_READ:
+			case NTStatus.STATUS_ACCESS_VIOLATION: // -1073741819 == 0xC0000005 ACCESS VIOLATION
+				return true; // be sure this is reported as a crash
+			}
+		} // end if
+		
+		return e != 0;
+	} // end public static boolean isCrashExitCode
+	
 	public ExecHandle execThread(String commandline) throws Exception {
 		return execThread(commandline, null, null, null);
 	}

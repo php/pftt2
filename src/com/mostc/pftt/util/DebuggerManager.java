@@ -6,11 +6,14 @@ import java.util.Collections;
 
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.host.AHost.ExecHandle;
 import com.mostc.pftt.host.LocalHost.LocalExecHandle;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.scenario.Scenario;
+import com.mostc.pftt.scenario.ScenarioSet;
 
 /** handles using a debugger on a build that has a test case run against it
  * 
@@ -27,17 +30,18 @@ public abstract class DebuggerManager {
 	 * 
 	 * @param cm
 	 * @param host
+	 * @param scenario_set
 	 * @param server_name
 	 * @param build
 	 * @param handle
 	 * @return
 	 */
-	public Debugger newDebugger(ConsoleManager cm, AHost host, Object server_name, PhpBuild build, LocalExecHandle handle) {
+	public Debugger newDebugger(ConsoleManager cm, AHost host, ScenarioSet scenario_set, Object server_name, PhpBuild build, LocalExecHandle handle) {
 		int pid = handle.getProcessID();
 		if (pid<1)
 			return null;
 		
-		return newDebugger(cm, host, server_name, build, pid);
+		return newDebugger(cm, host, scenario_set, server_name, build, pid, handle);
 	}
 	
 	/** provides a new debugger for the running process (identified by process_id) or returns
@@ -45,12 +49,35 @@ public abstract class DebuggerManager {
 	 * 
 	 * @param cm
 	 * @param host
+	 * @param scenario_set TODO
 	 * @param server_name
 	 * @param build
 	 * @param process_id
+	 * @param process TODO
 	 * @return
 	 */
-	public abstract Debugger newDebugger(ConsoleManager cm, AHost host, Object server_name, PhpBuild build, int process_id);
+	public abstract Debugger newDebugger(ConsoleManager cm, AHost host, ScenarioSet scenario_set, Object server_name, PhpBuild build, int process_id, ExecHandle process);
+	
+	/** gets debug paths from scenarios...
+	 * 
+	 * for instance, this lets apache builds provide debug symbols to WinDebug
+	 * 
+	 * @param host
+	 * @param scenario_set
+	 */
+	protected void addToDebugPathFromScenarios(AHost host, ScenarioSet scenario_set) {
+		ArrayList<String> paths = new ArrayList<String>(5);
+		for ( Scenario s : scenario_set ) {
+			s.addToDebugPath(host, paths);
+		}
+		if (this.debug_path==null)
+			this.debug_path = "";
+		for ( String path : paths ) {
+			if (this.debug_path.length()>0)
+				this.debug_path += host.dirSeparator();
+			this.debug_path += path;
+		}
+	}
 	
 	/** guesses the source pack and debug pack locations based on build, unless
 	 * -src_pack and -debug_pack console options are given 
@@ -60,7 +87,7 @@ public abstract class DebuggerManager {
 	 * @param build
 	 */
 	private PhpBuild found_src_debug_pack_build;
-	protected void ensureFindSourceAndDebugPack(ConsoleManager cm, AHost host, PhpBuild build) {
+	protected void ensureFindSourceAndDebugPack(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build) {
 		if (build==found_src_debug_pack_build)
 			return;
 		this.found_src_debug_pack_build = build; // cache
@@ -68,6 +95,7 @@ public abstract class DebuggerManager {
 			// only PHP on Windows has standard conventions for naming/locating source and debug packs
 			this.src_path = cm.getSourcePack();
 			this.debug_path = cm.getDebugPack().getPath();
+			addToDebugPathFromScenarios(host, scenario_set);
 			return;
 		}
 		
@@ -92,6 +120,8 @@ public abstract class DebuggerManager {
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "ensureFindSourceAndDebugPack", ex, "");
 		}
+		
+		addToDebugPathFromScenarios(host, scenario_set);
 	} // end protected void ensureFindSourceAndDebugPack
 	
 	/** turns generic objects into server name to give to debugger.

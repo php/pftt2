@@ -128,7 +128,9 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 				//
 				// if -debug_all or -debug_list console option, run web server with windebug
 				if (debugger_attached) {
-					web.debug_handle = dbg_mgr.newDebugger(cm, host, server_name, build, (LocalHost.LocalExecHandle) handle);
+					waitIfTooManyActiveDebuggers();
+					
+					web.debug_handle = dbg_mgr.newDebugger(cm, host, scenario_set, server_name, build, (LocalHost.LocalExecHandle) handle);
 				}
 				//
 				
@@ -141,9 +143,6 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 							if (!handlef.isRunning()) {
 								try {
 									if (handlef.isCrashed()) {
-										if (handlef.getExitCode()!=1)
-											new IllegalStateException("server_name="+server_name+" exit_code="+handlef.getExitCode()).printStackTrace(); // TODO
-										
 										String output_str;
 										try {
 											output_str = handlef.getOutput();
@@ -236,23 +235,36 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 			return debug_handle != null && debug_handle.isRunning();
 		}
 
+		private boolean waiting_for_debug_of_crashed_process;
 		@Override
 		protected void do_close() {
-			//new IllegalStateException("do_close").printStackTrace();
-			if (debug_handle!=null)// && debug_handle.isRunning())
-				return; // TODO
-			
-			//timer.schedule(new TimerTask() {
-				//public void run() {
-			//if (isCrashed() && debug_handle!=null)
+			if (isCrashed() && debug_handle!=null) {
+				if (waiting_for_debug_of_crashed_process)
+					return;
+				waiting_for_debug_of_crashed_process = true;
+				
 				// leave process running so it can be debugged
-				//return;
-			//if (debug_handle!=null)
-				//debug_handle.close();
+				// keep track of debugger/how many debuggers are attached to
+				// a crashed process
+				active_debugger_count.incrementAndGet();
+				timer.scheduleAtFixedRate(new TimerTask() {
+					public void run() {
+						if (!debug_handle.isRunning()) {
+							waiting_for_debug_of_crashed_process = false;
+							
+							active_debugger_count.decrementAndGet();
+							
+							cancel();
+						}
+					}
+				}, 1000, 1000);
+				return;
+			} else if (debug_handle!=null) {
+				// process didn't crash, close debugger
+				debug_handle.close();
+			}
 			
-			// TODO why is #do_close called so much??
 			process.close();
-				//}}, 5000);
 		}
 
 		@Override
@@ -261,5 +273,22 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 		}
 		
 	} // end public static abstract class ManagedProcessWebServerInstance
+	
+	private static AtomicInteger active_debugger_count = new AtomicInteger();
+	private static int max_active_debuggers;
+	static {
+		max_active_debuggers = Math.max(2, Math.min(8, new LocalHost().getCPUCount()));
+	}
+	
+	/** can have only a limited number of debuggers running, this will
+	 * block if there are too many running.
+	 * 
+	 * @throws InterruptedException
+	 */
+	public static void waitIfTooManyActiveDebuggers() throws InterruptedException {
+		while (AbstractManagedProcessesWebServerManager.active_debugger_count.get() >= max_active_debuggers) {
+			Thread.sleep(100);
+		}
+	}
 	
 } // end public abstract class AbstractManagedProcessesWebServerManager

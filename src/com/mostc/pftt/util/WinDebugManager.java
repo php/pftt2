@@ -7,6 +7,7 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.scenario.ScenarioSet;
 
 /** handles integrating with WinDebug.
  * 
@@ -17,6 +18,10 @@ import com.mostc.pftt.results.ConsoleManager.EPrintType;
  * -misc default settings
  * -titles the windebug window with the test case(s) that were run
  * 
+ * For more windebug information:
+ * @see http://msdn.microsoft.com/en-us/library/windows/hardware/ff542967%28v=vs.85%29.aspx
+ * @see http://msdn.microsoft.com/en-us/library/ms680360.aspx
+ * 
  * @author Matt Ficken
  *
  */
@@ -26,29 +31,29 @@ public class WinDebugManager extends DebuggerManager {
 	private AHost win_dbg_host;
 	private boolean displayed_windbg_tips = false;
 	
-	protected void ensureFindWinDbgExe(ConsoleManager cm, AHost host) {
+	protected void ensureFindWinDbgExe(ConsoleManager cm, AHost host, PhpBuild build) {
 		if (this.win_dbg_host==host)
 			return;
 		
 		this.win_dbg_host = host;
-		this.win_dbg_exe = findWinDebugExe(host);
+		this.win_dbg_exe = findWinDebugExe(host, build);
 		
 		if (StringUtil.isEmpty(this.win_dbg_exe))
-			cm.println(EPrintType.SKIP_OPERATION, getClass(), "WinDebug not found. Install WinDebug to any: "+StringUtil.toString(getWinDebugPaths(host)));
+			cm.println(EPrintType.SKIP_OPERATION, getClass(), "WinDebug not found. Install WinDebug to any: "+StringUtil.toString(getWinDebugPaths(host, build)));
 		else
 			this.win_dbg_exe = StringUtil.ensureQuoted(this.win_dbg_exe);
 	}
 	
 	@Override
-	public WinDebug newDebugger(ConsoleManager cm, AHost host, Object server_name, PhpBuild build, int process_id) {
-		ensureFindWinDbgExe(cm, host);
+	public WinDebug newDebugger(ConsoleManager cm, AHost host, ScenarioSet scenario_set, Object server_name, PhpBuild build, int process_id, ExecHandle process) {
+		ensureFindWinDbgExe(cm, host, build);
 		
 		WinDebug dbg = null;
 		if (StringUtil.isNotEmpty(win_dbg_exe)) {
-			ensureFindSourceAndDebugPack(cm, host, build);
+			ensureFindSourceAndDebugPack(cm, host, scenario_set, build);
 			
 			try {
-				dbg = new WinDebug(host, win_dbg_exe, toServerName(server_name), src_path, debug_path, build.getBuildPath(), process_id);
+				dbg = new WinDebug(host, win_dbg_exe, toServerName(server_name), src_path, debug_path, build.getBuildPath(), process_id, process);
 			} catch ( Exception ex ) {
 				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "newDebugger", ex, "", host, win_dbg_exe);
 			}
@@ -65,24 +70,24 @@ public class WinDebugManager extends DebuggerManager {
 	}
 	
 	protected void displayWindebugTips(ConsoleManager cm) {
+		cm.println(EPrintType.TIP, getClass(), "  WinDebug Command Referrence: http://www.windbg.info/doc/1-common-cmds.html");
 		cm.println(EPrintType.TIP, getClass(), "  WinDebug command: k       - show callstack");
 		cm.println(EPrintType.TIP, getClass(), "  WinDebug command: g       - go (until next exception)");
 		cm.println(EPrintType.TIP, getClass(), "  WinDebug command: <F9>    - set breakpoint");
+		cm.println(EPrintType.TIP, getClass(), "  PFTT will usually run a crashed test a 2nd time to confirm, so you'll see twice as many crashes as are reported");
 	}
 
 	public static class WinDebug extends Debugger {
-		protected ExecHandle debug_handle;
+		protected ExecHandle debug_handle, process;
 		protected final String log_file;
 		protected final AHost host;
 		protected boolean attached, wait;
 		
-		protected WinDebug(final AHost host, String win_dbg_exe, String server_name, String src_path, String debug_path, String image_path, int process_id) throws Exception {
+		protected WinDebug(final AHost host, String win_dbg_exe, String server_name, String src_path, String debug_path, String image_path, int process_id, ExecHandle process) throws Exception {
 			this.host = host;
+			this.process = process;
 			
 			log_file = host.mktempname(getClass(), ".log");
-			
-			if (true)
-				return; // TODO
 			
 			//
 			// generate windebug command (with lots of extra options, etc...)
@@ -133,13 +138,17 @@ public class WinDebugManager extends DebuggerManager {
 					break;
 				}
 			}
-			System.err.println("debug "+sb);
-			//System.err.println(IOUtil.toString(debug_handle.getSTDOUT(), IOUtil.HALF_MEGABYTE));
 		}
 		
 		@Override
 		public void close() {
-			/* TODO debug_handle.close(true);
+			if (debug_handle.isRunning()&&(process.isCrashed()||process.isRunning())) {
+				// if it has crashed, wait for user to manually close the debugger
+				// if it hasn't crashed yet (still running, might crash) wait to close the debugger
+				return;
+			}
+			 
+			debug_handle.close(true);
 			
 			wait = false;
 			
@@ -147,12 +156,12 @@ public class WinDebugManager extends DebuggerManager {
 				host.delete(log_file);
 			} catch (Exception e) {
 				e.printStackTrace();
-			}*/
+			}
 		}
 
 		@Override
 		public boolean isRunning() {
-			return true; // TODO debug_handle.isRunning();
+			return debug_handle.isRunning();
 		}
 		
 	} // end public static class WinDebug
@@ -162,16 +171,26 @@ public class WinDebugManager extends DebuggerManager {
 	 * windebug must be installed to one of these paths.
 	 * 
 	 * @param host
+	 * @param build
 	 * @return
 	 */
-	public static String[] getWinDebugPaths(Host host) {
-		return new String[] {
-				host.getSystemDrive()+"\\Program Files\\Debugging Tools for Windows (x64)\\WinDbg.exe",
-				host.getSystemDrive()+"\\Program Files\\Debugging Tools for Windows\\WinDbg.exe",
-				host.getSystemDrive()+"\\Program Files\\Debugging Tools for Windows (x86)\\WinDbg.exe",
-				host.getSystemDrive()+"\\Program Files (x86)\\Debugging Tools for Windows\\WinDbg.exe",
-				host.getSystemDrive()+"\\Program Files (x86)\\Debugging Tools for Windows (x86)\\WinDbg.exe"
-			};
+	public static String[] getWinDebugPaths(Host host, PhpBuild build) {
+		// use x86 windebug for x86 builds and x64 windebug edition for x64 builds!
+		// (can debug with different windebug editions, but WER popup requires that the architectures match)
+		// @see HostEnvUtil
+		if (build.isX86()) {
+			// 
+			return new String[] {
+					host.getSystemDrive()+"\\Program Files (x86)\\Debugging Tools for Windows\\WinDbg.exe",
+					host.getSystemDrive()+"\\Program Files (x86)\\Debugging Tools for Windows (x86)\\WinDbg.exe"
+				};
+		} else {
+			return new String[] {
+					host.getSystemDrive()+"\\Program Files\\Debugging Tools for Windows (x64)\\WinDbg.exe",
+					host.getSystemDrive()+"\\Program Files\\Debugging Tools for Windows\\WinDbg.exe",
+					host.getSystemDrive()+"\\Program Files\\Debugging Tools for Windows (x86)\\WinDbg.exe"
+				};
+		}
 	}
 
 	/** returns the path that WinDebug is installed at, or returns null if windebug is not found.
@@ -180,8 +199,29 @@ public class WinDebugManager extends DebuggerManager {
 	 * @param host
 	 * @return
 	 */
-	public static String findWinDebugExe(Host host) {
-		return host.anyExist(getWinDebugPaths(host));
+	public static String findWinDebugExe(Host host, PhpBuild build) {
+		return host.anyExist(getWinDebugPaths(host, build));
+	}
+
+	public static void checkIfWinDebugInstalled(AHost host, PhpBuild build) {
+		String win_dbg_exe = findWinDebugExe(host, build);
+		
+		if (StringUtil.isEmpty(win_dbg_exe)) {
+			
+			
+			System.err.println("PFTT: -debug_all  or -debug_list console option given but WinDebug is not installed");
+			
+			if (build.isX86()) {
+				System.err.println("PFTT: you MUST install the x86 edition of WinDebug - found x64 edition but debugging an x86 Binary Build requires the x86 WinDebug");
+			} else {
+				System.err.println("PFTT: you MUST install the x64 edition of WinDebug - found x86 edition but debugging an x64 Binary Build requires the x64 WinDebug");
+			}
+			
+			System.err.println("PFTT: searched for WinDebug at these locations: "+StringUtil.toString(WinDebugManager.getWinDebugPaths(host, build)));
+			System.err.println("PFTT: install WinDebug or remove -debug_all or -debug_list console option");
+			System.err.println("PFTT: download WinDebug here: http://msdn.microsoft.com/en-us/windows/hardware/gg463009.aspx");
+			System.exit(-245);
+		}
 	}
 	
 } // end public class WinDebugManager

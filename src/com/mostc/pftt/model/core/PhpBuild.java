@@ -22,7 +22,10 @@ import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.util.StringUtil2;
 
-/** represents a single build of PHP.
+/** Represents a single build of PHP.
+ * 
+ * Has functions to check build type, architecture, compiler, etc... configure and execute PHP scripts with the build.
+ * (all the functions to check build type are all here, so if that procedure ever changes, just update this class)
  * 
  * To be clear, NTS and TS builds that were built together, even from the same configuration and source, are still considered two separate builds.
  * 
@@ -770,6 +773,10 @@ public class PhpBuild extends SAPIManager {
 			
 			return ini_dir;
 		}
+	}
+
+	public boolean isX86() {
+		return !build_path.toLowerCase().contains("x64");
 	}
 	
 } // end public class PhpBuild

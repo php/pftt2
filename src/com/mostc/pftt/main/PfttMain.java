@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -65,6 +64,7 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
  * 
  */
 
+// TODO pftt cleanup cmd (does taskkill and net use /delete to cleanup from interrupted run)
 // TODO change how ScenarioSets are permuted
 //        can have multiple database scenarios in 1 ScenarioSet for PHPTs
 //        can only have 1 for applications
@@ -240,11 +240,10 @@ public class PfttMain {
 		System.out.println();
 		System.out.println("Commands:");
 		System.out.println("core_all <build> <test-pack> - runs all tests in given test pack");
-		System.out.println("phpt_repro <build> <test-pack> <XML result-pack file> - replays .XML file from previous result-pack run");
 		System.out.println("core_named <build> <test-pack> <test1> <test2> <test name fragment> - runs named tests or tests matching name pattern");
 		System.out.println("core_list <build> <test-pack> <file> - runs list of tests stored in file");
+		// TODO document app_all all_named app_list
 		System.out.println("custom <build> - runs PFTT specific functional tests (bugs that can not be tested using PHP testsT)");
-		System.out.println("aut - runs Application (PHP)Unit Tests");
 		System.out.println("help");
 		System.out.println("perf <build> - performance test of build");
 		System.out.println("smoke <build> - smoke test a build");
@@ -269,7 +268,7 @@ public class PfttMain {
 		System.out.println("-randomize_order <0+> - randomizes test case run order");
 		System.out.println("-results_only - displays only test results and no other information (for automation).");
 		System.out.println("-pftt-debug - shows additional information to help debug problems with PFTT itself");
-		System.out.println("-disable_debug_prompt - disables asking you if you want to debug PHP crashes (for automation. default=enabled)");
+		System.out.println("-disable_debug_prompt - disables asking you if you want to debug PHP crashes (for automation. default=enabled) (alias: -debug_none)");
 		System.out.println("-phpt-not-in-place - copies PHPTs to a temporary dir and runs PHPTs from there (default=disabled, test in-place)");
 		System.out.println("-dont-cleanup-test-pack - doesn't delete temp dir created by -phpt-not-in-place or SMB scenario (default=delete)");
 		System.out.println("-auto - changes default options for automated testing (-uac -disable_debug_prompt -phpt-not-in-place)");
@@ -278,6 +277,7 @@ public class PfttMain {
 		}
 		System.out.println("-run_test_times_all <N> - runs each test N times in a row/consecutively");
 		System.out.println("-run_test_times_list <N> <list file> - runs tests in that list N times. if used with -run_test_times_all, tests not in list can be run different number of times from tests in list (ex: run listed tests 5 times, run all other tests 2 times).");
+		System.out.println("-debug_all - runs all tests in Debugger");
 		System.out.println("-debug_list <list files> - runs tests in list in Debugger (exact name)");
 		System.out.println("-skip_list <list files> - skip tests in list (exact name)");
 		System.out.println("-run_group_times_all <N> - runs all groups of tests N times (in same order every time, unless -randomize used)");
@@ -290,22 +290,6 @@ public class PfttMain {
 		System.err.println("Error: Not implemented");
 		new RequiredExtensionsSmokeTest();
 		new RequiredFeaturesSmokeTest();
-	}
-	
-	protected static void cmd_aut(ConsoleManager cm, PfttMain rt, AHost host, PhpBuild build, Collection<ScenarioSet> scenario_sets) throws IllegalStateException, IOException, Exception {
-		/*
-		new PhpUnitTestPackRunner(PhpUnitAppTestPack.load("/"), scenario_sets.iterator().next(), build, host);
-		
-		host.upload7ZipAndDecompress(host.getPfttDir()+"/cache/cache.7z", "");
-		host.upload7ZipAndDecompress(host.getPfttDir()+"/cache/joomla-platform.7z", "");
-		String tmp_file = host.mktempname("Main", ".xml");
-		ExecOutput eo = host.exec("phpunit --log-junit "+tmp_file, Host.ONE_HOUR * 4);
-		eo.printOutputIfCrash(PfttMain.class.getSimpleName(), cm);
-		host.getContents(tmp_file);
-		// for now, don't delete tmp_file
-				
-		rt.show_report(cm, new ABCReportGen(new File(tmp_file), host.getOSName()));
-		*/ 
 	}
 	
 	protected static void cmd_shell_ui() {
@@ -542,6 +526,7 @@ public class PfttMain {
 	
 	protected static PhpBuild newBuild(ConsoleManager cm, AHost host, String path) {
 		PhpBuild build = new PhpBuild(path);
+		checkDebugger(cm, host, build);
 		if (build.open(cm, host))
 			return build;
 		build = new PhpBuild(host.getPhpSdkDir() + "/" + path);
@@ -582,7 +567,7 @@ public class PfttMain {
 		if (is_uac||!req_uac)
 			return;
 		
-		cm.println(EPrintType.CLUE, "Note", "run pftt with -uac to avoid getting lots of UAC Dialog boxes (see -help)");
+		cm.println(EPrintType.TIP, PfttMain.class, "run pftt with -uac to avoid getting lots of UAC Dialog boxes (see -help)");
 	}
 
 	protected static void readStringListFromFile(LinkedList<String> list, String filename) throws IOException {
@@ -595,6 +580,15 @@ public class PfttMain {
 			list.add(line);
 		}
 		br.close();
+	}
+	
+	/** help user find/install WinDebug properly
+	 * 
+	 */
+	protected static void checkDebugger(ConsoleManager cm, AHost host, PhpBuild build) {
+		if ((cm.isDebugAll()||cm.isDebugList()) && host.isWindows()) {
+			WinDebugManager.checkIfWinDebugInstalled(host, build);
+		}
 	}
 	
 	public static void main(String[] args) throws Throwable {
@@ -725,7 +719,7 @@ public class PfttMain {
 				// also intercepted and handled by bin/pftt.cmd batch script
 				debug = true;
 				
-			} else if (args[args_i].equals("-disable_debug_prompt")) {
+			} else if (args[args_i].equals("-disable_debug_prompt")||args[args_i].equals("-debug_none")) {
 				disable_debug_prompt = true; 
 			} else if (args[args_i].equals("-results_only")) {
 				results_only = true;
@@ -775,20 +769,6 @@ public class PfttMain {
 			System.out.println("PFTT: Config: no config files loaded... using defaults only ("+default_config_file+")");
 		}
 		
-		//
-		// help user find/install WinDebug properly
-		if ((cm.isDebugAll()||cm.isDebugList()) && rt.host.isWindows()) {
-			String win_dbg_exe = WinDebugManager.findWinDebugExe(rt.host);
-			
-			if (StringUtil.isEmpty(win_dbg_exe)) {
-				System.err.println("PFTT: -debug_all  or -debug_list console option given but WinDebug is not installed");
-				System.err.println("PFTT: searched for WinDebug at these locations: "+StringUtil.toString(WinDebugManager.getWinDebugPaths(rt.host)));
-				System.err.println("PFTT: install WinDebug or remove -debug_all or -debug_list console option");
-				System.exit(-245);
-			}
-		}
-		//
-		
 		if (command!=null) {
 			if (command.equals("app_named")||command.equals("appnamed")||command.equals("an")) {
 				// TODO
@@ -799,6 +779,7 @@ public class PfttMain {
 				ScenarioSet scenario_set = config.getScenarioSets().get(0);
 				// TODO
 				PhpBuild build = new PhpBuild("c:/php-sdk/php-5.5-ts-windows-vc9-x86-re6bde1f");
+				checkDebugger(cm, rt.host, build);
 				build.open(cm, rt.host);
 				
 				PhpUnitSourceTestPack test_pack = config.getPhpUnitSourceTestPack(cm);
@@ -971,18 +952,6 @@ public class PfttMain {
 				for ( ScenarioSet set : getScenarioSets(config) ) {
 					cm.println(EPrintType.IN_PROGRESS, "List", set.toString());
 				}
-			} else if (command.equals("aut")) {
-				
-				PhpBuild build = newBuild(cm, rt.host, args[args_i+1]);
-				if (build == null) {
-					System.err.println("IO Error: can not open php build: "+build);
-					System.exit(-255);
-					return;
-				}
-				
-				checkUAC(is_uac, false, config, cm);
-				no_show_gui(show_gui, command);
-				cmd_aut(cm, rt, rt.host, build, getScenarioSets(config));
 			} else if (command.equals("shell_ui")||(show_gui && command.equals("shell"))) {
 				cmd_shell_ui();
 			} else if (command.equals("shell")) {

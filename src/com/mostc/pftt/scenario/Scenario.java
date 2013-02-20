@@ -1,12 +1,14 @@
 package com.mostc.pftt.scenario;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Map;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlSerializer;
 
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
@@ -34,6 +36,17 @@ public abstract class Scenario {
 	
 	public Class<?> getSerialKey() {
 		return getClass();
+	}
+	
+	/** Provide directories and files containing debugging symbols to Symbolic Debugger.
+	 * 
+	 * Ex: this is used to provide Apache debug symbols to WinDebug(on Windows).
+	 * 
+	 * @param host
+	 * @param debug_path
+	 */
+	public void addToDebugPath(AHost host, Collection<String> debug_path) {
+		
 	}
 	
 	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {

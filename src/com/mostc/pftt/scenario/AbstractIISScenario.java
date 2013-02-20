@@ -1,5 +1,8 @@
 package com.mostc.pftt.scenario;
 
+import java.util.Collection;
+
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.sapi.IISManager;
 
 /** Abstract scenario for managing and testing IIS
@@ -12,6 +15,11 @@ public abstract class AbstractIISScenario extends AbstractProductionWebServerSce
 	
 	public AbstractIISScenario() {
 		super(new IISManager());
+	}
+	
+	@Override
+	public void addToDebugPath(AHost host, Collection<String> debug_path) {
+		
 	}
 
 	@Override

@@ -19,7 +19,7 @@ import com.mostc.pftt.model.ActiveTestPack;
 import com.mostc.pftt.model.SourceTestPack;
 import com.mostc.pftt.model.TestCase;
 import com.mostc.pftt.model.core.PhpBuild;
-import com.mostc.pftt.model.core.PhptTestCase;
+import com.mostc.pftt.model.sapi.AbstractManagedProcessesWebServerManager;
 import com.mostc.pftt.model.sapi.SAPIInstance;
 import com.mostc.pftt.model.sapi.SharedSAPIInstanceTestCaseGroupKey;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
@@ -372,15 +372,23 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		// 4. limit to MAX_THREAD_COUNT
 		
 		int thread_count = sapi_scenario.getTestThreadCount(runner_host);
-		if (thread_count > thread_safe_test_count + non_thread_safe_exts.size())
+		
+		if ((cm.isThreadSafety() || cm.getRunTestTimesAll()<2) && thread_count > thread_safe_test_count + non_thread_safe_exts.size()) {
+			// don't start more threads than there will be work for
+			// however, if -no_nts AND -run_test_times_all console option used, user wants tests run
+			// as much as possible, so don't do this check (in that case, do normal number of threads, not this)
+			//
 			thread_count = thread_safe_test_count + non_thread_safe_exts.size(); 
+		}
 		if (cm.isDebugAll()) {
 			// run fewer threads b/c we're running WinDebug
-			// (can run WinDebug w/ same number of threads, but UI responsiveness will be SLoow)
-			thread_count = Math.max(1, thread_count / 2);
+			// (can run WinDebug w/ same number of threads, but UI responsiveness will be really SLoow)
+			thread_count = Math.max(1, thread_count / 4);
 		}
-		if (thread_count > MAX_THREAD_COUNT)
+		if (thread_count > MAX_THREAD_COUNT) {
+			// safety check: don't run too many threads
 			thread_count = MAX_THREAD_COUNT;
+		}
 		cm.println(EPrintType.IN_PROGRESS, getClass(), "Starting up Test Threads: thread_count="+thread_count+" runner_host="+runner_host+" sapi_scenario="+sapi_scenario);
 			
 		test_count = new AtomicInteger(0);
@@ -388,11 +396,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		
 		for ( int i=0 ; i < thread_count ; i++ ) { 
 			start_thread(parallel);
-
-			
-			
 		}
-		//Thread.sleep(1000000);
 		
 		// wait until done
 		int c ; while ( ( c = active_thread_count.get() ) > 0 ) { Thread.sleep(c>3?1000:50); }
@@ -495,7 +499,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 					completed_tests.add(test_case);
 					
 					if (parallel) {
-						// -windebug_all and -windebug_list console options
+						// -debug_all and -debug_list console options
 						final boolean debugger_attached = (cm.isDebugAll() || cm.isInDebugList(test_case));
 						
 						
@@ -505,7 +509,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 						if (sapi_scenario instanceof AbstractWebServerScenario) { // TODO temp
 							//SAPIInstance 
 							sa = ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance();
-							if (sa==null||sa.isCrashed()) { // TODO ||(debugger_attached && !((WebServerInstance)sa).isDebuggerAttached())) {
+							if (sa==null||sa.isCrashed()||(debugger_attached && !((WebServerInstance)sa).isDebuggerAttached())) {
 								//((SharedSAPIInstanceTestCaseGroupKey)group_key).setSAPIInstance(
 								sa = ((AbstractWebServerScenario)sapi_scenario).smgr.getWebServerInstance(cm, runner_host, scenario_set, build, group_key.getPhpIni(), 
 										group_key.getEnv(), this instanceof PhpUnitThread ? ((PhpUnitThread)this).my_temp_dir // TODO temp phpunit 
@@ -533,6 +537,8 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 						try {
 							runTest(group_key, test_case);
 							// TODO -delay_between_ms console option Thread.sleep(1000000);
+							
+							AbstractManagedProcessesWebServerManager.waitIfTooManyActiveDebuggers();
 						} catch ( Throwable ex ) {
 							twriter.addTestException(storage_host, scenario_set, test_case, ex, sa);
 						}

@@ -2,6 +2,7 @@ package com.mostc.pftt.model.sapi;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
+import java.util.Collection;
 import java.util.Map;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -165,7 +166,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			// NOTE: this returns false (no exception) if apache binary can't be edited (already running, UAC privileges not elevated)
 			if (host!=this.cache_host||this.cache_httpd==null||!this.cache_httpd.equals(httpd)) {
 				// do this once
-				synchronized(host) {
+				synchronized(this) {
 					VisualStudioUtil.setExeStackSize(cm, host, httpd, VisualStudioUtil.SIXTEEN_MEGABYTES);
 					
 					// check OpenSSL version
@@ -450,7 +451,16 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 
 	@Override
 	public String getNameWithVersionInfo() {
-		return "Apache-2.4"; // TODO
+		return "Apache-ApacheLounge-2.4.3-VC10-x86"; // TODO
+	}
+
+	public void addToDebugPath(AHost host, Collection<String> debug_path) {
+		if (host.isWindows()) {
+			// provide these symbols to WinDebug
+			debug_path.add(host.getSystemDrive()+"\\Apache24\\bin");
+			debug_path.add(host.getSystemDrive()+"\\Apache24\\lib");
+			debug_path.add(host.getSystemDrive()+"\\Apache24\\modules");
+		}
 	}
 	
 } // end public class ApacheManager
