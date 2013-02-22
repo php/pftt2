@@ -136,7 +136,9 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 	@Override
 	public PhpIni createIniForTest(ConsoleManager cm, AHost host, PhpBuild build, PhptActiveTestPack active_test_pack, ScenarioSet scenario_set) {
 		// entire PhpIni will be given to web server when its started
-		return RequiredExtensionsSmokeTest.createDefaultIniCopy(host, build);
+		PhpIni ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(host, build);
+		AbstractINIScenario.setupScenarios(cm, host, scenario_set, build, ini);
+		return ini;
 	}
 	
 	@Override

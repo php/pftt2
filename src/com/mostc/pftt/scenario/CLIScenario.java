@@ -62,7 +62,9 @@ public class CliScenario extends AbstractSAPIScenario {
 		// default PhpIni will be given to php.exe using a file... @see CliPhptTestCaseRunner#prepare
 		//
 		// this is needed only to collect any custom directives that a test case provides
-		return new PhpIni();
+		PhpIni ini = new PhpIni();
+		AbstractINIScenario.setupScenarios(cm, host, scenario_set, build, ini);
+		return ini;
 	}
 
 	@Override

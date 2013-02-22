@@ -355,8 +355,28 @@ public abstract class AHost extends Host {
 			close(false);
 		}
 		public abstract boolean isRunning();
+		/** returns if process crashed.
+		 * 
+		 * if debugger was attached to process and debugger closed, then
+		 * process did not crash.
+		 * 
+		 * @return
+		 */
 		public boolean isCrashed() {
-			return isCrashExitCode(AHost.this, getExitCode());
+			return isCrashExitCode(AHost.this, getExitCode(), false);
+		}
+		/** returns if process crashed or if debugger was attached and then closed.
+		 * 
+		 * @see #isCrashed - normally you'll check this.
+		 * 
+		 * both #isCrashed and #isCrashedOrDebuggedAndClosed exist to ignore or detect the special case
+		 * (where a debugger was attached to a process and then closed, which may cause the process to return
+		 * a special non-zero exit code).
+		 * 
+		 * @return
+		 */
+		public boolean isCrashedOrDebuggedAndClosed() {
+			return isCrashExitCode(AHost.this, getExitCode(), true);
 		}
 		/** immediately returns the output the process has returned (if process is still running, it may
 		 * return more output after this call)
@@ -378,17 +398,26 @@ public abstract class AHost extends Host {
 		public abstract int getExitCode();
 	} // end public abstract class ExecHandle
 	
-	public static boolean isCrashExitCode(AHost host, int e) {
+	/** checks exit code to see if it means process crashed
+	 * 
+	 * @param host
+	 * @param exit_code
+	 * @param debugger_closed_is_crashed - if true and if exit code indicates a debugger was attached
+	 *  and then closed, then this returns true... otherwise, this will return false in this special case.
+	 * @return
+	 */
+	public static boolean isCrashExitCode(AHost host, int exit_code, boolean debugger_closed_is_crashed) {
 		if (host.isWindows()) {
 			// no strict standard other than 0 is success
 			// it may be an NTStatus(ntstatus.h) or possibly a WinError(winerror.h) or it could be something else
 		
-			switch(e) {
+			switch(exit_code) {
 			case 0: // exited normally
 			case 1: // closed (~sigterm~)
 				return false;
 			case NTStatus.STATUS_DEBUGGER_INACTIVE: // 0xC0000354
-				// windebug released (not crashed)
+				// released by windebug
+				return debugger_closed_is_crashed;
 			case NTStatus.STATUS_SYSTEM_SHUTDOWN:
 			case NTStatus.STATUS_SHUTDOWN_IN_PROGRESS:
 			case NTStatus.STATUS_SERVER_SHUTDOWN_IN_PROGRESS:
@@ -403,8 +432,26 @@ public abstract class AHost extends Host {
 			}
 		} // end if
 		
-		return e != 0;
+		return exit_code != 0;
 	} // end public static boolean isCrashExitCode
+	
+	/** guesses a status code as a String for the exit code, or returns null
+	 * 
+	 * @param host
+	 * @param exit_code
+	 * @return
+	 */
+	@Nullable
+	public static String guessExitCodeStatus(AHost host, int exit_code) {
+		if ((host == null&&LocalHost.isLocalhostWindows()) || host.isWindows()) {
+			try {
+				return NTStatus.getStatusCodeName(exit_code);
+			} catch ( Exception ex ) {
+				ex.printStackTrace();
+			}
+		}
+		return null;
+	}
 	
 	public ExecHandle execThread(String commandline) throws Exception {
 		return execThread(commandline, null, null, null);

@@ -13,5 +13,5 @@ public abstract class SAPIInstance {
 	public abstract void close();
 	public abstract boolean isRunning();
 	public abstract String getInstanceInfo(ConsoleManager cm);
-	public abstract boolean isCrashed();
+	public abstract boolean isCrashedOrDebuggedAndClosed();
 }

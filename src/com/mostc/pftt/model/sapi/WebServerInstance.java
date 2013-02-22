@@ -8,6 +8,7 @@ import java.util.Map;
 import javax.annotation.concurrent.ThreadSafe;
 
 import com.github.mattficken.io.StringUtil;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.TestCase;
 import com.mostc.pftt.model.core.PhpIni;
 
@@ -81,7 +82,7 @@ public abstract class WebServerInstance extends SAPIInstance {
 					StringBuilder sb = new StringBuilder();
 					if (sapi_output!=null)
 						sb.append(sapi_output);
-					sb.append("\nPFTT: later web server returned exit code("+exit_code+") and output:\n");
+					sb.append("\nPFTT: later web server returned exit code("+exit_code+"), status="+AHost.guessExitCodeStatus(null, exit_code)+" and output:\n");
 					sb.append(output);
 					sb.append("\nPFTT: end output.\n");
 					sapi_output = sb.toString();
@@ -95,7 +96,7 @@ public abstract class WebServerInstance extends SAPIInstance {
 			
 			StringBuilder sb = new StringBuilder(1024);
 			
-			sb.append("PFTT: web server crashed with exit code: "+exit_code+"\n");
+			sb.append("PFTT: web server crashed with exit code: "+exit_code+" status="+AHost.guessExitCodeStatus(null, exit_code)+" \n");
 			getActiveTestListString(sb);
 			getAllTestListString(sb);
 			if (StringUtil.isEmpty(output)) {
@@ -175,7 +176,7 @@ public abstract class WebServerInstance extends SAPIInstance {
 	 * @return
 	 */
 	@Override
-	public boolean isCrashed() {
+	public boolean isCrashedOrDebuggedAndClosed() {
 		synchronized(sync_lock) {
 			return crashed;
 		}

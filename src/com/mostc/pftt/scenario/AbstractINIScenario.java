@@ -48,4 +48,13 @@ public abstract class AbstractINIScenario extends AbstractSerialScenario {
 	 */
 	public abstract boolean setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini);
 	
+	public static void setupScenarios(ConsoleManager cm, Host host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini) {
+		for (Scenario scenario : scenario_set ) {
+			if (!(scenario instanceof AbstractINIScenario))
+				continue;
+		
+			((AbstractINIScenario)scenario).setup(cm, host, build, ini);
+		}
+	}
+	
 } // end public abstract class AbstractINIScenario

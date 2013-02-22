@@ -318,7 +318,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		if (output.isCrashed()) {
 			not_crashed = false; // @see #runTest
 			
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, "PFTT: exit_code="+output.exit_code+"\n"+output.output, null, null, null, ini, env, null, stdin_post, null, null, null, null, output.output));
+			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, "PFTT: exit_code="+output.exit_code+" status="+output.guessExitCodeStatus(host)+"\n"+output.output, null, null, null, ini, env, null, stdin_post, null, null, null, null, output.output));
 		}
 		
 		return output.output;

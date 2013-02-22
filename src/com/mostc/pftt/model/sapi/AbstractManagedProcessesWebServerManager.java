@@ -226,8 +226,8 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 		}
 		
 		@Override
-		public boolean isCrashed() {
-			return super.isCrashed() || process.isCrashed();
+		public boolean isCrashedOrDebuggedAndClosed() {
+			return super.isCrashedOrDebuggedAndClosed() || process.isCrashedOrDebuggedAndClosed();
 		}
 		
 		@Override
@@ -238,7 +238,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 		private boolean waiting_for_debug_of_crashed_process;
 		@Override
 		protected void do_close() {
-			if (isCrashed() && debug_handle!=null) {
+			if (isCrashedOrDebuggedAndClosed() && debug_handle!=null) {
 				if (waiting_for_debug_of_crashed_process)
 					return;
 				waiting_for_debug_of_crashed_process = true;
@@ -269,7 +269,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 
 		@Override
 		public boolean isRunning() {
-			return process.isRunning() && !isCrashed();
+			return process.isRunning() && !isCrashedOrDebuggedAndClosed();
 		}
 		
 	} // end public static abstract class ManagedProcessWebServerInstance

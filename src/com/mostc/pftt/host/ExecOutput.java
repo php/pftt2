@@ -39,6 +39,9 @@ public class ExecOutput {
 	public boolean isCrashed() {
 		return exit_code < -1;
 	}
+	public String guessExitCodeStatus(AHost host) {
+		return AHost.guessExitCodeStatus(host, exit_code);
+	}
 	public ExecOutput printOutputIfCrash(Class<?> clazz, ConsoleManager cm) {
 		return printOutputIfCrash(Host.toContext(clazz), cm);
 	}
@@ -54,7 +57,7 @@ public class ExecOutput {
 		if (ps!=null && isCrashed()) {
 			String output_str = output.trim();
 			if (StringUtil.isEmpty(output_str))
-				output_str = "<Crash with no output. exit_code="+exit_code+" cmd="+cmd+">";
+				output_str = "<Crash with no output. exit_code="+exit_code+" status="+AHost.guessExitCodeStatus(null, exit_code)+" cmd="+cmd+">";
 			
 			ps.println(ctx+": "+output_str);
 		}

@@ -314,7 +314,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 						this.web = _web;
 						is_replacement = true;
 					
-						if (web==null||web.isCrashed()) {
+						if (web==null||web.isCrashedOrDebuggedAndClosed()) {
 							markTestAsCrash();
 							
 							// test will fail (because this(`PFTT: server...`) is the actual output which won't match the expected output)
@@ -330,7 +330,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				// its certainly the fault of a test (not PFTT) if not this test
 				this.web = smgr.getWebServerInstance(cm, host, scenario_set, build, ini, env, active_test_pack.getStorageDirectory(), web, false, test_case);
 				
-				if (web==null||web.isCrashed()) {
+				if (web==null||web.isCrashedOrDebuggedAndClosed()) {
 					markTestAsCrash();
 					
 					return "PFTT: no web server available!\n";
@@ -350,9 +350,9 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			if (web!=null) {
 				web.notifyTestPostResponse(test_case);
 			
-				if (web.isCrashed())
+				if (web.isCrashedOrDebuggedAndClosed())
 					markTestAsCrash();
-				if (is_replacement && (cm.isDisableDebugPrompt()||!web.isCrashed()||!host.isWindows())) {
+				if (is_replacement && (cm.isDisableDebugPrompt()||!web.isCrashedOrDebuggedAndClosed()||!host.isWindows())) {
 					// CRITICAL: if this WebServerInstance is a replacement, then it exists only within this specific HttpTestCaseRunner
 					// instance. if it is not terminated here, it will keep running forever!
 					//
@@ -535,7 +535,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 
 	@Override
 	public String getCrashedSAPIOutput() {
-		return web!=null&&web.isCrashed() ? web.getSAPIOutput() : null;
+		return web!=null&&web.isCrashedOrDebuggedAndClosed() ? web.getSAPIOutput() : null;
 	}
 
 	@Override

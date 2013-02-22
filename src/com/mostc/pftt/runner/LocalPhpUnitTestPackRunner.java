@@ -27,6 +27,7 @@ import com.mostc.pftt.model.app.PhpUnitActiveTestPack;
 import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
 import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.sapi.ApacheManager;
 import com.mostc.pftt.model.sapi.SharedSAPIInstanceTestCaseGroupKey;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
@@ -36,6 +37,7 @@ import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.scenario.AbstractFileSystemScenario.ITestPackStorageDir;
 import com.mostc.pftt.scenario.AbstractSMBScenario.SMBStorageDir;
+import com.mostc.pftt.scenario.AbstractINIScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpUnitActiveTestPack, PhpUnitSourceTestPack, PhpUnitTestCase> {
@@ -135,12 +137,13 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 	
 	@Override
 	protected TestCaseGroupKey createGroupKey(PhpUnitTestCase test_case, TestCaseGroupKey group_key) throws Exception {
-		return group_key == null ? new SharedSAPIInstanceTestCaseGroupKey(
-				// CRITICAL: provide the INI to run all PhpUnitTestCases
-				//           unlike PhptTestCases all PhpUnitTestCases share the same INI and environment variables
-				RequiredExtensionsSmokeTest.createDefaultIniCopy(runner_host, build), 
-				null) : 
-			group_key;
+		if (group_key!=null)
+			return group_key;
+		// CRITICAL: provide the INI to run all PhpUnitTestCases
+		//           unlike PhptTestCases all PhpUnitTestCases share the same INI and environment variables
+		PhpIni ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(runner_host, build);
+		AbstractINIScenario.setupScenarios(cm, runner_host, scenario_set, build, ini);
+		return new SharedSAPIInstanceTestCaseGroupKey(ini, null);
 	}
 
 	@Override

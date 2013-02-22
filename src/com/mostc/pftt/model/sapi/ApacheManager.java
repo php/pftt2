@@ -280,7 +280,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		@Override
 		protected void do_close() {
 			// do this several times to make sure it gets done
-			final boolean c = process.isCrashed();
+			final boolean c = process.isCrashedOrDebuggedAndClosed();
 			for ( int i=0; i <3;i++) {
 				super.do_close();
 				

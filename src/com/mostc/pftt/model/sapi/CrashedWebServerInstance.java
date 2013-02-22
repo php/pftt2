@@ -44,7 +44,7 @@ public class CrashedWebServerInstance extends WebServerInstance {
 	}
 	
 	@Override
-	public boolean isCrashed() {
+	public boolean isCrashedOrDebuggedAndClosed() {
 		return true;
 	}
 

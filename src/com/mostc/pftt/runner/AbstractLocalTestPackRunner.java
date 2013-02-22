@@ -543,7 +543,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 						if (sapi_scenario instanceof AbstractWebServerScenario) { // TODO temp
 							//SAPIInstance 
 							sa = ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance();
-							if (sa==null||sa.isCrashed()||(debugger_attached && !((WebServerInstance)sa).isDebuggerAttached())) {
+							if (sa==null||sa.isCrashedOrDebuggedAndClosed()||(debugger_attached && !((WebServerInstance)sa).isDebuggerAttached())) {
 								//((SharedSAPIInstanceTestCaseGroupKey)group_key).setSAPIInstance(
 								sa = ((AbstractWebServerScenario)sapi_scenario).smgr.getWebServerInstance(cm, runner_host, scenario_set, build, group_key.getPhpIni(), 
 										group_key.getEnv(), this instanceof PhpUnitThread ? ((PhpUnitThread)this).my_temp_dir // TODO temp phpunit 
@@ -588,7 +588,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 					// test runner instance (otherwise each test runner will create its own instance, which is slow)
 					/*if (sapi_scenario instanceof AbstractWebServerScenario) { // TODO temp
 						SAPIInstance sa = ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance();*/
-						if (sa!=null && (cm.isDisableDebugPrompt()||!sa.isCrashed()||!runner_host.isWindows()))
+						if (sa!=null && (cm.isDisableDebugPrompt()||!sa.isCrashedOrDebuggedAndClosed()||!runner_host.isWindows()))
 							sa.close();
 					//}
 				}

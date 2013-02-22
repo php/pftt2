@@ -54,7 +54,7 @@ public abstract class WebServerManager extends SAPIManager {
 	public void close(boolean debug) {
 		synchronized(instances) {
 			for ( WebServerInstance wsi : instances ) {
-				if (debug && wsi.isCrashed())
+				if (debug && wsi.isCrashedOrDebuggedAndClosed())
 					continue;
 				
 				// don't close instance if user might want to debug it

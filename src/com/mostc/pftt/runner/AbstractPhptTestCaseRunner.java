@@ -82,7 +82,15 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner 
 			"ext/standard/tests/php_ini_loaded_file.phpt", 
 			"tests/run-test/test010.phpt", 
 			"ext/standard/tests/misc/time_sleep_until_basic.phpt", 
-			"ext/standard/tests/misc/time_nanosleep_basic.phpt")) {
+			"ext/standard/tests/misc/time_nanosleep_basic.phpt",
+			"ext/mbstring/tests/bug45239.phpt",
+			"ext/mbstring/tests/bug63447_001.phpt",
+			"ext/mbstring/tests/bug63447_002.phpt",
+			"ext/mbstring/tests/htmlent.phpt",
+			"ext/mbstring/tests/ini_language.phpt",
+			"ext/mbstring/tests/mb_parse_str02.phpt",
+			"ext/mbstring/tests/overload02.phpt",
+			"ext/mbstring/tests/php_gr_jp_16242.phpt")) {
 			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return true;

@@ -370,6 +370,11 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	public String getName() {
 		return getVersionString();
 	}
+	
+	@Override
+	public String toString() {
+		return getName();
+	}
 
 	/** Sometimes there are multiple tests that share a common resource (such as a file directory
 	 * or database) and can not be run at the same time. Such tests are non-thread-safe (NTS).

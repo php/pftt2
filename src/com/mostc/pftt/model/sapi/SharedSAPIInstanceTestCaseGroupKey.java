@@ -31,7 +31,7 @@ public class SharedSAPIInstanceTestCaseGroupKey extends TestCaseGroupKey {
 		}
 		
 		if (this_sapi_instance!=null&&this_sapi_instance!=sapi_instance) {
-			if (this_sapi_instance!=null && (cm.isDisableDebugPrompt()||!this_sapi_instance.isCrashed()||!host.isWindows()))
+			if (this_sapi_instance!=null && (cm.isDisableDebugPrompt()||!this_sapi_instance.isCrashedOrDebuggedAndClosed()||!host.isWindows()))
 				this_sapi_instance.close();
 		}
 		
