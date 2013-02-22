@@ -251,7 +251,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 	 * @return
 	 */
 	@Override
-	public PhptActiveTestPack installInPlace() {
+	public PhptActiveTestPack installInPlace(ConsoleManager cm, AHost host) {
 		return new PhptActiveTestPack(this.getSourceDirectory(), this.getSourceDirectory());
 	}
 
@@ -277,7 +277,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 			host.uploadCompressWith7Zip(cm, getClass(), test_pack, this.host, remote_test_pack_dir);
 		} else if (!host.isRemote()) {
 			// installing from remote host to local host
-			host.download7ZipAndDecompress(cm, getClass(), test_pack, this.host, remote_test_pack_dir);
+			host.download7ZipFileAndDecompress(cm, getClass(), test_pack, this.host, remote_test_pack_dir);
 		} else {
 			// installing from 1 remote host(src) to a different remote host (dst)
 			LocalHost local_host = new LocalHost();

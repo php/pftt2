@@ -10,6 +10,10 @@ public abstract class ApplicationScenario extends AbstractSerialScenario {
 		return ApplicationScenario.class;
 	}
 	
+	public boolean ignoreForShortName() {
+		return false;
+	}
+	
 	@Override
 	public boolean isUACRequiredForStart() {
 		return true;

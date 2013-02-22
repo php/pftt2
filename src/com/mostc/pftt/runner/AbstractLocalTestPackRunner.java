@@ -13,6 +13,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import javax.annotation.Nullable;
+
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.RemoteHost;
 import com.mostc.pftt.model.ActiveTestPack;
@@ -29,6 +31,7 @@ import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
 import com.mostc.pftt.scenario.AbstractFileSystemScenario;
+import com.mostc.pftt.scenario.AbstractRemoteFileSystemScenario;
 import com.mostc.pftt.scenario.AbstractSAPIScenario;
 import com.mostc.pftt.scenario.AbstractWebServerScenario;
 import com.mostc.pftt.scenario.Scenario;
@@ -96,14 +99,55 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 	
 	public void runTestList(S test_pack, List<T> test_cases) throws Exception {
 		this.src_test_pack = test_pack;
-		runTestList(test_pack, null, test_cases);
+		runTestList(null, test_pack, null, test_cases);
 	}
 	
 	public void runTestList(A test_pack, List<T> test_cases) throws Exception {
-		runTestList(null, test_pack, test_cases);
+		runTestList(null, null, test_pack, test_cases);
 	}
 	
-	protected void runTestList(S test_pack, A active_test_pack, List<T> test_cases) throws Exception {
+	protected void checkHost(AHost host) {
+		if (host instanceof RemoteHost) {
+			RemoteHost remote_host = (RemoteHost) host;
+			if (!remote_host.ensureConnected(cm))
+				throw new IllegalStateException("unable to connect to remote host: "+remote_host.getAddress()+" "+remote_host);
+		}
+	}
+	
+	protected void ensureFileSystemScenario() {
+		if (file_scenario==null)
+			file_scenario = AbstractFileSystemScenario.getFileSystemScenario(scenario_set);
+		if (file_scenario instanceof AbstractRemoteFileSystemScenario) {
+			storage_host = ((AbstractRemoteFileSystemScenario)file_scenario).getRemoteHost();
+		}
+	}
+	
+	/**
+	 * 
+	 * @param test_cases_read
+	 * @param test_cases - will be null if !test_cases_read
+	 * @throws Exception 
+	 */
+	protected ITestPackStorageDir doSetupStorageAndTestPack(boolean test_cases_read, @Nullable List<T> test_cases) throws Exception {
+		cm.println(EPrintType.IN_PROGRESS, getClass(), "preparing storage for test-pack...");
+		
+		ensureFileSystemScenario();
+		
+		// prepare storage
+		ITestPackStorageDir storage_dir = file_scenario.createStorageDir(cm, runner_host);
+		if (storage_dir == null) {
+			cm.println(EPrintType.CANT_CONTINUE, getClass(), "unable to prepare storage for test-pack, giving up!");
+			close();
+			return null;
+		}
+		//
+		
+		setupStorageAndTestPack(storage_dir, test_cases);
+		
+		return storage_dir;
+	}
+	
+	protected void runTestList(ITestPackStorageDir storage_dir, S test_pack, A active_test_pack, List<T> test_cases) throws Exception {
 		if (test_cases.isEmpty()) {
 			if (cm!=null)
 				cm.println(EPrintType.COMPLETED_OPERATION, getClass(), "no test cases to run. did nothing.");
@@ -118,14 +162,10 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		
 		runner_state.set(ETestPackRunnerState.RUNNING);
 		sapi_scenario = AbstractSAPIScenario.getSAPIScenario(scenario_set);
-		if (file_scenario==null)
-			file_scenario = AbstractFileSystemScenario.getFileSystemScenario(scenario_set);
+		ensureFileSystemScenario();
+		checkHost(storage_host);
+		checkHost(runner_host);
 		
-		if (storage_host instanceof RemoteHost) {
-			RemoteHost remote_host = (RemoteHost) storage_host;
-			if (!remote_host.ensureConnected(cm))
-				throw new IllegalStateException("unable to connect to remote host: "+remote_host.getAddress()+" "+remote_host);
-		}
 		
 		// ensure all scenarios are implemented
 		if (!scenario_set.isImplemented()) {
@@ -138,18 +178,12 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		// for local file system, this is just a file copy. for other scenarios, its more complicated (let the filesystem scenario deal with it)
 		
 		cm.println(EPrintType.IN_PROGRESS, getClass(), "loaded tests: "+test_cases.size());
-		cm.println(EPrintType.IN_PROGRESS, getClass(), "preparing storage for test-pack...");
 		
-		// prepare storage
-		ITestPackStorageDir storage_dir = file_scenario.createStorageDir(cm, runner_host);
-		if (storage_dir == null) {
-			cm.println(EPrintType.CANT_CONTINUE, getClass(), "unable to prepare storage for test-pack, giving up!");
-			close();
+		// ensure storage dir setup before proceeding
+		if (storage_dir==null)
+			storage_dir = doSetupStorageAndTestPack(true, test_cases);
+		if (storage_dir==null)
 			return;
-		}
-		//
-
-		setupStorageAndTestPack(storage_dir, test_cases);
 		//
 		
 		//
@@ -198,7 +232,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		}
 	} // end public void runTestList
 	
-	protected abstract void setupStorageAndTestPack(ITestPackStorageDir storage_dir, List<T> test_cases);
+	protected abstract void setupStorageAndTestPack(ITestPackStorageDir storage_dir, List<T> test_cases) throws IOException, Exception;
 	
 	public void close() {
 		// don't kill procs we're debugging 
@@ -599,9 +633,20 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 
 	@Override
 	public void runAllTests(S test_pack) throws FileNotFoundException, IOException, Exception {
+		this.src_test_pack = test_pack;
+		
 		ArrayList<T> test_cases = new ArrayList<T>(13000);
 			
 		test_pack.cleanup(cm);
+		
+		// PhpUnit test-packs have their storage setup FIRST, then they are read from storage SECOND
+		//    -PhpUnit sets up storage with this call to #doSetupStorageAndTestPack
+		//    -PhpUnit ignores the second #doSetupStorageAndTestPack in #runTestList
+		// PHPT test-packs are read FIRST then have their storage setup SECOND
+		//    -PHPT ignores this #doSetupStorageAndTestPack call
+		//    -PHPT honors the second #doSetupStorageAndTestPack in #runTestList
+		ITestPackStorageDir storage_dir = doSetupStorageAndTestPack(false, null);
+		// storage_dir may be null
 		
 		cm.println(EPrintType.IN_PROGRESS, getClass(), "enumerating test cases from test-pack...");
 		
@@ -609,7 +654,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		
 		cm.println(EPrintType.IN_PROGRESS, getClass(), "enumerated test cases.");
 		
-		runTestList(test_pack, test_cases);
+		runTestList(storage_dir, test_pack, null, test_cases);
 	}
 
 	public void runAllTests(A test_pack) throws FileNotFoundException, IOException, Exception {

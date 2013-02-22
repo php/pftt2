@@ -499,12 +499,12 @@ public abstract class AHost extends Host {
 		}
 	}
 		
-	public void upload7ZipAndDecompress(ConsoleManager cm, Class<?> clazz, AHost src_host, String src, String dst) throws IllegalStateException, IOException, Exception {
-		upload7ZipAndDecompress(cm, toContext(clazz), src_host, src, dst);
+	public void upload7ZipFileAndDecompress(ConsoleManager cm, Class<?> clazz, AHost src_host, String src, String dst) throws IllegalStateException, IOException, Exception {
+		upload7ZipFileAndDecompress(cm, toContext(clazz), src_host, src, dst);
 	}
 	
-	public void download7ZipAndDecompress(ConsoleManager cm, Class<?> clazz, String src, AHost dst_host, String dst) throws IllegalStateException, IOException, Exception {
-		download7ZipAndDecompress(cm, toContext(clazz), src, dst_host, dst);
+	public void download7ZipFileAndDecompress(ConsoleManager cm, Class<?> clazz, String src, AHost dst_host, String dst) throws IllegalStateException, IOException, Exception {
+		download7ZipFileAndDecompress(cm, toContext(clazz), src, dst_host, dst);
 	}
 	
 	/** uploads a 7zip file from local source to remote destination and decompresses it.
@@ -520,7 +520,7 @@ public abstract class AHost extends Host {
 	 * @throws IOException
 	 * @throws Exception
 	 */
-	public void upload7ZipAndDecompress(ConsoleManager cm, String ctx_str, AHost src_host, String src, String dst) throws IllegalStateException, IOException, Exception {
+	public void upload7ZipFileAndDecompress(ConsoleManager cm, String ctx_str, AHost src_host, String src, String dst) throws IllegalStateException, IOException, Exception {
 		ensure7Zip(cm, src_host);
 		
 		String dst_7zip_file = mktempname(ctx_str, ".7z");
@@ -545,7 +545,7 @@ public abstract class AHost extends Host {
 	 * @throws IOException
 	 * @throws Exception
 	 */
-	public void download7ZipAndDecompress(ConsoleManager cm, String ctx_str, String src, AHost dst_host, String dst) throws IllegalStateException, IOException, Exception {
+	public void download7ZipFileAndDecompress(ConsoleManager cm, String ctx_str, String src, AHost dst_host, String dst) throws IllegalStateException, IOException, Exception {
 		ensure7Zip(cm, dst_host);
 		
 		String dst_7zip_file = dst_host.mktempname(ctx_str, ".7z");

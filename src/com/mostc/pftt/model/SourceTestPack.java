@@ -13,7 +13,7 @@ public interface SourceTestPack<A extends ActiveTestPack, T extends TestCase> {
 	void cleanup(ConsoleManager cm);
 	String getSourceDirectory();
 	void read(List<T> test_cases, ConsoleManager cm, ITestResultReceiver twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception;
-	A installInPlace();
+	A installInPlace(ConsoleManager cm, AHost host) throws IOException, Exception;
 	A installNamed(AHost host, String string, List<T> test_cases) throws IllegalStateException, IOException, Exception;
 	A install(ConsoleManager cm, AHost host, String local_test_pack_dir, String remote_test_pack_dir) throws IllegalStateException, IOException, Exception;
 }

@@ -10,10 +10,15 @@ class SymfonyPhpUnitTestPack extends PhpUnitSourceTestPack {
 	public String getVersionString() {
 		return "Symfony-2.1.7";
 	}
+	
+	@Override
+	protected String getSourceRoot(AHost host) {
+		return host.getPfttDir()+"/cache/working/Symfony";
+	}
 
 	@Override
-	public boolean open(ConsoleManager cm, AHost host) throws Exception {
-		// 1.
+	protected boolean openAfterInstall(ConsoleManager cm, AHost host) throws Exception {
+		// 1. don't run these, they're really broken
 		addBlacklist("vendor/kriswallsmith/assetic/tests/assetic/test/filter/sass/sassfiltertest.php");
 		addBlacklist("vendor/sensio/generator-bundle/sensio/bundle/generatorbundle/resources/skeleton/bundle/defaultcontrollertest.php");
 		addBlacklist("vendor/symfony/symfony/vendor/kriswallsmith/assetic/tests/assetic/test/filter/sass/sassfiltertest.php");
@@ -22,7 +27,6 @@ class SymfonyPhpUnitTestPack extends PhpUnitSourceTestPack {
 		addBlacklist("vendor/twig/twig/test/twig/tests/integrationtest.php");
 		
 		// 2.
-		setRoot("C:\\php-sdk\\PFTT\\current\\cache\\working\\Symfony");
 		addPhpUnitDist(getRoot()+"/vendor/symfony/symfony/src", getRoot()+"/vendor/symfony/symfony/autoload.php.dist");
 		addPhpUnitDist(getRoot()+"/vendor/doctrine/common/tests", getRoot()+"/vendor/doctrine/common/tests/Doctrine/Tests/TestInit.php");
 		addIncludeDirectory(getRoot()+"/vendor/symfony/symfony/src");
@@ -38,11 +42,11 @@ class SymfonyPhpUnitTestPack extends PhpUnitSourceTestPack {
 			
 			host.move(tmp_dir+"/vendor", getRoot()+"/vendor/symfony/symfony/vendor");
 			
-			host.delete(tmp_dir);
+			host.deleteIfExists(tmp_dir);
 		}
 		
 		return true;
-	} // end public boolean open
+	} // end public boolean openAfterInstall
 	
 } // end class SymfonyPhpUnitTestPack
 getBinding().setVariable("SymfonyPhpUnitTestPack", SymfonyPhpUnitTestPack);

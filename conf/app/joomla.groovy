@@ -9,15 +9,10 @@ def scenarios() {
  * @see https://github.com/joomla/joomla-platform
  * 
  */
-class SymfonyPhpUnitTestPack extends PhpUnitSourceTestPack {
+abstract class SymfonyPhpUnitTestPack extends PhpUnitSourceTestPack {
 	
 	@Override
-	public String getVersionString() {
-		return "Symfony-2.1.7";
-	}
-
-	@Override
-	public boolean open(ConsoleManager cm, AHost host) throws Exception {
+	protected boolean openAfterInstall(ConsoleManager cm, AHost host) throws Exception {
 		// 1.
 		addBlacklist("vendor/kriswallsmith/assetic/tests/assetic/test/filter/sass/sassfiltertest.php");
 		addBlacklist("vendor/sensio/generator-bundle/sensio/bundle/generatorbundle/resources/skeleton/bundle/defaultcontrollertest.php");
@@ -47,7 +42,7 @@ class SymfonyPhpUnitTestPack extends PhpUnitSourceTestPack {
 		}
 		
 		return true;
-	} // end public boolean open
+	} // end public boolean openAfterInstall
 	
 } // end class SymfonyPhpUnitTestPack
 class JoomlaPlatformPhpUnitTestPack extends SymfonyPhpUnitTestPack {
@@ -56,14 +51,18 @@ class JoomlaPlatformPhpUnitTestPack extends SymfonyPhpUnitTestPack {
 	public String getVersionString() {
 		return "Joomla-Platform-12.3";
 	}
+	
+	@Override
+	protected String getSourceRoot(AHost host) {
+		return host.getPfttDir()+"/cache/working/joomla-platform";
+	}
 
 	@Override
-	public boolean open(ConsoleManager cm, AHost host) throws Exception {
+	protected boolean openAfterInstall(ConsoleManager cm, AHost host) throws Exception {
 		// 1. dependency on SymfonyPhpUnitTestPack (Joomla-Platform depends on Symfony)
-		super.open(cm, host);
+		super.openAfterInstall(cm, host);
 		
 		// 2.
-		setRoot("C:\\php-sdk\\PFTT\\current\\cache\\working\\joomla-platform");
 		addPhpUnitDist(getRoot()+"/tests/suites/database", getRoot()+"/tests/bootstrap.php");
 		addPhpUnitDist(getRoot()+"/tests/suites/unit", getRoot()+"/tests/bootstrap.php");
 		addPhpUnitDist(getRoot()+"/tests/suites/legacy", getRoot()+"/tests/bootstrap.legacy.php");

@@ -775,18 +775,32 @@ public class PfttMain {
 			} else if (command.equals("app_list")||command.equals("applist")||command.equals("al")) {
 				// TODO
 			} else if (command.equals("app_all")||command.equals("appall")||command.equals("aa")) {
-				// TODO
+				if (!(args.length > args_i+1)) {
+					System.err.println("User Error: must specify build");
+					System.out.println("usage: pftt app_all <path to PHP build>");
+					System.exit(-255);
+					return;
+				}
+				
+				PhpBuild build = newBuild(cm, rt.host, args[args_i+1]);
+				if (build==null) {
+					System.err.println("IO Error: can not open php build: "+build);
+					System.exit(-255);
+					return;
+				}
+				cm.println(EPrintType.CLUE, PfttMain.class, "Build: "+build);
+				
 				ScenarioSet scenario_set = config.getScenarioSets().get(0);
-				// TODO
-				PhpBuild build = new PhpBuild("c:/php-sdk/php-5.5-ts-windows-vc9-x86-re6bde1f");
+				
 				checkDebugger(cm, rt.host, build);
 				build.open(cm, rt.host);
 				
 				PhpUnitSourceTestPack test_pack = config.getPhpUnitSourceTestPack(cm);
-				test_pack.open(cm, rt.host); // CRITICAL
+				cm.println(EPrintType.CLUE, PfttMain.class, "Test-Pack: "+test_pack);
 				
 				PhpResultPackWriter tmgr = new PhpResultPackWriter(rt.host, cm, new File(rt.host.getPhpSdkDir()), build, scenario_set);
-				LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, rt.host, rt.host);
+				List<AHost> hosts = config.getHosts();
+				LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, hosts.isEmpty()?rt.host:hosts.get(0), rt.host);
 				r.runAllTests(test_pack);
 				
 				tmgr.close();

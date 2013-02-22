@@ -116,6 +116,11 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 	 * @return
 	 */
 	public static PhpIni createDefaultIniCopy(Host host, PhpBuild build) {
+		// these settings make a (big) difference in certain scenarios or for certain tests
+		// before committing changes to any of them, you MUST do a full run of all tests on
+		// all scenarios before and after the change to ensure that your change here does not
+		// break anything
+		//
 		PhpIni ini = new PhpIni();
 		// ini.putSingle("default_mimetype", "text/plain");
 		// ini.putSingle("date.timezone", "'UTC'");
@@ -124,6 +129,10 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 		ini.putMulti(PhpIni.SAFE_MODE, 0);
 		ini.putMulti(PhpIni.DISABLE_DEFS, PhpIni.OFF);
 		ini.putMulti(PhpIni.OUTPUT_BUFFERING, PhpIni.ON);
+		
+		// CRITICAL PhpUnit tests w/ remote fs scenarios
+		ini.putSingle("max_execution_time", 60); // default is 30
+		
 		//
 		// CRITICAL
 		ini.putMulti(PhpIni.ERROR_REPORTING, PhpIni.E_ALL_NOTICE_WARNING);

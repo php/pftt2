@@ -113,6 +113,7 @@ function __phpunit_run_isolated_test()
 		echo \$test->getStatusMessage();
 		echo PHP_EOL;
 		echo \$output;
+		var_dump(get_loaded_extensions());
 		break;
 	case PHPUnit_Runner_BaseTestRunner::STATUS_INCOMPLETE:
 		echo 'NOT_IMPLEMENTED';
@@ -151,6 +152,12 @@ function __phpunit_run_isolated_test()
 	}
 
 """);
+	// NOTE: when skipping, outputs get_loaded_extensions() to show what extensions were actually loaded
+	//       may be skipped because an extension wasn't loaded (checked with extension_loaded('ext_name'))
+	//       but some extensions (intl) aren't loaded even though other extensions from the INI are loaded
+	//
+	//      (ie Apache gets the INI and loads most of the extensions from the INI, but sometimes fails to load intl)
+
 	//
 	// PhpUnit test execution:
 	//

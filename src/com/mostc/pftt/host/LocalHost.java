@@ -239,7 +239,8 @@ public class LocalHost extends AHost {
 			String cmd = null;
 			if (isDirectory(src)) {
 				// ensure xcopy sees destination is supposed to be a directory, or xcopy will ask/block forever
-				dst += "\\";
+				if (!dst.endsWith("\\"))
+					dst += "\\";
 				
 				// /I is only for directories
 				// TODO try /J => performance improvement?

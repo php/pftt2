@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.Nullable;
+
 import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.HttpVersion;
 import org.apache.http.params.HttpParams;
@@ -31,7 +33,9 @@ import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.scenario.AbstractFileSystemScenario.ITestPackStorageDir;
+import com.mostc.pftt.scenario.AbstractSMBScenario.SMBStorageDir;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpUnitActiveTestPack, PhpUnitSourceTestPack, PhpUnitTestCase> {
@@ -66,11 +70,68 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 		
 		smgr = new ApacheManager();
 	}
-
+	
 	@Override
-	protected void setupStorageAndTestPack(ITestPackStorageDir storage_dir, List<PhpUnitTestCase> test_cases) {
-		// TODO
+	protected ITestPackStorageDir doSetupStorageAndTestPack(boolean test_cases_read, @Nullable List<PhpUnitTestCase> test_cases) throws Exception {
+		if (test_cases_read) {
+			
+			// TODO cm.println(EPrintType.IN_PROGRESS, getClass(), "installed tests("+test_cases.size()+") from test-pack onto storage: local="+local_test_pack_dir+" remote="+remote_test_pack_dir);
+			
+			return null;
+		}
+		return super.doSetupStorageAndTestPack(test_cases_read, test_cases);
 	}
+
+	protected String temp_base_dir;
+	@Override
+	protected void setupStorageAndTestPack(ITestPackStorageDir storage_dir, List<PhpUnitTestCase> test_cases) throws Exception {
+		if (!(storage_dir instanceof SMBStorageDir)) {
+			temp_base_dir = runner_host.getPhpSdkDir()+"/temp/";
+			
+			active_test_pack = src_test_pack.installInPlace(cm, runner_host);
+			
+			return;
+		}
+		
+		// generate name of directory on that storage to store the copy of the test-pack
+		String local_test_pack_dir = null, remote_test_pack_dir = null;
+		{
+			String local_path = storage_dir.getLocalPath(storage_host);
+			String remote_path = storage_dir.getRemotePath(storage_host);
+			long millis = System.currentTimeMillis();
+			for ( int i=0 ; i < 131070 ; i++ ) {
+				// try to include version, branch info etc... from name of test-pack
+				local_test_pack_dir = local_path + "/PFTT-" + src_test_pack.getName() + (i==0?"":"-" + millis) + "/";
+				remote_test_pack_dir = remote_path + "/PFTT-" + src_test_pack.getName() + (i==0?"":"-" + millis) + "/";
+				if (!storage_host.exists(remote_test_pack_dir) || !runner_host.exists(local_test_pack_dir))
+					break;
+				millis++;
+				if (i%100==0)
+					millis = System.currentTimeMillis();
+			}
+		}
+		//
+		
+		
+		cm.println(EPrintType.IN_PROGRESS, getClass(), "installing... test-pack onto storage: remote="+remote_test_pack_dir+" local="+local_test_pack_dir);
+		
+		try {
+			active_test_pack = src_test_pack.install(cm, storage_host, local_test_pack_dir, remote_test_pack_dir);
+		} catch ( Exception ex ) {
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, "setupStorageAndTestPack", ex, "can't install test-pack");
+			close();
+			return;
+		}
+		
+		// notify storage
+		if (!storage_dir.notifyTestPackInstalled(cm, runner_host)) {
+			cm.println(EPrintType.CANT_CONTINUE, getClass(), "unable to prepare storage for test-pack, giving up!(2)");
+			close();
+			return;
+		}
+		
+		temp_base_dir = local_test_pack_dir + "/temp/";
+	} // end protected void setupStorageAndTestPack
 	
 	@Override
 	protected TestCaseGroupKey createGroupKey(PhpUnitTestCase test_case, TestCaseGroupKey group_key) throws Exception {
@@ -107,7 +168,7 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 
 		protected PhpUnitThread(boolean parallel) throws IllegalStateException, IOException {
 			super(parallel);
-			my_temp_dir = runner_host.fixPath(runner_host.mktempname(runner_host.getPhpSdkDir()+"/temp/", getClass()) + "/");
+			my_temp_dir = runner_host.fixPath(runner_host.mktempname(temp_base_dir, getClass()) + "/");
 			runner_host.mkdirs(my_temp_dir);
 		}
 

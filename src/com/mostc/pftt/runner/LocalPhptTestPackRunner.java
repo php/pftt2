@@ -6,6 +6,8 @@ import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 
+import javax.annotation.Nullable;
+
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.core.PhpBuild;
@@ -31,6 +33,13 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 
 	public LocalPhptTestPackRunner(ConsoleManager cm, ITestResultReceiver twriter, ScenarioSet scenario_set, PhpBuild build, AHost storage_host, AHost runner_host) {
 		super(cm, twriter, scenario_set, build, storage_host, runner_host);
+	}
+	
+	@Override
+	protected ITestPackStorageDir doSetupStorageAndTestPack(boolean test_cases_read, @Nullable List<PhptTestCase> test_cases) throws Exception {
+		if (!test_cases_read)
+			return null;
+		return super.doSetupStorageAndTestPack(test_cases_read, test_cases);
 	}
 	
 	@Override
@@ -63,7 +72,7 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 			try {
 				// if -auto or -phpt-not-in-place console option, copy test-pack and run phpts from that copy
 				if (!cm.isPhptNotInPlace() && file_scenario.allowPhptInPlace())
-					active_test_pack = src_test_pack.installInPlace();
+					active_test_pack = src_test_pack.installInPlace(cm, runner_host);
 				else
 					// copy test-pack onto (remote) file system
 					active_test_pack = src_test_pack.install(cm, storage_host, local_test_pack_dir, remote_test_pack_dir);

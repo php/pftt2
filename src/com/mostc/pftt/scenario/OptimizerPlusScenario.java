@@ -6,32 +6,34 @@ import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 
-/** The Zend Optimizer+ provides faster PHP execution through opcode caching and optimization.
+/** The Optimizer+ provides faster PHP execution through opcode caching and optimization.
  * It improves PHP performance by storing precompiled script bytecode in the shared memory. This
  * eliminates the stages of reading code from the disk and compiling it on future access. In
  * addition, it applies a few bytecode optimization patterns that make code execution faster.
+ * 
+ * Formerly known as Zend Optimizer+, often abbreviated as o+ or zo+
  * 
  * @see https://github.com/zend-dev/ZendOptimizerPlus
  * @see https://github.com/OSTC/ZendOptimizerPlus - fork for Windows/PHP on Windows
  *
  */
 
-public class ZendOptimizerPlusScenario extends AbstractCodeCacheScenario {
+public class OptimizerPlusScenario extends AbstractCodeCacheScenario {
 
 	@Override
 	public String getNameWithVersionInfo() {
-		return "ZendOptimizer+"; // XXX version
+		return "OptimizerPlus"; // XXX version
 	}
 
 	@Override
 	public EAcceleratorType getAcceleratorType() {
-		return EAcceleratorType.ZEND_OPTIMIZER_PLUS;
+		return EAcceleratorType.OPTIMIZER_PLUS;
 	}
 
 	@Override
 	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
 		// assume SO is in same directory as PHP extensions
-		String dll_path = ini.getExtensionDir() + "/ZendOptimizerPlus." + (host.isWindows() ? "dll" : "so" );
+		String dll_path = ini.getExtensionDir() + "/php_ZendOptimizerPlus." + (host.isWindows() ? "dll" : "so" );
 		
 		// must be absolute path to ZendOptimizerPlus.so
 		ini.putMulti("zend_extension", dll_path);
@@ -55,7 +57,7 @@ public class ZendOptimizerPlusScenario extends AbstractCodeCacheScenario {
 	@Override
 	public String getName() {
 		// use 'plus' instead of + symbol which may cause problems (ex: on certain filesystems)
-		return "ZendOptimizerPlus";
+		return "OptimizerPlus";
 	}
 
 	@Override

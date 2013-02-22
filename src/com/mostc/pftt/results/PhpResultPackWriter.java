@@ -70,9 +70,6 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 			sb.append(cpu);
 		}
 		
-		sb.append('-');
-		sb.append(scenario_set.getShortName());
-		
 		return new File(base.getAbsolutePath() + sb);
 	}
 	

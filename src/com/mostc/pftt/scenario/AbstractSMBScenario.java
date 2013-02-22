@@ -46,6 +46,11 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 	}
 	
 	@Override
+	public AHost getRemoteHost() {
+		return remote_host;
+	}
+	
+	@Override
 	public boolean allowPhptInPlace() {
 		// always make sure test-pack is installed onto SMB Share
 		// otherwise, there wouldn't be a point in testing on SMB
@@ -222,10 +227,24 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		if (dir.local_path==null)
 			return false;
 		
-		String cmd = "NET USE "+dir.local_path+" "+dir.unc_path+" /user:"+remote_host.getUsername()+" "+remote_host.getPassword();
+		// /Y => or could get prompted to restore connection from previous Windows login session
+		String cmd = "NET USE "+dir.local_path+" "+dir.unc_path+" /Y /user:"+remote_host.getUsername()+" "+remote_host.getPassword();
 		
-		return local_host.execElevated(cm, getClass(), cmd, AHost.ONE_MINUTE);
-	}
+		if (local_host.execElevatedOut(cmd, AHost.ONE_MINUTE).printOutputIfCrash(getClass(), cm).isSuccess()) {
+			// wait until drive becomes available (sometimes it might take a second after `net use` implies its available)
+			for (int i=0 ; ; i++) {
+				if (new File(dir.local_path+"/").exists()) {
+					return true;
+				} else if (i >= 20) {
+					throw new RuntimeException("network drive did not become available after waiting: "+dir.local_path);
+				}
+				Thread.sleep(500);
+				i++;
+			}
+		}
+		// drive not mounted
+		return false;
+	} // end protected boolean connectFromWindows
 	
 	protected boolean connectFromSamba(SMBStorageDir dir, ConsoleManager cm) {
 		// XXX

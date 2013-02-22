@@ -38,6 +38,10 @@ public class SMBDFSScenario extends AbstractSMBScenario {
 		this(remote_host, null, "PFTT-TARGET", "PFTT-NS", "PFTT-NS", "PFTT-DFS");
 	}
 	
+	public SMBDFSScenario(RemoteHost remote_host, String base_file_path) {
+		this(remote_host, base_file_path, "PFTT-TARGET", "PFTT-NS", "PFTT-NS", "PFTT-DFS");
+	}
+	
 	public SMBDFSScenario(RemoteHost remote_host, String base_file_path, String base_share_name, String base_remote_namespace, String base_namespace, String base_folder) {
 		super(remote_host, base_file_path, base_share_name);
 		

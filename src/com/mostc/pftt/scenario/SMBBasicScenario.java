@@ -16,6 +16,10 @@ public class SMBBasicScenario extends AbstractSMBScenario {
 	public SMBBasicScenario(RemoteHost remote_host) {
 		this(remote_host, null, null);
 	}
+	
+	public SMBBasicScenario(RemoteHost remote_host, String base_file_path) {
+		this(remote_host, base_file_path, null);
+	}
 
 	public SMBBasicScenario(RemoteHost remote_host, String base_file_path, String base_share_name) {
 		super(remote_host, base_file_path, base_share_name);

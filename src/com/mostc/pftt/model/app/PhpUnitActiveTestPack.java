@@ -1,22 +1,23 @@
 package com.mostc.pftt.model.app;
 
-import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.ActiveTestPack;
 
 public class PhpUnitActiveTestPack implements ActiveTestPack {
-// C:\\php-sdk\\PFTT\\current\\cache\\working\\symfony\\vendor\\symfony\\symfony\\src
-	AHost host;
+	protected final String local_test_pack_dir, remote_test_pack_dir;
+
+	public PhpUnitActiveTestPack(String local_test_pack_dir, String remote_test_pack_dir) {
+		this.local_test_pack_dir = local_test_pack_dir;
+		this.remote_test_pack_dir = remote_test_pack_dir;
+	}
 
 	@Override
 	public String getRunningDirectory() {
-		// TODO Auto-generated method stub
-		return null;
+		return remote_test_pack_dir;
 	}
 
 	@Override
 	public String getStorageDirectory() {
-		// TODO Auto-generated method stub
-		return null;
+		return local_test_pack_dir;
 	}
 	
 	

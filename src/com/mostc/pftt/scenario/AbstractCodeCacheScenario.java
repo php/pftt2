@@ -6,7 +6,7 @@ public abstract class AbstractCodeCacheScenario extends AbstractINIScenario {
 	public static final WinCacheScenario WINCACHE = new WinCacheScenario();
 	public static final NoCodeCacheScenario NO = new NoCodeCacheScenario();
 	public static final APCScenario APC = new APCScenario();
-	public static final ZendOptimizerPlusScenario ZEND_OPTIMIZER_PLUS = new ZendOptimizerPlusScenario();
+	public static final OptimizerPlusScenario ZEND_OPTIMIZER_PLUS = new OptimizerPlusScenario();
 	
 	@Override
 	public Class<?> getSerialKey() {

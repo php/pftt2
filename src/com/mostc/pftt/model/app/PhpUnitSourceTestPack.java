@@ -23,6 +23,7 @@ import com.caucho.vfs.FileReadStream;
 import com.caucho.vfs.ReadStream;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.SourceTestPack;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
@@ -32,7 +33,9 @@ import com.mostc.pftt.results.ITestResultReceiver;
  * 
  * To configure a PhpUnitSourceTestPack:
  * 1. provide PhpUnitSourceTestPack the path to the test pack
+ *        -implement #getSourceRoot
  * 2. find all the phpunit.dist.xml files in the test-pack
+ *        -implement #openAfterInstall
  * 3. (required) create corresponding PhpUnitDists by calling PhpUnitSourceTestPack#addPhpUnitDist
  *    and provide all the information from the phpunit.dist.xml file.
  *    the Javadoc on the PhpUnitDist methods explains which method matches which XML tag.
@@ -49,6 +52,7 @@ import com.mostc.pftt.results.ITestResultReceiver;
  */
 
 public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitActiveTestPack, PhpUnitTestCase> {
+	// TODO move javadoc from these fields to associated setter methods
 	/** required: file path to test-pack */
 	protected String test_pack_root;
 	/** optional: PHP code to run before every test case. this is meant to do additional initialization
@@ -284,9 +288,16 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	}
 
 	@Override
-	public PhpUnitActiveTestPack installInPlace() {
-		// TODO Auto-generated method stub
-		return null;
+	public PhpUnitActiveTestPack installInPlace(ConsoleManager cm, AHost host) throws Exception {
+		final String src_root = getSourceRoot(new LocalHost());
+		if (!new File(src_root).isDirectory()) {
+			throw new IOException("source-test-pack not found: "+src_root);
+		}
+		setRoot(src_root);
+		
+		openAfterInstall(cm, host);
+		
+		return new PhpUnitActiveTestPack(src_root, src_root);
 	}
 
 	@Override
@@ -301,9 +312,42 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	public PhpUnitActiveTestPack install(ConsoleManager cm, AHost host,
 			String local_test_pack_dir, String remote_test_pack_dir)
 			throws IllegalStateException, IOException, Exception {
-		// TODO Auto-generated method stub
-		return null;
+		
+		final String src_root = getSourceRoot(new LocalHost());
+		if (!new File(src_root).isDirectory()) {
+			throw new IOException("source-test-pack not found: "+src_root);
+		}
+		
+		// using #uploadCompressWith7Zip instead of just #upload makes a huge difference
+		// for PhpUnit test-packs because of the large number of small files that have to be uploaded
+		host.uploadCompressWith7Zip(cm, getClass(), src_root, new LocalHost(), remote_test_pack_dir);
+		
+		setRoot(local_test_pack_dir);
+		
+		openAfterInstall(cm, host);
+		
+		return new PhpUnitActiveTestPack(local_test_pack_dir, remote_test_pack_dir);
 	}
+	
+	/** the base directory within the PFTT directory to find the phpunit and required php files
+	 * 
+	 * @param host - determine the absolute path on this host
+	 * @see AHost#getPfttDir
+	 * @return
+	 */
+	protected abstract String getSourceRoot(AHost host);
+
+	/** installs the tests after they have been copied to storage (if needed)
+	 * 
+	 * @see #getRoot() returns the location the tests and their php files have been copied to (if they were
+	 * copied, if not copied, returns location they are stored at)
+	 * 
+	 * @param cm
+	 * @param host
+	 * @return
+	 * @throws Exception
+	 */
+	protected abstract boolean openAfterInstall(ConsoleManager cm, AHost host) throws Exception;
 
 	public void setRoot(String test_pack_root) {
 		this.test_pack_root = test_pack_root;
@@ -322,8 +366,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	}
 	
 	public abstract String getVersionString();
-	public abstract boolean open(ConsoleManager cm, AHost host) throws Exception;
-
+	
 	public String getName() {
 		return getVersionString();
 	}
