@@ -36,7 +36,7 @@ import com.mostc.pftt.scenario.ScenarioSet;
 
 public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected ExecOutput output;
-	protected String selected_php_exe, shell_script, test_cmd, skip_cmd, ini_settings, shell_file, ini_dir;
+	protected String selected_php_exe, shell_script, test_cmd, skip_cmd, shell_file, ini_dir;
 	
 	public static boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
 		if (AbstractPhptTestCaseRunner2.willSkip(cm, twriter, host, scenario_set, type, build, test_case)) {
@@ -157,9 +157,6 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		if (super.prepare()) {
 			ini_dir = build.prepare(host);
 			
-			//
-			ini_settings = ini.toCliArgString(host);
-			
 			selected_php_exe = build.getPhpExe();
 			
 			/* For GET/POST tests, check if cgi sapi is available and if it is, use it. */
@@ -194,7 +191,6 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			// -c => provide default PhpIni file
 			sb.append(" -c ");
 			sb.append(ini_dir);
-			sb.append(ini_settings);
 			sb.append(" -f \"");sb.append(host.fixPath(test_file));sb.append("\" ");
 			if (test_case.containsSection(EPhptSection.ARGS)) {
 				// copy CLI args to pass
@@ -249,6 +245,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		env.put(ENV_USE_ZEND_ALLOC, "1");
 		// important: some tests need these to work
 		env.put(ENV_TEST_PHP_EXECUTABLE, build.getPhpExe());
+		env.put(ENV_PHP_PATH, build.getPhpExe());
 		if (build.hasPhpCgiExe())
 			env.put(ENV_TEST_PHP_CGI_EXECUTABLE, build.getPhpCgiExe());
 		
@@ -294,7 +291,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			env.put(ENV_USE_ZEND_ALLOC, "1");
 				
 			// -c => critical, pass php.ini
-			skip_cmd = selected_php_exe+" -c "+ini_dir+" "+ini_settings+" -f \""+skipif_file+"\"";
+			skip_cmd = selected_php_exe+" -c "+ini_dir+" -f \""+skipif_file+"\"";
 
 			if (!env.containsKey(ENV_PATH_TRANSLATED))
 				env.put(ENV_PATH_TRANSLATED, skipif_file);

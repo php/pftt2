@@ -29,6 +29,11 @@ import com.mostc.pftt.util.VisualStudioUtil;
  *
  */
 
+// XXX be able to Auto-Generate english documentation about how to configure
+//     Apache (properly) for PHP
+//     -special cases
+//        -openssl version match between apache and php
+//        -copy ICU DLLs from PHP build to apache/bin
 @ThreadSafe
 public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 	/** URL to ApacheLounge's Windows Builds (as a .ZIP file) */
@@ -164,15 +169,31 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			//            to run php+phpt so they pass on CLI, but too small for apache+php+phpt so they crash on apache)
 			// NOTE: this returns false (no exception) if visual studio not installed
 			// NOTE: this returns false (no exception) if apache binary can't be edited (already running, UAC privileges not elevated)
-			if (host!=this.cache_host||this.cache_httpd==null||!this.cache_httpd.equals(httpd)) {
+			if (!host.equals(this.cache_host)||this.cache_httpd==null||!this.cache_httpd.equals(httpd)) {
 				// do this once
 				synchronized(this) {
+					// fix stack size bug for PCRE
 					VisualStudioUtil.setExeStackSize(cm, host, httpd, VisualStudioUtil.SIXTEEN_MEGABYTES);
 					
+					//
+					// method 1: copy icu*.dll to Apache\Bin
+					// 
+					// do it this way too -- it has been observed that method 1 does not work
+					// (YES, I verified the PATH env var was set correct/passed to Apache)
+					try {
+						host.delete(Host.dirname(httpd)+"/icu*.dll");
+						
+						host.copy(build.getBuildPath()+"/icu*.dll", Host.dirname(httpd));
+					} catch ( Exception ex ) {
+						cm.addGlobalException(EPrintType.CLUE, getClass(), "createManagedProcessWebServerInstance", ex, "couldn't copy ICU DLLs to Apache - php INTL extension may not be usable with Apache :(");
+					}
+					
 					// check OpenSSL version
-					if (!checkOpenSSLVersion(cm, host, build, apache_version, Host.dirname(Host.dirname(httpd)))) {
-						cm.println(EPrintType.SKIP_OPERATION, getClass(), "Apache built with different version of OpenSSL than the version PHP is built with. Can't use this Apache build!");
-						return null;
+					if (!cm.isSkipSmokeTests()) {
+						if (!checkOpenSSLVersion(cm, host, build, apache_version, Host.dirname(Host.dirname(httpd)))) {
+							cm.println(EPrintType.SKIP_OPERATION, getClass(), "Apache built with different version of OpenSSL than the version PHP is built with. Can't use this Apache build!");
+							return null;
+						}
 					}
 					
 					this.cache_host = host;
@@ -211,6 +232,16 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		final String error_log = host.joinIntoOnePath(conf_dir, "error.log");
 		
 		env = prepareENV(env, php_conf_file, build, scenario_set, httpd);
+		
+		//
+		if (host.isWindows()) {
+			// need to make sure ICU dlls are accessible by Apache
+			
+			// method 2: add build path to PATH env var
+			// (did method 1: fallback above once)
+			env.put("PATH", build.getBuildPath());
+		}
+		//
 		
 		// apache configuration (also tells where to find php.ini. see PHPIniDir directive)
 		String conf_str = writeConfigurationFile(apache_version, host, dll, conf_dir, error_log, listen_address, port, docroot);
@@ -451,7 +482,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 
 	@Override
 	public String getNameWithVersionInfo() {
-		return "Apache-ApacheLounge-2.4.3-VC10-x86"; // TODO
+		return "Apache-ModPHP-ApacheLounge-2.4.4-VC11-x86"; // TODO
 	}
 
 	public void addToDebugPath(AHost host, Collection<String> debug_path) {

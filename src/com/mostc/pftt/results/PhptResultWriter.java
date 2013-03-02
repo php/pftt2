@@ -10,13 +10,16 @@ import java.io.PrintWriter;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 
 import org.kxml2.io.KXmlSerializer;
 
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.EPhptSection;
 import com.mostc.pftt.model.core.EPhptTestStatus;
+import com.mostc.pftt.model.core.PhpBuildInfo;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.scenario.ScenarioSet;
 
@@ -24,9 +27,19 @@ public class PhptResultWriter {
 	protected final File dir;
 	protected final HashMap<EPhptTestStatus,StatusListEntry> status_list_map;
 	protected final KXmlSerializer serial;
+	protected final AHost host;
+	protected final ScenarioSet scenario_set;
+	protected final PhpBuildInfo build_info;
+	protected final EBuildBranch test_pack_branch;
+	protected final String test_pack_version;
 	
-	public PhptResultWriter(File dir) throws IOException {
+	public PhptResultWriter(File dir, AHost host, ScenarioSet scenario_set, PhpBuildInfo build_info, EBuildBranch test_pack_branch, String test_pack_version) throws IOException {
 		this.dir = dir;
+		this.host = host;
+		this.scenario_set = scenario_set;
+		this.build_info = build_info;
+		this.test_pack_branch = test_pack_branch;
+		this.test_pack_version = test_pack_version;
 		
 		dir.mkdirs();
 		
@@ -92,27 +105,7 @@ public class PhptResultWriter {
 	public void close() throws IOException {
 		// write tally file with 
 		try {
-			/*PhptTallyFile tally = new PhptTallyFile();
-			tally.sapi_scenario_name = ScenarioSet.getSAPIScenario(scenario_set).getName();
-			tally.build_branch = build.getVersionBranch(cm, host)+"";
-			tally.test_pack_branch = test_pack.getVersionBranch()+"";
-			tally.build_revision = build.getVersionString(cm, host);
-			tally.test_pack_revision = test_pack.getVersion();
-			tally.os_name = host.getOSName();
-			tally.os_name_long = host.getOSNameLong();
-			tally.pass = counts.get(EPhptTestStatus.PASS).get();
-			tally.fail = counts.get(EPhptTestStatus.FAIL).get();
-			tally.skip = counts.get(EPhptTestStatus.SKIP).get();
-			tally.xskip = counts.get(EPhptTestStatus.XSKIP).get();
-			tally.xfail = counts.get(EPhptTestStatus.XFAIL).get();
-			tally.xfail_works = counts.get(EPhptTestStatus.XFAIL_WORKS).get();
-			tally.unsupported = counts.get(EPhptTestStatus.UNSUPPORTED).get();
-			tally.bork = counts.get(EPhptTestStatus.BORK).get();
-			tally.exception = counts.get(EPhptTestStatus.TEST_EXCEPTION).get();*/		
-			
-			/* TODO FileWriter fw = new FileWriter(new File(telem_dir, "tally.xml"));
-			PhptTallyFile.write(tally, fw);
-			fw.close();*/
+			PhptTallyFile tally = new PhptTallyFile();
 		} catch ( Exception ex ) {
 			ex.printStackTrace();
 		}
@@ -184,5 +177,30 @@ public class PhptResultWriter {
 		}
 		//
 	} // end protected void handleResult
+
+	public String getOSName() {
+		return host.getOSName();
+	}
+	public ScenarioSet getScenarioSet() {
+		return scenario_set;
+	}
+	public PhpBuildInfo getBuildInfo() {
+		return build_info;
+	}
+	public EBuildBranch getTestPackBranch() {
+		return test_pack_branch;
+	}
+	public String getTestPackVersion() {
+		return test_pack_version;
+	}
+	public float passRate() {
+		return 100.0f * ((float)count(EPhptTestStatus.PASS)) / ((float)(count(EPhptTestStatus.PASS) + count(EPhptTestStatus.CRASH) + count(EPhptTestStatus.FAIL)));
+	}
+	public int count(EPhptTestStatus status) {
+		return status_list_map.get(status).test_names.size();
+	}
+	public List<String> getTestNames(EPhptTestStatus status) {
+		return status_list_map.get(status).test_names;
+	}
 	
 } // end public class PhptResultWriter

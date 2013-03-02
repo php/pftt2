@@ -25,6 +25,7 @@ public enum EApacheVersion {
 				return true;
 			} else if (build.getVersionMajor(cm, host) == 5) {
 				int minor = build.getVersionMinor(cm, host);
+
 				if (minor==4) 
 					// Apache 2.4 support was added in: 5.4.10
 					return build.getVersionRelease(cm, host) >= 10;
@@ -74,7 +75,7 @@ public enum EApacheVersion {
 	};
 	
 	public static final EApacheVersion DEFAULT = NEWEST_SUPPORTED;
-	public static final EApacheVersion FALLBACK = APACHE_2_2;
+	public static final EApacheVersion FALLBACK = APACHE_2_4;
 	
 	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build) throws Exception {
 		try {

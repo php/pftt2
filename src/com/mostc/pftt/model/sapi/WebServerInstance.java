@@ -120,6 +120,7 @@ public abstract class WebServerInstance extends SAPIInstance {
 				sb.append('\n');
 			}
 		}
+		sb.append("PFTT: TIP: to re-run only these tests in this exact order use `core_list` or `app_list` with -thread_count=1\n");
 	}
 	
 	public String getActiveTestListString() {

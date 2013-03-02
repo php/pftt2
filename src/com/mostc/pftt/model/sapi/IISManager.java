@@ -300,7 +300,7 @@ public class IISManager extends WebServerManager {
 			}
 			
 			try {
-				if (host.execElevated(cm, getClass(), "pkgmgr /iu:IIS-WebServerRole;IIS-WebServer;IIS-StaticContent;IIS-WebServerManagementTools;IIS-ManagementConsole;IIS-CGI", AHost.ONE_HOUR)) {
+				if (host.execElevated(cm, getClass(), "pkgmgr /iu:IIS-WebServerRole;IIS-WebServer;IIS-StaticContent;IIS-WebServerManagementTools;IIS-ManagementConsole;IIS-CGI", AHost.HALF_HOUR)) {
 					cm.println(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "IIS installed");
 					
 					return true;

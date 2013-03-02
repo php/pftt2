@@ -171,6 +171,8 @@ If the application uses PHPUnit, implement [PhpUnitAppTestPack](doc/apidoc/com/m
 
 ## Crash debugging
 
+To re-run tests in exactly the same order, use -thread_count=1 console option with `app_list` or `core_list` commands.
+
 ### For crashes that happen every time
 
 1. Create a list of the tests that are crashing or might be crashing

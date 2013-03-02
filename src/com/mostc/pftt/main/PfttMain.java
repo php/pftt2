@@ -32,7 +32,7 @@ import com.mostc.pftt.model.smoke.ESmokeTestStatus;
 import com.mostc.pftt.model.smoke.PhptTestCountsMatchSmokeTest;
 import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.model.smoke.RequiredFeaturesSmokeTest;
-import com.mostc.pftt.report.AbstractReportGen;
+import com.mostc.pftt.results.AbstractReportGen;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.LocalConsoleManager;
 import com.mostc.pftt.results.PhpResultPackReader;
@@ -64,12 +64,18 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
  * 
  */
 
-// TODO pftt cleanup cmd (does taskkill and net use /delete to cleanup from interrupted run)
+// TODO pftt recover cmd (does taskkill and net use /delete to cleanup from interrupted run)
+// TODO pftt explain
+//           -shows PhpIni, etc.. not as a separate file though
+//              -if you need it for debug, use it from explain
+//                   -ie force people to do it at least partially the efficient PFTT way
+//              -if you need it to setup, use setup cmd
 // TODO change how ScenarioSets are permuted
 //        can have multiple database scenarios in 1 ScenarioSet for PHPTs
 //        can only have 1 for applications
 //        can only have 1 for PhpUnit
 // TODO core_all, etc... should display location of result-pack being written
+// TODO installation ... single .zip file to download with install wizard/script
 public class PfttMain {
 	protected LocalHost host;
 	
@@ -111,33 +117,33 @@ public class PfttMain {
 					install_build();
 				}*/
 				//
-			{
-				// TODO test running PHPTs on a build that is missing a DLL that is
-				RequiredExtensionsSmokeTest test = new RequiredExtensionsSmokeTest();
-				//
-				// on Windows, missing .DLLs from a php build will cause a blocking winpop dialog msg to appear
-				// in such a case, the test will timeout after 1 minute and then fail (stopping at that point is important)
-				// @see PhpBuild#getExtensionList
-				if (test.test(build, cm, host, AbstractSAPIScenario.getSAPIScenario(scenario_set).getSAPIType())==ESmokeTestStatus.FAIL) {
-					// if this test fails, RequiredFeaturesSmokeTest will fail for sure
-					cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
-					break;
+			if (!cm.isSkipSmokeTests()) {
+				{
+					// TODO test running PHPTs on a build that is missing a DLL that is
+					RequiredExtensionsSmokeTest test = new RequiredExtensionsSmokeTest();
+					//
+					// on Windows, missing .DLLs from a php build will cause a blocking winpop dialog msg to appear
+					// in such a case, the test will timeout after 1 minute and then fail (stopping at that point is important)
+					// @see PhpBuild#getExtensionList
+					if (test.test(build, cm, host, AbstractSAPIScenario.getSAPIScenario(scenario_set).getSAPIType())==ESmokeTestStatus.FAIL) {
+						// if this test fails, RequiredFeaturesSmokeTest will fail for sure
+						cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+						break;
+					}
 				}
-			}
-			{
-				RequiredFeaturesSmokeTest test = new RequiredFeaturesSmokeTest();
-				if (test.test(build, cm, host)==ESmokeTestStatus.FAIL) {
-					cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
-					break;
+				{
+					RequiredFeaturesSmokeTest test = new RequiredFeaturesSmokeTest();
+					if (test.test(build, cm, host)==ESmokeTestStatus.FAIL) {
+						cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+						break;
+					}
 				}
 			}
 			//
 			
-			PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, telem_dir(), build, scenario_set);
+			PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, telem_dir(), build, scenario_set, test_pack);
 			LocalPhptTestPackRunner test_pack_runner = new LocalPhptTestPackRunner(tmgr.getConsoleManager(), tmgr, scenario_set, build, storage_host, host);
 			cm.showGUI(test_pack_runner);
-			
-			test_pack.cleanup(cm);
 			
 			test_pack_runner.runAllTests(test_pack);
 			
@@ -168,7 +174,7 @@ public class PfttMain {
 			System.err.println();
 		} else {
 			// TODO temp 
-			//show_report(cm, new FBCReportGen(base_telem, test_telem));
+			//show_report(cm, new FBCReportGen2(base_telem.g));
 		}
 	}
 	
@@ -185,25 +191,27 @@ public class PfttMain {
 	public void run_named_tests(LocalConsoleManager cm, PhpBuild build, PhptSourceTestPack test_pack, AHost storage_host, List<ScenarioSet> scenario_sets, List<String> names) throws Exception {
 		for ( ScenarioSet scenario_set : scenario_sets ) {
 			//
-			{
-				RequiredExtensionsSmokeTest test = new RequiredExtensionsSmokeTest();
-				if (test.test(build, cm, host, AbstractSAPIScenario.getSAPIScenario(scenario_set).getSAPIType())==ESmokeTestStatus.FAIL) {
-					cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
-					break;
+			if (!cm.isSkipSmokeTests()) {
+				{
+					RequiredExtensionsSmokeTest test = new RequiredExtensionsSmokeTest();
+					if (test.test(build, cm, host, AbstractSAPIScenario.getSAPIScenario(scenario_set).getSAPIType())==ESmokeTestStatus.FAIL) {
+						cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+						break;
+					}
 				}
-			}
-			{
-				RequiredFeaturesSmokeTest test = new RequiredFeaturesSmokeTest();
-				if (test.test(build, cm, host)==ESmokeTestStatus.FAIL) {
-					cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
-					break;
+				{
+					RequiredFeaturesSmokeTest test = new RequiredFeaturesSmokeTest();
+					if (test.test(build, cm, host)==ESmokeTestStatus.FAIL) {
+						cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+						break;
+					}
 				}
 			}
 			//
 			
 			LinkedList<PhptTestCase> test_cases = new LinkedList<PhptTestCase>();
 			
-			PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, telem_dir(), build, scenario_set);
+			PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, telem_dir(), build, scenario_set, test_pack);
 			test_pack.cleanup(cm);
 			cm.println(EPrintType.IN_PROGRESS, "PhptSourceTestPack", "enumerating test cases from test-pack...");
 			test_pack.read(test_cases, names, tmgr.getConsoleManager(), tmgr, build, true); // TODO true?
@@ -262,7 +270,7 @@ public class PfttMain {
 		System.out.println("Options:");
 		System.out.println("-gui - show gui for certain commands");
 		System.out.println("-config <file1,file2> - load 1+ configuration file(s)");
-		System.out.println("-force - disables confirmation dialogs and forces proceeding anyway");
+		System.out.println("-overwrite - overwrites files without prompting (confirmation prompt by default)");
 		System.out.println("-src_pack <path> - folder with the source code");
 		System.out.println("-debug_pack <path> - folder with debugger symbols (usually folder with .pdb files)");
 		System.out.println("-randomize_order <0+> - randomizes test case run order");
@@ -282,6 +290,9 @@ public class PfttMain {
 		System.out.println("-skip_list <list files> - skip tests in list (exact name)");
 		System.out.println("-run_group_times_all <N> - runs all groups of tests N times (in same order every time, unless -randomize used)");
 		System.out.println("-run_group_times_list <N> <list file> - just like run_group_times_all and run_test_times_list (but for groups of tests)");
+		System.out.println("-thread_count <N> - sets number of threads to run tests in. running in multiple threads is usually a performance boost. by default, will run with multiple threads and automatically decide the best number of threads to use");
+		System.out.println("-max_test_read_count <N> - maximum number of tests to read (without other options, this will be the number of tests run also... tests are normally only run once)");
+		System.out.println("-skip_smoke_tests - skips smoke tests and runs tests anyway (BE CAREFUL. RESULTS MAY BE INVALID or INACCURATE)");
 		System.out.println("-no_nts - runs tests in any thread, regardless of thread-safety. This can increase load/stress, but may lead to false FAILS/ERRORs, especially in file or database tests.");
 		System.out.println();
 	} // end protected static void cmd_help
@@ -372,35 +383,35 @@ public class PfttMain {
 		System.err.println("Error: Not implemented");		
 	}
  
-	protected static void cmd_release_get(ConsoleManager cm, boolean force, AHost host, URL url) {
-		download_release_and_decompress(cm, force, "build", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, url), url);
+	protected static void cmd_release_get(ConsoleManager cm, boolean overwrite, AHost host, URL url) {
+		download_release_and_decompress(cm, overwrite, "build", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, url), url);
 	}
 	
-	protected static void cmd_release_get_previous(ConsoleManager cm, boolean force, AHost host, EBuildBranch branch, EBuildType build_type) {
+	protected static void cmd_release_get_previous(ConsoleManager cm, boolean overwrite, AHost host, EBuildBranch branch, EBuildType build_type) {
 		System.out.println("PFTT: release_get: finding previous "+build_type+" build of "+branch+"...");
 		FindBuildTestPackPair find_pair = WindowsSnapshotDownloadUtil.findPreviousPair(build_type, WindowsSnapshotDownloadUtil.getDownloadURL(branch));
 		if (find_pair==null) {
 			System.err.println("PFTT: release_get: unable to find previous build of "+branch+" of type "+build_type);
 			return;
 		}
-		download_release_and_decompress(cm, force, "build", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
-		download_release_and_decompress(cm, force, "test-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
-		download_release_and_decompress(cm, force, "debug-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getDebug_pack()), find_pair.getDebug_pack());
+		download_release_and_decompress(cm, overwrite, "build", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
+		download_release_and_decompress(cm, overwrite, "test-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
+		download_release_and_decompress(cm, overwrite, "debug-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getDebug_pack()), find_pair.getDebug_pack());
 	}
 	
-	protected static void cmd_release_get_newest(ConsoleManager cm, boolean force, AHost host, EBuildBranch branch, EBuildType build_type) {
+	protected static void cmd_release_get_newest(ConsoleManager cm, boolean overwrite, AHost host, EBuildBranch branch, EBuildType build_type) {
 		System.out.println("PFTT: release_get: finding newest "+build_type+" build of "+branch+"...");
 		FindBuildTestPackPair find_pair = WindowsSnapshotDownloadUtil.findNewestPair(build_type, WindowsSnapshotDownloadUtil.getDownloadURL(branch));
 		if (find_pair==null) {
 			System.err.println("PFTT: release_get: unable to find newest build of "+branch+" of type "+build_type);
 			return;
 		}
-		download_release_and_decompress(cm, force, "build", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
-		download_release_and_decompress(cm, force, "test-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
-		download_release_and_decompress(cm, force, "debug-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getDebug_pack()), find_pair.getDebug_pack());
+		download_release_and_decompress(cm, overwrite, "build", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
+		download_release_and_decompress(cm, overwrite, "test-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
+		download_release_and_decompress(cm, overwrite, "debug-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getDebug_pack()), find_pair.getDebug_pack());
 	}
 
-	protected static void cmd_release_get_revision(ConsoleManager cm, boolean force, AHost host, EBuildBranch branch, EBuildType build_type, String revision) {
+	protected static void cmd_release_get_revision(ConsoleManager cm, boolean overwrite, AHost host, EBuildBranch branch, EBuildType build_type, String revision) {
 		System.out.println("PFTT: release_get: finding "+build_type+" build in "+revision+" of "+branch+"...");
 		FindBuildTestPackPair find_pair = WindowsSnapshotDownloadUtil.getDownloadURL(branch, build_type, revision);
 		if (find_pair==null) {
@@ -409,11 +420,11 @@ public class PfttMain {
 		}
 		
 		if (find_pair.getBuild()!=null)
-			download_release_and_decompress(cm, force, "build", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
+			download_release_and_decompress(cm, overwrite, "build", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
 		if (find_pair.getTest_pack()!=null)
-			download_release_and_decompress(cm, force, "test-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
+			download_release_and_decompress(cm, overwrite, "test-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
 		if (find_pair.getDebug_pack()!=null)
-			download_release_and_decompress(cm, force, "debug-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getDebug_pack()), find_pair.getDebug_pack());
+			download_release_and_decompress(cm, overwrite, "debug-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getDebug_pack()), find_pair.getDebug_pack());
 	}
 	
 	protected static boolean confirm(String msg) {
@@ -426,8 +437,8 @@ public class PfttMain {
 		}
 	}
 	
-	protected static void download_release_and_decompress(ConsoleManager cm, boolean force, String download_type, AHost host, File local_dir, URL url) {
-		if (!force && local_dir.exists()) {
+	protected static void download_release_and_decompress(ConsoleManager cm, boolean overwrite, String download_type, AHost host, File local_dir, URL url) {
+		if (!overwrite && local_dir.exists()) {
 			if (!confirm("Overwrite existing folder "+local_dir+"?"))
 				return;
 		}
@@ -598,8 +609,8 @@ public class PfttMain {
 		int args_i = 0;
 		
 		Config config = null;
-		boolean is_uac = false, debug = false, randomize_order = false, no_result_file_for_pass_xskip_skip = false, pftt_debug = false, show_gui = false, force = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false, thread_safety = true;
-		int run_test_times_all = 1, run_test_times_list_times = 1, run_group_times_all = 1, run_group_times_list_times = 1;
+		boolean is_uac = false, debug = false, randomize_order = false, no_result_file_for_pass_xskip_skip = false, pftt_debug = false, show_gui = false, overwrite = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false, thread_safety = true, skip_smoke_tests = false;
+		int run_test_times_all = 1, run_test_times_list_times = 1, run_group_times_all = 1, run_group_times_list_times = 1, max_test_read_count = 0, thread_count = 0;
 		LinkedList<String> debug_list = new LinkedList<String>();
 		LinkedList<String> run_test_times_list = new LinkedList<String>();
 		LinkedList<String> run_group_times_list = new LinkedList<String>();
@@ -612,8 +623,8 @@ public class PfttMain {
 		for ( ; args_i < args.length ; args_i++ ) {
 			if (args[args_i].equals("-gui")||args[args_i].equals("-g")) {
 				show_gui = true;
-			} else if (args[args_i].equals("-force")||args[args_i].equals("-f")) {
-				force = true;
+			} else if (args[args_i].equals("-overwrite")) {
+				overwrite = true;
 			} else if (args[args_i].equals("-config")||args[args_i].equals("-c")) {
 				// 
 				// configuration file(s) are separated by ; or : or ,
@@ -686,7 +697,7 @@ public class PfttMain {
 				disable_debug_prompt = true;
 				results_only = false;
 				dont_cleanup_test_pack = false;
-				phpt_not_in_place = true;
+				phpt_not_in_place = false; // TODO true;
 				is_uac = true;
 				no_result_file_for_pass_xskip_skip = true;
 			} else if (args[args_i].equals("-randomize_order")) {
@@ -694,6 +705,14 @@ public class PfttMain {
 			} else if (args[args_i].equals("-run_test_times_all")) {
 				args_i++;
 				run_test_times_all = Integer.parseInt(args[args_i]);
+			} else if (args[args_i].equals("-thread_count")) {
+				args_i++;
+				thread_count = Integer.parseInt(args[args_i]);
+			} else if (args[args_i].equals("-max_test_read_count")) {
+				args_i++;
+				max_test_read_count = Integer.parseInt(args[args_i]);
+			} else if (args[args_i].equals("-skip_smoke_tests")) {
+				skip_smoke_tests = true;
 			} else if (args[args_i].equals("-no_nts")) {
 				thread_safety = false;
 			} else if (args[args_i].equals("-run_group_times_all")) {
@@ -757,8 +776,9 @@ public class PfttMain {
 		//
 		
 		
-		LocalConsoleManager cm = new LocalConsoleManager(source_pack, debug_pack, force, debug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug, no_result_file_for_pass_xskip_skip, randomize_order, run_test_times_all, 
-				thread_safety, run_test_times_list_times, run_group_times_all, run_group_times_list_times, debug_list, run_test_times_list, run_group_times_list, skip_list);
+		LocalConsoleManager cm = new LocalConsoleManager(source_pack, debug_pack, overwrite, debug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug, no_result_file_for_pass_xskip_skip, randomize_order, run_test_times_all, 
+				thread_safety, run_test_times_list_times, run_group_times_all, run_group_times_list_times, debug_list, run_test_times_list, run_group_times_list, skip_list,
+				skip_smoke_tests, max_test_read_count, thread_count);
 		
 		if (config_files.size()>0) {
 			config = Config.loadConfigFromFiles(cm, (File[])config_files.toArray(new File[config_files.size()]));
@@ -790,6 +810,9 @@ public class PfttMain {
 				}
 				cm.println(EPrintType.CLUE, PfttMain.class, "Build: "+build);
 				
+				HostEnvUtil.prepareHostEnv(rt.host, cm, build, !cm.isDisableDebugPrompt());
+				
+				// TODO
 				ScenarioSet scenario_set = config.getScenarioSets().get(0);
 				
 				checkDebugger(cm, rt.host, build);
@@ -798,7 +821,7 @@ public class PfttMain {
 				PhpUnitSourceTestPack test_pack = config.getPhpUnitSourceTestPack(cm);
 				cm.println(EPrintType.CLUE, PfttMain.class, "Test-Pack: "+test_pack);
 				
-				PhpResultPackWriter tmgr = new PhpResultPackWriter(rt.host, cm, new File(rt.host.getPhpSdkDir()), build, scenario_set);
+				PhpResultPackWriter tmgr = new PhpResultPackWriter(rt.host, cm, new File(rt.host.getPhpSdkDir()), build, scenario_set, test_pack);
 				List<AHost> hosts = config.getHosts();
 				LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, hosts.isEmpty()?rt.host:hosts.get(0), rt.host);
 				r.runAllTests(test_pack);
@@ -1026,13 +1049,13 @@ public class PfttMain {
 					
 					// input processed, dispatch
 					if (url!=null)
-						cmd_release_get(cm, force, rt.host, url);
+						cmd_release_get(cm, overwrite, rt.host, url);
 					else if (revision.equals("newest"))
-						cmd_release_get_newest(cm, force, rt.host, branch, build_type);
+						cmd_release_get_newest(cm, overwrite, rt.host, branch, build_type);
 					else if (revision.equals("previous"))
-						cmd_release_get_previous(cm, force, rt.host, branch, build_type);
+						cmd_release_get_previous(cm, overwrite, rt.host, branch, build_type);
 					else
-						cmd_release_get_revision(cm, force, rt.host, branch, build_type, revision);
+						cmd_release_get_revision(cm, overwrite, rt.host, branch, build_type, revision);
 				}
 			} else if (command.equals("release_list")||command.equals("rl")||command.equals("rlist")) {
 				EBuildBranch branch = null;

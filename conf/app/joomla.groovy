@@ -43,12 +43,16 @@ abstract class SymfonyPhpUnitTestPack extends PhpUnitSourceTestPack {
 		
 		return true;
 	} // end public boolean openAfterInstall
-	
+	@Override
+	public void prepareINI(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini) {
+		ini.putSingle("zend_optimizerplus.save_comments", 0);
+		ini.putSingle("zend_optimizerplus.load_comments", 0);
+	}
 } // end class SymfonyPhpUnitTestPack
 class JoomlaPlatformPhpUnitTestPack extends SymfonyPhpUnitTestPack {
 	
 	@Override
-	public String getVersionString() {
+	public String getNameAndVersionString() {
 		return "Joomla-Platform-12.3";
 	}
 	

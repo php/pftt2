@@ -87,6 +87,11 @@ public final class HostEnvUtil {
 					// `windbg -IS`
 					host.execElevated(cm, HostEnvUtil.class, StringUtil.ensureQuoted(win_dbg_exe)+" -IS", AHost.ONE_MINUTE);
 				}
+			} else {
+				// edit registry to try to undo windbg -I
+				//
+				regDel(cm, host, "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug", "Debugger");
+				regDel(cm, host, "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug", "Auto");
 			}
 			//
 			
@@ -194,10 +199,22 @@ public final class HostEnvUtil {
 		// (on Longhorn+ this will prompt the user to approve this action (approve elevating to administrator. 
 		//  should avoid doing this to avoid bothering the user/requiring manual input).
 		
-		host.execElevated(cm, HostEnvUtil.class, "REG ADD \""+key+"\" /v "+name+" /t "+type+" /f /d "+value, AHost.ONE_MINUTE);
-		
-		return true;
+		return host.execElevated(cm, HostEnvUtil.class, "REG ADD \""+key+"\" /v "+name+" /t "+type+" /f /d "+value, AHost.ONE_MINUTE);
 	}
+	
+	/** deletes from Windows registry
+	 * 
+	 * @param cm
+	 * @param host
+	 * @param key
+	 * @param value_name - name of value in key (key is like a directory, value_name is like a file name)
+	 * @return
+	 * @throws Exception
+	 */
+	public static boolean regDel(ConsoleManager cm, AHost host, String key, String value_name) throws Exception {
+		return host.execElevated(cm, HostEnvUtil.class, "REG DELETE \""+key+"\" /v "+value_name + " /f", AHost.ONE_MINUTE);
+	}
+			
 
 	private HostEnvUtil() {}
 	

@@ -3,6 +3,7 @@ package com.mostc.pftt.model.app;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.github.mattficken.io.StringUtil;
@@ -14,14 +15,14 @@ import com.github.mattficken.io.StringUtil;
  */
 
 public class PhpUnitDist {
-	public final PhpUnitSourceTestPack src_test_pack;
+	protected final PhpUnitSourceTestPack src_test_pack;
 	/** optional: a PHP file to load at the start of every PhpUnit test.
 	 * 
 	 * Often, this will be an autoloader that loads all the required include files so you don't have to specify them here.
 	 * 
 	 * copy this from the bootstrap= attribute in PhpUnit.xml.dist
 	 * */
-	public final File bootstrap_file;
+	protected final File bootstrap_file;
 	/** required: the base directory for tests. this is scanned for *Test.php files unless subdirectories are provided.
 	 * 
 	 * if subdirectories are provided, they are assumed to be inside this directory.
@@ -30,15 +31,39 @@ public class PhpUnitDist {
 	 * 
 	 * @see #addSubDir
 	 */
-	public final File path;
+	protected final File path;
 	protected ArrayList<String> include_files;
-	public ArrayList<String> subdirs;
-	public Map<String,String> globals, constants;
+	protected ArrayList<String> subdirs;
+	protected Map<String,String> globals, constants;
 	
 	protected PhpUnitDist(PhpUnitSourceTestPack src_test_pack, String path, String bootstrap_file, String[] include_files) {
 		this.src_test_pack = src_test_pack;
 		this.path = new File(path);
 		this.bootstrap_file = StringUtil.isEmpty(bootstrap_file) ? null : new File(bootstrap_file);
+	}
+	
+	public Map<String,String> getConstants() {
+		return constants;
+	}
+	
+	public Map<String,String> getGlobals() {
+		return globals;
+	}
+	
+	public List<String> getSubDirs() {
+		return subdirs;
+	}
+	
+	public File getPath() {
+		return path;
+	}
+	
+	public File getBootstrapFile() {
+		return bootstrap_file;
+	}
+	
+	public PhpUnitSourceTestPack getSourceTestPack() {
+		return src_test_pack;
 	}
 	
 	String[] _include_files;

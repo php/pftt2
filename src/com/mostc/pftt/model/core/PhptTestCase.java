@@ -1063,5 +1063,13 @@ public class PhptTestCase extends TestCase {
 		}
 		serial.endTag(null, "phptTestCase");
 	}
+
+	public boolean nameStartsWithAny(String[] ext_names) {
+		return StringUtil.startsWithAnyIC(getName(), ext_names);
+	}
+	
+	public boolean nameStartsWithAny(String ext_name) {
+		return StringUtil.startsWithIC(getName(), ext_name);
+	}
 		
 } // end public class PhptTestCase

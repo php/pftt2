@@ -126,6 +126,16 @@ public class LocalHost extends AHost {
 			} catch ( Exception ex ) {
 				ex.printStackTrace();
 			}
+		} else if (isWindows() && path.contains("*")) {
+			// XXX wildcard support on linux
+			path = fixPath(path);
+			
+			try {
+				execElevated("CMD /C DEL /F /Q "+path+"", NO_TIMEOUT);
+			} catch ( Exception ex ) {
+				ex.printStackTrace();
+				new File(path).delete();
+			}
 		} else {
 			new File(path).delete();
 		}
@@ -577,8 +587,22 @@ public class LocalHost extends AHost {
 	
 	protected LocalExecHandle exec_impl(String[] cmd_array, Map<String,String> env, String chdir, int timeout, byte[] stdin_data) throws IOException, InterruptedException {
 		ProcessBuilder builder = new ProcessBuilder(cmd_array);
-		if (env!=null)
+		if (env!=null) {
+			//
+			if (env.containsKey(PATH)) {
+				String a = System.getenv(PATH);
+				String b = env.get(PATH);
+				
+				if (StringUtil.isNotEmpty(a) && StringUtil.isNotEmpty(b)) {
+					b = a + pathsSeparator() + b;
+					
+					env.put(PATH, b);
+				}
+			}
+			//
+			
 			builder.environment().putAll(env);
+		}
 		if (StringUtil.isNotEmpty(chdir))
 			builder.directory(new File(chdir));
 		builder.redirectErrorStream(true);
@@ -801,6 +825,11 @@ public class LocalHost extends AHost {
 	@Override
 	public long getSize(String file) {
 		return new File(file).length();
+	}
+	
+	@Override
+	public long getMTime(String file) {
+		return new File(file).lastModified();
 	}
 
 	@Override

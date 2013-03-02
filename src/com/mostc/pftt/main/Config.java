@@ -244,7 +244,11 @@ public final class Config {
 				cm.println(EPrintType.CLUE, Config.class, "Loaded "+config.hosts.size()+" hosts");
 			}
 			if (config.scenario_sets.size()>0) {
-				cm.println(EPrintType.CLUE, Config.class, "Loaded "+config.scenario_sets.size()+" Scenario-Sets: "+config.getScenarioSets());
+				String ss_str = "";
+				for ( ScenarioSet scenario_set : config.getScenarioSets() )
+					ss_str += scenario_set.getNameWithVersionInfo() + ", ";
+				cm.println(EPrintType.CLUE, Config.class, "Loaded "+config.scenario_sets.size()+" Scenario-Sets: "+ss_str);
+				
 			} // note: if no scenario sets given, will use defaults (@see ScenarioSet#getAllDefaultScenarios)... no need to show that here
 		}
 		

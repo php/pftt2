@@ -764,6 +764,16 @@ public class HostGroup extends Host implements List<Host> {
 	public void getSize(String file, LongCollector c) {
 		for (Host h : this)
 			c.collect(h, h.getSize(file));
+	}	
+	@Override
+	public long getMTime(String file) {
+		for (Host h : this)
+			return h.getMTime(file);
+		return 0L;
+	}
+	public void getMTime(String file, LongCollector c) {
+		for (Host h : this)
+			c.collect(h, h.getMTime(file));
 	}
 	@Override
 	public String joinMultiplePaths(String... paths) {

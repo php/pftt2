@@ -130,6 +130,8 @@ public abstract class WebServerManager extends SAPIManager {
 		// these 2 env vars are needed for some phpts
 		env.put(AbstractPhptTestCaseRunner.ENV_TEST_PHP_EXECUTABLE, httpd_exe);
 		env.put(AbstractPhptTestCaseRunner.ENV_TEST_PHP_CGI_EXECUTABLE, build.getPhpCgiExe());
+		// for some phpunits
+		env.put(AbstractPhptTestCaseRunner.ENV_PHP_PATH, build.getPhpCgiExe());
 		//
 		env.put(AbstractPhptTestCaseRunner.ENV_PFTT_SCENARIO_SET, scenario_set.getNameWithVersionInfo());
 		env.put(AbstractPhptTestCaseRunner.ENV_PFTT_IS, "1");

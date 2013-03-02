@@ -10,7 +10,7 @@ import com.mostc.pftt.model.core.PhpDebugPack;
 public interface ConsoleManager {
 	
 	public boolean isDisableDebugPrompt();
-	public boolean isForce();
+	public boolean isOverwrite();
 	/**
 	 * 
 	 * @see -debug_all console option
@@ -100,5 +100,8 @@ public interface ConsoleManager {
 	public int getRunGroupTimesListTimes();
 	public List<String> getRunGroupTimesList();
 	public boolean isRunGroupTimesList();
+	public boolean isSkipSmokeTests();
+	public int getMaxTestReadCount();
+	public int getThreadCount();
 	
 } // end public class ConsoleManager

@@ -21,6 +21,7 @@ import com.mostc.pftt.model.ActiveTestPack;
 import com.mostc.pftt.model.SourceTestPack;
 import com.mostc.pftt.model.TestCase;
 import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.sapi.AbstractManagedProcessesWebServerManager;
 import com.mostc.pftt.model.sapi.SAPIInstance;
 import com.mostc.pftt.model.sapi.SharedSAPIInstanceTestCaseGroupKey;
@@ -173,6 +174,20 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			return;
 		}
 		//
+		
+		//
+		if (sapi_scenario instanceof AbstractWebServerScenario) { // TODO temp
+			SAPIInstance sa = ((AbstractWebServerScenario)sapi_scenario).smgr.getWebServerInstance(cm, runner_host, scenario_set, build, new PhpIni(), null, null, null, false, null);
+			
+			if (sa==null) {
+				cm.println(EPrintType.CANT_CONTINUE, getClass(), "SAPIInstance failed smoke tests... can't test (use -skip_smoke_tests to override)");
+				return;
+			}
+			
+			sa.close();
+		}
+		//
+		
 		
 		////////////////// install test-pack onto the storage it will be run from
 		// for local file system, this is just a file copy. for other scenarios, its more complicated (let the filesystem scenario deal with it)
@@ -403,10 +418,10 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		// 2. limit to number of thread safe tests + number of NTS extensions (extensions with NTS tests)
 		//        -exceed this number and there will be threads that won't have any tests to run
 		// 3. if debugging
-		// 4. limit to MAX_THREAD_COUNT
+		// 4. ask user (-thread_count console option)
+		// 5. limit to MAX_THREAD_COUNT
 		
 		int thread_count = sapi_scenario.getTestThreadCount(runner_host);
-		
 		if ((cm.isThreadSafety() || cm.getRunTestTimesAll()<2) && thread_count > thread_safe_test_count + non_thread_safe_exts.size()) {
 			// don't start more threads than there will be work for
 			// however, if -no_nts AND -run_test_times_all console option used, user wants tests run
@@ -418,6 +433,10 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			// run fewer threads b/c we're running WinDebug
 			// (can run WinDebug w/ same number of threads, but UI responsiveness will be really SLoow)
 			thread_count = Math.max(1, thread_count / 4);
+		}
+		if (cm.getThreadCount()>0) {
+			// let user override SAPI and debug thread count checks
+			thread_count = cm.getThreadCount();
 		}
 		if (thread_count > MAX_THREAD_COUNT) {
 			// safety check: don't run too many threads

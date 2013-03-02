@@ -192,7 +192,10 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		}
 	}
 	
-	private void add_test_case(PhptTestCase test_case, List<PhptTestCase> test_files, List<String> names, ConsoleManager cm, ITestResultReceiver twriter, PhpBuild build, PhptTestCase redirect_parent, List<PhptTestCase> redirect_targets) throws FileNotFoundException, IOException, Exception {
+	private void add_test_case(PhptTestCase test_case, List<PhptTestCase> test_cases, List<String> names, ConsoleManager cm, ITestResultReceiver twriter, PhpBuild build, PhptTestCase redirect_parent, List<PhptTestCase> redirect_targets) throws FileNotFoundException, IOException, Exception {
+		if (cm.getMaxTestReadCount() > 0 && test_cases_by_name.size() >= cm.getMaxTestReadCount())
+			return;
+		
 		test_cases_by_name.put(test_case.getName(), test_case);
 		
 		if (test_case.containsSection(EPhptSection.REDIRECTTEST)) {
@@ -206,7 +209,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 					File dir = new File(test_pack+host.dirSeparator()+target_test_name);
 					if (dir.isDirectory()) {
 						// add all PHPTs in directory 
-						add_test_files(dir.listFiles(), test_files, names, cm, twriter, build, redirect_parent, redirect_targets);
+						add_test_files(dir.listFiles(), test_cases, names, cm, twriter, build, redirect_parent, redirect_targets);
 						
 					} else {
 						// test refers to a specific test, load it
@@ -219,7 +222,10 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 						
 						redirect_targets.add(test_case);
 						
-						test_files.add(test_case);
+						test_cases.add(test_case);
+						
+						if (cm.getMaxTestReadCount() > 0 && test_cases_by_name.size() >= cm.getMaxTestReadCount())
+							return;
 					}
 				}
 			}
@@ -231,7 +237,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 				redirect_targets.add(test_case);
 			}
 			
-			test_files.add(test_case);
+			test_cases.add(test_case);
 		}
 	}
 	
@@ -400,6 +406,16 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		if (test_case!=null)
 			return test_case;
 		return test_cases_by_name.get(name+".phpt");
+	}
+
+	@Override
+	public EBuildBranch getTestPackBranch() {
+		return getVersionBranch();
+	}
+
+	@Override
+	public String getTestPackVersionRevision() {
+		return getVersion();
 	}
 	
 } // end public class PhptSourceTestPack

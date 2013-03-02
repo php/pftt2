@@ -175,6 +175,18 @@ public abstract class AHost extends Host {
 	public ExecOutput execOut(String commandline, int timeout, Map<String,String> env, Charset charset, String chdir) throws Exception {
 		return execOut(commandline, timeout, env, null, charset, chdir);
 	}
+	public ExecOutput execOut(String commandline, int timeout, Map<String,String> env) throws Exception {
+		return execOut(commandline, timeout, env, (String)null);
+	}
+	public ExecOutput execOut(String commandline, int timeout, Map<String,String> env, String chdir) throws Exception {
+		return execOut(commandline, timeout, env, null, chdir);
+	}
+	public ExecOutput execElevatedOut(String commandline, int timeout, Map<String,String> env) throws Exception {
+		return execElevatedOut(commandline, timeout, env, (String)null);
+	}
+	public ExecOutput execElevatedOut(String commandline, int timeout, Map<String,String> env, String chdir) throws Exception {
+		return execElevatedOut(commandline, timeout, env, null, chdir);
+	}
 	/** gets value of environment variable
 	 * 
 	 * @param name
@@ -235,9 +247,9 @@ public abstract class AHost extends Host {
 			return tmp_dir;
 		if (isWindows()) {
 			tmp_dir = getEnvValue("TEMP");
-			if (tmp_dir!=null)
+			if (tmp_dir==null)
 				tmp_dir = getHomeDir() + "\\AppData\\Local\\Temp\\";
-			else if (tmp_dir.endsWith("\\"))
+			else if (!tmp_dir.endsWith("\\"))
 				tmp_dir += "\\";
 			return tmp_dir;			
 		} else {
@@ -933,9 +945,6 @@ public abstract class AHost extends Host {
 			// fallback
 			return getSystemDrive()+"\\Windows";
 	}
-	
-	@Override
-	public abstract long getSize(String file);
 
 	@Override
 	public String joinMultiplePaths(String ...paths) {

@@ -98,9 +98,11 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 		return PhpUnitTemplate.renderTemplate(
 				host, 
 				test_case, 
-				test_case.php_unit_dist.src_test_pack.getPreambleCode(),
-				test_case.php_unit_dist.bootstrap_file == null ? null : test_case.php_unit_dist.bootstrap_file.getAbsolutePath(),
-				test_case.php_unit_dist.path.getAbsolutePath(),
+				test_case.getPhpUnitDist().getSourceTestPack().getPreambleCode(),
+				test_case.getPhpUnitDist().getBootstrapFile() == null ? 
+						null : 
+						test_case.getPhpUnitDist().getBootstrapFile().getAbsolutePath(),
+				test_case.getPhpUnitDist().getPath().getAbsolutePath(),
 				include_path,
 				include_files,
 				globals,
@@ -150,7 +152,11 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, getCrashedSAPIOutput()));
 			} else {
 				// CRASH may really be a syntax error (BORK), check to make sure
-				final ExecOutput syntax_eo = host.execOut(build.getPhpExe()+" -l "+template_file, Host.ONE_MINUTE, test_case.php_unit_dist.path.getAbsolutePath());
+				final ExecOutput syntax_eo = host.execOut(
+						build.getPhpExe()+" -l "+template_file,
+						Host.ONE_MINUTE,
+						test_case.getPhpUnitDist().getPath().getAbsolutePath()
+					);
 				if (syntax_eo.isCrashed() || !PAT_SYNTAX_ERROR.matcher(syntax_eo.output).find()) {
 					// its a syntax error - BORK, as test case can't run
 					status = EPhpUnitTestStatus.BORK;

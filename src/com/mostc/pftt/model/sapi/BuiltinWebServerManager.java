@@ -1,5 +1,6 @@
 package com.mostc.pftt.model.sapi;
 
+import java.io.IOException;
 import java.util.Map;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -33,11 +34,18 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 	@Override
 	protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String, String> env, String docroot, String listen_address, int port) {
 		// run `php.exe -S listen_address:NNNN` in docroot
-		// TODO ensureDefault();
+		String ini_dir;
+		try {
+			ini_dir = build.prepare(host);
+		} catch ( IOException ex ) {
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, "createManagedProcessWebServerInstance", ex, "can't create PhpIni directory");
+			
+			return null;
+		}
 		
-		// TODO env = prepareENV(env, php_conf_file, build, scenario_set, httpd);
+		env = prepareENV(env, ini_dir+"/php.ini", build, scenario_set, build.getPhpExe());
 		
-		return new BuiltinWebServerInstance(this, host, build, docroot, build.getPhpExe()+" -S "+listen_address+":"+port+" "+(ini==null?"":ini.toCliArgString(host)), ini, env, listen_address, port);
+		return new BuiltinWebServerInstance(this, host, build, docroot, build.getPhpExe()+" -S "+listen_address+":"+port+" -c "+ini_dir, ini, env, listen_address, port);
 	}
 	
 	public class BuiltinWebServerInstance extends ManagedProcessWebServerInstance {

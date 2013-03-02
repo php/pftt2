@@ -8,7 +8,6 @@ import java.util.List;
 
 import javax.annotation.Nullable;
 
-import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhptActiveTestPack;
@@ -134,7 +133,7 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 	@Override
 	protected boolean handleNTS(TestCaseGroupKey group_key, PhptTestCase test_case) {
 		for (String[] ext_names:PhptTestCase.NON_THREAD_SAFE_EXTENSIONS) {
-			if (StringUtil.startsWithAnyIC(test_case.getName(), ext_names)) {
+			if (test_case.nameStartsWithAny(ext_names)) {
 				addNTSTestCase(ext_names, group_key, test_case);
 				
 				return true;

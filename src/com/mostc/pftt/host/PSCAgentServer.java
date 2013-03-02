@@ -284,7 +284,7 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 	}
 
 	@Override
-	public boolean isForce() {
+	public boolean isOverwrite() {
 		return false;
 	}
 
@@ -480,5 +480,20 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 		
 		System.out.println(StringUtil.toJava(out.toString()));
 	} // end protected void generateSimulation
+	
+	@Override
+	public boolean isSkipSmokeTests() {
+		return false;
+	}
+
+	@Override
+	public int getMaxTestReadCount() {
+		return 0;
+	}
+
+	@Override
+	public int getThreadCount() {
+		return 0;
+	}
 	
 } // end public abstract class PSCAgentServer

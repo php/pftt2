@@ -374,6 +374,7 @@ public class SSHHost extends RemoteHost {
 		return saveTextFile(filename, text, null);
 	}
 	
+	private String _path;
 	protected SessionChannelClient do_exec(String cmd, Map<String, String> env, String chdir, byte[] stdin_post, OutputStream out) throws IOException, IllegalStateException {
 		ensureSshOpen();
 		SessionChannelClient session = ssh.openSessionChannel();
@@ -397,8 +398,26 @@ public class SSHHost extends RemoteHost {
 		//
 		
 		if (env!=null) {
-			for (String name : env.keySet())
+			//
+			if (env.containsKey(PATH)) {
+				if (_path==null)
+					// cache for later
+					_path = getEnvValue(PATH);
+				
+				String path = env.get(PATH);
+				if (StringUtil.isNotEmpty(_path) && StringUtil.isNotEmpty(path)) {
+					// merge
+					path = path + pathsSeparator() + _path;
+					
+					env.put(PATH, path);
+				}
+			}
+			//
+			
+			// send ENV vars
+			for (String name : env.keySet()) {
 				session.setEnvironmentVariable(name, env.get(name));
+			}
 		}
 		if (stdin_post!=null) {
 			session.getOutputStream().write(stdin_post);
@@ -748,6 +767,18 @@ public class SSHHost extends RemoteHost {
 			ensureSftpOpen();
 			FileAttributes fa = sftp.stat(normalizePath(file));
 			return fa.getSize().longValue();
+		} catch ( Exception ex ) {
+			ex.printStackTrace();
+		}
+		return 0;
+	}
+	
+	@Override
+	public long getMTime(String file) {
+		try {
+			ensureSftpOpen();
+			FileAttributes fa = sftp.stat(normalizePath(file));
+			return fa.getModifiedTime().longValue();
 		} catch ( Exception ex ) {
 			ex.printStackTrace();
 		}

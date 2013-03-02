@@ -10,14 +10,13 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
+import com.mostc.pftt.model.SourceTestPack;
 import com.mostc.pftt.model.TestCase;
 import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
 import com.mostc.pftt.model.core.EBuildBranch;
-import com.mostc.pftt.model.core.EBuildSourceType;
-import com.mostc.pftt.model.core.ECPUArch;
-import com.mostc.pftt.model.core.ECompiler;
 import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhpBuildInfo;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.ErrorUtil;
@@ -43,37 +42,21 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	protected PhpBuild build;
 	protected LinkedBlockingQueue<ResultQueueEntry> results;
 	protected boolean run = true;
+	protected final PhpBuildInfo build_info;
+	protected final EBuildBranch test_pack_branch;
+	protected final String test_pack_version;
 	
-	protected static File makeName(ConsoleManager cm, AHost host, File base, PhpBuild build, ScenarioSet scenario_set) throws Exception {
+	protected static File makeName(File base, PhpBuildInfo build_info) throws Exception {
 		StringBuilder sb = new StringBuilder();
 		sb.append("/");
-		sb.append(build.getVersionBranch(cm, host));
+		sb.append(build_info.getBuildBranch());
 		sb.append("-Result-Pack-");
-		sb.append(build.getBuildType(host));
-		sb.append("-");
-		sb.append(build.getVersionRevision(cm, host));
-		
-		EBuildSourceType src_type = build.getBuildSourceType(host);
-		if (src_type!=EBuildSourceType.WINDOWS_DOT_PHP_DOT_NET) {
-			sb.append("-");
-			sb.append(src_type);
-		}
-		
-		ECompiler compiler = build.getCompiler(cm, host);
-		if (compiler!=ECompiler.VC9) {
-			sb.append("-");
-			sb.append(compiler);
-		}
-		ECPUArch cpu = build.getCPUArch(cm, host);
-		if (cpu!=ECPUArch.X86) {
-			sb.append("-");
-			sb.append(cpu);
-		}
+		sb.append(build_info.toStringWithoutBuildBranch());
 		
 		return new File(base.getAbsolutePath() + sb);
 	}
 	
-	public PhpResultPackWriter(LocalHost local_host, LocalConsoleManager cm, File telem_base_dir, PhpBuild build, ScenarioSet scenario_set) throws Exception {
+	public PhpResultPackWriter(LocalHost local_host, LocalConsoleManager cm, File telem_base_dir, PhpBuild build, ScenarioSet scenario_set, SourceTestPack<?,?> src_test_pack) throws Exception {
 		super(local_host);
 		
 		phpt_writer_map = new HashMap<AHost,HashMap<ScenarioSet,PhptResultWriter>>(16);
@@ -81,10 +64,17 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		
 		cm.w = this;
 		
+		build_info = build.getBuildInfo(cm, host);
+		{
+			EBuildBranch tpb = src_test_pack.getTestPackBranch();
+			test_pack_branch = tpb == null ? build_info.getBuildBranch() : tpb; // fallback
+		}
+		test_pack_version = src_test_pack.getTestPackVersionRevision();
+		
 		this.local_host = local_host;
 		this.cm = cm;
 		this.build = build;
-		this.telem_dir = new File(host.uniqueNameFromBase(makeName(cm, host, telem_base_dir, build, scenario_set).getAbsolutePath()));
+		this.telem_dir = new File(host.uniqueNameFromBase(makeName(telem_base_dir, build_info).getAbsolutePath()));
 		this.telem_dir.mkdirs();
 		
 		results = new LinkedBlockingQueue<ResultQueueEntry>();
@@ -136,13 +126,13 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 			PhptResultWriter w;
 			if (smap==null) {
 				smap = new HashMap<ScenarioSet,PhptResultWriter>();
-				w = new PhptResultWriter(phpt_telem_dir(this_host, this_scenario_set));
+				w = new PhptResultWriter(phpt_telem_dir(this_host, this_scenario_set), this_host, this_scenario_set, build_info, test_pack_branch, test_pack_version);
 				phpt_writer_map.put(this_host, smap);
 				smap.put(this_scenario_set, w);
 			} else {
 				w = smap.get(this_scenario_set);
 				if (w==null) {
-					w = new PhptResultWriter(phpt_telem_dir(this_host, this_scenario_set));
+					w = new PhptResultWriter(phpt_telem_dir(this_host, this_scenario_set), this_host, this_scenario_set, build_info, test_pack_branch, test_pack_version);
 					smap.put(this_scenario_set, w);
 				}
 			}
@@ -172,16 +162,28 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		@Override
 		public void handle() throws IllegalArgumentException, IllegalStateException, IOException {
 			HashMap<ScenarioSet,PhpUnitResultWriter> smap = phpunit_writer_map.get(this_host);
-			PhpUnitResultWriter w;
+			PhpUnitResultWriter w; 
 			if (smap==null) {
 				smap = new HashMap<ScenarioSet,PhpUnitResultWriter>();
-				w = new PhpUnitResultWriter(phpunit_telem_dir(this_host, this_scenario_set, this_result.test_case.php_unit_dist.src_test_pack), this_scenario_set, this_result.test_case.php_unit_dist.src_test_pack);
+				w = new PhpUnitResultWriter(
+						phpunit_telem_dir(this_host, this_scenario_set, this_result.test_case.getPhpUnitDist().getSourceTestPack()),
+						build_info,
+						this_host, 
+						this_scenario_set,
+						this_result.test_case.getPhpUnitDist().getSourceTestPack()
+					);
 				phpunit_writer_map.put(this_host, smap);
 				smap.put(this_scenario_set, w);
 			} else {
 				w = smap.get(this_scenario_set);
 				if (w==null) {
-					w = new PhpUnitResultWriter(phpunit_telem_dir(this_host, this_scenario_set, this_result.test_case.php_unit_dist.src_test_pack), this_scenario_set, this_result.test_case.php_unit_dist.src_test_pack);
+					w = new PhpUnitResultWriter(
+							phpunit_telem_dir(this_host, this_scenario_set, this_result.test_case.getPhpUnitDist().getSourceTestPack()),
+							build_info,
+							this_host, 
+							this_scenario_set,
+							this_result.test_case.getPhpUnitDist().getSourceTestPack()
+						);
 					smap.put(this_scenario_set, w);
 				}
 			}
@@ -324,7 +326,16 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 				} catch ( Exception ex ) {
 					ex.printStackTrace();
 				}
-			}
+				
+				try {
+					AUTReportGen report = new AUTReportGen(w);
+					FileWriter fw = new FileWriter(new File(w.dir+"/aut_report.html"));
+					fw.write(report.getHTMLString(cm, false));
+					fw.close();
+				} catch ( Exception ex ) {
+					ex.printStackTrace();
+				}
+			} // end for
 		}
 		
 		for ( HashMap<ScenarioSet,PhptResultWriter> map : phpt_writer_map.values() ) {
@@ -334,8 +345,19 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 				} catch ( Exception ex ) {
 					ex.printStackTrace();
 				}
-			}
+				
+				try {
+					FBCReportGen report = new FBCReportGen(w);
+					FileWriter fw = new FileWriter(new File(w.dir+"/fbc_report.html"));
+					fw.write(report.getHTMLString(cm, false));
+					fw.close();
+				} catch ( Exception ex ) {
+					ex.printStackTrace();
+				}
+			} // end for
 		}
+		
+		
 	} // end public void close
 	
 	

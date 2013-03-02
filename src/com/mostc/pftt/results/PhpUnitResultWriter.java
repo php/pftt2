@@ -11,14 +11,17 @@ import java.io.PrintWriter;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
 import org.kxml2.io.KXmlSerializer;
 
 import com.github.mattficken.io.StringUtil;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.app.EPhpUnitTestStatus;
 import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
+import com.mostc.pftt.model.core.PhpBuildInfo;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 /** Writes PhpUnitTestResults from a single test run with a single scenario set on a single host with a single build.
@@ -42,13 +45,25 @@ public class PhpUnitResultWriter {
 	protected final File dir;
 	protected final OutputStream out;
 	protected final HashMap<EPhpUnitTestStatus,StatusListEntry> status_list_map;
+	protected final HashMap<String,String> fail_output_by_name;
+	protected final ScenarioSet scenario_set;
+	protected final AHost host;
+	protected final PhpBuildInfo build_info;
+	protected final String source_pack_name_and_version;
 	private boolean is_first_result = true;
 	private String last_test_suite_name;
 	private int test_count, percent_total, pass, failure, error, warning, notice, skip, deprecated, not_implemented, unsupported, test_exception, crash, bork, xskip;
 	
-	public PhpUnitResultWriter(File dir, ScenarioSet scenario_set, PhpUnitSourceTestPack test_pack) throws FileNotFoundException, IOException {
+	public PhpUnitResultWriter(File dir, PhpBuildInfo build_info, AHost host, ScenarioSet scenario_set, PhpUnitSourceTestPack test_pack) throws FileNotFoundException, IOException {
+		this.build_info = build_info;
+		this.host = host;
+		this.scenario_set = scenario_set;
+		this.source_pack_name_and_version = test_pack.getNameAndVersionString();
+		
 		this.dir = dir;
 		dir.mkdirs();
+		
+		fail_output_by_name = new HashMap<String,String>(800);
 		
 		// include scenario-set in file name to make it easier to view a bunch of them in Notepad++ or other MDIs
 		File file = new File(dir+"/phpunit_"+test_pack.getName()+"_"+scenario_set.getNameWithVersionInfo()+".xml");
@@ -81,9 +96,7 @@ public class PhpUnitResultWriter {
 			test_names = new LinkedList<String>();
 		}
 		
-		public void write(PhpUnitTestResult result) {
-			final String test_name = result.test_case.getName();
-			
+		public void write(String test_name, PhpUnitTestResult result) {
 			journal_writer.println(test_name);
 			
 			test_names.add(test_name);
@@ -104,14 +117,25 @@ public class PhpUnitResultWriter {
 			journal_file.delete();
 		}
 	} // end protected class StatusListEntry
+	
+	public String getFailureOutput(String test_name) {
+		return fail_output_by_name.get(test_name);
+	}
 
 	// @see PHPUnit/Util/Log/JUnit.php#startTestSuite
 	public void writeResult(PhpUnitTestResult result) throws IllegalArgumentException, IllegalStateException, IOException {
-		status_list_map.get(result.status).write(result);
+		final String test_name = result.getName();
+		status_list_map.get(result.status).write(test_name, result);
+		
+		if ((result.status==EPhpUnitTestStatus.FAILURE||result.status==EPhpUnitTestStatus.ERROR||result.status==EPhpUnitTestStatus.CRASH) && StringUtil.isNotEmpty(result.output)) {
+			// store crash output too: for exit code and status
+			fail_output_by_name.put(test_name, result.output);
+		}
 		
 		
 		// write file header
-		String test_suite_name = result.test_case.php_unit_dist!=null && result.test_case.php_unit_dist.path!=null ? result.test_case.php_unit_dist.path.getPath() : null;
+		String test_suite_name = result.test_case.getPhpUnitDist()!=null && result.test_case.getPhpUnitDist().getPath()!=null ?
+				result.test_case.getPhpUnitDist().getPath().getPath() : null;
 		if (is_first_result) {
 			serial.startDocument("utf-8",  null);
 			serial.setPrefix("pftt", "pftt");
@@ -226,6 +250,37 @@ public class PhpUnitResultWriter {
 		serial.attribute(null, "bork", Integer.toString(bork));
 		
 		serial.endTag("pftt", "tally");
+	}
+	
+	public String getTestPackNameAndVersionString() {
+		return source_pack_name_and_version;
+	}
+	public PhpBuildInfo getBuildInfo() {
+		return build_info;
+	}
+	public String getOSName() {
+		return host.getOSName();
+	}
+	public ScenarioSet getScenarioSet() {
+		return scenario_set;
+	}
+	public int getTestCount() {
+		return count(EPhpUnitTestStatus.PASS) +
+				count(EPhpUnitTestStatus.FAILURE) +
+				count(EPhpUnitTestStatus.ERROR) +
+				count(EPhpUnitTestStatus.WARNING) +
+				count(EPhpUnitTestStatus.NOTICE) +
+				count(EPhpUnitTestStatus.DEPRECATED) +
+				count(EPhpUnitTestStatus.CRASH);
+	}
+	public int count(EPhpUnitTestStatus status) {
+		return status_list_map.get(status).test_names.size();
+	}
+	public List<String> getTestNames(EPhpUnitTestStatus status) {
+		return status_list_map.get(status).test_names;
+	}
+	public float passRate() {
+		return 100.0f * ((float)count(EPhpUnitTestStatus.PASS))/((float)getTestCount());
 	}
 	
 } // end public class PhpUnitResultWriter

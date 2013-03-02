@@ -21,7 +21,6 @@ import org.apache.http.protocol.RequestExpectContinue;
 import org.apache.http.protocol.RequestTargetHost;
 import org.apache.http.protocol.RequestUserAgent;
 
-import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.app.PhpUnitActiveTestPack;
 import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
@@ -143,6 +142,7 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 		//           unlike PhptTestCases all PhpUnitTestCases share the same INI and environment variables
 		PhpIni ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(runner_host, build);
 		AbstractINIScenario.setupScenarios(cm, runner_host, scenario_set, build, ini);
+		src_test_pack.prepareINI(cm, runner_host, scenario_set, build, ini);
 		return new SharedSAPIInstanceTestCaseGroupKey(ini, null);
 	}
 
@@ -152,10 +152,10 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 		if (names==null)
 			return false;
 		for ( String[] ext_names : names ) {
-			if (StringUtil.containsAnyIC(test_case.filename, ext_names)) {
+			if (test_case.fileNameStartsWithAny(ext_names)) {
 				addNTSTestCase(ext_names, group_key, test_case);
 				
-				return true;				
+				return true;
 			}
 		}
 		return false;
@@ -174,10 +174,34 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 			my_temp_dir = runner_host.fixPath(runner_host.mktempname(temp_base_dir, getClass()) + "/");
 			runner_host.mkdirs(my_temp_dir);
 		}
+		
+		@Override
+		public void run() {
+			super.run();
+			
+			// be sure to cleanup
+			runner_host.deleteIfExists(my_temp_dir);
+		}
 
 		@Override
 		protected void runTest(TestCaseGroupKey group_key, PhpUnitTestCase test_case) throws IOException, Exception, Throwable {
-			AbstractPhpUnitTestCaseRunner r = sapi_scenario.createPhpUnitTestCaseRunner(this, group_key, cm, twriter, globals, env, runner_host, scenario_set, build, test_case, my_temp_dir, constants, test_case.php_unit_dist.getIncludePath(), test_case.php_unit_dist.getIncludeFiles(), group_key.getPhpIni());
+			AbstractPhpUnitTestCaseRunner r = sapi_scenario.createPhpUnitTestCaseRunner(
+					this,
+					group_key,
+					cm,
+					twriter,
+					globals,
+					env,
+					runner_host,
+					scenario_set,
+					build,
+					test_case,
+					my_temp_dir,
+					constants,
+					test_case.getPhpUnitDist().getIncludePath(),
+					test_case.getPhpUnitDist().getIncludeFiles(),
+					group_key.getPhpIni()
+				);
 			r.runTest();
 		}
 		

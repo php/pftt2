@@ -19,11 +19,16 @@ public abstract class Host {
 	 * this allows for running development versions of PFTT on same host as production(Current) version
 	 */
 	public static final int DEV = 0;
-	public static final int ONE_HOUR = 3600;
+	public static final int HALF_HOUR = 1800;
+	public static final int ONE_HOUR = HALF_HOUR * 2;
 	/** should always have a timeout... should NOT let something run forever */
 	public static final int FOUR_HOURS = ONE_HOUR * 4;
 	public static final int ONE_MINUTE = 60;
 	protected static final int NO_TIMEOUT = 0;
+	/** put PATH in the ENV vars you pass to #exec and it will automatically add that
+	 * value to the system's PATH (takes care of merging it for you, so it won't be completely overridden)
+	 */
+	public static final String PATH = "PATH";
 	
 	@Override
 	public abstract int hashCode();
@@ -95,7 +100,31 @@ public abstract class Host {
 	public abstract boolean exec(ConsoleManager cm, String ctx_str, String commandline, int timeout, Map<String,String> env, byte[] stdin, Charset charset, String chdir, TestPackRunnerThread thread, int thread_slow_sec) throws Exception;
 	public boolean exec(ConsoleManager cm, String ctx_str, String commandline, int timeout, String chdir) throws Exception {
 		return exec(cm, ctx_str, commandline, timeout, null, null, null, chdir);
-	}	
+	}
+	public boolean exec(ConsoleManager cm, String ctx_str, String commandline, int timeout, Map<String,String> env) throws Exception {
+		return exec(cm, ctx_str, commandline, timeout, env, (String)null);
+	}
+	public boolean exec(ConsoleManager cm, String ctx_str, String commandline, int timeout, Map<String,String> env, String chdir) throws Exception {
+		return exec(cm, ctx_str, commandline, timeout, env, null, chdir);
+	}
+	public boolean exec(ConsoleManager cm, Class<?> ctx, String commandline, int timeout, Map<String,String> env) throws Exception {
+		return exec(cm, ctx, commandline, timeout, env, (String)null);
+	}
+	public boolean exec(ConsoleManager cm, Class<?> ctx, String commandline, int timeout, Map<String,String> env, String chdir) throws Exception {
+		return exec(cm, ctx, commandline, timeout, env, null, chdir);
+	}
+	public boolean execElevated(ConsoleManager cm, String ctx_str, String commandline, int timeout, Map<String,String> env) throws Exception {
+		return execElevated(cm, ctx_str, commandline, timeout, env, (String)null);
+	}
+	public boolean execElevated(ConsoleManager cm, String ctx_str, String commandline, int timeout, Map<String,String> env, String chdir) throws Exception {
+		return execElevated(cm, ctx_str, commandline, timeout, env, null, chdir);
+	}
+	public boolean execElevated(ConsoleManager cm, Class<?> ctx, String commandline, int timeout, Map<String,String> env) throws Exception {
+		return execElevated(cm, ctx, commandline, timeout, env, (String)null);
+	}
+	public boolean execElevated(ConsoleManager cm, Class<?> ctx, String commandline, int timeout, Map<String,String> env, String chdir) throws Exception {
+		return execElevated(cm, ctx, commandline, timeout, env, null, chdir);
+	}
 	public boolean exec(ConsoleManager cm, String ctx_str, String commandline, int timeout, Map<String,String> env, Charset charset, String chdir) throws Exception {
 		return exec(cm, ctx_str, commandline, timeout, env, null, charset, chdir);
 	}
@@ -111,7 +140,6 @@ public abstract class Host {
 	public boolean exec(String commandline, int timeout, Map<String,String> env, Charset charset, String chdir) throws Exception {
 		return exec(null, (String)null, commandline, timeout, env, null, charset, chdir);
 	}
-
 	public boolean exec(ConsoleManager cm, String ctx_str, String cmd, int timeout_sec, Map<String, String> env, Charset charset) throws IllegalStateException, Exception {
 		return exec(cm, ctx_str, cmd, timeout_sec, env, charset, null);
 	}
@@ -569,6 +597,7 @@ public abstract class Host {
 	public abstract long getTotalPhysicalMemoryK();
 	
 	public abstract long getSize(String file);
+	public abstract long getMTime(String file);
 	public abstract String joinMultiplePaths(String ...paths);
 
 	public boolean unzip(String zip_file, String base_dir) {

@@ -25,9 +25,12 @@ import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.SourceTestPack;
+import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
+import com.mostc.pftt.scenario.ScenarioSet;
 
 /** Represents a pack of PhpUnitTestCases and the configuration information needed to run them.
  * 
@@ -52,14 +55,7 @@ import com.mostc.pftt.results.ITestResultReceiver;
  */
 
 public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitActiveTestPack, PhpUnitTestCase> {
-	// TODO move javadoc from these fields to associated setter methods
-	/** required: file path to test-pack */
 	protected String test_pack_root;
-	/** optional: PHP code to run before every test case. this is meant to do additional initialization
-	 * that a bootstrap file doesn't do (without having to modify that bootstrap file)
-	 * 
-	 * @see PhpUnitDist#bootstrap
-	 * */
 	protected String preamble_code;
 	protected final ArrayList<PhpUnitDist> php_unit_dists;
 	protected final ArrayList<String> blacklist_test_names, whitelist_test_names, include_dirs, include_files;
@@ -77,6 +73,16 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 		// add default entries to include_path
 		addIncludeDirectory(".");
 		addIncludeDirectory("C:\\php-sdk\\PFTT\\current\\cache\\util\\PEAR\\pear");
+	}
+	
+	@Override
+	public EBuildBranch getTestPackBranch() {
+		return null;
+	}
+	
+	@Override
+	public String getTestPackVersionRevision() {
+		return getNameAndVersionString();
 	}
 	
 	protected void resetDists() {
@@ -151,7 +157,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	 * @return
 	 */
 	public PhpUnitSourceTestPack addWhitelist(String test_name) {
-		whitelist_test_names.add(test_name);
+		whitelist_test_names.add(PhpUnitTestCase.normalizeFileName(test_name).toLowerCase());
 		
 		return this;
 	}
@@ -164,7 +170,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	 * @return
 	 */
 	public PhpUnitSourceTestPack addBlacklist(String test_name) {
-		blacklist_test_names.add(test_name);
+		blacklist_test_names.add(PhpUnitTestCase.normalizeFileName(test_name).toLowerCase());
 		
 		return this;
 	}
@@ -175,10 +181,12 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	 * @throws IOException
 	 * @throws Exception
 	 */
-	public void read(List<PhpUnitTestCase> test_cases) throws IOException, Exception {
+	public void read(ConsoleManager cm, List<PhpUnitTestCase> test_cases) throws IOException, Exception {
 		// TODO if subdir used, only search within that
+		
+		final int max_read_count = cm.getMaxTestReadCount();
 		for (PhpUnitDist php_unit_dist : php_unit_dists) {
-			readDir(test_cases, php_unit_dist, php_unit_dist.path);
+			readDir(max_read_count, test_cases, php_unit_dist, php_unit_dist.path);
 		}
 		
 		// alphabetize
@@ -192,34 +200,46 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	
 	/** scans for *Test.php files and reads PhpUnitTestCase(s) from them
 	 * 
+	 * @param max_read_count - max number of test cases to read (0=unlimited)
 	 * @param test_cases
 	 * @param php_unit_dist
 	 * @param dir
 	 * @throws IOException
 	 */
-	protected void readDir(List<PhpUnitTestCase> test_cases, PhpUnitDist php_unit_dist, File dir) throws IOException {
+	protected void readDir(final int max_read_count, List<PhpUnitTestCase> test_cases, PhpUnitDist php_unit_dist, File dir) throws IOException {
+		if (max_read_count > 0 && test_cases.size() >= max_read_count)
+			return;
+		
 		File[] list_files = dir.listFiles();
 		if (list_files==null)
 			return;
 		
 		for ( File file : list_files ) {
 			if (file.isDirectory()) {
-				readDir(test_cases, php_unit_dist, file);
+				if (max_read_count > 0 && test_cases.size() >= max_read_count)
+					return;
+				readDir(max_read_count, test_cases, php_unit_dist, file);
+				if (max_read_count > 0 && test_cases.size() >= max_read_count)
+					return;
 			} else if (file.getName().endsWith("Test.php")) {
 				String file_name = Host.pathFrom(php_unit_dist.path.getAbsolutePath(), file.getAbsolutePath());
 				
 				String test_file_name = PhpUnitTestCase.normalizeFileName(file_name);
 				
-				if (blacklist_test_names.contains(test_file_name))
+				String lc_test_file_name = test_file_name.toLowerCase();
+				if (blacklist_test_names.contains(lc_test_file_name))
 					continue;
-				else if (!whitelist_test_names.isEmpty() && !whitelist_test_names.contains(test_file_name))
+				else if (!whitelist_test_names.isEmpty() && !whitelist_test_names.contains(lc_test_file_name))
 					continue;
 				
 				try {
-					readTestFile(test_file_name, php_unit_dist, test_cases, file);
+					readTestFile(max_read_count, test_file_name, php_unit_dist, test_cases, file);
 				} catch ( QuercusParseException ex ) {
 					ex.printStackTrace();
 				}
+				
+				if (max_read_count > 0 && test_cases.size() >= max_read_count)
+					return;
 			}
 		}
 		
@@ -227,13 +247,14 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	
 	/** reads PhpUnitTestCase(s) from given PHP file
 	 * 
+	 * @param max_read_count
 	 * @param test_file_name
 	 * @param php_unit_dist
 	 * @param test_cases
 	 * @param file
 	 * @throws IOException
 	 */
-	protected void readTestFile(String test_file_name, PhpUnitDist php_unit_dist, List<PhpUnitTestCase> test_cases, File file) throws IOException {
+	protected void readTestFile(final int max_read_count, String test_file_name, PhpUnitDist php_unit_dist, List<PhpUnitTestCase> test_cases, File file) throws IOException {
 		FileInputStream fin = new FileInputStream(file);
 		QuercusParser p = new QuercusParser(qctx, new FilePath(file.getAbsolutePath()), new ReadStream(new FileReadStream(fin)));
 		QuercusProgram prog = p.parse();
@@ -245,6 +266,9 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 		
 		// search file for classes
 		for (InterpretedClassDef clazz : prog.getClasses() ) {
+			if (clazz.isAbstract()||clazz.isInterface())
+				continue;
+			
 			for (Map.Entry<String, AbstractFunction> e : clazz.functionSet()) {
 				// search class for functions that start with 'test'
 				if (e.getValue().getName().startsWith("test")) {
@@ -259,6 +283,9 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 							// name of method within the class
 							e.getValue().getName()
 						));
+					
+					if (max_read_count > 0 && test_cases.size() >= max_read_count)
+						return;
 				}
 			}
 		}
@@ -274,8 +301,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 
 	@Override
 	public String getSourceDirectory() {
-		// TODO Auto-generated method stub
-		return null;
+		return getRoot();
 	}
 
 	@Override
@@ -284,7 +310,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 			throws FileNotFoundException, IOException, Exception {
 		// TODO Auto-generated method stub
 		
-		read(test_cases);
+		read(cm, test_cases);
 	}
 
 	@Override
@@ -349,26 +375,38 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	 */
 	protected abstract boolean openAfterInstall(ConsoleManager cm, AHost host) throws Exception;
 
+	/** file path to test-pack */
 	public void setRoot(String test_pack_root) {
 		this.test_pack_root = test_pack_root;
 	}
 
+	/** file path to test-pack */
 	public String getRoot() {
 		return this.test_pack_root;
 	}
 
+	/** optional: PHP code to run before every test case. this is meant to do additional initialization
+	 * that a bootstrap file doesn't do (without having to modify that bootstrap file)
+	 * 
+	 * @see PhpUnitDist#bootstrap
+	 * */
 	public void setPreambleCode(String preamble_code) {
 		this.preamble_code = preamble_code;
 	}
 	
+	/** optional: PHP code to run before every test case. this is meant to do additional initialization
+	 * that a bootstrap file doesn't do (without having to modify that bootstrap file)
+	 * 
+	 * @see PhpUnitDist#bootstrap
+	 * */
 	public String getPreambleCode() {
 		return preamble_code;
 	}
 	
-	public abstract String getVersionString();
+	public abstract String getNameAndVersionString();
 	
 	public String getName() {
-		return getVersionString();
+		return getNameAndVersionString();
 	}
 	
 	@Override
@@ -377,7 +415,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	}
 
 	/** Sometimes there are multiple tests that share a common resource (such as a file directory
-	 * or database) and can not be run at the same time. Such tests are non-thread-safe (NTS).
+	 * or database) and can not be run at the same time. Such tests are non-thread-safe (known as NTS tests).
 	 * 
 	 * Return the full or partial filenames of NTS tests here. The returned array is processed in
 	 * order. If any string from the same string array matches, all tests matching that array will
@@ -388,6 +426,18 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	@Nullable
 	public String[][] getNonThreadSafeTestFileNames() {
 		return null;
+	}
+	
+	/** allows a test-pack to create custom edits of PhpInis
+	 * 
+	 * @param cm
+	 * @param host
+	 * @param scenario_set
+	 * @param build
+	 * @param ini
+	 */
+	public void prepareINI(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini) {
+		
 	}
 	
 } // end public abstract class PhpUnitSourceTestPack

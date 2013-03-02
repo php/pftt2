@@ -81,6 +81,15 @@ public class PhpBuild extends SAPIManager {
 			php_cgi_exe = host.isWindows() ? build_path + "\\php-cgi.exe" : build_path + "/sapi/cgi/php-cgi";
 			if (!host.exists(php_cgi_exe))
 				php_cgi_exe = null; // mark as not found
+			
+			if (host.exists(build_path+"/php.ini")) {
+				// CRITICAL: move php.ini ... it causes problems for CLI and intermittently for Apache
+				//
+				// it'll probably get overwritten by somebody using #getDefaultPhpIniPath
+				host.deleteIfExists(build_path+"/php_ini.bak");
+				host.move(build_path+"/php.ini", build_path+"/php_ini.bak");
+			}
+			
 			return true;
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "open", ex, "", host, build_path);
@@ -646,7 +655,7 @@ public class PhpBuild extends SAPIManager {
 		String php_filename = host.mktempname("Build", ".php");
 		
 		host.saveTextFile(php_filename, code);
-		// TODO ensureDefault();
+		
 		// -n => CRITICAL: causes php.exe to ignore any .ini file that comes with build
 		//    (so PFTT won't be affected and/or can override that .ini file)
 		PHPOutput output = new PHPOutput(php_filename, host.execOut(php_exe+" -n "+(ini==null?"":ini.toCliArgString(host))+" "+php_filename, timeout_seconds, new HashMap<String,String>(), null, Host.dirname(php_filename)));
@@ -726,7 +735,6 @@ public class PhpBuild extends SAPIManager {
 		}
 		
 		String ini_settings = ini==null?null:ini.toCliArgString(host);
-		// TODO ensureDefault();
 		
 		ExecOutput output = host.execOut(php_exe+(ini_settings==null?"":" "+ini_settings)+" -m", Host.ONE_MINUTE);
 		output.printOutputIfCrash(Host.toContext(getClass(), "getExtensionList"), cm);
@@ -777,6 +785,25 @@ public class PhpBuild extends SAPIManager {
 
 	public boolean isX86() {
 		return !build_path.toLowerCase().contains("x64");
+	}
+
+	/** returns all info about this build in a single PhpBuildInfo object
+	 * 
+	 * @param cm
+	 * @param host
+	 * @return
+	 * @throws Exception
+	 */
+	public PhpBuildInfo getBuildInfo(ConsoleManager cm, AHost host) throws Exception {
+		return new PhpBuildInfo(
+				getVersionBranch(cm, host),
+				getVersionRevision(cm, host),
+				getBuildType(host),
+				getCompiler(cm, host),
+				getCPUArch(cm, host),
+				getBuildSourceType(host),
+				EOS.WIN32
+			);
 	}
 	
 } // end public class PhpBuild

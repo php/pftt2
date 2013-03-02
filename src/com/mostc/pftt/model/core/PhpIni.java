@@ -517,9 +517,6 @@ public class PhpIni {
 	 * @return
 	 */
 	public String toCliArgString(Host host) {
-		//
-		if (true)
-			return ""; // TODO
 		if (cli_arg!=null) {
 			String cli_arg_str = cli_arg.get();
 			if (cli_arg_str!=null)

@@ -74,8 +74,25 @@ putenv('TMPDIR=$my_temp_dir');
 			pw.print("""$preamble_code;
 """);
 		}
+		//
+		// PhpUnit runner will check output for 'Fatal Error' to catch errors (and not get confused by the output)
+		// but should still try to catch fatal errors here and gather what information is possible
+		//
 		pw.print(
 """ob_start();
+
+\$ignore_exit = FALSE;
+
+function tryReportFatal() {
+	if (\$GLOBALS['ignore_exit']) {
+		return;
+	}
+
+	\$e = new Exception();
+	echo 'ERROR'; echo PHP_EOL;
+	echo '$test_case.className'; echo PHP_EOL;
+	echo \$e->getTraceAsString(); echo PHP_EOL;
+}
 
 function __phpunit_run_isolated_test()
 {
@@ -92,14 +109,28 @@ function __phpunit_run_isolated_test()
 
 	\$result->strictMode($strict);
 
-	\$test = new $test_case.className('$test_case.methodName', unserialize('$data'), '$dataName');
-	\$test->setDependencyInput(unserialize('$dependencyInput'));
-	\$test->setInIsolation(TRUE);
+	register_shutdown_function('tryReportFatal');
 
-	ob_end_clean();
-	ob_start();
-	\$test->run(\$result);
-	\$output = ob_get_clean();
+	\$test = null;
+	try {
+		\$test = new $test_case.className('$test_case.methodName', unserialize('$data'), '$dataName');
+		\$test->setDependencyInput(unserialize('$dependencyInput'));
+		\$test->setInIsolation(TRUE);
+		
+		ob_end_clean();
+		ob_start();
+		\$test->run(\$result);
+		\$output = ob_get_clean();
+	} catch ( Exception \$e ) {
+		\$output = ob_get_clean();
+		echo 'ERROR'; echo PHP_EOL;
+		echo '$test_case.className'; echo PHP_EOL;
+		echo \$e->getTraceAsString(); echo PHP_EOL;
+		echo \$output;
+
+		\$GLOBALS['ignore_exit'] = TRUE;
+		return;
+	}
 
 	// PFTT
 	switch(\$test->getStatus()) {
@@ -114,6 +145,9 @@ function __phpunit_run_isolated_test()
 		echo PHP_EOL;
 		echo \$output;
 		var_dump(get_loaded_extensions());
+		if (array_key_exists('PATH', \$_ENV)) {
+			var_dump(\$_ENV['PATH']);
+		}
 		break;
 	case PHPUnit_Runner_BaseTestRunner::STATUS_INCOMPLETE:
 		echo 'NOT_IMPLEMENTED';
@@ -151,12 +185,16 @@ function __phpunit_run_isolated_test()
 		break;
 	}
 
+	\$GLOBALS['ignore_exit'] = TRUE;
+
 """);
 	// NOTE: when skipping, outputs get_loaded_extensions() to show what extensions were actually loaded
 	//       may be skipped because an extension wasn't loaded (checked with extension_loaded('ext_name'))
 	//       but some extensions (intl) aren't loaded even though other extensions from the INI are loaded
 	//
 	//      (ie Apache gets the INI and loads most of the extensions from the INI, but sometimes fails to load intl)
+	//
+	//    PATH is searched for a DLL if it can't be found elsewhere (so that's shown too)
 
 	//
 	// PhpUnit test execution:
