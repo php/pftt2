@@ -197,31 +197,80 @@ final class WindowsSnapshotDownloadUtil {
 		HtmlCleaner cleaner = new HtmlCleaner();
 		def node;
 		try {
-			// ignore IO Errors here, PHP_5_5 branch doesn't exist currently
 			node = cleaner.clean(download_url);
 		} catch ( Exception ex ) {
 			return new ArrayList<URL>(0);
 		}
+		// turn HTML into XML for it to work (its really HTML not XHTML)
 		String xml_str = new SimpleXmlSerializer(cleaner.getProperties()).getXmlAsString(node);
 		
-		def root = new XmlSlurper(false, false).parseText(xml_str);
-		def links = root.depthFirst().findAll { it.name() == 'a' && it.text().startsWith('r') };
-		ArrayList<String> revisions = new ArrayList<String>(links.size());		
+		Node root = new XmlParser().parseText(xml_str);
 		
+		// this is IIS's old school virtual directory listing:
+		// a <pre> contains a bunch of: <br><br>date <dir><a...>
+		// (link doesn't include the server name... includes path from server name though)
+		//
+		// find the pre
+		ArrayList links = new ArrayList();
+		root.depthFirst().each {
+			if (it.name()=='pre')
+				// then find br, the date, and <a>, 
+				// the <a> is AFTER the <br> its associated with
+				// this gets the dates and links
+				handlePre(links, it);
+		}
+		
+		// now, finally have links and dates... sort by date (newest first)
+		def link_comparator = [
+			compare: { a, b ->
+				b['date'].compareTo(a['date'])
+			}
+		  ] as Comparator;
+	  	Collections.sort(links, link_comparator);
+		
+		// add server name to these links (it includes path from server name though, so don't need whole base url... but do it anyway)
+		ArrayList<URL> urls = new ArrayList<URL>(links.size());
 		for ( def link : links )
-			revisions.add(link.text());
-			
-		// critical to getting the newest revision first
-		Collections.reverse(revisions);
-					
-		ArrayList<URL> urls = new ArrayList<URL>(revisions.size());
-		for ( def revision : revisions )
-			urls.add(new URL(download_url.toString()+"/"+revision));
+			urls.add(new URL(download_url.toString()+"/"+getRevision(link['link'])));
 		
 		return urls;
 	}
+	private static void handlePre(List links, Node pre) {
+		String date_str = null;
+		Date date = null;
+		for ( Object child : pre.value() ) {
+			if (child instanceof Node) {
+				if (child.name()=='a' && child.text().startsWith('r')) {
+					if (date_str==null) {
+						date = null;
+					} else {
+						date_str = date_str.replace("<dir>", "").trim();
+						
+						try {
+							date = new Date(date_str);
+						} catch ( IllegalArgumentException ex ) {
+							date = null; // just in case, shouldn't happen
+						}
+					}
+					
+					links.add([
+							link: child.@href, 
+							date: date
+						])
+					
+					date_str = null;
+				}	
+			} else if (child instanceof String) {
+				date_str = child;
+			}
+		}
+	} // end static void handlePre
 	static String getRevision(URL url) {
-		String path = url.getPath();
+		return getRevision(url.getPath());
+	}
+	static String getRevision(String path) {
+		if (path.endsWith("/"))
+			path = path.substring(0, path.length()-1);
 		int i = path.lastIndexOf('/');
 		return i == -1 ? path : path.substring(i+1);
 	}

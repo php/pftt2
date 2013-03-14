@@ -173,7 +173,9 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 				// do this once
 				synchronized(this) {
 					// fix stack size bug for PCRE
-					VisualStudioUtil.setExeStackSize(cm, host, httpd, VisualStudioUtil.SIXTEEN_MEGABYTES);
+					if (!VisualStudioUtil.setExeStackSize(cm, host, httpd, VisualStudioUtil.SIXTEEN_MEGABYTES)) {
+						cm.println(EPrintType.WARNING, getClass(), "Unable to set Apache stack size... large stack operations will fail");
+					}
 					
 					//
 					// method 1: copy icu*.dll to Apache\Bin
@@ -181,9 +183,9 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 					// do it this way too -- it has been observed that method 1 does not work
 					// (YES, I verified the PATH env var was set correct/passed to Apache)
 					try {
-						host.delete(Host.dirname(httpd)+"/icu*.dll");
+						host.deleteElevated(Host.dirname(httpd)+"/icu*.dll");
 						
-						host.copy(build.getBuildPath()+"/icu*.dll", Host.dirname(httpd));
+						host.copyElevated(build.getBuildPath()+"/icu*.dll", Host.dirname(httpd));
 					} catch ( Exception ex ) {
 						cm.addGlobalException(EPrintType.CLUE, getClass(), "createManagedProcessWebServerInstance", ex, "couldn't copy ICU DLLs to Apache - php INTL extension may not be usable with Apache :(");
 					}

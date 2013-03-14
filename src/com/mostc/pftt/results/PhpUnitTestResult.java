@@ -82,7 +82,8 @@ public class PhpUnitTestResult {
 		serial.attribute(null, "class", test_case.getClassName());
 		serial.attribute(null, "file", test_case.getFileName());
 		
-		serial.attribute("pftt", "status", status.toString());
+		if (status!=null)
+			serial.attribute("pftt", "status", status.toString());
 		
 		if (StringUtil.isNotEmpty(output)) {
 			switch(status) {

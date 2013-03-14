@@ -101,7 +101,7 @@ public abstract class WebServerManager extends SAPIManager {
 			synchronized(assigned) {
 				for (WebServerInstance c=assigned.replacement ; c != null ; c = c.replacement) {
 					synchronized(c) {
-						if (assigned.isRunning() && (!debugger_attached||c.isDebuggerAttached()))
+						if (c.isRunning() && (!debugger_attached||c.isDebuggerAttached()))
 							return c;
 					}
 				}

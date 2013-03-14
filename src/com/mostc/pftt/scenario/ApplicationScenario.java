@@ -6,7 +6,7 @@ import com.mostc.pftt.results.ConsoleManager;
 
 public abstract class ApplicationScenario extends AbstractSerialScenario {
 	@Override
-	public Class<?> getSerialKey() {
+	public Class<?> getSerialKey(EScenarioSetPermutationLayer layer) {
 		return ApplicationScenario.class;
 	}
 	

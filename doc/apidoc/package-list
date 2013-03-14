@@ -9,7 +9,7 @@ com.mostc.pftt.model.custom
 com.mostc.pftt.model.performance
 com.mostc.pftt.model.sapi
 com.mostc.pftt.model.smoke
-com.mostc.pftt.report
+com.mostc.pftt.model.ui
 com.mostc.pftt.results
 com.mostc.pftt.runner
 com.mostc.pftt.scenario

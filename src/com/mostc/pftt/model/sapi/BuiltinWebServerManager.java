@@ -36,7 +36,7 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 		// run `php.exe -S listen_address:NNNN` in docroot
 		String ini_dir;
 		try {
-			ini_dir = build.prepare(host);
+			ini_dir = build.prepare(cm, host);
 		} catch ( IOException ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, "createManagedProcessWebServerInstance", ex, "can't create PhpIni directory");
 			

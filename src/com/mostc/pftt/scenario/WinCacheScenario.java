@@ -40,4 +40,9 @@ public class WinCacheScenario extends AbstractCodeCacheScenario {
 		return EAcceleratorType.WINCACHE;
 	}
 
+	@Override
+	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		return true;
+	}
+
 }

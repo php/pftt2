@@ -16,7 +16,7 @@ public abstract class AbstractFileSystemScenario extends AbstractSerialScenario 
 	}
 	
 	@Override
-	public Class<?> getSerialKey() {
+	public Class<?> getSerialKey(EScenarioSetPermutationLayer layer) {
 		return AbstractFileSystemScenario.class;
 	}
 	

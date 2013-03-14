@@ -153,6 +153,25 @@ public class HostGroup extends Host implements List<Host> {
 		}
 	}
 	@Override
+	public boolean cmdElevated(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String current_dir) throws IllegalStateException, Exception {
+		for (Host h : this)
+			if (!h.cmdElevated(cmd, timeout_sec, env, stdin_data, charset, current_dir))
+				return false;
+		return !isEmpty();
+	}
+	public void cmdElevated(String cmd, int timeout_sec, BooleanCollector c) {
+		cmdElevated(cmd, timeout_sec, c);
+	}
+	public void cmdElevated(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String current_dir, BooleanCollector c) {
+		for (Host h : this) {
+			try {
+				c.collect(h, h.cmdElevated(cmd, timeout_sec, env, stdin_data, charset, current_dir));
+			} catch (Throwable t) {
+				c.collect(h, false);
+			}
+		}
+	}
+	@Override
 	public boolean saveTextFile(String path, String string) throws IllegalStateException, IOException {
 		for (Host h : this) {
 			if (!h.saveTextFile(path, string))
@@ -204,6 +223,23 @@ public class HostGroup extends Host implements List<Host> {
 		}
 	}
 	@Override
+	public boolean deleteElevated(String file) throws IllegalStateException, IOException {
+		for (Host h : this) {
+			if (!h.deleteElevated(file))
+				return false;
+		}
+		return true;
+	}
+	public void deleteElevated(String file, BooleanCollector c) {
+		for (Host h : this) {
+			try {
+				c.collect(h, h.deleteElevated(file));
+			} catch (Throwable t) {
+				c.collect(h, false);
+			}
+		}
+	}
+	@Override
 	public boolean copy(String src, String dst) throws IllegalStateException, Exception {
 		for (Host h : this) {
 			if (!h.copy(src, dst))
@@ -221,6 +257,23 @@ public class HostGroup extends Host implements List<Host> {
 		}
 	}
 	@Override
+	public boolean copyElevated(String src, String dst) throws IllegalStateException, Exception {
+		for (Host h : this) {
+			if (!h.copyElevated(src, dst))
+				return false;
+		}
+		return true;
+	}
+	public void copyElevated(String src, String dst, BooleanCollector c) {
+		for (Host h : this) {
+			try {
+				c.collect(h, h.copyElevated(src, dst));
+			} catch (Throwable t) {
+				c.collect(h, false);
+			}
+		}
+	}
+	@Override
 	public boolean move(String src, String dst) throws IllegalStateException, Exception {
 		for (Host h : this) {
 			if (!h.move(src, dst))
@@ -232,6 +285,23 @@ public class HostGroup extends Host implements List<Host> {
 		for (Host h : this) {
 			try {
 				c.collect(h, h.move(src, dst));
+			} catch (Throwable t) {
+				c.collect(h, false);
+			}
+		}
+	}
+	@Override
+	public boolean moveElevated(String src, String dst) throws IllegalStateException, Exception {
+		for (Host h : this) {
+			if (!h.moveElevated(src, dst))
+				return false;
+		}
+		return true;
+	}
+	public void moveElevated(String src, String dst, BooleanCollector c) {
+		for (Host h : this) {
+			try {
+				c.collect(h, h.moveElevated(src, dst));
 			} catch (Throwable t) {
 				c.collect(h, false);
 			}

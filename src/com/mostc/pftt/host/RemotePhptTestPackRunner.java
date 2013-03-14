@@ -57,12 +57,12 @@ public class RemotePhptTestPackRunner extends AbstractRemoteTestPackRunner<PhptA
 		
 		LocalHost host = new LocalHost();
 		
-		LocalConsoleManager cm = new LocalConsoleManager(null, null, false, false, false, false, true, false, true, false, false, false, 1, true, 1, 1, 1, null, null, null, null, false, 0, 0);
+		LocalConsoleManager cm = new LocalConsoleManager(null, null, false, false, false, false, true, false, true, false, false, false, 1, true, 1, 1, 1, null, null, null, null, false, 0, 0, false, 0);
 		
 		PhptSourceTestPack test_pack = new PhptSourceTestPack("C:\\php-sdk\\php-test-pack-5.5-nts-windows-vc9-x86-re6bde1f");
 		test_pack.open(cm, host);
 		
-		PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, new File(host.getPhpSdkDir()), build, scenario_set, null);
+		PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, new File(host.getPhpSdkDir()), build, null);
 				
 		RemotePhptTestPackRunner runner = new RemotePhptTestPackRunner(tmgr, scenario_set, build, host, host);
 		if (args.length>0) {

@@ -44,13 +44,23 @@ public class NoCodeCacheScenario extends AbstractCodeCacheScenario {
 			if (host.isWindows()) {
 				String path = ext_dir + "/php_ZendOptimizerPlus.dll";
 				
-				if (host.exists(path))
-					host.move(path, path.replace(".dll", ".dont_load"));
+				if (host.exists(path)) {
+					String dont_load_path = path.replace(".dll", ".dont_load");
+					if (cm!=null)
+						cm.println(EPrintType.CLUE, getClass(), "Moving "+path+" to "+dont_load_path);
+
+					host.moveElevated(path, dont_load_path);
+				}
 			} else {
 				String path = ext_dir + "/php_ZendOptimizerPlus.so";
 				
-				if (host.exists(path))
-					host.move(path, path.replace(".so", ".dont_load"));
+				if (host.exists(path)) {
+					String dont_load_path = path.replace(".so", ".dont_load");
+					if (cm!=null)
+						cm.println(EPrintType.CLUE, getClass(), "Moving "+path+" to "+dont_load_path);
+
+					host.moveElevated(path, dont_load_path);
+				}
 			}
 			
 			return true;
@@ -68,6 +78,11 @@ public class NoCodeCacheScenario extends AbstractCodeCacheScenario {
 	@Override
 	public EAcceleratorType getAcceleratorType() {
 		return EAcceleratorType.NONE;
+	}
+
+	@Override
+	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		return true;
 	}
 
 } // end public class NoCodeCacheScenario

@@ -140,7 +140,7 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 			return group_key;
 		// CRITICAL: provide the INI to run all PhpUnitTestCases
 		//           unlike PhptTestCases all PhpUnitTestCases share the same INI and environment variables
-		PhpIni ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(runner_host, build);
+		PhpIni ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, runner_host, build);
 		AbstractINIScenario.setupScenarios(cm, runner_host, scenario_set, build, ini);
 		src_test_pack.prepareINI(cm, runner_host, scenario_set, build, ini);
 		return new SharedSAPIInstanceTestCaseGroupKey(ini, null);

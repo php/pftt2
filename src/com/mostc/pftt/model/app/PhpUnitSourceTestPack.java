@@ -256,6 +256,10 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	 */
 	protected void readTestFile(final int max_read_count, String test_file_name, PhpUnitDist php_unit_dist, List<PhpUnitTestCase> test_cases, File file) throws IOException {
 		FileInputStream fin = new FileInputStream(file);
+		//
+		// with all the `non-technical` obstacles around developing PFTT, there isn't time to develop a simple
+		// PHP parser here... have to use Quercus to get this done
+		//
 		QuercusParser p = new QuercusParser(qctx, new FilePath(file.getAbsolutePath()), new ReadStream(new FileReadStream(fin)));
 		QuercusProgram prog = p.parse();
 		

@@ -90,6 +90,7 @@ import com.sshtools.j2ssh.transport.publickey.SshPublicKey;
  * 
  */
 
+// TODO add support for wildcards * in #copy #move and #delete
 @SuppressWarnings("unused")
 public class SSHHost extends RemoteHost {
 	private static final Timer timer = new Timer();
@@ -159,7 +160,7 @@ public class SSHHost extends RemoteHost {
 			return true;
 		} catch ( Exception ex ) {
 			if (cm!=null)
-				cm.addGlobalException(EPrintType.CLUE, getClass(), "ensureConnected", ex, "can't connect to remote ssh host"); 
+				cm.addGlobalException(EPrintType.WARNING, getClass(), "ensureConnected", ex, "can't connect to remote ssh host"); 
 			return false;
 		}
 	}
@@ -246,14 +247,28 @@ public class SSHHost extends RemoteHost {
 
 	@Override
 	public boolean delete(String path) {
+		return do_delete(path, false);
+	}
+	
+	@Override
+	public boolean deleteElevated(String path) {
+		return do_delete(path, true);
+	}
+	
+	protected boolean do_delete(String path, boolean elevate) {
 		path = normalizePath(path);
+		if (!isSafePath(path))
+			return false;
 		
 		try {
 			if (isDirectory(path)) {
 				// ensure empty
 				if (isWindows()) {
 					path = toWindowsPath(path);
-					cmd("RMDIR /Q /S \""+path+"\"", FOUR_HOURS);
+					if (elevate)
+						cmdElevated("RMDIR /Q /S \""+path+"\"", FOUR_HOURS);
+					else
+						cmd("RMDIR /Q /S \""+path+"\"", FOUR_HOURS);
 				} else {
 					path = toUnixPath(path);
 					exec("rm -rf \""+path+"\"", FOUR_HOURS);
@@ -267,7 +282,7 @@ public class SSHHost extends RemoteHost {
 			ex.printStackTrace();
 		}
 		return false;
-	} // end public boolean delete
+	} // end protected boolean do_delete
 
 	@Override
 	public boolean exists(String path) {
@@ -284,11 +299,25 @@ public class SSHHost extends RemoteHost {
 	
 	@Override
 	public boolean copy(String src, String dst) throws Exception {
+		return do_copy(src, dst, false);
+	}
+	
+	@Override
+	public boolean copyElevated(String src, String dst) throws Exception {
+		return do_copy(src, dst, true);
+	}
+	
+	protected boolean do_copy(String src, String dst, boolean elevated) throws Exception {
+		if (!isSafePath(dst))
+			return false;
 		if (isWindows()) {
 			src = toWindowsPath(src);
 			dst = toWindowsPath(dst);
 			
-			cmd("move \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
+			if (elevated)
+				cmdElevated("move \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
+			else
+				cmd("move \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
 		} else {
 			src = toUnixPath(src);
 			dst = toUnixPath(dst);
@@ -299,8 +328,19 @@ public class SSHHost extends RemoteHost {
 	
 	@Override
 	public boolean move(String src, String dst) throws Exception {
+		return do_move(src, dst, false);
+	}
+	
+	@Override
+	public boolean moveElevated(String src, String dst) throws Exception {
+		return do_move(src, dst, true);
+	}
+	
+	protected boolean do_move(String src, String dst, boolean elevated) throws Exception {
 		src = normalizePath(src);
 		dst = normalizePath(dst);
+		if (!isSafePath(dst))
+			return false;
 		if (isWindows()) {
 			src = toWindowsPath(src);
 			dst = toWindowsPath(dst);
@@ -309,9 +349,15 @@ public class SSHHost extends RemoteHost {
 				if (!dst.endsWith("\\"))
 					dst += "\\";
 			
-				exec("xcopy /Q /Y /C /I /E /G /R /H \""+src+"\" \""+dst+"\"", FOUR_HOURS);
+				if (elevated)
+					execElevated("xcopy /Q /Y /C /I /E /G /R /H \""+src+"\" \""+dst+"\"", FOUR_HOURS);
+				else
+					exec("xcopy /Q /Y /C /I /E /G /R /H \""+src+"\" \""+dst+"\"", FOUR_HOURS);
 			} else {
-				exec("xcopy /Q /Y /C /E /G /R /H \""+src+"\" \""+dst+"\"", FOUR_HOURS);
+				if (elevated)
+					execElevated("xcopy /Q /Y /C /E /G /R /H \""+src+"\" \""+dst+"\"", FOUR_HOURS);
+				else
+					exec("xcopy /Q /Y /C /E /G /R /H \""+src+"\" \""+dst+"\"", FOUR_HOURS);
 			}
 		} else {
 			src = toUnixPath(src);
@@ -599,6 +645,8 @@ public class SSHHost extends RemoteHost {
 	public boolean mkdirs(String path) throws IllegalStateException, IOException {
 		ensureSftpOpen();
 		path = normalizePath(path);
+		if (!isSafePath(path))
+			return false;
 		
 		if (isWindows()) {
 			try {
@@ -792,11 +840,12 @@ public class SSHHost extends RemoteHost {
 
 	@Override
 	public boolean saveTextFile(String filename, String text, CharsetEncoder ce) throws IllegalStateException, IOException {
+		if (!isSafePath(filename))
+			return false;
+		filename = normalizePath(filename);
 		if (text==null)
 			text = "";
 		ensureSftpOpen();
-		filename = normalizePath(filename);
-		
 		if (ce==null) {
 			byte[] text_bytes = text.getBytes();
 			sftp.put(new ByteArrayInputStream(text_bytes), filename);
@@ -810,6 +859,8 @@ public class SSHHost extends RemoteHost {
 	
 	@Override
 	public boolean deleteFileExtension(String dir, String ext) {
+		if (!isSafePath(dir))
+			return false;
 		if (!ext.startsWith("."))
 			ext = "." + ext;
 		try {

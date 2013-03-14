@@ -13,6 +13,7 @@ public final class IOUtil {
 	public static final int ONE_MEGABYTE = 1024*1024;
 	public static final int HALF_MEGABYTE = 512*1024;
 	public static final int QUARTER_MEGABYTE = 256*1024;
+	public static final int UNLIMITED = 0;
 	
 	public static InputStream ensureMarkSupported(InputStream in, int max_bytes) throws IOException {
 		if (in.markSupported())

@@ -41,6 +41,7 @@ import com.mostc.pftt.results.ConsoleManager;
  *  Even so, being able to have fast test runs is critical. PHP builds couldn't be tested across all that otherwise.
  *
  * @see #isSupported
+ * @see Scenario#ensureContainsCriticalScenarios
  * @see ScenarioSet#getDefaultScenarioSets()
  * @author Matt Ficken
  *
@@ -53,7 +54,7 @@ public class ScenarioSet extends ArrayList<Scenario> {
 	private static Comparator<Scenario> COMPARATOR = new Comparator<Scenario>() {
 			@Override
 			public int compare(Scenario a, Scenario b) {
-				return a.getSerialKey().getName().compareTo(b.getSerialKey().getName());
+				return a.getSerialKey(EScenarioSetPermutationLayer.PHP_CORE).getName().compareTo(b.getSerialKey(EScenarioSetPermutationLayer.PHP_CORE).getName());
 			}
 		};
 	private synchronized void sort() {
@@ -267,13 +268,15 @@ public class ScenarioSet extends ArrayList<Scenario> {
 	
 	/** calculates all permutations/combinations of given Scenarios and returns them as ScenarioSets 
 	 * 
+	 * @see EScenarioSetPermutationLayer
+	 * @param layer
 	 * @param scenarios
 	 * @return
 	 */
-	public static List<ScenarioSet> permuteScenarioSets(List<Scenario> scenarios) {
+	public static List<ScenarioSet> permuteScenarioSets(EScenarioSetPermutationLayer layer, List<Scenario> scenarios) {
 		HashMap<Class<?>,List<Scenario>> map = new HashMap<Class<?>,List<Scenario>>();
 		for ( Scenario scenario : scenarios ) {
-			Class<?> clazz = scenario.getSerialKey();
+			Class<?> clazz = scenario.getSerialKey(layer);
 			//
 			List<Scenario> list = map.get(clazz);
 			if (list==null) {
@@ -289,16 +292,18 @@ public class ScenarioSet extends ArrayList<Scenario> {
 	}
 	/** filter out unsupported scenarios from permutations
 	 * 
+	 * @see EScenarioSetPermutationLayer
 	 * @see #permuateScenarioSet
 	 * @see #isSupported
 	 * @param cm
 	 * @param host
 	 * @param build
+	 * @param layer - what is being tested... some scenarios need to be permuted differently depending on what you're doing with them (ex: database scenarios for web applications)
 	 * @param scenarios
 	 * @return
 	 */
-	public static List<ScenarioSet> permuteScenarioSets(ConsoleManager cm, Host host, PhpBuild build, List<Scenario> scenarios) {
-		List<ScenarioSet> scenario_sets = permuteScenarioSets(scenarios);
+	public static List<ScenarioSet> permuteScenarioSets(ConsoleManager cm, Host host, PhpBuild build, EScenarioSetPermutationLayer layer, List<Scenario> scenarios) {
+		List<ScenarioSet> scenario_sets = permuteScenarioSets(layer, scenarios);
 		Iterator<ScenarioSet> ss_it = scenario_sets.iterator();
 		ScenarioSet ss;
 		while (ss_it.hasNext()) {
@@ -346,35 +351,7 @@ public class ScenarioSet extends ArrayList<Scenario> {
 		return scenario_sets;
 	}
 	static {
-		scenario_sets = permuteScenarioSets(Arrays.asList(Scenario.getAllDefaultScenarios()));
+		scenario_sets = permuteScenarioSets(EScenarioSetPermutationLayer.PHP_CORE, Arrays.asList(Scenario.getAllDefaultScenarios()));
 	}
-	
-	/** ensures ScenarioSet has a FileSystem and SAPIScenario by adding the default filesystem (local) or
-	 * default SAPIScenario (cli) if needed.
-	 * 
-	 * @param scenario_set
-	 */
-	public static void ensureSetHasFileSystemAndSAPI(ScenarioSet scenario_set) {
-		boolean match = false;
-		for ( Scenario scenario : scenario_set ) {
-			if (scenario instanceof AbstractSAPIScenario) {
-				match = true;
-				break;
-			}
-		}
-		if (!match) {
-			scenario_set.add(Scenario.DEFAULT_SAPI_SCENARIO);
-		}
-		match = false;
-		for ( Scenario scenario : scenario_set ) {
-			if (scenario instanceof AbstractFileSystemScenario) {
-				match = true;
-				break;
-			}
-		}
-		if (!match) {
-			scenario_set.add(Scenario.DEFAULT_FILESYSTEM_SCENARIO);
-		}
-	} // end public static void ensureSetHasFileSystemAndSAPI
 	
 } // end public class ScenarioSet

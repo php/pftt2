@@ -46,6 +46,7 @@ public interface ConsoleManager {
 		XSKIP_OPERATION, 
 		SKIP_OPTIONAL,
 		CLUE,
+		WARNING,
 		CANT_CONTINUE,
 		IN_PROGRESS,
 		COMPLETED_OPERATION,
@@ -103,5 +104,7 @@ public interface ConsoleManager {
 	public boolean isSkipSmokeTests();
 	public int getMaxTestReadCount();
 	public int getThreadCount();
+	public boolean isRestartEachTestAll();
+	public int getDelayBetweenMS();
 	
 } // end public class ConsoleManager

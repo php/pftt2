@@ -23,7 +23,7 @@ import com.mostc.pftt.model.core.PhpBuildInfo;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.scenario.ScenarioSet;
 
-public class PhptResultWriter {
+public class PhptResultWriter extends AbstractPhptRW {
 	protected final File dir;
 	protected final HashMap<EPhptTestStatus,StatusListEntry> status_list_map;
 	protected final KXmlSerializer serial;
@@ -102,10 +102,31 @@ public class PhptResultWriter {
 		}
 	} // end protected class StatusListEntry
 
+	private boolean closed = false;
 	public void close() throws IOException {
-		// write tally file with 
+		if (closed)
+			return;
+		closed = true;
+		
+		// write tally file
 		try {
 			PhptTallyFile tally = new PhptTallyFile();
+			tally.os_name = ""; // TODO host.getOSNameLong();
+			tally.pass = count(EPhptTestStatus.PASS);
+			tally.fail = count(EPhptTestStatus.FAIL);
+			tally.crash = count(EPhptTestStatus.CRASH);
+			tally.skip = count(EPhptTestStatus.SKIP);
+			tally.xskip = count(EPhptTestStatus.XSKIP);
+			tally.xfail = count(EPhptTestStatus.XFAIL);
+			tally.xfail_works = count(EPhptTestStatus.XFAIL_WORKS);
+			tally.unsupported = count(EPhptTestStatus.UNSUPPORTED);
+			tally.bork = count(EPhptTestStatus.BORK);
+			tally.exception = count(EPhptTestStatus.TEST_EXCEPTION);
+			
+			// @see PhptResultReader#readTally
+			FileWriter fw = new FileWriter(new File(dir.getAbsolutePath()+"/tally.xml"));
+			PhptTallyFile.write(tally, fw);
+			fw.close();
 		} catch ( Exception ex ) {
 			ex.printStackTrace();
 		}
@@ -178,27 +199,34 @@ public class PhptResultWriter {
 		//
 	} // end protected void handleResult
 
+	@Override
 	public String getOSName() {
 		return host.getOSName();
+	}
+	@Override
+	public String getScenarioSetNameWithVersionInfo() {
+		return scenario_set.getNameWithVersionInfo();
 	}
 	public ScenarioSet getScenarioSet() {
 		return scenario_set;
 	}
+	@Override
 	public PhpBuildInfo getBuildInfo() {
 		return build_info;
 	}
+	@Override
 	public EBuildBranch getTestPackBranch() {
 		return test_pack_branch;
 	}
+	@Override
 	public String getTestPackVersion() {
 		return test_pack_version;
 	}
-	public float passRate() {
-		return 100.0f * ((float)count(EPhptTestStatus.PASS)) / ((float)(count(EPhptTestStatus.PASS) + count(EPhptTestStatus.CRASH) + count(EPhptTestStatus.FAIL)));
-	}
+	@Override
 	public int count(EPhptTestStatus status) {
 		return status_list_map.get(status).test_names.size();
 	}
+	@Override
 	public List<String> getTestNames(EPhptTestStatus status) {
 		return status_list_map.get(status).test_names;
 	}

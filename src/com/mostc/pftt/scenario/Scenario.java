@@ -34,7 +34,7 @@ import com.mostc.pftt.results.ConsoleManager;
 
 public abstract class Scenario {
 	
-	public Class<?> getSerialKey() {
+	public Class<?> getSerialKey(EScenarioSetPermutationLayer layer) {
 		return getClass();
 	}
 	
@@ -133,6 +133,24 @@ public abstract class Scenario {
 				new NormalPathsScenario()
 			};
 	} // end public static Scenario[] getAllDefaultScenarios
+	
+	/** ensures ScenarioSet contains important scenarios like a file system, SAPI
+	 * and code-cache
+	 * 
+	 * @param scenario_set
+	 */
+	public static void ensureContainsCriticalScenarios(ScenarioSet scenario_set) {
+		if (!scenario_set.contains(AbstractCodeCacheScenario.class))
+			scenario_set.add(new NoCodeCacheScenario());
+		if (!scenario_set.contains(PathsScenario.class))
+			scenario_set.add(new NormalPathsScenario());
+		if (!scenario_set.contains(AbstractSocketScenario.class))
+			scenario_set.add(new PlainSocketScenario());
+		if (!scenario_set.contains(AbstractFileSystemScenario.class))
+			scenario_set.add(LOCALFILESYSTEM_SCENARIO);
+		if (!scenario_set.contains(AbstractSAPIScenario.class))
+			scenario_set.add(CLI_SCENARIO);
+	}
 	
 	/** writes Scenario to XML
 	 * 

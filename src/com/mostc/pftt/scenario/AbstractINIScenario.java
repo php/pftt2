@@ -24,7 +24,7 @@ public abstract class AbstractINIScenario extends AbstractSerialScenario {
 	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		try {
 			ESAPIType sapi_type = AbstractSAPIScenario.getSAPIScenario(scenario_set).getSAPIType();
-			PhpIni ini = host instanceof AHost ? build.getDefaultPhpIni((AHost)host, sapi_type) : new PhpIni();
+			PhpIni ini = host instanceof AHost ? build.getDefaultPhpIni(cm, (AHost)host, sapi_type) : new PhpIni();
 			
 			if (setup(cm, host, build, ini)) {
 				build.setDefaultPhpIni(host, sapi_type, ini);

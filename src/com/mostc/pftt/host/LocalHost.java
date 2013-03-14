@@ -113,12 +113,26 @@ public class LocalHost extends AHost {
 
 	@Override
 	public boolean delete(String path) {
-		if (isDirectory(path)) {
+		return do_delete(path, false);
+	}
+	
+	@Override
+	public boolean deleteElevated(String path) {
+		return do_delete(path, true);
+	}
+	
+	protected boolean do_delete(String path, boolean elevated) {
+		if (!isSafePath(path)) {
+			return false;
+		} else if (isDirectory(path)) {
 			// ensure empty
 			try {
 				if (isWindows()) {
 					path = toWindowsPath(path);
-					cmd("RMDIR /Q /S \""+path+"\"", NO_TIMEOUT);
+					if (elevated)
+						cmdElevated("RMDIR /Q /S \""+path+"\"", NO_TIMEOUT);
+					else
+						cmd("RMDIR /Q /S \""+path+"\"", NO_TIMEOUT);
 				} else {
 					path = toUnixPath(path);
 					exec("rm -rf \""+path+"\"", NO_TIMEOUT);
@@ -131,7 +145,10 @@ public class LocalHost extends AHost {
 			path = fixPath(path);
 			
 			try {
-				execElevated("CMD /C DEL /F /Q "+path+"", NO_TIMEOUT);
+				if (elevated)
+					execElevated("CMD /C DEL /F /Q "+path+"", NO_TIMEOUT);
+				else
+					exec("CMD /C DEL /F /Q "+path+"", NO_TIMEOUT);
 			} catch ( Exception ex ) {
 				ex.printStackTrace();
 				new File(path).delete();
@@ -140,7 +157,7 @@ public class LocalHost extends AHost {
 			new File(path).delete();
 		}
 		return true;
-	} // end public boolean delete
+	} // end protected boolean do_delete
 
 	@Override
 	public boolean exists(String path) {
@@ -159,6 +176,8 @@ public class LocalHost extends AHost {
 
 	@Override
 	public boolean saveTextFile(String filename, String text, CharsetEncoder ce) throws IOException {
+		if (!isSafePath(filename))
+			return false;
 		if (text==null)
 			text = "";
 		FileOutputStream fos = new FileOutputStream(filename);
@@ -242,6 +261,17 @@ public class LocalHost extends AHost {
 	
 	@Override
 	public boolean copy(String src, String dst) throws Exception {
+		return do_copy(src, dst, false);
+	}
+	
+	@Override
+	public boolean copyElevated(String src, String dst) throws Exception {
+		return do_copy(src, dst, true);
+	}
+	
+	protected boolean do_copy(String src, String dst, boolean elevated) throws Exception {
+		if (!isSafePath(dst))
+			return false;
 		if (isWindows()) {
 			src = toWindowsPath(src);
 			dst = toWindowsPath(dst);
@@ -267,29 +297,46 @@ public class LocalHost extends AHost {
 				// /B => binary file copy
 				cmd = "cmd /C copy /B /Y \""+src+"\" \""+dst+"\"";
 			
-			exec(cmd, NO_TIMEOUT);
+			if (elevated)
+				execElevated(cmd, NO_TIMEOUT);
+			else
+				exec(cmd, NO_TIMEOUT);
 		} else {
 			src = toUnixPath(src);
 			dst = toUnixPath(dst);
 			exec("cp \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
 		}
 		return true;
-	} // end public boolean copy
+	} // end protected boolean do_copy
 	
 	@Override
 	public boolean move(String src, String dst) throws Exception {
+		return do_move(src, dst, false);
+	}
+	
+	@Override
+	public boolean moveElevated(String src, String dst) throws Exception {
+		return do_move(src, dst, true);
+	}
+	
+	protected boolean do_move(String src, String dst, boolean elevated) throws Exception {
+		if (!isSafePath(dst))
+			return false;
 		if (isWindows()) {
 			src = toWindowsPath(src);
 			dst = toWindowsPath(dst);
 			
-			cmd("move \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
+			if (elevated)
+				cmdElevated("move \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
+			else
+				cmd("move \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
 		} else {
 			src = toUnixPath(src);
 			dst = toUnixPath(dst);
 			exec("mv \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
 		}
 		return true;
-	} // end public boolean move
+	} // end protected boolean do_move
 
 	@Override
 	public String getUsername() {
@@ -446,20 +493,34 @@ public class LocalHost extends AHost {
 		
 		protected void run(StringBuilder output_sb, Charset charset) throws IOException, InterruptedException {
 			exec_copy_lines(output_sb, stdout, charset);
-			//
 			// ignores STDERR
-			//exec_copy_lines(stderr, null);
 			
-			int w = process.waitFor();
+			//
+			int w;
+			if (isWindows()) {
+				// BN: sometimes crashing processes can cause an infinite loop in Process#waitFor
+				//       it is unclear what makes those crashing processes different... may be the order they occur in.
+				for (int time = 50;;) {
+					try {
+						w = process.exitValue();
+						break;
+					} catch ( IllegalThreadStateException ex ) {}
+					Thread.sleep(time);
+					time *= 2;
+					if (time>=400)
+						time = 50; // 50 100 200 400
+				}
+			} else {
+				w = process.waitFor();
+			}
+			//
 			
 			try {
 				process.destroy();
-			} catch ( Exception ex ) {
-			
-			}
+			} catch ( Exception ex ) {}
 			if (task!=null)
 				task.cancel();
-		}
+		} // end protected void run
 				
 		protected void exec_copy_lines(StringBuilder sb, InputStream in, Charset charset) throws IOException {
 			DefaultCharsetDeciderDecoder d = charset == null ? null : PhptTestCase.newCharsetDeciderDecoder();
@@ -684,6 +745,9 @@ public class LocalHost extends AHost {
 
 	@Override
 	public boolean mkdirs(String path) throws IllegalStateException, IOException {
+		if (!isSafePath(path))
+			return false;
+		
 		new File(path).mkdirs();
 		return true;
 	}
@@ -709,6 +773,9 @@ public class LocalHost extends AHost {
 
 	@Override
 	public boolean upload(String src, String dst) throws IllegalStateException, IOException, Exception {
+		if (!isSafePath(dst))
+			return false;
+		
 		return copy(src, dst);
 	}
 
@@ -834,6 +901,9 @@ public class LocalHost extends AHost {
 
 	@Override
 	public boolean deleteFileExtension(String dir_str, String ext) {
+		if (!isSafePath(dir_str))
+			return false;
+		
 		_deleteFileExtension(new File(dir_str), ext);
 		return true;
 	}

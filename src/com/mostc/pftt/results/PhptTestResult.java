@@ -196,8 +196,8 @@ public class PhptTestResult {
 			return a == null ? new ArrayList<String>(0) : a;
 		}
 		ArrayList<String> c = new ArrayList<String>(a.size());
-		for ( String d : b ) {
-			if (!a.contains(d))
+		for ( String d : a ) {
+			if (!b.contains(d))
 				c.add(d);
 		}
 		return c;

@@ -31,4 +31,20 @@ public enum EBuildBranch {
 		else
 			return null;
 	}
+	
+	public static EBuildBranch guessValueOfContains(String str) {
+		str = str.toLowerCase();
+		if (str.contains("php_5_3")||str.contains("php5_3")||str.contains("php53")||str.contains("php5.3")||str.contains("php_5.3"))
+			return PHP_5_3;
+		else if (str.contains("php_5_4")||str.contains("php5_4")||str.contains("php54")||str.contains("php5.4")||str.contains("php_5.4"))
+			return PHP_5_4;
+		else if (str.contains("php_5_5")||str.contains("php5_5")||str.contains("php55")||str.contains("php5.5")||str.contains("php_5.5"))
+			return PHP_5_5;
+		else if (str.contains("php_5_6")||str.contains("php5_6")||str.contains("php56")||str.contains("php5.6")||str.contains("php_5.6"))
+			return PHP_5_6;
+		else if (str.contains("master"))
+			return MASTER;
+		else
+			return null;
+	}
 }

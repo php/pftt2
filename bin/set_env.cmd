@@ -1,3 +1,8 @@
 @ECHO off
-REM alias
-setenv
+
+SET PHP_SDK=%SYSTEMDRIVE%\php-sdk
+
+SET PFTT_HOME=%PHP_SDK%\PFTT\current
+
+SET PATH=%PFTT_HOME%\BIN;%PATH%
+

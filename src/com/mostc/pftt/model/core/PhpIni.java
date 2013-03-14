@@ -2,6 +2,7 @@ package com.mostc.pftt.model.core;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -73,6 +74,7 @@ public class PhpIni {
 	public static final String EXT_BZ2 = dllName("bz2");
 	public static final String EXT_COM_DOTNET = dllName("com_dotnet");
 	public static final String EXT_CURL = dllName("curl");
+	public static final String EXT_ENCHANT = dllName("enchant");
 	public static final String EXT_FILEINFO = dllName("fileinfo");
 	public static final String EXT_GD2 = dllName("gd2");
 	public static final String EXT_GETTEXT = dllName("gettext");
@@ -450,7 +452,13 @@ public class PhpIni {
 		}
 		
 		StringBuilder sb = new StringBuilder(1024);
-		for ( String directive : ini_map.keySet() ) {
+		
+		// alphabetize directives (to make it more human readable. php doesn't care)
+		ArrayList<String> directives = new ArrayList<String>(ini_map.size());
+		directives.addAll(ini_map.keySet());
+		Collections.sort(directives);
+		
+		for ( String directive : directives ) {
 			for ( String value : ini_map.get(directive) ) {
 				sb.append(directive);
 				sb.append('=');

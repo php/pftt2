@@ -22,6 +22,7 @@ import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.app.EPhpUnitTestStatus;
 import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
 import com.mostc.pftt.model.core.PhpBuildInfo;
+import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 /** Writes PhpUnitTestResults from a single test run with a single scenario set on a single host with a single build.
@@ -40,7 +41,7 @@ import com.mostc.pftt.scenario.ScenarioSet;
  */
 
 @NotThreadSafe
-public class PhpUnitResultWriter {
+public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 	protected final KXmlSerializer serial;
 	protected final File dir;
 	protected final OutputStream out;
@@ -49,7 +50,8 @@ public class PhpUnitResultWriter {
 	protected final ScenarioSet scenario_set;
 	protected final AHost host;
 	protected final PhpBuildInfo build_info;
-	protected final String source_pack_name_and_version;
+	protected final String test_pack_name_and_version;
+	protected PhpIni ini;
 	private boolean is_first_result = true;
 	private String last_test_suite_name;
 	private int test_count, percent_total, pass, failure, error, warning, notice, skip, deprecated, not_implemented, unsupported, test_exception, crash, bork, xskip;
@@ -58,7 +60,7 @@ public class PhpUnitResultWriter {
 		this.build_info = build_info;
 		this.host = host;
 		this.scenario_set = scenario_set;
-		this.source_pack_name_and_version = test_pack.getNameAndVersionString();
+		this.test_pack_name_and_version = test_pack.getNameAndVersionString();
 		
 		this.dir = dir;
 		dir.mkdirs();
@@ -124,6 +126,9 @@ public class PhpUnitResultWriter {
 
 	// @see PHPUnit/Util/Log/JUnit.php#startTestSuite
 	public void writeResult(PhpUnitTestResult result) throws IllegalArgumentException, IllegalStateException, IOException {
+		if (result.ini!=null && (this.ini==null||!this.ini.equals(result.ini)))
+			this.ini = result.ini;
+		
 		final String test_name = result.getName();
 		status_list_map.get(result.status).write(test_name, result);
 		
@@ -212,7 +217,11 @@ public class PhpUnitResultWriter {
 		serial.endTag(null, "testsuite");
 	}
 	
+	private boolean closed = false;
 	public void close() throws IllegalArgumentException, IllegalStateException, IOException {
+		if (closed)
+			return;
+		closed = true;
 		writeTestSuiteEnd();
 		writeTally();
 		serial.endTag(null, "testsuites");
@@ -221,14 +230,26 @@ public class PhpUnitResultWriter {
 		serial.flush();
 		out.close();
 		
+		// @see PhpUnitReader#readTally
+		{
+			FileWriter fw = new FileWriter(new File(dir.getAbsolutePath()+"/tally.xml"));
+			serial.setOutput(fw);
+			writeTally(); // write again - this file is smaller and faster to read
+			serial.flush();
+			fw.close();
+		}
+		//
+		
 		// do this after finishing phpunit.xml since that's more important than alphabetizing text file lists
 		for ( StatusListEntry e : status_list_map.values() )
 			e.close();
-	}
+	} // end public void close
 	
 	private void writeTally() throws IllegalArgumentException, IllegalStateException, IOException {
 		serial.startTag("pftt", "tally");
 		
+		serial.attribute(null, "test_pack_name_and_version", test_pack_name_and_version);
+		serial.attribute(null, "os_name", host.getOSNameLong());
 		serial.attribute(null, "test_count", Integer.toString(test_count));
 		serial.attribute(null, "percent_total", Integer.toString(percent_total));
 		serial.attribute(null, "pass", Integer.toString(pass));
@@ -249,38 +270,45 @@ public class PhpUnitResultWriter {
 		serial.attribute(null, "test_exception", Integer.toString(test_exception));
 		serial.attribute(null, "bork", Integer.toString(bork));
 		
+		if (ini!=null) {
+			serial.startTag("pftt", "ini");
+			serial.text(ini.toString());
+			serial.endTag("pftt", "ini");
+		}
+		
 		serial.endTag("pftt", "tally");
 	}
 	
+	@Override
 	public String getTestPackNameAndVersionString() {
-		return source_pack_name_and_version;
+		return test_pack_name_and_version;
 	}
+	@Override
 	public PhpBuildInfo getBuildInfo() {
 		return build_info;
 	}
+	@Override
 	public String getOSName() {
 		return host.getOSName();
+	}
+	@Override
+	public String getScenarioSetNameWithVersionInfo() {
+		return scenario_set.getNameWithVersionInfo();
 	}
 	public ScenarioSet getScenarioSet() {
 		return scenario_set;
 	}
-	public int getTestCount() {
-		return count(EPhpUnitTestStatus.PASS) +
-				count(EPhpUnitTestStatus.FAILURE) +
-				count(EPhpUnitTestStatus.ERROR) +
-				count(EPhpUnitTestStatus.WARNING) +
-				count(EPhpUnitTestStatus.NOTICE) +
-				count(EPhpUnitTestStatus.DEPRECATED) +
-				count(EPhpUnitTestStatus.CRASH);
-	}
+	@Override
 	public int count(EPhpUnitTestStatus status) {
 		return status_list_map.get(status).test_names.size();
 	}
+	@Override
 	public List<String> getTestNames(EPhpUnitTestStatus status) {
 		return status_list_map.get(status).test_names;
 	}
-	public float passRate() {
-		return 100.0f * ((float)count(EPhpUnitTestStatus.PASS))/((float)getTestCount());
+	@Override
+	public PhpIni getPhpIni() {
+		return this.ini;
 	}
 	
 } // end public class PhpUnitResultWriter

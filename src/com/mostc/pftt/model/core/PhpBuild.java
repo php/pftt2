@@ -308,12 +308,13 @@ public class PhpBuild extends SAPIManager {
 	
 	/** gets the default PhpIni used for this build (unless overriden)
 	 * 
+	 * @param cm
 	 * @param host
 	 * @param type
 	 * @return
 	 * @throws IOException
 	 */
-	public PhpIni getDefaultPhpIni(AHost host, ESAPIType type) throws IOException {
+	public PhpIni getDefaultPhpIni(ConsoleManager cm, AHost host, ESAPIType type) throws IOException {
 		PhpIni ini;
 		if (this.php_ini!=null) {
 			ini = this.php_ini.get();
@@ -324,7 +325,7 @@ public class PhpBuild extends SAPIManager {
 		if (host.exists(path))
 			ini = new PhpIni(host.getContents(path), build_path);
 		else
-			ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(host, this);
+			ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, host, this);
 		
 		this.php_ini = new WeakReference<PhpIni>(ini);
 		return ini;
@@ -403,7 +404,7 @@ public class PhpBuild extends SAPIManager {
 		
 		// should be able to get this info for release, qa and snapshot builds
 		// but for dev builds, might not be able to get this info any other way than parsing phpinfo
-		if (getBuildSourceType(host)!=EBuildSourceType.WINDOWS_DOT_PHP_DOT_NET && host instanceof AHost) {
+		if (host instanceof AHost) {
 			for (String line : StringUtil.splitLines(getPhpInfo(cm, (AHost)host))) {
 				if (line.startsWith("PHP Version =>")) {
 					version_str = line.substring("PHP Version => ".length());
@@ -411,7 +412,12 @@ public class PhpBuild extends SAPIManager {
 					String[] split = version_str.split("[\\.|\\-]");
 					major = Integer.parseInt(split[0]);
 					minor = Integer.parseInt(split[1]);
-					revision = split[2];
+					//
+					if (revision==null)
+						revision = version_str;
+					if (split.length>3&&!split[3].equalsIgnoreCase("dev"))
+						revision = split[2];
+					//
 					if (major==5) {
 						switch(minor) {
 						case 3:
@@ -488,7 +494,7 @@ public class PhpBuild extends SAPIManager {
 		ext_name = ext_name.toLowerCase();
 		
 		if (ini==null)
-			ini = getDefaultPhpIni(host, type);
+			ini = getDefaultPhpIni(cm, host, type);
 		
 		// key by only extensions, so cache will be reused even if additional directives are added
 		if (ini!=null)
@@ -710,7 +716,7 @@ public class PhpBuild extends SAPIManager {
 	} // end public static class PHPOutput
 	
 	public String[] getExtensionList(ConsoleManager cm, AHost host, ESAPIType type) throws Exception {
-		return getExtensionList(cm, host, getDefaultPhpIni(host, type));
+		return getExtensionList(cm, host, getDefaultPhpIni(cm, host, type));
 	}
 	
 	/** gets the static builtin extensions for this build build and the dynamic extensions the
@@ -761,7 +767,7 @@ public class PhpBuild extends SAPIManager {
 
 	boolean saved_ini = false;
 	String ini_dir;
-	public String prepare(Host host) throws IOException {
+	public String prepare(ConsoleManager cm, Host host) throws IOException {
 		if (saved_ini) {
 			return ini_dir;
 		} else {
@@ -773,7 +779,7 @@ public class PhpBuild extends SAPIManager {
 			
 			String ini_file = ini_dir + "/php.ini";
 			
-			PhpIni def_ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(host, this);
+			PhpIni def_ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, host, this);
 			
 			FileWriter fw = new FileWriter(ini_file);
 			fw.write(def_ini.toString());
@@ -802,7 +808,7 @@ public class PhpBuild extends SAPIManager {
 				getCompiler(cm, host),
 				getCPUArch(cm, host),
 				getBuildSourceType(host),
-				EOS.WIN32
+				EOSType.WIN32
 			);
 	}
 	

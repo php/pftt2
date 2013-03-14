@@ -536,6 +536,10 @@ public abstract class AHost extends Host {
 	public boolean cmd(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String current_dir) throws IllegalStateException, Exception {
 		return exec(null, (String)null, toCmd(cmd), timeout_sec, env, stdin_data, charset, current_dir);
 	}
+	@Override
+	public boolean cmdElevated(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String current_dir) throws IllegalStateException, Exception {
+		return execElevated(null, (String)null, toCmd(cmd), timeout_sec, env, stdin_data, charset, current_dir);
+	}
 	/** adds to command to run it with Host's shell.
 	 * 
 	 *  some Host commands aren't actually programs, but are commands to its shell and must pass through this instead.
@@ -621,9 +625,9 @@ public abstract class AHost extends Host {
 		if (install_7zip_attempt)
 			return;
 		install_7zip_attempt = true;
-		if (ohost.isRemote() == this.isRemote()) {
+		if (ohost.isRemote() && this.isRemote()) {
 			// no host with 7zip
-			cm.println(EPrintType.CLUE, getClass(), "No host found with a copy of 7z.exe!");
+			cm.println(EPrintType.WARNING, getClass(), "No host found with a copy of 7z.exe!");
 		} else if (ohost.isRemote()) {
 			install7Zip(cm, this, ohost);
 		} else {
@@ -631,17 +635,21 @@ public abstract class AHost extends Host {
 		}
 	}
 	
+	private boolean reported_7zip_already_installed = false;
 	private static void install7Zip(ConsoleManager cm, AHost src_host, AHost dst_host) throws Exception {
 		final String src_7z_path = src_host.getPfttDir()+"\\bin\\7za.exe";
 		if (!src_host.exists(src_7z_path)) {
-			cm.println(EPrintType.CLUE, "install7Zip", "7za.exe not found on source: "+src_host);
+			cm.println(EPrintType.WARNING, "install7Zip", "7za.exe not found on source: "+src_host);
 			return;
 		}
 		
 		final String dst_7z_path = dst_host.getPfttDir()+"\\bin\\7za.exe";
 		
 		if (dst_host.exists(dst_7z_path) && src_host.getSize(src_7z_path)==dst_host.getSize(dst_7z_path)) {
+			if (dst_host.reported_7zip_already_installed)
+				return;
 			cm.println(EPrintType.CLUE, "install7Zip", "7za.exe already installed on: "+dst_host);
+			dst_host.reported_7zip_already_installed = true;
 			return;
 		}
 		
@@ -666,7 +674,7 @@ public abstract class AHost extends Host {
 	 * @throws IOException
 	 * @throws Exception
 	 */
-	public void decompress(ConsoleManager cm, AHost ohost, String zip7_file, String dst) throws IllegalStateException, IOException, Exception {
+	public boolean decompress(ConsoleManager cm, AHost ohost, String zip7_file, String dst) throws IllegalStateException, IOException, Exception {
 		ensure7Zip(cm, ohost);
 		
 		String output_dir = dst;
@@ -676,7 +684,7 @@ public abstract class AHost extends Host {
 			cm.println(EPrintType.IN_PROGRESS, getClass(), "decompress output_dir="+output_dir+" zip7_file="+zip7_file);
 		
 		String cmd = silenceCmd(getPfttDir()+"\\bin\\7za x -mx=9 -mmt="+getCPUCount()+" -bd -y -o"+output_dir+" "+zip7_file);
-		execOut(cmd, AHost.ONE_HOUR);
+		return exec(cmd, AHost.ONE_HOUR);
 	}
 	
 	/** compresses source directory into destination 7zip file
@@ -689,7 +697,7 @@ public abstract class AHost extends Host {
 	 * @throws IOException
 	 * @throws Exception
 	 */
-	public void compress(ConsoleManager cm, AHost ohost, String src, String zip7_file) throws IllegalStateException, IOException, Exception {
+	public boolean compress(ConsoleManager cm, AHost ohost, String src, String zip7_file) throws IllegalStateException, IOException, Exception {
 		ensure7Zip(cm, ohost);
 		
 		if (isDirectory(src)) {
@@ -706,7 +714,7 @@ public abstract class AHost extends Host {
 
 		if (cm!=null)
 			cm.println(EPrintType.IN_PROGRESS, getClass(), "compress zip7_file="+zip7_file+" src="+src);
-		execOut(cmd, AHost.ONE_HOUR);
+		return exec(cmd, AHost.ONE_HOUR);
 	}
 	
 	/** modifies command to silence any output. returns modified command that can
@@ -965,13 +973,12 @@ public abstract class AHost extends Host {
 	@Override
 	public boolean unzip(ConsoleManager cm, String zip_file, String base_dir) {
 		try {
-			mkdirs(base_dir);
-			if (exec("unzip "+zip_file+" "+base_dir, ONE_HOUR))
-				return true;
-			else
-				cm.println(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "Unable to unzip: "+zip_file);
+			return decompress(cm, this, zip_file, base_dir);
 		} catch ( Exception ex ) {
-			cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "unzip", ex, "", this, zip_file, base_dir);
+			if (cm==null)
+				ex.printStackTrace();
+			else
+				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "unzip", ex, "unable to unzip");
 		}
 		return false;
 	}

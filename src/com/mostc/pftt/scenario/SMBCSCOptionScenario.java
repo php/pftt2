@@ -8,7 +8,7 @@ import com.mostc.pftt.results.ConsoleManager.EPrintType;
 public abstract class SMBCSCOptionScenario extends AbstractOptionScenario {
 
 	@Override
-	public Class<?> getSerialKey() {
+	public Class<?> getSerialKey(EScenarioSetPermutationLayer layer) {
 		return SMBCSCOptionScenario.class;
 	}
 	

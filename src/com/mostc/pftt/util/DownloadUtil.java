@@ -4,7 +4,6 @@ import java.io.FileOutputStream;
 import java.net.Socket;
 import java.net.URL;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.http.ConnectionReuseStrategy;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequestInterceptor;
@@ -28,7 +27,7 @@ import org.apache.http.protocol.RequestExpectContinue;
 import org.apache.http.protocol.RequestTargetHost;
 import org.apache.http.protocol.RequestUserAgent;
 
-import com.mostc.pftt.host.AHost;
+import com.github.mattficken.io.IOUtil;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
@@ -87,7 +86,7 @@ public class DownloadUtil {
 			
 			FileOutputStream out_file = new FileOutputStream(local_file_zip);
 			
-			IOUtils.copy(response.getEntity().getContent(), out_file);
+			IOUtil.copy(response.getEntity().getContent(), out_file, IOUtil.UNLIMITED);
 			
 			out_file.close();
 		} catch ( Exception ex ) {
@@ -109,10 +108,7 @@ public class DownloadUtil {
 			
 			System.out.println("PFTT: release_get: decompressing "+local_file_zip+"...");
 			
-			// TODO c:\program files
-			host.exec(cm, DownloadUtil.class, "\"C:\\Program Files\\7-Zip\\7z\" x "+local_file_zip, AHost.FOUR_HOURS, local_dir);
-			
-			return true;
+			return host.unzip(cm, local_file_zip, local_dir);
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, DownloadUtil.class, "downloadAndUnzip", ex, "");
 			return false;

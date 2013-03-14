@@ -5,10 +5,10 @@ REM set important env vars
 CALL set_env
 SET PFTT_LIB=%PFTT_HOME%\lib
 
-SET CLASSPATH=%PFTT_HOME%\build;%PFTT_LIB%\htmlcleaner-2.2.jar;%PFTT_LIB%\groovy-1.8.6.jar;%PFTT_LIB%\icu4j-49_1.jar;%PFTT_LIB%\icudata.jar;%PFTT_LIB%\icutzdata.jar;%PFTT_LIB%\jansi-1.7.jar;%PFTT_LIB%\jline-0.9.94.jar;%PFTT_LIB%\selenium-server-standalone-2.19.0.jar;%PFTT_LIB%\xercesImpl.jar;%PFTT_LIB%\xmlpull-1.1.3.1.jar;%PFTT_LIB%\commons-cli-1.2.jar;%PFTT_LIB%\antlr-2.7.7.jar;%PFTT_LIB%\asm-3.2.jar;%PFTT_LIB%\asm-analysis-3.2.jar;%PFTT_LIB%\asm-commons-3.2.jar;%PFTT_LIB%\asm-tree-3.2.jar;%PFTT_LIB%\asm-util-3.2.jar;%PFTT_LIB%\winp-1.14.jar;%PFTT_LIB%\commons-net-3.1.jar;%PFTT_LIB%\commons-codec-1.6.jar;%PFTT_LIB%\commons-lang-2.6.jar;%PFTT_LIB%\commons-logging-1.1.1.jar;%PFTT_LIB%\jzlib-1.1.1.jar;%PFTT_LIB%\mina-core-2.0.7.jar;%PFTT_LIB%\mina-statemachine-2.0.7.jar;%PFTT_LIB%\slf4j-api-1.7.2.jar;%PFTT_LIB%\slf4j-log4j12-1.7.2.jar
+SET CLASSPATH=%PFTT_HOME%\build;%PFTT_LIB%\apache-mime4j-0.6.jar;%PFTT_LIB%\commons-exec-1.1.jar;%PFTT_LIB%\cssparser-0.9.8.jar;%PFTT_LIB%\guava-14.0.jar;%PFTT_LIB%\hamcrest-core-1.3.jar;%PFTT_LIB%\httpclient-4.2.1.jar;%PFTT_LIB%\httpcore-4.2.1.jar;%PFTT_LIB%\httpmime-4.2.1.jar;%PFTT_LIB%\jna-3.4.0.jar;%PFTT_LIB%\jna-platform-3.4.0.jar;%PFTT_LIB%\json-20080701.jar;%PFTT_LIB%\jzlib-1.1.1.jar;%PFTT_LIB%\nekohtml-1.9.17.jar;%PFTT_LIB%\phantomjsdriver-1.0.1.jar;%PFTT_LIB%\selenium-java-2.31.0.jar;%PFTT_LIB%\htmlcleaner-2.2.jar;%PFTT_LIB%\groovy-1.8.6.jar;%PFTT_LIB%\icu4j-49_1.jar;%PFTT_LIB%\icudata.jar;%PFTT_LIB%\icutzdata.jar;%PFTT_LIB%\jansi-1.7.jar;%PFTT_LIB%\jline-0.9.94.jar;%PFTT_LIB%\xercesImpl.jar;%PFTT_LIB%\xmlpull-1.1.3.1.jar;%PFTT_LIB%\commons-cli-1.2.jar;%PFTT_LIB%\antlr-2.7.7.jar;%PFTT_LIB%\asm-3.2.jar;%PFTT_LIB%\asm-analysis-3.2.jar;%PFTT_LIB%\asm-commons-3.2.jar;%PFTT_LIB%\asm-tree-3.2.jar;%PFTT_LIB%\asm-util-3.2.jar;%PFTT_LIB%\winp-1.14.jar;%PFTT_LIB%\commons-net-3.1.jar;%PFTT_LIB%\commons-codec-1.6.jar;%PFTT_LIB%\commons-lang-2.6.jar;%PFTT_LIB%\commons-logging-1.1.1.jar;%PFTT_LIB%\jzlib-1.1.1.jar;%PFTT_LIB%\mina-core-2.0.7.jar;%PFTT_LIB%\mina-statemachine-2.0.7.jar;%PFTT_LIB%\slf4j-api-1.7.2.jar;%PFTT_LIB%\slf4j-log4j12-1.7.2.jar;%PFTT_LIB%\php_parser.jar
 
 
-REM if user added -uac or -auto or -debug console options, run elevated in UAC
+REM if user added -uac or -auto or -debug* console options, run elevated in UAC
 REM user will get at most 1 UAC popup dialog
 REM UAC popups break automation because there is no way to automate clicking on them
 REM having 1 UAC popup at start when -auto is used will hopefully get the user to realize
@@ -28,11 +28,15 @@ SET pftt_args="str %*"
 SET pftt_temp=%pftt_args:auto=%
 IF NOT %pftt_args% EQU %pftt_temp% ( GOTO set_elevator )
 
+REM not using elevate, clear these vars!
 SET ELEVATOR=
+SET ELEVATOR_OPTS=
 GOTO :run_it
 
 :set_elevator
 SET ELEVATOR=%PFTT_HOME%\bin\elevate.exe
+REM pass -pause to pftt (IMPORTANT: trailing space must be present or this will break everything)
+SET ELEVATOR_OPTS="-pause " 
 ECHO see other new command prompt Window for PFTT output
 
 :run_it
@@ -87,4 +91,4 @@ IF [%JAVA_EXE%] == [] (
 )
 
 REM finally execute PFTT
-%ELEVATOR% %JAVA_EXE% -classpath %CLASSPATH% com.mostc.pftt.main.PfttMain %*
+%ELEVATOR% %JAVA_EXE% -classpath %CLASSPATH% com.mostc.pftt.main.PfttMain %ELEVATOR_OPTS%%*

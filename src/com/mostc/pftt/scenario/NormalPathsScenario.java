@@ -21,7 +21,7 @@ public class NormalPathsScenario extends PathsScenario {
 	@Override
 	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		// TODO Auto-generated method stub
-		return false;
+		return true;
 	}
 
 	@Override
@@ -31,7 +31,7 @@ public class NormalPathsScenario extends PathsScenario {
 
 	@Override
 	public boolean isImplemented() {
-		return false;
+		return true;
 	}
 
 }

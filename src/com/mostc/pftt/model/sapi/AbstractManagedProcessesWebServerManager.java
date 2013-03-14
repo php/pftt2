@@ -248,16 +248,16 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 				// a crashed process
 				active_debugger_count.incrementAndGet();
 				timer.scheduleAtFixedRate(new TimerTask() {
-					public void run() {
-						if (!debug_handle.isRunning()) {
-							waiting_for_debug_of_crashed_process = false;
-							
-							active_debugger_count.decrementAndGet();
-							
-							cancel();
+						public void run() {
+							if (!debug_handle.isRunning()) {
+								waiting_for_debug_of_crashed_process = false;
+								
+								active_debugger_count.decrementAndGet();
+								
+								cancel();
+							}
 						}
-					}
-				}, 1000, 1000);
+					}, 1000, 1000);
 				return;
 			} else if (debug_handle!=null) {
 				// process didn't crash, close debugger

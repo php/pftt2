@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -19,6 +21,7 @@ import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.app.JoomlaScenario;
@@ -69,13 +72,18 @@ public final class Config {
 	public static final String CONFIGURE_FTP_CLIENT_METHOD = "configure_ftp_client";
 	//
 	protected final LinkedList<AHost> hosts;
+	protected final LinkedList<Scenario> scenarios;
 	protected final LinkedList<ScenarioSet> scenario_sets;
+	protected final HashMap<EScenarioSetPermutationLayer,List<ScenarioSet>> permuted_scenario_sets;
 	protected GroovyObject configure_smtp_method, configure_ftp_client_method, get_php_unit_source_test_pack_method;
 	protected String configure_smtp_file, configure_ftp_client_file, get_php_unit_source_test_pack_file;
 	
 	protected Config() {
 		hosts = new LinkedList<AHost>();
 		scenario_sets = new LinkedList<ScenarioSet>();
+		scenarios = new LinkedList<Scenario>();
+		
+		permuted_scenario_sets = new HashMap<EScenarioSetPermutationLayer,List<ScenarioSet>>();
 	}
 	
 	public List<AHost> getHosts() {
@@ -88,11 +96,58 @@ public final class Config {
 	 * scenario_sets() functions AND all valid permutations of Scenarios
 	 * provided by the scenarios() functions.
 	 * 
+	 * @param cm
+	 * @param layer - TODO
 	 * @return
 	 */
-	public List<ScenarioSet> getScenarioSets() {
-		return scenario_sets;
+	public List<ScenarioSet> getScenarioSets(ConsoleManager cm, EScenarioSetPermutationLayer layer) {
+		if (layer==null)
+			layer = EScenarioSetPermutationLayer.PHP_CORE; // fallback
+		
+		List<ScenarioSet> this_scenario_sets = permuted_scenario_sets.get(layer);
+		if (this_scenario_sets!=null)
+			return this_scenario_sets;
+		
+		this_scenario_sets = permuteScenarioSets(cm, layer);
+		
+		permuted_scenario_sets.put(layer, this_scenario_sets);
+		
+		return this_scenario_sets;
 	}
+	
+	public List<ScenarioSet> getScenarioSets(EScenarioSetPermutationLayer layer) {
+		return getScenarioSets(null, layer);
+	}
+	
+	protected List<ScenarioSet> permuteScenarioSets(ConsoleManager cm, EScenarioSetPermutationLayer layer) {
+		List<ScenarioSet> this_scenario_sets;
+		if (this.scenario_sets!=null && this.scenario_sets.size() > 0) {
+			this_scenario_sets = new ArrayList<ScenarioSet>(this.scenario_sets.size()+2);
+			this_scenario_sets.addAll(this.scenario_sets);
+		} else {
+			this_scenario_sets = new LinkedList<ScenarioSet>();
+		}
+		
+		// permute the given individual scenarios and add them to the list of scenario sets
+		for (ScenarioSet scenario_set : ScenarioSet.permuteScenarioSets(layer, scenarios) ) {
+			if (!this_scenario_sets.contains(scenario_set))
+				this_scenario_sets.add(scenario_set);
+		}
+		// make sure all scenario sets have a filesystem and SAPI, code-cache, etc...
+		for (ScenarioSet scenario_set : this_scenario_sets )
+			Scenario.ensureContainsCriticalScenarios(scenario_set);
+		//
+		
+		if (cm != null && this_scenario_sets.size()>0) {
+			String ss_str = "";
+			for ( ScenarioSet scenario_set : this_scenario_sets )
+				ss_str += scenario_set.getNameWithVersionInfo() + ", ";
+			cm.println(EPrintType.CLUE, Config.class, "Loaded "+this_scenario_sets.size()+" Scenario-Sets: "+ss_str);
+			
+		}
+		
+		return this_scenario_sets;
+	} // end protected List<ScenarioSet> permuateScenarioSets
 	
 	public boolean configureSMTP(SMTPProtocol smtp) {
 		return configureSMTP(null, smtp);
@@ -226,30 +281,17 @@ public final class Config {
 	}
 	
 	protected static Config loadConfigCommon(ConsoleManager cm, LinkedList<Scenario> scenarios, Config config) {
-		// configs may specify individual scenarios, in addition or in place of whole sets
-		//
-		// permute the given individual scenarios and add them to the list of scenario sets
-		for (ScenarioSet scenario_set : ScenarioSet.permuteScenarioSets(scenarios) ) {
-			if (!config.scenario_sets.contains(scenario_set))
-				config.scenario_sets.add(scenario_set);
-		}
-		// make sure all scenario sets have a filesystem and SAPI
-		for (ScenarioSet scenario_set : config.scenario_sets )
-			ScenarioSet.ensureSetHasFileSystemAndSAPI(scenario_set);
-		//
+		config.scenarios.addAll(scenarios);
+		
+		// scenario set permutation depends on what the scenarios are being used for (php applications, phpt core testing, etc...)
+		// therefore, they can't be permuted here... wait until #getScenarioSets called
+		// @see #permuteScenarioSets
 		
 		if (cm!=null) {
 			// report progress
 			if (config.hosts.size()>0) {
 				cm.println(EPrintType.CLUE, Config.class, "Loaded "+config.hosts.size()+" hosts");
 			}
-			if (config.scenario_sets.size()>0) {
-				String ss_str = "";
-				for ( ScenarioSet scenario_set : config.getScenarioSets() )
-					ss_str += scenario_set.getNameWithVersionInfo() + ", ";
-				cm.println(EPrintType.CLUE, Config.class, "Loaded "+config.scenario_sets.size()+" Scenario-Sets: "+ss_str);
-				
-			} // note: if no scenario sets given, will use defaults (@see ScenarioSet#getAllDefaultScenarios)... no need to show that here
 		}
 		
 		

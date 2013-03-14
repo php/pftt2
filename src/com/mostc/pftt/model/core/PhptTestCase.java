@@ -878,6 +878,11 @@ public class PhptTestCase extends TestCase {
 	}
 	
 	public static boolean isNon8BitCharset(String test_name) {
+		// XXX use a Trie to speedup checking
+		for ( String tc : TESTS_BIT8) {
+			if (tc.equals(test_name)) 
+				return false;
+		}
 		if (test_name.startsWith("ext/")) {
 			for ( String tc : NON8BIT_EXTS) {
 				if (test_name.startsWith(tc)) 
@@ -941,6 +946,13 @@ public class PhptTestCase extends TestCase {
 			"ext/xml/tests/xml007.phpt",
 			"ext/tidy/tests/020.phpt", // Apache?
 			"ext/standard/tests/general_functions/parse_ini_basic.phpt" // Apache
+		};
+	static final String[] TESTS_BIT8 = new String[] {
+			"ext/intl/tests/locale_get_display_language.phpt",
+			"ext/intl/tests/locale_get_display_name2.phpt",
+			"ext/intl/tests/locale_get_display_region2.phpt",
+			"ext/intl/tests/locale_get_display_variant2.phpt",
+			"ext/intl/tests/symfony_format_type_int32_intl1.phpt",
 		};
 	/** returns if this test is expected to take more than 40 seconds to execute.
 	 * 

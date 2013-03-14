@@ -3,6 +3,7 @@ package com.mostc.pftt.model.smoke;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.ESAPIType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
@@ -111,11 +112,12 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 	 * 
 	 * A PhpBuild using this PhpIni should pass this test.
 	 * 
+	 * @param cm
 	 * @param host
 	 * @param build
 	 * @return
 	 */
-	public static PhpIni createDefaultIniCopy(Host host, PhpBuild build) {
+	public static PhpIni createDefaultIniCopy(ConsoleManager cm, Host host, PhpBuild build) {
 		// these settings make a (big) difference in certain scenarios or for certain tests
 		// before committing changes to any of them, you MUST do a full run of all tests on
 		// all scenarios before and after the change to ensure that your change here does not
@@ -198,6 +200,13 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 					PhpIni.EXT_XMLRPC,
 					PhpIni.EXT_XSL
 				);
+			try {
+				if (build.getVersionBranch(cm, host)==EBuildBranch.PHP_5_5) {
+					ini.addExtension(PhpIni.EXT_ENCHANT);
+				}
+			} catch ( Exception ex ) {
+				ex.printStackTrace();//
+			}
 		}
 		
 		// TIMING: do this after all calls to #putMulti, etc... b/c that sets is_default = false

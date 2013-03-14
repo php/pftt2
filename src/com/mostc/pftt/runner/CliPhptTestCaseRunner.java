@@ -155,7 +155,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	@Override
 	protected boolean prepare() throws IOException, Exception {
 		if (super.prepare()) {
-			ini_dir = build.prepare(host);
+			ini_dir = build.prepare(cm, host);
 			
 			selected_php_exe = build.getPhpExe();
 			

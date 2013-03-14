@@ -14,6 +14,24 @@ import com.mostc.pftt.results.ConsoleManager;
 
 public abstract class AbstractDatabaseScenario extends AbstractNetworkedServiceScenario {
 	
+	public Class<?> getSerialKey(EScenarioSetPermutationLayer layer) {
+		switch(layer) {
+		// IMPORTANT: when running a web application, it can only have 1 database scenario
+		case WEB_APPLICATION:
+		case USER_INTERFACE:
+		case DATABASE:
+		case PERFORMANCE:
+			return AbstractDatabaseScenario.class;
+		default:
+			// whereas, when testing PHP Core, you can run multiple database scenarios at the same time (faster)
+			//     the only downside is that you're loading multiple database DLLs (mysql.dll postgres.dll, etc...)
+			//     which wouldn't/shouldn't be done in production
+			//     -however, when changing which DLLs are loaded, problems are only likely introduced when removing a DLL or changing order
+			//       so this is ok (trading this for substantial speed increase)
+			return super.getSerialKey(layer);
+		}
+	}
+	
 	@Override
 	public boolean isUACRequiredForSetup() {
 		return true;

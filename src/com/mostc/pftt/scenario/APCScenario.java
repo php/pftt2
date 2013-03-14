@@ -46,4 +46,9 @@ public class APCScenario extends AbstractCodeCacheScenario {
 		return EAcceleratorType.APC;
 	}
 
+	@Override
+	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		return true;
+	}
+
 } // end public class APCScenario

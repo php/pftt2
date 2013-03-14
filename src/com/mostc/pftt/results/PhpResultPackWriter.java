@@ -4,8 +4,10 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
+import java.util.LinkedList;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import com.mostc.pftt.host.AHost;
@@ -28,10 +30,6 @@ import com.mostc.pftt.util.ErrorUtil;
  *
  */
  
-//TODO log cli args to result-pack
-//        -warn if -no_nts is used
-// TODO store consolemanager logs in result-pack
-//   -including smoke checks from dfs and deduplication scenrios
 public class PhpResultPackWriter extends PhpResultPack implements ITestResultReceiver {
 	protected File telem_dir;
 	protected final LocalHost local_host;
@@ -45,18 +43,9 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	protected final PhpBuildInfo build_info;
 	protected final EBuildBranch test_pack_branch;
 	protected final String test_pack_version;
+	protected final Thread writer_thread;
 	
-	protected static File makeName(File base, PhpBuildInfo build_info) throws Exception {
-		StringBuilder sb = new StringBuilder();
-		sb.append("/");
-		sb.append(build_info.getBuildBranch());
-		sb.append("-Result-Pack-");
-		sb.append(build_info.toStringWithoutBuildBranch());
-		
-		return new File(base.getAbsolutePath() + sb);
-	}
-	
-	public PhpResultPackWriter(LocalHost local_host, LocalConsoleManager cm, File telem_base_dir, PhpBuild build, ScenarioSet scenario_set, SourceTestPack<?,?> src_test_pack) throws Exception {
+	public PhpResultPackWriter(LocalHost local_host, LocalConsoleManager cm, File telem_base_dir, PhpBuild build, SourceTestPack<?,?> src_test_pack) throws Exception {
 		super(local_host);
 		
 		phpt_writer_map = new HashMap<AHost,HashMap<ScenarioSet,PhptResultWriter>>(16);
@@ -77,26 +66,40 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		this.telem_dir = new File(host.uniqueNameFromBase(makeName(telem_base_dir, build_info).getAbsolutePath()));
 		this.telem_dir.mkdirs();
 		
+		try {
+			FileWriter fw = new FileWriter(new File(this.telem_dir.getAbsolutePath()+"/build_info.xml"));
+			PhpBuildInfo.write(build_info, fw);
+			fw.close();
+		} catch ( Exception ex ) {
+			ex.printStackTrace();
+		}
+		
 		results = new LinkedBlockingQueue<ResultQueueEntry>();
 		
 		global_exception_writer = new PrintWriter(new FileWriter(this.telem_dir+"/GLOBAL_EXCEPTIONS.txt"));
 		
-		new Thread() {
+		writer_thread = new Thread() {
 				@Override
 				public void run() {
-					ResultQueueEntry q;
+					ResultQueueEntry q = null;
 					
-					while (run) {
+					while (run || !results.isEmpty()) {
 						try {
 							q = results.take();
-						
+						} catch ( Exception ex ) {
+						}
+						if (q==null)
+							continue;
+						try {
 							q.handle();
 						} catch ( Exception ex ) {
 							ex.printStackTrace();
 						}
+						q = null;
 					}
 				}
-			}.start();
+			};
+		writer_thread.start();
 	}
 	
 	protected abstract class ResultQueueEntry {
@@ -145,7 +148,8 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 			
 			if (cm!=null) {
 				// show in tui/gui (if open)
-				cm.showResult(host, getTotalCount(), completed++, this_result);	
+				// TODO cm.showResult(host, getTotalCount(), completed++, this_result);
+				cm.showResult(host, 0, completed++, this_result);
 			}
 		}
 		
@@ -205,45 +209,6 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		return cm;
 	}
 	
-	@Override
-	public String getSAPIScenarioName() {
-		return null;
-	}
-	@Override
-	public String getBuildVersion() {
-		return null;
-	}
-	@Override
-	public EBuildBranch getBuildBranch() {
-		return null;
-	}
-	@Override
-	public String getTestPackVersion() {
-		return null;
-	}
-	@Override
-	public EBuildBranch getTestPackBranch() {
-		return null;	
-	}
-	@Override
-	public List<String> getTestNames(EPhptTestStatus status) {
-		return null;
-	}
-	@Override
-	public String getOSName() {
-		return null;
-	}
-	@Override
-	public int count(EPhptTestStatus status) {
-		return 0; // TODO counts.get(status).get();
-	}
-	@Override
-	public float passRate() {
-		float pass = count(EPhptTestStatus.PASS);
-		float fail = count(EPhptTestStatus.FAIL);
-		return pass / (pass+fail);
-	}
-	
 	public void addTestException(AHost this_host, ScenarioSet this_scenario_set, PhptTestCase test_file, Throwable ex, Object a) {
 		addTestException(this_host, this_scenario_set, test_file, ex, a, null);
 	}
@@ -269,23 +234,14 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	}
 	
 	protected File phpunit_telem_dir(AHost this_host, ScenarioSet this_scenario_set, PhpUnitSourceTestPack test_pack) {
-		return new File(host.joinIntoOnePath(telem_dir.getAbsolutePath(), this_host.getName(), "PhpUnit", test_pack.getName(), this_scenario_set.toString()));
+		return new File(host.joinIntoOnePath(telem_dir.getAbsolutePath(), this_host.getName(), "PhpUnit", test_pack.getName(), this_scenario_set.getNameWithVersionInfo()));
 	}
 	
 	protected File phpt_telem_dir(AHost this_host, ScenarioSet this_scenario_set) {
-		return new File(host.joinIntoOnePath(telem_dir.getAbsolutePath(), this_host.getName(), "PHPT", this_scenario_set.toString()));
+		return new File(host.joinIntoOnePath(telem_dir.getAbsolutePath(), this_host.getName(), "PHPT", this_scenario_set.getNameWithVersionInfo()));
 	}
 	
-
 	@Override
-	public int getTotalCount() {
-		return 0;
-	}
-
-	public void setTotalCount(int total_count) {
-		
-	}
-
 	public void addGlobalException(AHost host, String text) {
 		synchronized (global_exception_writer) {
 			global_exception_writer.println("Host: "+host);
@@ -310,10 +266,20 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	public void addResult(AHost host, ScenarioSet scenario_set, PhpUnitTestResult result) {
 		results.add(new PhpUnitResultQueueEntry(host, scenario_set, result));
 	}
-
+	
 	@Override
 	public void close() {
 		try {
+			run = false;
+			
+			writer_thread.interrupt();
+			writer_thread.join();
+		} catch ( Exception ex ) {
+			ex.printStackTrace();
+		}
+		
+		try {
+			
 			PhptTestResultStylesheetWriter.writeStylesheet(this.telem_dir.getAbsolutePath() + "/phptresult.xsl");
 		} catch ( Exception ex ) {
 			ex.printStackTrace();
@@ -328,8 +294,8 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 				}
 				
 				try {
-					AUTReportGen report = new AUTReportGen(w);
-					FileWriter fw = new FileWriter(new File(w.dir+"/aut_report.html"));
+					PhpUnitReportGen report = new PhpUnitReportGen(w, w);
+					FileWriter fw = new FileWriter(new File(w.dir+"/php_unit_report.html"));
 					fw.write(report.getHTMLString(cm, false));
 					fw.close();
 				} catch ( Exception ex ) {
@@ -347,8 +313,8 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 				}
 				
 				try {
-					FBCReportGen report = new FBCReportGen(w);
-					FileWriter fw = new FileWriter(new File(w.dir+"/fbc_report.html"));
+					PHPTReportGen report = new PHPTReportGen(w, w);
+					FileWriter fw = new FileWriter(new File(w.dir+"/phpt_report.html"));
 					fw.write(report.getHTMLString(cm, false));
 					fw.close();
 				} catch ( Exception ex ) {
@@ -359,6 +325,74 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		
 		
 	} // end public void close
-	
+
+	@Override
+	public AbstractPhptRW getPHPT(AHost host, ScenarioSet scenario_set) {
+		HashMap<ScenarioSet,PhptResultWriter> map_a = phpt_writer_map.get(host);
+		if (map_a==null)
+			return null;
+		else
+			return map_a.get(scenario_set);
+	}
+
+	@Override
+	public Collection<AbstractPhptRW> getPHPT(AHost host) {
+		HashMap<ScenarioSet,PhptResultWriter> map_a = phpt_writer_map.get(host);
+		if (map_a==null)
+			return null;
+		ArrayList<AbstractPhptRW> out = new ArrayList<AbstractPhptRW>(map_a.size());
+		out.addAll(map_a.values());
+		return out;
+	}
+
+	@Override
+	public Collection<AbstractPhptRW> getPHPT() {
+		LinkedList<AbstractPhptRW> out = new LinkedList<AbstractPhptRW>();
+		for ( AHost host : phpt_writer_map.keySet() ) {
+			for ( ScenarioSet scenario_set : phpt_writer_map.get(host).keySet() ) {
+				out.add(phpt_writer_map.get(host).get(scenario_set));
+			}
+		}
+		return out;
+	}
+
+	@Override
+	public AbstractPhpUnitRW getPhpUnit(AHost host, ScenarioSet scenario_set) {
+		HashMap<ScenarioSet,PhpUnitResultWriter> map_a = phpunit_writer_map.get(host);
+		if (map_a==null)
+			return null;
+		else
+			return map_a.get(scenario_set);
+	}
+
+	@Override
+	public Collection<AbstractPhpUnitRW> getPhpUnit(AHost host) {
+		HashMap<ScenarioSet,PhpUnitResultWriter> map_a = phpunit_writer_map.get(host);
+		if (map_a==null)
+			return null;
+		ArrayList<AbstractPhpUnitRW> out = new ArrayList<AbstractPhpUnitRW>(map_a.size());
+		out.addAll(map_a.values());
+		return out;
+	}
+
+	@Override
+	public Collection<AbstractPhpUnitRW> getPhpUnit() {
+		LinkedList<AbstractPhpUnitRW> out = new LinkedList<AbstractPhpUnitRW>();
+		for ( AHost host : phpunit_writer_map.keySet() ) {
+			for ( ScenarioSet scenario_set : phpunit_writer_map.get(host).keySet() ) {
+				out.add(phpunit_writer_map.get(host).get(scenario_set));
+			}
+		}
+		return out;
+	}
+	@Override
+	public void setTotalCount(int size) {
+		// TODO temp get rid of method
+	}
+
+	@Override
+	public PhpBuildInfo getBuildInfo() {
+		return build_info;
+	}
 	
 } // end public class PhpResultPackWriter

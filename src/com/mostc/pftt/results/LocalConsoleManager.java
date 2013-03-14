@@ -1,6 +1,7 @@
 package com.mostc.pftt.results;
 
 import java.awt.Container;
+import java.lang.ref.WeakReference;
 import java.util.List;
 
 import javax.swing.JFrame;
@@ -16,15 +17,15 @@ import com.mostc.pftt.ui.PhptDebuggerFrame;
 import com.mostc.pftt.util.ErrorUtil;
 
 public class LocalConsoleManager implements ConsoleManager {
-	protected final boolean overwrite, debug_all, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug, no_result_file_for_pass_xskip_skip, randomize_order, thread_safety, skip_smoke_tests;
-	protected final int run_test_times_all, run_test_times_list_times, run_group_times, run_group_times_list_times, max_test_read_count, thread_count;
+	protected final boolean overwrite, debug_all, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug, no_result_file_for_pass_xskip_skip, randomize_order, thread_safety, skip_smoke_tests, restart_each_test_all;
+	protected final int run_test_times_all, run_test_times_list_times, run_group_times, run_group_times_list_times, max_test_read_count, thread_count, delay_between_ms;
 	protected String source_pack;
 	protected PhpDebugPack debug_pack;
 	protected PhptDebuggerFrame gui;
 	protected PhpResultPackWriter w; // TODO
 	protected List<String> debug_list, run_test_times_list, run_group_times_list, skip_list;
 		
-	public LocalConsoleManager(String source_pack, PhpDebugPack debug_pack, boolean overwrite, boolean debug_all, boolean results_only, boolean show_gui, boolean disable_debug_prompt, boolean dont_cleanup_test_pack, boolean phpt_not_in_place, boolean pftt_debug, boolean no_result_file_for_pass_xskip_skip, boolean randomize_order, int run_test_times_all, boolean thread_safety, int run_test_times_list_times, int run_group_times, int run_group_times_list_times, List<String> debug_list, List<String> run_test_times_list, List<String> run_group_times_list, List<String> skip_list, boolean skip_smoke_tests, int max_test_read_count, int thread_count) {
+	public LocalConsoleManager(String source_pack, PhpDebugPack debug_pack, boolean overwrite, boolean debug_all, boolean results_only, boolean show_gui, boolean disable_debug_prompt, boolean dont_cleanup_test_pack, boolean phpt_not_in_place, boolean pftt_debug, boolean no_result_file_for_pass_xskip_skip, boolean randomize_order, int run_test_times_all, boolean thread_safety, int run_test_times_list_times, int run_group_times, int run_group_times_list_times, List<String> debug_list, List<String> run_test_times_list, List<String> run_group_times_list, List<String> skip_list, boolean skip_smoke_tests, int max_test_read_count, int thread_count, boolean restart_each_test_all, int delay_between_ms) {
 		this.source_pack = source_pack;
 		this.debug_pack = debug_pack;
 		this.overwrite = overwrite;
@@ -49,6 +50,8 @@ public class LocalConsoleManager implements ConsoleManager {
 		this.skip_smoke_tests = skip_smoke_tests;
 		this.max_test_read_count = max_test_read_count;
 		this.thread_count = thread_count;
+		this.restart_each_test_all = restart_each_test_all;
+		this.delay_between_ms = delay_between_ms;
 	}
 	
 	public void showGUI(LocalPhptTestPackRunner test_pack_runner) {
@@ -104,19 +107,28 @@ public class LocalConsoleManager implements ConsoleManager {
 			gui.showResult(host, totalCount, completed, result);
 	}
 	
+	private WeakReference<String> last_clue_msg;
 	@Override
 	public void println(EPrintType type, String ctx_str, String string) {
 		if (results_only)
 			return;
 		
 		switch(type) {
-		case SKIP_OPERATION: // TODO UNABLE_TO_START_OPERATION
+		case SKIP_OPERATION: 
 		case CANT_CONTINUE:
 		case OPERATION_FAILED_CONTINUING:
 			System.err.println(type+": "+ctx_str+": "+string);
 			break;
+		case WARNING:
 		case CLUE:
+			// don't print repeating clue or warning messages
+			if (last_clue_msg!=null) {
+				String last_str = last_clue_msg.get();
+				if (last_str!=null && last_str.equals(string))
+					break;
+			}
 			System.out.println(type+": "+ctx_str+": "+string);
+			last_clue_msg = new WeakReference<String>(string);
 			break;
 		case TIP:
 			System.out.println("PFTT: "+string);
@@ -124,7 +136,6 @@ public class LocalConsoleManager implements ConsoleManager {
 		default:
 			System.out.println("PFTT: "+ctx_str+": "+string);
 		}
-		// TODO record in result-pack
 	}
 	@Override
 	public void println(EPrintType type, Class<?> clazz, String string) {
@@ -281,6 +292,16 @@ public class LocalConsoleManager implements ConsoleManager {
 	@Override
 	public int getThreadCount() {
 		return thread_count;
+	}
+	
+	@Override
+	public boolean isRestartEachTestAll() {
+		return restart_each_test_all;
+	}
+	
+	@Override
+	public int getDelayBetweenMS() {
+		return delay_between_ms;
 	}
 	
 } // end public class ConsoleManager

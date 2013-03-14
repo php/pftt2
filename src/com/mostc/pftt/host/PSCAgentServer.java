@@ -415,9 +415,15 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 		return null;
 	}
 	
+	@Override
+	public void addGlobalException(AHost host, String text) {
+		// TODO
+	}
+	@Override
 	public void addTestException(AHost this_host, ScenarioSet this_scenario_set, TestCase test_file, Throwable ex, Object a) {
 		addTestException(this_host, this_scenario_set, test_file, ex, a, null);
 	}
+	@Override
 	public void addTestException(AHost this_host, ScenarioSet this_scenario_set, TestCase test_case, Throwable ex, Object a, Object b) {
 		String ex_str = ErrorUtil.toString(ex);
 		if (a!=null)
@@ -493,6 +499,18 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 
 	@Override
 	public int getThreadCount() {
+		return 0;
+	}
+	
+	@Override
+	public boolean isRestartEachTestAll() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public int getDelayBetweenMS() {
+		// TODO Auto-generated method stub
 		return 0;
 	}
 	

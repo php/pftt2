@@ -1,12 +1,12 @@
 package com.mostc.pftt.results;
 
 import java.io.File;
-import java.util.List;
+import java.util.Collection;
 
-import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.core.EBuildBranch;
-import com.mostc.pftt.model.core.EPhptTestStatus;
+import com.mostc.pftt.model.core.PhpBuildInfo;
+import com.mostc.pftt.scenario.ScenarioSet;
 
 /** Manages PHP test results (PHPT, PhpUnit, etc...)
  * 
@@ -14,12 +14,36 @@ import com.mostc.pftt.model.core.EPhptTestStatus;
  *
  */
 
+//TODO log cli args to result-pack
+//   -warn if -no_nts is used
+//TODO store consolemanager logs in result-pack
+//   -including smoke checks from dfs and deduplication scenrios
 public abstract class PhpResultPack {
 	
-	public static boolean isTelemDir(File file) {
-		if (!StringUtil.startsWithIC(file.getName(), "PHP-Result-Pack-"))
+	public static boolean isResultPack(File dir) {
+		String name = dir.getName();
+		if (!name.startsWith("PHP_") || !name.contains("Result-Pack"))
 			return false;
-		return new File(file, "tally.xml").exists();
+		return new File(dir + "/build_info.xml").isFile();
+	}
+	
+	public static EBuildBranch getBuildBranchFromName(String dir_name) {
+		return EBuildBranch.guessValueOfContains(dir_name);
+	}
+	
+	public static String getBuildVersionFromName(String dir_name) {
+		String[] parts = dir_name.split("\\-");
+		return parts[3]; // @see #makeName and PhpBuildInfo#toStringWithoutBuildBranch
+	}
+	
+	protected static File makeName(File base, PhpBuildInfo build_info) throws Exception {
+		StringBuilder sb = new StringBuilder();
+		sb.append("/");
+		sb.append(build_info.getBuildBranch());
+		sb.append("-Result-Pack-");
+		sb.append(build_info.toStringWithoutBuildBranch());
+		
+		return new File(base.getAbsolutePath() + sb);
 	}
 	//
 	protected final AHost host;
@@ -28,26 +52,14 @@ public abstract class PhpResultPack {
 		this.host = host;
 	}
 	
-	public abstract String getSAPIScenarioName();
-	public abstract String getBuildVersion();
-	public abstract EBuildBranch getBuildBranch();
-	public abstract String getTestPackVersion();
-	public abstract EBuildBranch getTestPackBranch();
-	public abstract List<String> getTestNames(EPhptTestStatus status);
-	public abstract String getOSName();
-	public abstract int count(EPhptTestStatus status);
-	/** total number of tests (pass, fail, bork, unsupported, xskip, skip, etc... not crash or exception though)
-	 * 
-	 * @return
-	 */
-	public abstract int getTotalCount();
 	public abstract void close();
-	
-	public float passRate() {
-		float pass = count(EPhptTestStatus.PASS);
-		float fail = count(EPhptTestStatus.FAIL);
-		return round1(pass / (pass+fail));
-	}
+	public abstract AbstractPhptRW getPHPT(AHost host, ScenarioSet scenario_set);
+	public abstract Collection<AbstractPhptRW> getPHPT(AHost host);
+	public abstract Collection<AbstractPhptRW> getPHPT();
+	public abstract AbstractPhpUnitRW getPhpUnit(AHost host, ScenarioSet scenario_set);
+	public abstract Collection<AbstractPhpUnitRW> getPhpUnit(AHost host);
+	public abstract Collection<AbstractPhpUnitRW> getPhpUnit();
+	public abstract PhpBuildInfo getBuildInfo();
 	
 	public static float round1(float value) {
 		float ret = ( (float) Math.round( value * 10.0f ) ) / 10.0f;

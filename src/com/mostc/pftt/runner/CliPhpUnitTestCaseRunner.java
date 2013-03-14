@@ -3,7 +3,6 @@ package com.mostc.pftt.runner;
 import java.io.IOException;
 import java.util.Map;
 
-import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.Host;
@@ -23,7 +22,7 @@ public class CliPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	
 	@Override
 	protected String execute(String template_file) throws IOException, Exception {
-		final String ini_dir = build.prepare(host); // XXX store PhpIni in my_temp_dir ?
+		final String ini_dir = build.prepare(cm, host); // XXX store PhpIni in my_temp_dir ?
 		
 		eo = host.execOut(
 				build.getPhpExe()+" -c "+ini_dir+" "+template_file,

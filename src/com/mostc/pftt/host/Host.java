@@ -37,6 +37,28 @@ public abstract class Host {
 	@Override
 	public abstract boolean equals(Object o);
 	
+	public boolean isSafePath(String path) {
+		if (path.equals(getPhpSdkDir()))
+			// can't delete /php-sdk
+			return false;
+		String pftt_dir = getPfttDir();
+		if (path.startsWith(pftt_dir)) {
+			// don't delete anything in PFTT dir unless its in cache/working
+			if (!path.startsWith(pftt_dir+"/cache/working/"))
+				return false;
+		}
+		if (isWindows()) {
+			// don't mess with windows
+			if (path.equals(getSystemDrive()+"\\Windows"))
+				return false;
+		} else {
+			// these dirs aren't safe to mess with
+			if (path.startsWith("/usr/")||path.startsWith("/var/")||path.startsWith("/lib/")||path.startsWith("/sbin/")||path.startsWith("/boot/"))
+				return false;
+		}
+		return true;
+	}
+	
 	/** closes any connections to Host and frees up resources
 	 * 
 	 */
@@ -251,6 +273,22 @@ public abstract class Host {
 	public boolean cmd(String cmd, int timeout_sec, String current_dir) throws IllegalStateException, Exception {
 		return cmd(cmd, timeout_sec, null, null, current_dir);
 	}
+	public boolean cmdElevated(String cmd, int timeout_sec) throws Exception {
+		return cmdElevated(cmd, timeout_sec, null, (byte[])null, (Charset)null);
+	}
+	public boolean cmdElevated(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset) throws IllegalStateException, Exception {
+		return cmdElevated(cmd, timeout_sec, env, stdin_data, charset, null);
+	}
+	public abstract boolean cmdElevated(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String current_dir) throws IllegalStateException, Exception;
+	public boolean cmdElevated(String cmd, int timeout_sec, Map<String, String> env, Charset charset) throws IllegalStateException, Exception {
+		return cmdElevated(cmd, timeout_sec, env, null, charset, null);
+	}
+	public boolean cmdElevated(String cmd, int timeout_sec, Map<String, String> env, Charset charset, String current_dir) throws IllegalStateException, Exception {
+		return cmdElevated(cmd, timeout_sec, env, null, charset, current_dir);
+	}
+	public boolean cmdElevated(String cmd, int timeout_sec, String current_dir) throws IllegalStateException, Exception {
+		return cmdElevated(cmd, timeout_sec, null, null, current_dir);
+	}
 	
 	/** removes the file extension from file.
 	 * 
@@ -412,10 +450,19 @@ public abstract class Host {
 	public abstract boolean saveTextFile(String filename, String text, CharsetEncoder ce) throws IllegalStateException, IOException;
 
 	public abstract boolean delete(String file) throws IllegalStateException, IOException;
+	public abstract boolean deleteElevated(String file) throws IllegalStateException, IOException;
 	
 	public boolean deleteIfExists(String path) {
 		try {
 			return delete(path);
+		} catch ( Exception ex ) {
+			
+		}
+		return false;
+	}
+	public boolean deleteIfExistsElevated(String path) {
+		try {
+			return deleteElevated(path);
 		} catch ( Exception ex ) {
 			
 		}
@@ -430,6 +477,7 @@ public abstract class Host {
 	 * @throws Exception
 	 */
 	public abstract boolean copy(String src, String dst) throws IllegalStateException, Exception ;
+	public abstract boolean copyElevated(String src, String dst) throws IllegalStateException, Exception ;
 	
 	/** moves file/directory
 	 * 
@@ -439,7 +487,8 @@ public abstract class Host {
 	 * @throws IllegalStateException
 	 * @throws Exception
 	 */
-	public abstract boolean move(String src, String dst) throws IllegalStateException, Exception ;
+	public abstract boolean move(String src, String dst) throws IllegalStateException, Exception;
+	public abstract boolean moveElevated(String src, String dst) throws IllegalStateException, Exception ;
 
 	/** returns the character to separate directories within one path
 	 * 

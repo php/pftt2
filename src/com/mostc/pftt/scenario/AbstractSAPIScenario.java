@@ -37,7 +37,7 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 	}
 	
 	@Override
-	public Class<?> getSerialKey() {
+	public Class<?> getSerialKey(EScenarioSetPermutationLayer layer) {
 		return AbstractSAPIScenario.class;
 	}
 	

@@ -58,6 +58,18 @@ and you'll have the latest version.
 
 ## USAGE
 
+Add PFTT to your Shell's PATH, so you can just run 'pftt'
+
+Windows:
+
+	> \PHP-SDK\PFTT\CURRENT\BIN\SET_ENV
+	
+Linux:
+
+	> PFTT_HOME/bin/set_env
+
+Now you can just run `pftt` for everything.
+
 Find and download newest 5.3 snapshot build that provides an NTS build
 
 	> pftt release_get 5.3 NTS newest

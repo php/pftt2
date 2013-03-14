@@ -11,5 +11,5 @@ package com.mostc.pftt.scenario;
 public abstract class AbstractSerialScenario extends Scenario {
 	
 	@Override
-	public abstract Class<?> getSerialKey();
+	public abstract Class<?> getSerialKey(EScenarioSetPermutationLayer layer);
 }
