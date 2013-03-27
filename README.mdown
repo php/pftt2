@@ -1,16 +1,7 @@
-# PFTT
+# PFTT - PHP Full Test Tool
 
 PFTT is a cross-platform and multi-platform high-speed PHP Test tool which supports unit tests, PHPTs for PHP-Core and
-PHPUnit tests for PHP Applications, along with comparison, debuging, performance, UI Automation, smoke and multi-scenario support. 
-
-## Meaning 
-PFTT has and can mean many different things:
- - PHP Function Test Tool
- - PHP Filesystem Test Tool
- - Practically Formulated Test Tool
- - PHP Fast Test Tool
- - PHP Full Test Tool
- - Pftt is a Fun Test Tool
+PHPUnit tests for PHP Applications, along with comparison, debuging, performance, UI Testing(Selenium-Driver compatible), smoke and multi-scenario support. Fully tests PHP. 
 
 ## License
 

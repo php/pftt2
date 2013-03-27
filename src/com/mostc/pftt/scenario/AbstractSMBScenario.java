@@ -5,7 +5,9 @@ import java.io.File;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.host.RemoteHost;
+import com.mostc.pftt.model.ActiveTestPack;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
@@ -71,12 +73,14 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		
 		if ( createShare(dir, cm) ) {
 			if ( connect(dir, cm, local_host) ) {
+				dir.addShutdownHook();
+				
 				return dir;
 			}
 		}
 		
 		// failed, try cleaning up
-		dir.disposeForce(cm, local_host);
+		dir.disposeForce(cm, local_host, null);
 		
 		return null;
 	}
@@ -89,6 +93,26 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		// file path is path on server where share is stored
 		// network path is in both UNC and URL format (UNC for Windows, URL for Linux)
 		protected String share_name, remote_path, unc_path, url_path, local_path;
+		protected Thread shutdown_hook;
+		
+		protected void addShutdownHook() {
+			shutdown_hook = new Thread() {
+					public void run() {
+						// when PFTT is shutdown, try to unmount all network drives
+						disposeForce(null);
+					}
+				};
+			Runtime.getRuntime().addShutdownHook(shutdown_hook);
+		}
+		
+		protected void removeShutdownHook() {
+			if (shutdown_hook==null)
+				return;
+			
+			Runtime.getRuntime().removeShutdownHook(shutdown_hook);
+			
+			shutdown_hook = null;
+		}
 		
 		@Override
 		public boolean notifyTestPackInstalled(ConsoleManager cm, AHost local_host) {
@@ -96,17 +120,26 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		}
 		
 		@Override
-		public boolean disposeIfEmpty(ConsoleManager cm, AHost local_host) {
+		public boolean disposeIfEmpty(ConsoleManager cm, AHost local_host, ActiveTestPack active_test_pack) {
 			if (new File(local_path).list().length > 0) {
 				cm.println(EPrintType.CANT_CONTINUE, getClass(), "Unable to dispose of Storage Directory. It is not empty: local="+local_path);
 				return false;
 			} else {
-				return disposeForce(cm, local_host);
+				return disposeForce(cm, local_host, active_test_pack);
 			}
 		}
 		
 		@Override
-		public boolean disposeForce(ConsoleManager cm, AHost local_host) {
+		protected void finalize() {
+			disposeForce(null);
+		}
+		
+		protected void disposeForce(ActiveTestPack active_test_pack) {
+			disposeForce(null, new LocalHost(), active_test_pack);
+		}
+		
+		@Override
+		public boolean disposeForce(ConsoleManager cm, AHost local_host, ActiveTestPack active_test_pack) {
 			return disconnect(this, cm, local_host) && deleteShare(this, cm, local_host);
 		}
 
@@ -161,7 +194,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 	protected boolean createShare(SMBStorageDir dir, ConsoleManager cm) {
 		makeShareName(dir, cm);
 		
-		cm.println(EPrintType.IN_PROGRESS, getName(), "Selected share_name="+dir.share_name+" remote_path="+dir.remote_path+" (base: "+base_file_path+" "+base_share_name+")");
+		cm.println(EPrintType.IN_PROGRESS, getClass(), "Selected share_name="+dir.share_name+" remote_path="+dir.remote_path+" (base: "+base_file_path+" "+base_share_name+")");
 		
 		try {
 			if (remote_host.isWindows()) {
@@ -175,7 +208,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 			return false;
 		}
 		
-		cm.println(EPrintType.COMPLETED_OPERATION, getName(), "Share created: unc="+dir.unc_path+" remote_file="+dir.remote_path+" url="+dir.url_path);
+		cm.println(EPrintType.COMPLETED_OPERATION, getClass(), "Share created: unc="+dir.unc_path+" remote_file="+dir.remote_path+" url="+dir.url_path);
 		
 		return true;
 	} // end protected boolean createShare
@@ -286,6 +319,10 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 			// CRITICAL: /Y or it may block
 			if (host.exec(cm, getClass(), "NET USE "+dir.local_path+" /DELETE /Y", AHost.ONE_MINUTE)) {
 				cm.println(EPrintType.IN_PROGRESS, getClass(), "Disconnected share: local="+dir.local_path);
+				
+				dir.removeShutdownHook();
+				
+				return true;
 			}
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "disconnect", ex, "Unable to disconnect: local="+dir.local_path, host, dir.local_path);

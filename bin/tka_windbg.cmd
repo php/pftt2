@@ -1,0 +1,1 @@
+taskkill /im:windbg.exe /f /t

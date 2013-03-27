@@ -28,7 +28,7 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 	
 	@Override
 	public String getName() {
-		return "Builtin";
+		return "Builtin-Web";
 	}
 	
 	@Override
@@ -45,7 +45,8 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 		
 		env = prepareENV(env, ini_dir+"/php.ini", build, scenario_set, build.getPhpExe());
 		
-		return new BuiltinWebServerInstance(this, host, build, docroot, build.getPhpExe()+" -S "+listen_address+":"+port+" -c "+ini_dir, ini, env, listen_address, port);
+		// critical: -n -c => only use php.ini in ini_dir
+		return new BuiltinWebServerInstance(this, host, build, docroot, build.getPhpExe()+" -S "+listen_address+":"+port+" -n -c "+ini_dir, ini, env, listen_address, port);
 	}
 	
 	public class BuiltinWebServerInstance extends ManagedProcessWebServerInstance {

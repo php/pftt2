@@ -49,7 +49,9 @@ public class WinDebugManager extends DebuggerManager {
 		ensureFindWinDbgExe(cm, host, build);
 		
 		WinDebug dbg = null;
-		if (StringUtil.isNotEmpty(win_dbg_exe)) {
+		if (StringUtil.isEmpty(win_dbg_exe)) {
+			// TODO tell user first time
+		} else {
 			ensureFindSourceAndDebugPack(cm, host, scenario_set, build);
 			
 			try {

@@ -17,6 +17,7 @@ import org.columba.ristretto.smtp.SMTPProtocol;
 
 import com.github.mattficken.io.IOUtil;
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
@@ -233,6 +234,91 @@ public final class Config {
 		return loadConfigCommon(cm, scenarios, config);
 	} // end public static Config loadConfigFromStreams
 	
+	/** // allow flexibility in the configuration file name
+					//  1. add .groovy for user
+					//  2. search current dir / assume filename is absolute path
+					//  3. search $PFTT_DIR/conf
+					//  4. search $PFTT_DIR/conf/internal
+					//  5. search $PFTT_DIR/conf/app
+	 * 
+	 * @param cm
+	 * @param file_names
+	 * @return
+	 * @throws CompilationFailedException
+	 * @throws InstantiationException
+	 * @throws IllegalAccessException
+	 * @throws IOException
+	 */
+	public static Config loadConfigFromFiles(ConsoleManager cm, String... file_names) throws CompilationFailedException, InstantiationException, IllegalAccessException, IOException {
+		ArrayList<File> config_files = new ArrayList<File>(file_names.length);
+		File config_file;
+		for ( String file_name : file_names ) {
+			config_file = new File(file_name);
+			
+			if (config_file.exists()) {
+				if (!config_files.contains(config_file))
+					config_files.add(config_file);
+			} else {
+				config_file = new File(file_name+".groovy");
+				if (config_file.exists()) {
+					if (!config_files.contains(config_file))
+						config_files.add(config_file);
+				} else {
+					config_file = new File(LocalHost.getLocalPfttDir()+"/conf/"+file_name);
+					if (config_file.exists()) {
+						if (!config_files.contains(config_file))
+							config_files.add(config_file);
+					} else {
+						config_file = new File(LocalHost.getLocalPfttDir()+"/conf/"+file_name+".groovy");
+						if (config_file.exists()) {
+							if (!config_files.contains(config_file))
+								config_files.add(config_file);
+						} else {
+							config_file = new File(LocalHost.getLocalPfttDir()+"/conf/internal/"+file_name);
+							if (config_file.exists()) {
+								if (!config_files.contains(config_file))
+									config_files.add(config_file);
+							} else {
+								config_file = new File(LocalHost.getLocalPfttDir()+"/conf/internal/"+file_name+".groovy");
+								if (config_file.exists()) {
+									if (!config_files.contains(config_file))
+										config_files.add(config_file);
+								} else {
+									config_file = new File(LocalHost.getLocalPfttDir()+"/conf/app/"+file_name);
+									if (config_file.exists()) {
+										if (!config_files.contains(config_file))
+											config_files.add(config_file);
+									} else {
+										config_file = new File(LocalHost.getLocalPfttDir()+"/conf/app/"+file_name+".groovy");
+										if (config_file.exists()) {
+											if (!config_files.contains(config_file))
+												config_files.add(config_file);
+										} else {
+											System.err.println("User Error: config file not found: "+config_file);
+											System.exit(-255);
+											break;
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		} // end for
+		return loadConfigFromFiles(cm, (File[])config_files.toArray(new File[config_files.size()]));
+	} // end public static Config loadConfigFromFiles
+	
+	/** 
+	 * 
+	 * @param cm
+	 * @param files
+	 * @return
+	 * @throws CompilationFailedException
+	 * @throws InstantiationException
+	 * @throws IllegalAccessException
+	 * @throws IOException
+	 */
 	public static Config loadConfigFromFiles(ConsoleManager cm, File... files) throws CompilationFailedException, InstantiationException, IllegalAccessException, IOException {
 		GroovyClassLoader loader = new GroovyClassLoader(Config.class.getClassLoader());
 		

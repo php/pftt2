@@ -19,6 +19,7 @@ import java.util.List;
 import org.codehaus.groovy.tools.shell.Groovysh;
 import org.codehaus.groovy.tools.shell.IO;
 
+import com.github.mattficken.io.ArrayUtil;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
@@ -70,25 +71,30 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
  * 
  */
 
-//
-// TODO script/java app to
-//   1. rgn 5.5
-//   2. core_all
-//   3. app_all symfony
-//   4. cmp-report
-//   5. email
-//   6. zip
-// 
-// TODO try to unmount network drives on shutdown
 // TODO UI testing
+// commit: UI testing support, first implemented for Wordpress
+//
+// TODO joomla unit testing
+//      -works, but need thread-safety for some tests
+//      -need dependency note on symfony
+//      -note: ui tests from joomla may be BRITTLE (maybe thats why they're just run by 1 guy on his laptop once in a while)
+// commit:
+//
 // TODO installation ... single .zip file to download with install wizard/script
 //         http://izpack.org/   include Java JDK
-//
+//         install4j   - izpack makes the installer(a .jar), install4j makes the installer a .exe
+//         might not need/be able to use izpack/too much trouble
+//           -could just have a simple java program decompress a .zip file into c:\php-sdk
+//            and then distribute that program and a JDK using Install4J
+// 
+// TODO list-config command
+//       -mention on start screen of pftt_shell
 // TODO pftt explain
 //        -shows PhpIni, etc.. not as a separate file though
 //           -if you need it for debug, use it from explain
 //                -ie force people to do it at least partially the efficient PFTT way
 //           -if you need it to setup, use setup cmd
+
 public class PfttMain {
 	protected LocalHost host;
 	
@@ -123,9 +129,7 @@ public class PfttMain {
 		return last_file == null ? null : PhpResultPackReader.open(cm, host, last_file);
 	}
 
-	public void run_all(LocalConsoleManager cm, PhpBuild build, PhptSourceTestPack test_pack, AHost storage_host, List<ScenarioSet> scenario_sets) throws Exception {
-		PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, telem_dir(), build, test_pack);
-		cm.println(EPrintType.CLUE, getClass(), "Writing Result-Pack: "+tmgr.getTelemetryDir());
+	public void run_all(PhpResultPackWriter tmgr, LocalConsoleManager cm, PhpBuild build, PhptSourceTestPack test_pack, AHost storage_host, List<ScenarioSet> scenario_sets) throws Exception {
 		for ( ScenarioSet scenario_set : scenario_sets ) {
 			/* TODO for ( Host host : config.getHosts() ) {
 				if (host.isRemote()) {
@@ -181,7 +185,6 @@ public class PfttMain {
 			// TODO email report (if in config file)
 			phpt_report(cm, tmgr);*/
 		}
-		tmgr.close();
 	} // end public void run_all
 	
 	protected void phpt_report(ConsoleManager cm, PhpResultPackWriter test_telem) throws FileNotFoundException {	
@@ -207,7 +210,7 @@ public class PfttMain {
 		}
 	}
 
-	public void run_named_tests(LocalConsoleManager cm, PhpBuild build, PhptSourceTestPack test_pack, AHost storage_host, List<ScenarioSet> scenario_sets, List<String> names) throws Exception {
+	public void run_named_tests(PhpResultPackWriter tmgr, LocalConsoleManager cm, PhpBuild build, PhptSourceTestPack test_pack, AHost storage_host, List<ScenarioSet> scenario_sets, List<String> names) throws Exception {
 		for ( ScenarioSet scenario_set : scenario_sets ) {
 			//
 			if (!cm.isSkipSmokeTests()) {
@@ -230,7 +233,7 @@ public class PfttMain {
 			
 			LinkedList<PhptTestCase> test_cases = new LinkedList<PhptTestCase>();
 			
-			PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, telem_dir(), build, test_pack);
+			//PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, telem_dir(), build, test_pack);
 			cm.println(EPrintType.CLUE, getClass(), "Writing Result-Pack: "+tmgr.getTelemetryDir());
 			test_pack.cleanup(cm);
 			cm.println(EPrintType.IN_PROGRESS, "PhptSourceTestPack", "enumerating test cases from test-pack...");
@@ -242,7 +245,6 @@ public class PfttMain {
 			
 			test_pack_runner.runTestList(test_pack, test_cases);
 			
-			tmgr.close();
 			
 			//
 			{
@@ -264,20 +266,20 @@ public class PfttMain {
 	}
 	
 	protected static void cmd_help() {
-		System.out.println("Usage: pftt <optional options> <command>");
+		System.out.println("Usage: pftt [options] <command[,command2]>");
 		System.out.println();
 		System.out.println("Commands:");
-		System.out.println("core_all <build> <test-pack> - runs all tests in given test pack");
-		System.out.println("core_named <build> <test-pack> <test1> <test2> <test name fragment> - runs named tests or tests matching name pattern");
-		System.out.println("core_list <build> <test-pack> <file> - runs list of tests stored in file");
-		System.out.println("app_all <build> - runs all application tests specified in a Scenario config file against build");
-		System.out.println("app_named <build> <test name fragment> - runs named application tests (tests specified in a Scenario config file)");
-		System.out.println("app_list <build> <file> - runs application tests from list in file (tests specified in a Scenario config file)");
-		System.out.println("custom <build> - runs PFTT specific functional tests (bugs that can not be tested using PHP testsT)");
+		System.out.println("core_all <build[,build2]> <test-pack> - runs all tests in given test pack");
+		System.out.println("core_named <build[,build2]> <test-pack> <test1> <test2> <test name fragment> - runs named tests or tests matching name pattern");
+		System.out.println("core_list <build[,build2]> <test-pack> <file> - runs list of tests stored in file");
+		System.out.println("app_all <build[,build2]> - runs all application tests specified in a Scenario config file against build");
+		System.out.println("app_named <build[,build2]> <test name fragment> - runs named application tests (tests specified in a Scenario config file)");
+		System.out.println("app_list <build[,build2]> <file> - runs application tests from list in file (tests specified in a Scenario config file)");
+		// TODO ui_all ui_named ui_list
+		// TODO fs test
 		System.out.println("help");
 		System.out.println("perf <build> - performance test of build");
 		System.out.println("smoke <build> - smoke test a build");
-		System.out.println("ui - automated UI (\"app compat\") testing");
 		System.out.println("release_get <branch> <build-type> <revision> - download a build and test-pack snapshot release");
 		System.out.println("release_get <build|test-pack URL> - download a build or test-pack from any URL");
 		System.out.println("release_list <optional branch> <optional build-type> - list snapshot build and test-pack releases");
@@ -296,13 +298,14 @@ public class PfttMain {
 		System.out.println("-src_pack <path> - folder with the source code");
 		System.out.println("-debug_pack <path> - folder with debugger symbols (usually folder with .pdb files)");
 		System.out.println("-pause - after everything is done, PFTT will wait for user to press any key");
-		System.out.println("-randomize_order <0+> - randomizes test case run order");
+		System.out.println("-randomize_order - randomizes test case run order");
 		System.out.println("-results_only - displays only test results and no other information (for automation).");
-		System.out.println("-pftt-debug - shows additional information to help debug problems with PFTT itself");
+		System.out.println("-pftt_debug - shows additional information to help debug problems with PFTT itself");
 		System.out.println("-disable_debug_prompt - disables asking you if you want to debug PHP crashes (for automation. default=enabled) (alias: -debug_none)");
-		System.out.println("-phpt-not-in-place - copies PHPTs to a temporary dir and runs PHPTs from there (default=disabled, test in-place)");
-		System.out.println("-dont-cleanup-test-pack - doesn't delete temp dir created by -phpt-not-in-place or SMB scenario (default=delete)");
-		System.out.println("-auto - changes default options for automated testing (-uac -disable_debug_prompt -phpt-not-in-place)");
+		System.out.println("-phpt_not_in_place - copies PHPTs to a temporary dir and runs PHPTs from there (default=disabled, test in-place)");
+		System.out.println("-restart_each_test_all - restart web server between each test (slow, default=no)");
+		System.out.println("-dont_cleanup_test_pack - doesn't delete temp dir created by -phpt_not_in_place or SMB scenario (default=delete)");
+		System.out.println("-auto - changes default options for automated testing (-uac -disable_debug_prompt -phpt_not_in_place)");
 		if (LocalHost.isLocalhostWindows()) {
 			System.out.println("-uac - runs PFTT in Elevated Privileges so you only get 1 UAC popup dialog (when PFTT is started)");
 		}
@@ -316,7 +319,8 @@ public class PfttMain {
 		System.out.println("-thread_count <N> - sets number of threads to run tests in. running in multiple threads is usually a performance boost. by default, will run with multiple threads and automatically decide the best number of threads to use");
 		System.out.println("-max_test_read_count <N> - maximum number of tests to read (without other options, this will be the number of tests run also... tests are normally only run once)");
 		System.out.println("-skip_smoke_tests - skips smoke tests and runs tests anyway (BE CAREFUL. RESULTS MAY BE INVALID or INACCURATE)");
-		System.out.println("-no_nts - runs tests in any thread, regardless of thread-safety. This can increase load/stress, but may lead to false FAILS/ERRORs, especially in file or database tests.");
+		System.out.println("-no_result_file_for_pass_xskip_skip - doesn't store all result data for PASS, SKIP or XSKIP tests");
+		System.out.println("-no_thread_safety - runs tests in any thread, regardless of thread-safety. This can increase load/stress, but may lead to false FAILS/ERRORs, especially in file or database tests.");
 		System.out.println();
 	} // end protected static void cmd_help
 	
@@ -368,22 +372,44 @@ public class PfttMain {
 		return config==null?ScenarioSet.getDefaultScenarioSets():config.getScenarioSets(layer);
 	}
 	
-	protected static void cmd_core_all(PfttMain rt, LocalConsoleManager cm, Config config, PhpBuild build, PhptSourceTestPack test_pack) throws Exception {
-		List<AHost> hosts = config.getHosts();
-		rt.run_all(cm, build, test_pack, hosts.isEmpty() ? new LocalHost() : hosts.get(0), getScenarioSets(config, EScenarioSetPermutationLayer.PHP_CORE));
+	public static void cmd_app_all(PhpResultPackWriter tmgr, PfttMain rt, LocalConsoleManager cm, Config config, PhpBuild build) throws Exception {
+		PhpUnitSourceTestPack test_pack = config.getPhpUnitSourceTestPack(cm);
+		if (test_pack==null) {
+			cm.println(EPrintType.CLUE, PfttMain.class, "No test-pack provided by configuration file(s)");
+			return;
+		}
+		cm.println(EPrintType.CLUE, PfttMain.class, "Test-Pack: "+test_pack);
+		
+		cm.println(EPrintType.CLUE, PfttMain.class, "Writing Result-Pack: "+tmgr.getTelemetryDir());
+		
+		AbstractPhpUnitRW rw;
+		for (ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.WEB_APPLICATION)) {
+			List<AHost> hosts = config.getHosts();
+			AHost host = hosts.isEmpty()?rt.host:hosts.get(0);
+			LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, host, rt.host);
+			r.runAllTests(test_pack);
+			rw = tmgr.getPhpUnit(rt.host, scenario_set);
+			if (rw!=null)
+				rw.close();
+		}
 	}
 	
-	protected static void cmd_core_list(PfttMain rt, LocalConsoleManager cm, Config config, PhpBuild build, PhptSourceTestPack test_pack, File list_file) throws Exception {
+	protected static void cmd_core_all(PhpResultPackWriter tmgr, PfttMain rt, LocalConsoleManager cm, Config config, PhpBuild build, PhptSourceTestPack test_pack) throws Exception {
+		List<AHost> hosts = config.getHosts();
+		rt.run_all(tmgr, cm, build, test_pack, hosts.isEmpty() ? new LocalHost() : hosts.get(0), getScenarioSets(config, EScenarioSetPermutationLayer.PHP_CORE));
+	}
+	
+	protected static void cmd_core_list(PhpResultPackWriter tmgr, PfttMain rt, LocalConsoleManager cm, Config config, PhpBuild build, PhptSourceTestPack test_pack, File list_file) throws Exception {
 		LinkedList<String> tests = new LinkedList<String>();
 		readStringListFromFile(tests, list_file);
 		
 		List<AHost> hosts = config.getHosts();
-		rt.run_named_tests(cm, build, test_pack, hosts.isEmpty() ? new LocalHost() : hosts.get(0), getScenarioSets(config, EScenarioSetPermutationLayer.PHP_CORE), tests);
+		rt.run_named_tests(tmgr, cm, build, test_pack, hosts.isEmpty() ? new LocalHost() : hosts.get(0), getScenarioSets(config, EScenarioSetPermutationLayer.PHP_CORE), tests);
 	}
 	
-	protected static void cmd_core_named(PfttMain rt, LocalConsoleManager cm, Config config, PhpBuild build, PhptSourceTestPack test_pack, List<String> names) throws Exception {
+	protected static void cmd_core_named(PhpResultPackWriter tmgr, PfttMain rt, LocalConsoleManager cm, Config config, PhpBuild build, PhptSourceTestPack test_pack, List<String> names) throws Exception {
 		List<AHost> hosts = config.getHosts();
-		rt.run_named_tests(cm, build, test_pack, hosts.isEmpty() ? new LocalHost() : hosts.get(0), getScenarioSets(config, EScenarioSetPermutationLayer.PHP_CORE), names);
+		rt.run_named_tests(tmgr, cm, build, test_pack, hosts.isEmpty() ? new LocalHost() : hosts.get(0), getScenarioSets(config, EScenarioSetPermutationLayer.PHP_CORE), names);
 	}
 
 	protected static void cmd_ui() {
@@ -394,11 +420,11 @@ public class PfttMain {
 		System.err.println("Error: Not implemented");		
 	}
  
-	protected static void cmd_release_get(ConsoleManager cm, boolean overwrite, AHost host, URL url) {
-		download_release_and_decompress(cm, overwrite, "build", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, url), url);
+	protected static void cmd_release_get(ConsoleManager cm, boolean overwrite, boolean confirm_prompt, AHost host, URL url) {
+		download_release_and_decompress(cm, overwrite, confirm_prompt, "build", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, url), url);
 	}
 	
-	protected static void cmd_release_get_previous(final ConsoleManager cm, final boolean overwrite, final AHost host, final EBuildBranch branch, final EBuildType build_type) {
+	protected static void cmd_release_get_previous(final ConsoleManager cm, final boolean overwrite, final boolean confirm_prompt, final AHost host, final EBuildBranch branch, final EBuildType build_type) {
 		System.out.println("PFTT: release_get: finding previous "+build_type+" build of "+branch+"...");
 		final FindBuildTestPackPair find_pair = WindowsSnapshotDownloadUtil.findPreviousPair(build_type, WindowsSnapshotDownloadUtil.getDownloadURL(branch));
 		if (find_pair==null) {
@@ -407,19 +433,19 @@ public class PfttMain {
 		}
 		Thread t0 = new Thread() {
 				public void run() {
-					download_release_and_decompress(cm, overwrite, "build", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
+					download_release_and_decompress(cm, overwrite, confirm_prompt, "build", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
 				}
 			};
 		t0.start();
 		Thread t1 = new Thread() {
 				public void run() {
-					download_release_and_decompress(cm, overwrite, "test-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
+					download_release_and_decompress(cm, overwrite, confirm_prompt, "test-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
 				}
 			};
 		t1.start();
 		Thread t2 = new Thread() {
 				public void run() {
-					download_release_and_decompress(cm, overwrite, "debug-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getDebug_pack()), find_pair.getDebug_pack());
+					download_release_and_decompress(cm, overwrite, confirm_prompt, "debug-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getDebug_pack()), find_pair.getDebug_pack());
 				}
 			};
 		t2.start();
@@ -433,28 +459,33 @@ public class PfttMain {
 		System.out.println("PFTT: release_get: done.");
 	} // end protected static void cmd_release_get_previous
 	
-	protected static void cmd_release_get_newest(final ConsoleManager cm, final boolean overwrite, final AHost host, final EBuildBranch branch, final EBuildType build_type) {
+	public static class BuildTestDebugPack {
+		public String build, test_pack, debug_pack;
+	}
+	
+	protected static BuildTestDebugPack cmd_release_get_newest(final ConsoleManager cm, final boolean overwrite, final boolean confirm_prompt, final AHost host, final EBuildBranch branch, final EBuildType build_type) {
 		System.out.println("PFTT: release_get: finding newest "+build_type+" build of "+branch+"...");
 		final FindBuildTestPackPair find_pair = WindowsSnapshotDownloadUtil.findNewestPair(build_type, WindowsSnapshotDownloadUtil.getDownloadURL(branch));
 		if (find_pair==null) {
 			System.err.println("PFTT: release_get: unable to find newest build of "+branch+" of type "+build_type);
-			return;
+			return null;
 		}
+		final BuildTestDebugPack btd_pack = new BuildTestDebugPack();
 		Thread t0 = new Thread() {
 				public void run() {
-					download_release_and_decompress(cm, overwrite, "build", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
+					btd_pack.build = download_release_and_decompress(cm, overwrite, confirm_prompt, "build", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
 				}
 			};
 		t0.start();
 		Thread t1 = new Thread() {
 				public void run() {
-					download_release_and_decompress(cm, overwrite, "test-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
+					btd_pack.test_pack = download_release_and_decompress(cm, overwrite, confirm_prompt, "test-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
 				}
 			};
 		t1.start();
 		Thread t2 = new Thread() {
 				public void run() {
-					download_release_and_decompress(cm, overwrite, "debug-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getDebug_pack()), find_pair.getDebug_pack());
+					btd_pack.debug_pack = download_release_and_decompress(cm, overwrite, confirm_prompt, "debug-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getDebug_pack()), find_pair.getDebug_pack());
 				}
 			};
 		t2.start();
@@ -466,9 +497,10 @@ public class PfttMain {
 			ex.printStackTrace();
 		}
 		System.out.println("PFTT: release_get: done.");
+		return btd_pack;
 	} // end protected static void cmd_release_get_newest
 
-	protected static void cmd_release_get_revision(final ConsoleManager cm, final boolean overwrite, final AHost host, final EBuildBranch branch, final EBuildType build_type, final String revision) {
+	protected static void cmd_release_get_revision(final ConsoleManager cm, final boolean overwrite, final boolean confirm_prompt, final AHost host, final EBuildBranch branch, final EBuildType build_type, final String revision) {
 		System.out.println("PFTT: release_get: finding "+build_type+" build in "+revision+" of "+branch+"...");
 		final FindBuildTestPackPair find_pair = WindowsSnapshotDownloadUtil.getDownloadURL(branch, build_type, revision);
 		if (find_pair==null) {
@@ -479,7 +511,7 @@ public class PfttMain {
 		if (find_pair.getBuild()!=null) {
 			t0 = new Thread() {
 					public void run() {
-						download_release_and_decompress(cm, overwrite, "build", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
+						download_release_and_decompress(cm, overwrite, confirm_prompt, "build", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
 					}
 				};
 			t0.start();
@@ -487,7 +519,7 @@ public class PfttMain {
 		if (find_pair.getTest_pack()!=null) {
 			t1 = new Thread() {
 					public void run() {
-						download_release_and_decompress(cm, overwrite, "test-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
+						download_release_and_decompress(cm, overwrite, confirm_prompt, "test-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
 					}
 				};
 			t1.start();
@@ -495,7 +527,7 @@ public class PfttMain {
 		if (find_pair.getDebug_pack()!=null) {
 			t2 = new Thread() {
 					public void run() {
-						download_release_and_decompress(cm, overwrite, "debug-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getDebug_pack()), find_pair.getDebug_pack());
+						download_release_and_decompress(cm, overwrite, confirm_prompt, "debug-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getDebug_pack()), find_pair.getDebug_pack());
 					}
 				};
 			t2.start();
@@ -531,19 +563,23 @@ public class PfttMain {
 		}
 	}
 	
-	protected static void download_release_and_decompress(ConsoleManager cm, boolean overwrite, String download_type, AHost host, File local_dir, URL url) {
+	protected static String download_release_and_decompress(ConsoleManager cm, boolean overwrite, boolean confirm_prompt, String download_type, AHost host, File local_dir, URL url) {
 		if (!overwrite && local_dir.exists()) {
-			if (!confirm("Overwrite existing folder "+local_dir+"?", true))
-				return;
+			if (!confirm_prompt||!confirm("Overwrite existing folder "+local_dir+"?", true))
+				return local_dir.getAbsolutePath();
 		}
 		System.out.println("PFTT: release_get: downloading "+url+"...");
 		
 		if (DownloadUtil.downloadAndUnzip(cm, host, url, local_dir.getAbsolutePath())) {
 			cm.println(EPrintType.COMPLETED_OPERATION, "release_get", download_type+" COPIED TO: "+local_dir);
+			
+			return local_dir.getAbsolutePath();
 		} else {
 			cm.println(EPrintType.CANT_CONTINUE, "release_get", "unable to decompress "+download_type);
+			
+			return null;
 		}
-	} // end protected static void download_release_and_decompress
+	} // end protected static String download_release_and_decompress
 
 	protected static void cmd_release_list() {
 		List<URL> snaps_url;
@@ -632,14 +668,47 @@ public class PfttMain {
 	protected static PhpBuild newBuild(ConsoleManager cm, AHost host, String path) {
 		PhpBuild build = new PhpBuild(path);
 		checkDebugger(cm, host, build);
-		if (build.open(cm, host))
+		if (build.open(cm, host)) {
 			return build;
+		}
+		cm.println(EPrintType.CLUE, PfttMain.class, "Build: "+build);
 		build = new PhpBuild(host.getPhpSdkDir() + "/" + path);
-		if (build.open(cm, host))
+		if (build.open(cm, host)) {
 			return build;
-		else
-			return null; // build not found/readable error
-	}
+		} else {
+			System.err.println("IO Error: can not open php build: "+build);
+			System.exit(-255);
+			return null;
+		}
+	} // end protected static PhpBuild newBuild
+	
+	protected static PhpBuild[] newBuilds(ConsoleManager cm, AHost host, String _path) {
+		String[] paths = host.isWindows()?_path.split("\\;"):_path.split("\\;|\\:");
+		ArrayList<PhpBuild> builds = new ArrayList<PhpBuild>(paths.length);
+		for ( String path : paths ) {
+			PhpBuild build = new PhpBuild(path);
+			checkDebugger(cm, host, build);
+			if (build.open(cm, host)) {
+				builds.add(build);
+			} else {
+				cm.println(EPrintType.CLUE, PfttMain.class, "Build: "+build);
+				build = new PhpBuild(host.getPhpSdkDir() + "/" + path);
+				if (build.open(cm, host)) {
+					builds.add(build);
+				} else {
+					System.err.println("IO Error: can not open php build: "+build);
+					System.exit(-255);
+					return null;
+				}
+			}
+		} // end for
+		if ( builds.isEmpty() ) {
+			System.err.println("IO Error: no builds found: "+_path);
+			System.exit(-255);
+			return null;
+		}
+		return (PhpBuild[]) builds.toArray(new PhpBuild[builds.size()]);
+	} // end protected static PhpBuild[] newBuilds
 	
 	protected static PhptSourceTestPack newTestPack(ConsoleManager cm, AHost host, String path) {
 		PhptSourceTestPack test_pack = new PhptSourceTestPack(path);
@@ -706,7 +775,7 @@ public class PfttMain {
 		int args_i = 0;
 		
 		Config config = null;
-		boolean is_uac = false, debug = false, randomize_order = false, no_result_file_for_pass_xskip_skip = false, pftt_debug = false, show_gui = false, overwrite = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false, thread_safety = true, skip_smoke_tests = false, pause = false, restart_each_test_all = false;
+		boolean is_uac = false, debug = false, randomize_order = false, no_result_file_for_pass_xskip_skip = false, pftt_debug = false, show_gui = false, overwrite = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false, thread_safety = true, skip_smoke_tests = false, pause = false, restart_each_test_all = false, ignore_unknown_option = false;
 		int run_test_times_all = 1, delay_between_ms = 0, run_test_times_list_times = 1, run_group_times_all = 1, run_group_times_list_times = 1, max_test_read_count = 0, thread_count = 0;
 		LinkedList<String> debug_list = new LinkedList<String>();
 		LinkedList<String> run_test_times_list = new LinkedList<String>();
@@ -714,7 +783,8 @@ public class PfttMain {
 		LinkedList<String> skip_list = new LinkedList<String>();
 		String source_pack = null;
 		PhpDebugPack debug_pack = null;
-		LinkedList<File> config_files = new LinkedList<File>();
+		LinkedList<String> config_files = new LinkedList<String>();
+		ArrayList<String> unknown_options = new ArrayList<String>(5);
 		
 		//
 		for ( ; args_i < args.length ; args_i++ ) {
@@ -729,67 +799,11 @@ public class PfttMain {
 				// configuration file(s) are separated by ; or : or ,
 				args_i++;
 				for ( String part : args[args_i].split("[;|:|,]") ) {
-					// allow flexibility in the configuration file name
-					//  1. add .groovy for user
-					//  2. search current dir / assume filename is absolute path
-					//  3. search $PFTT_DIR/conf
-					//  4. search $PFTT_DIR/conf/internal
-					//  5. search $PFTT_DIR/conf/app
-					File config_file = new File(part);
-					if (config_file.exists()) {
-						if (!config_files.contains(config_file))
-							config_files.add(config_file);
-					} else {
-						config_file = new File(part+".groovy");
-						if (config_file.exists()) {
-							if (!config_files.contains(config_file))
-								config_files.add(config_file);
-						} else {
-							config_file = new File(LocalHost.getLocalPfttDir()+"/conf/"+part);
-							if (config_file.exists()) {
-								if (!config_files.contains(config_file))
-									config_files.add(config_file);
-							} else {
-								config_file = new File(LocalHost.getLocalPfttDir()+"/conf/"+part+".groovy");
-								if (config_file.exists()) {
-									if (!config_files.contains(config_file))
-										config_files.add(config_file);
-								} else {
-									config_file = new File(LocalHost.getLocalPfttDir()+"/conf/internal/"+part);
-									if (config_file.exists()) {
-										if (!config_files.contains(config_file))
-											config_files.add(config_file);
-									} else {
-										config_file = new File(LocalHost.getLocalPfttDir()+"/conf/internal/"+part+".groovy");
-										if (config_file.exists()) {
-											if (!config_files.contains(config_file))
-												config_files.add(config_file);
-										} else {
-											config_file = new File(LocalHost.getLocalPfttDir()+"/conf/app/"+part);
-											if (config_file.exists()) {
-												if (!config_files.contains(config_file))
-													config_files.add(config_file);
-											} else {
-												config_file = new File(LocalHost.getLocalPfttDir()+"/conf/app/"+part+".groovy");
-												if (config_file.exists()) {
-													if (!config_files.contains(config_file))
-														config_files.add(config_file);
-												} else {
-													System.err.println("User Error: config file not found: "+config_file);
-													System.exit(-255);
-													break;
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-					}
+					config_files.add(part);
 				} // end for
-			} else if (args[args_i].equals("-phpt-not-in-place")) {
-				phpt_not_in_place = false;
-			} else if (args[args_i].equals("-dont-cleanup-test-pack")) {
+			} else if (args[args_i].equals("-phpt_not_in_place")) {
+				phpt_not_in_place = true;
+			} else if (args[args_i].equals("-dont_cleanup_test_pack")) {
 				dont_cleanup_test_pack = true;
 			} else if (args[args_i].equals("-auto")) {
 				// change these defaults for automated testing
@@ -801,6 +815,8 @@ public class PfttMain {
 				pause = false;
 				restart_each_test_all = false;
 				overwrite = true; // for rgn rl rgp rg
+				no_result_file_for_pass_xskip_skip = true;
+			} else if (args[args_i].equals("-no_result_file_for_pass_xskip_skip")) {
 				no_result_file_for_pass_xskip_skip = true;
 			} else if (args[args_i].equals("-randomize_order")) {
 				randomize_order = true;
@@ -820,7 +836,7 @@ public class PfttMain {
 				max_test_read_count = Integer.parseInt(args[args_i]);
 			} else if (args[args_i].equals("-skip_smoke_tests")) {
 				skip_smoke_tests = true;
-			} else if (args[args_i].equals("-no_nts")) {
+			} else if (args[args_i].equals("-no_thread_safety")) {
 				thread_safety = false;
 			} else if (args[args_i].equals("-run_group_times_all")) {
 				args_i++;
@@ -852,7 +868,7 @@ public class PfttMain {
 			} else if (args[args_i].startsWith("-uac")) {
 				// ignore: intercepted and handled by bin/pftt.cmd batch script
 				is_uac = true;
-			} else if (args[args_i].startsWith("-pftt-debug")) {
+			} else if (args[args_i].startsWith("-pftt_debug")) {
 				pftt_debug = true;
 			} else if (args[args_i].equals("-src_pack")) {
 				source_pack = args[args_i++];
@@ -865,11 +881,23 @@ public class PfttMain {
 				cmd_help();
 				System.exit(0);
 				return;
-			} else if (args[args_i].startsWith("-")) {
-				System.err.println("User Error: unknown option \""+args[args_i]+"\"");
-				System.exit(-255);
-				return;
-				
+			} else if (args[args_i].equals("-ignore_unknown_option")) {
+				// special support for alias shell scripts (@see ca.cmd, etc...)
+				ignore_unknown_option = true;
+			} else if (args[args_i].startsWith("-")||ignore_unknown_option) {
+				if (!ignore_unknown_option) {
+					System.err.println("User Error: unknown option \""+args[args_i]+"\"");
+					System.exit(-255);
+					return;
+				} else if (args[args_i].contains("_")) {
+					// special support for alias shell scripts (@see ca.cmd, etc...)
+					unknown_options.add(0, args[args_i]);
+					args_i = 0;
+					args = ArrayUtil.toArray(unknown_options);
+					break;
+				} else {
+					unknown_options.add(args[args_i]);
+				}
 			} else {
 				// not option
 				break;
@@ -891,7 +919,7 @@ public class PfttMain {
 				skip_smoke_tests, max_test_read_count, thread_count, restart_each_test_all, delay_between_ms);
 		
 		if (config_files.size()>0) {
-			config = Config.loadConfigFromFiles(cm, (File[])config_files.toArray(new File[config_files.size()]));
+			config = Config.loadConfigFromFiles(cm, (String[])config_files.toArray(new String[config_files.size()]));
 			System.out.println("PFTT: Config: loaded "+config_files);
 		} else {
 			File default_config_file = new File(rt.host.getPfttDir()+"/conf/default.groovy");
@@ -900,6 +928,11 @@ public class PfttMain {
 		}
 		
 		if (command!=null) {
+			String[] commands = command.split(",");
+			PhpResultPackWriter tmgr = null;
+			for ( int k=0; k < commands.length ; k++ ) {
+				command = commands[k];
+				
 			if (command.equals("app_named")||command.equals("appnamed")||command.equals("an")) {
 				// TODO
 			} else if (command.equals("app_list")||command.equals("applist")||command.equals("al")) {
@@ -910,44 +943,47 @@ public class PfttMain {
 					return;
 				}
 				
-				PhpBuild build = newBuild(cm, rt.host, args[args_i+1]);
-				if (build==null) {
-					System.err.println("IO Error: can not open php build: "+build);
-					System.exit(-255);
-					return;
-				}
-				cm.println(EPrintType.CLUE, PfttMain.class, "Build: "+build);
-				
 				File test_list_file = new File(args[args_i+1]);
 				cm.println(EPrintType.CLUE, PfttMain.class, "List File: "+test_list_file);
 				
-				HostEnvUtil.prepareHostEnv(rt.host, cm, build, !cm.isDisableDebugPrompt());
-				
-				checkDebugger(cm, rt.host, build);
-				build.open(cm, rt.host);
-				
-				PhpUnitSourceTestPack test_pack = config.getPhpUnitSourceTestPack(cm);
-				cm.println(EPrintType.CLUE, PfttMain.class, "Test-Pack: "+test_pack);
-				
-				PhpResultPackWriter tmgr = new PhpResultPackWriter(rt.host, cm, new File(rt.host.getPhpSdkDir()), build, test_pack);
-				cm.println(EPrintType.CLUE, PfttMain.class, "Writing Result-Pack: "+tmgr.getTelemetryDir());
-				
-				checkUAC(is_uac, false, config, cm, EScenarioSetPermutationLayer.PHP_CORE);
-				
-				for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.WEB_APPLICATION)) {
-				
-					List<AHost> hosts = config.getHosts();
-					AHost host = hosts.isEmpty()?rt.host:hosts.get(0);
-					LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, host, rt.host);
-					LinkedList<String> test_names = new LinkedList<String>();
-					readStringListFromFile(test_names, test_list_file);
-					// TODO test_pack.read(test_cases, cm, twriter, build)
-					// TODO r.runTestList(test_pack, test_cases);
-					tmgr.getPhpUnit(host, scenario_set).close();
+				for ( PhpBuild build : newBuilds(cm, rt.host, args[args_i+1]) ) {
+					HostEnvUtil.prepareHostEnv(rt.host, cm, build, !cm.isDisableDebugPrompt());
 					
-				} // end for
-				
-				tmgr.close();
+					checkDebugger(cm, rt.host, build);
+					build.open(cm, rt.host);
+					
+					PhpUnitSourceTestPack test_pack = config.getPhpUnitSourceTestPack(cm);
+					if (test_pack==null) {
+						cm.println(EPrintType.CLUE, PfttMain.class, "No test-pack provided by configuration file(s)");
+						break;
+					}
+					cm.println(EPrintType.CLUE, PfttMain.class, "Test-Pack: "+test_pack);
+					
+					if (tmgr==null||!tmgr.getBuildInfo().equals(build.getBuildInfo(cm, rt.host))) {
+						if (tmgr!=null)
+							tmgr.close();
+						tmgr = new PhpResultPackWriter(rt.host, cm, rt.telem_dir(), build);
+					}
+					cm.println(EPrintType.CLUE, PfttMain.class, "Writing Result-Pack: "+tmgr.getTelemetryDir());
+					
+					checkUAC(is_uac, false, config, cm, EScenarioSetPermutationLayer.PHP_CORE);
+					
+					AbstractPhpUnitRW rw;
+					for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.WEB_APPLICATION)) {
+					
+						List<AHost> hosts = config.getHosts();
+						AHost host = hosts.isEmpty()?rt.host:hosts.get(0);
+						LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, host, rt.host);
+						LinkedList<String> test_names = new LinkedList<String>();
+						readStringListFromFile(test_names, test_list_file);
+						// TODO test_pack.read(test_cases, cm, twriter, build)
+						// TODO r.runTestList(test_pack, test_cases);
+						rw = tmgr.getPhpUnit(rt.host, scenario_set);
+						if (rw!=null)
+							rw.close();
+						
+					} // end for (scenario_set)
+				} // end for (build)
 			} else if (command.equals("app_all")||command.equals("appall")||command.equals("aa")) {
 				if (!(args.length > args_i+1)) {
 					System.err.println("User Error: must specify build");
@@ -956,36 +992,21 @@ public class PfttMain {
 					return;
 				}
 				
-				PhpBuild build = newBuild(cm, rt.host, args[args_i+1]);
-				if (build==null) {
-					System.err.println("IO Error: can not open php build: "+build);
-					System.exit(-255);
-					return;
-				}
-				cm.println(EPrintType.CLUE, PfttMain.class, "Build: "+build);
-				
-				HostEnvUtil.prepareHostEnv(rt.host, cm, build, !cm.isDisableDebugPrompt());
-				
-				checkDebugger(cm, rt.host, build);
-				build.open(cm, rt.host);
-				
-				PhpUnitSourceTestPack test_pack = config.getPhpUnitSourceTestPack(cm);
-				cm.println(EPrintType.CLUE, PfttMain.class, "Test-Pack: "+test_pack);
-				
-				PhpResultPackWriter tmgr = new PhpResultPackWriter(rt.host, cm, new File(rt.host.getPhpSdkDir()), build, test_pack);
-				cm.println(EPrintType.CLUE, PfttMain.class, "Writing Result-Pack: "+tmgr.getTelemetryDir());
-				
-				checkUAC(is_uac, false, config, cm, EScenarioSetPermutationLayer.PHP_CORE);
-				
-				for (ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.WEB_APPLICATION)) {
-					List<AHost> hosts = config.getHosts();
-					AHost host = hosts.isEmpty()?rt.host:hosts.get(0);
-					LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, host, rt.host);
-					r.runAllTests(test_pack);
-					tmgr.getPhpUnit(host, scenario_set).close();
-				}
-				
-				tmgr.close();
+				for ( PhpBuild build : newBuilds(cm, rt.host, args[args_i+1]) ) {
+					HostEnvUtil.prepareHostEnv(rt.host, cm, build, !cm.isDisableDebugPrompt());
+					
+					checkDebugger(cm, rt.host, build);
+					build.open(cm, rt.host);
+					
+					checkUAC(is_uac, false, config, cm, EScenarioSetPermutationLayer.PHP_CORE);
+					
+					if (tmgr==null||!tmgr.getBuildInfo().equals(build.getBuildInfo(cm, rt.host))) {
+						if (tmgr!=null)
+							tmgr.close();
+						tmgr = new PhpResultPackWriter(rt.host, cm, rt.telem_dir(), build);
+					}
+					cmd_app_all(tmgr, rt, cm, config, build);
+				} // end for 
 			} else if (command.equals("core_named")||command.equals("corenamed")||command.equals("cornamed")||command.equals("coren")||command.equals("cn")) {
 				if (!(args.length > args_i+3)) {
 					System.err.println("User Error: must specify build, test-pack and name(s) and/or name fragment(s)");
@@ -994,12 +1015,7 @@ public class PfttMain {
 					return;
 				}
 				
-				PhpBuild build = newBuild(cm, rt.host, args[args_i+1]);
-				if (build==null) {
-					System.err.println("IO Error: can not open php build: "+build);
-					System.exit(-255);
-					return;
-				}
+				PhpBuild[] builds = newBuilds(cm, rt.host, args[args_i+1]);
 				
 				PhptSourceTestPack test_pack = newTestPack(cm, rt.host, args[args_i+2]);
 				if (test_pack==null) {
@@ -1016,12 +1032,20 @@ public class PfttMain {
 				for ( ; args_i < args.length ; args_i++) 
 					names.add(args[args_i]);
 				
-				cm.println(EPrintType.IN_PROGRESS, "Build", build.toString());
-				cm.println(EPrintType.IN_PROGRESS, "Test-Pack", test_pack.toString());
-				
-				HostEnvUtil.prepareHostEnv(rt.host, cm, build, !cm.isDisableDebugPrompt());
-				cmd_core_named(rt, cm, config, build, test_pack, names);
-				
+				for ( PhpBuild build : builds ) {
+					cm.println(EPrintType.IN_PROGRESS, "Build", build.toString());
+					cm.println(EPrintType.IN_PROGRESS, "Test-Pack", test_pack.toString());
+					
+					HostEnvUtil.prepareHostEnv(rt.host, cm, build, !cm.isDisableDebugPrompt());
+					
+					if (tmgr==null||!tmgr.getBuildInfo().equals(build.getBuildInfo(cm, rt.host))) {
+						if (tmgr!=null)
+							tmgr.close();
+						tmgr = new PhpResultPackWriter(rt.host, cm, rt.telem_dir(), build);
+					}
+					cm.println(EPrintType.CLUE, "Test names", names.toString());
+					cmd_core_named(tmgr, rt, cm, config, build, test_pack, names);
+				} // end for
 				System.out.println("PFTT: finished");
 			} else if (command.equals("core_list")||command.equals("corelist")||command.equals("corlist")||command.equals("corel")||command.equals("cl")) {
 				if (!(args.length > args_i+3)) {
@@ -1032,12 +1056,7 @@ public class PfttMain {
 					return;
 				}
 				
-				PhpBuild build = newBuild(cm, rt.host, args[args_i+1]);
-				if (build == null) {
-					System.err.println("IO Error: can not open php build: "+build);
-					System.exit(-255);
-					return;
-				}
+				PhpBuild[] builds = newBuilds(cm, rt.host, args[args_i+1]);
 				
 				PhptSourceTestPack test_pack = newTestPack(cm, rt.host, args[args_i+2]);
 				if (test_pack == null) {
@@ -1055,12 +1074,20 @@ public class PfttMain {
 				
 				checkUAC(is_uac, false, config, cm, EScenarioSetPermutationLayer.PHP_CORE);
 				
-				cm.println(EPrintType.IN_PROGRESS, "Build", build.toString());
-				cm.println(EPrintType.IN_PROGRESS, "Test-Pack", test_pack.toString());
-				
-				HostEnvUtil.prepareHostEnv(rt.host, cm, build, !cm.isDisableDebugPrompt());
-				cmd_core_list(rt, cm, config, build, test_pack, list_file);		
-				
+				for ( PhpBuild build : builds ) {
+					cm.println(EPrintType.IN_PROGRESS, "Build", build.toString());
+					cm.println(EPrintType.IN_PROGRESS, "Test-Pack", test_pack.toString());
+					
+					HostEnvUtil.prepareHostEnv(rt.host, cm, build, !cm.isDisableDebugPrompt());
+					
+					if (tmgr==null||!tmgr.getBuildInfo().equals(build.getBuildInfo(cm, rt.host))) {
+						if (tmgr!=null)
+							tmgr.close();
+						tmgr = new PhpResultPackWriter(rt.host, cm, rt.telem_dir(), build);
+					}
+					
+					cmd_core_list(tmgr, rt, cm, config, build, test_pack, list_file);		
+				}
 				System.out.println("PFTT: finished");
 			} else if (command.equals("phpt_repro")||command.equals("phpt_replay")||command.equals("phpt_re")||command.equals("phptrepro")||command.equals("phptreplay")||command.equals("phptre")||command.equals("pr")) {
 				// TODO
@@ -1075,12 +1102,7 @@ public class PfttMain {
 					return;
 				}
 				
-				PhpBuild build = newBuild(cm, rt.host, args[args_i+1]);
-				if (build == null) {
-					System.err.println("IO Error: can not open php build: "+build);
-					System.exit(-255);
-					return;
-				}
+				PhpBuild[] builds = newBuilds(cm, rt.host, args[args_i+1]);
 				
 				PhptSourceTestPack test_pack = newTestPack(cm, rt.host, args[args_i+2]);
 				if (test_pack == null) {
@@ -1090,15 +1112,24 @@ public class PfttMain {
 				}
 				
 				cm.println(EPrintType.IN_PROGRESS, "Main", "Testing all PHPTs in test pack...");
-				cm.println(EPrintType.IN_PROGRESS, "Build", build.toString());
-				cm.println(EPrintType.IN_PROGRESS, "Test-Pack", test_pack.toString());
-				
 				checkUAC(is_uac, false, config, cm, EScenarioSetPermutationLayer.PHP_CORE);
 				
-				// run all tests
-				HostEnvUtil.prepareHostEnv(rt.host, cm, build, !cm.isDisableDebugPrompt());
-				cmd_core_all(rt, cm, config, build, test_pack);
-				
+				for ( PhpBuild build : builds ) {
+					cm.println(EPrintType.IN_PROGRESS, "Build", build.toString());
+					cm.println(EPrintType.IN_PROGRESS, "Test-Pack", test_pack.toString());
+					
+					// run all tests
+					HostEnvUtil.prepareHostEnv(rt.host, cm, build, !cm.isDisableDebugPrompt());
+					
+					if (tmgr==null||!tmgr.getBuildInfo().equals(build.getBuildInfo(cm, rt.host))) {
+						if (tmgr!=null)
+							tmgr.close();
+						tmgr = new PhpResultPackWriter(rt.host, cm, rt.telem_dir(), build, test_pack);
+					}
+					cm.println(EPrintType.CLUE, PfttMain.class, "Writing Result-Pack: "+tmgr.getTelemetryDir());
+					
+					cmd_core_all(tmgr, rt, cm, config, build, test_pack);
+				}
 				System.out.println("PFTT: finished");
 			} else if (command.equals("setup")||command.equals("set")||command.equals("setu")) {
 				if (!(args.length > args_i+1)) {
@@ -1109,11 +1140,6 @@ public class PfttMain {
 				}
 				
 				PhpBuild build = newBuild(cm, rt.host, args[args_i+1]);
-				if (build == null) {
-					System.err.println("IO Error: can not open php build: "+build);
-					System.exit(-255);
-					return;
-				}
 				
 				checkUAC(is_uac, true, config, cm, EScenarioSetPermutationLayer.WEB_SERVER);
 				
@@ -1208,13 +1234,13 @@ public class PfttMain {
 					
 					// input processed, dispatch
 					if (url!=null)
-						cmd_release_get(cm, overwrite, rt.host, url);
+						cmd_release_get(cm, overwrite, true, rt.host, url);
 					else if (revision.equals("newest"))
-						cmd_release_get_newest(cm, overwrite, rt.host, branch, build_type);
+						cmd_release_get_newest(cm, overwrite, true, rt.host, branch, build_type);
 					else if (revision.equals("previous"))
-						cmd_release_get_previous(cm, overwrite, rt.host, branch, build_type);
+						cmd_release_get_previous(cm, overwrite, true, rt.host, branch, build_type);
 					else
-						cmd_release_get_revision(cm, overwrite, rt.host, branch, build_type, revision);
+						cmd_release_get_revision(cm, overwrite, true, rt.host, branch, build_type, revision);
 				}
 			} else if (command.equals("release_list")||command.equals("rl")||command.equals("rlist")) {
 				EBuildBranch branch = null;
@@ -1262,15 +1288,25 @@ public class PfttMain {
 				
 				cmd_help();
 			} else if (command.equals("cmp-report")) {
-				PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PHP_5_5-Result-Pack-5.5.0alpha6-TS-X86-VC11-5"));
-				PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PHP_5_5-Result-Pack-5.5.0alpha6-TS-X86-VC11-5"));
-			
+				//PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-rcfd096f-TS-X86-VC9"));
+				//PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-re9f996c-TS-X86-VC9"));
+				PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-rc6e911e-TS-X86-VC11"));
+				PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-rf3ebb40-TS-X86-VC11"));
+				//PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-5.5.0beta1-NTS-X86-VC11"));
+				//PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PHP_5_5-Result-Pack-5.5.0beta1-NTS-X64-VC11"));
+				
 				for ( AbstractPhpUnitRW base : base_pack.getPhpUnit() ) {
 					for ( AbstractPhpUnitRW test : test_pack.getPhpUnit() ) {
+						System.err.println("PhpUnit "+base.getScenarioSetNameWithVersionInfo()+" "+test.getScenarioSetNameWithVersionInfo());
+						if (!(base.getScenarioSetNameWithVersionInfo().contains("opcache")==test.getScenarioSetNameWithVersionInfo().contains("opcache")
+								&&base.getScenarioSetNameWithVersionInfo().contains("cli")==test.getScenarioSetNameWithVersionInfo().contains("cli")
+								&&base.getScenarioSetNameWithVersionInfo().contains("apache")==test.getScenarioSetNameWithVersionInfo().contains("apache")))
+							continue;
+						
 						PhpUnitReportGen php_unit_report = new PhpUnitReportGen(base, test);
 						String html_str = php_unit_report.getHTMLString(cm, false);
 
-						File html_file = new File("c:\\php-sdk\\php_unit_report.html");
+						File html_file = new File("c:\\php-sdk\\php_unit_report"+base.getScenarioSetNameWithVersionInfo()+".html");
 						FileWriter fw = new FileWriter(html_file);
 						fw.write(html_str);
 						fw.close();
@@ -1280,10 +1316,16 @@ public class PfttMain {
 				
 				for ( AbstractPhptRW base : base_pack.getPHPT() ) {
 					for ( AbstractPhptRW test : test_pack.getPHPT() ) {
+						System.err.println("PHPT "+base.getScenarioSetNameWithVersionInfo()+" "+test.getScenarioSetNameWithVersionInfo());
+						if (!(base.getScenarioSetNameWithVersionInfo().contains("Opcache")==test.getScenarioSetNameWithVersionInfo().contains("Opcache")
+								&&base.getScenarioSetNameWithVersionInfo().contains("CLI")==test.getScenarioSetNameWithVersionInfo().contains("CLI")
+								&&base.getScenarioSetNameWithVersionInfo().contains("Apache")==test.getScenarioSetNameWithVersionInfo().contains("Apache")))
+							continue;
+						
 						PHPTReportGen phpt_report = new PHPTReportGen(base, test);
 						String html_str = phpt_report.getHTMLString(cm, false);
 
-						File html_file = new File("c:\\php-sdk\\phpt_report.html");
+						File html_file = new File("c:\\php-sdk\\phpt_report"+base.getScenarioSetNameWithVersionInfo()+".html");
 						FileWriter fw = new FileWriter(html_file);
 						fw.write(html_str);
 						fw.close();
@@ -1296,6 +1338,9 @@ public class PfttMain {
 				
 				cmd_help();
 			}
+			} // end for
+			if (tmgr!=null)
+				tmgr.close();
 		} else {		
 			cmd_help();
 		}

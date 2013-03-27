@@ -11,7 +11,7 @@ import com.mostc.pftt.scenario.app.ZipDbApplication;
  * in HTML5, PHP, and JavaScript. xOS includes a Desktop or Mobile environment with a
  * number of features, applications, and system utilities, with more features
  * continuously being added. It is accessible on Windows, Mac, Linux, iOS (Apple),
- * and Android (operating system) through the web browser.[1]
+ * and Android (operating system) through the web browser.
  * 
  * @see http://xos.xproduct.net/
  * 

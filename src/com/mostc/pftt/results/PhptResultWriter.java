@@ -135,7 +135,10 @@ public class PhptResultWriter extends AbstractPhptRW {
 			e.close();
 	} // end public void close
 	
-	protected void handleResult(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhptTestResult result) {
+	public void writeResult(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhptTestResult result) {
+		if (closed)
+			throw new IllegalStateException("can't write result to this PhptResultWriter. it is closed");
+			
 		status_list_map.get(result.status).write(result);
 	
 		
@@ -197,7 +200,7 @@ public class PhptResultWriter extends AbstractPhptRW {
 			}
 		}
 		//
-	} // end protected void handleResult
+	} // end public void writeResult
 
 	@Override
 	public String getOSName() {

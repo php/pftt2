@@ -1,0 +1,1 @@
+taskkill /im:php.exe /f /t

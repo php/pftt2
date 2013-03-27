@@ -99,13 +99,15 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 	@Override
 	protected void preGroup(List<PhptTestCase> test_cases) {
 		// resort test cases so that the slow tests are run first, then all will finish faster
-		Collections.sort(test_cases, new Comparator<PhptTestCase>() {
-				@Override
-				public int compare(PhptTestCase a, PhptTestCase b) {
-					return b.isSlowTest() ? -1 : a.isSlowTest() ? -1 : +1;
-				}
-				
-			});
+		try {
+			Collections.sort(test_cases, new Comparator<PhptTestCase>() {
+					@Override
+					public int compare(PhptTestCase a, PhptTestCase b) {
+						return b.isSlowTest() ? -1 : a.isSlowTest() ? -1 : +1;
+					}
+					
+				});
+		} catch ( Throwable t ) {}
 		//
 	}
 	

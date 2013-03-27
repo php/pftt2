@@ -11,6 +11,7 @@ import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
@@ -173,9 +174,9 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 				// do this once
 				synchronized(this) {
 					// fix stack size bug for PCRE
-					if (!VisualStudioUtil.setExeStackSize(cm, host, httpd, VisualStudioUtil.SIXTEEN_MEGABYTES)) {
+					/* TODO if (!VisualStudioUtil.setExeStackSize(cm, host, httpd, VisualStudioUtil.SIXTEEN_MEGABYTES)) {
 						cm.println(EPrintType.WARNING, getClass(), "Unable to set Apache stack size... large stack operations will fail");
-					}
+					}*/
 					
 					//
 					// method 1: copy icu*.dll to Apache\Bin
@@ -192,10 +193,10 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 					
 					// check OpenSSL version
 					if (!cm.isSkipSmokeTests()) {
-						if (!checkOpenSSLVersion(cm, host, build, apache_version, Host.dirname(Host.dirname(httpd)))) {
+						/* TODO if (!checkOpenSSLVersion(cm, host, build, apache_version, Host.dirname(Host.dirname(httpd)))) {
 							cm.println(EPrintType.SKIP_OPERATION, getClass(), "Apache built with different version of OpenSSL than the version PHP is built with. Can't use this Apache build!");
 							return null;
-						}
+						} */
 					}
 					
 					this.cache_host = host;
@@ -343,6 +344,13 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		}
 		
 	} // end public class ApacheWebServerInstance
+	
+	public void close() {
+		super.close();
+		
+		LocalHost host = new LocalHost();
+		host.delete(host.getTempDir()+"/PFTT-ApacheManager-*");
+	}
 
 	@Override
 	public boolean setup(ConsoleManager cm, Host host, PhpBuild build) {
@@ -398,6 +406,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			sb.append("LoadModule authz_core_module modules/mod_authz_core.so\n");
 		sb.append("LoadModule log_config_module modules/mod_log_config.so\n");
 		sb.append("LoadModule mime_module modules/mod_mime.so\n");
+		sb.append("LoadModule dir_module modules/mod_dir.so\n");
 		sb.append("ServerAdmin administrator@"+listen_address+"\n");
 		// CRITICAL: ServerName critical on apache 2.2 (2.4?)
 		sb.append("ServerName "+listen_address+":"+port+"\n");
@@ -431,6 +440,9 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		sb.append("    Options Indexes FollowSymLinks\n");
 		sb.append("    AllowOverride None\n");
 		//sb.append("    Require all granted\n");
+		sb.append("    <IfModule mod_dir.c>\n");
+		sb.append("       DirectoryIndex index.html index.php\n");
+		sb.append("    </IfModule>\n");
 		sb.append("</Directory>\n");
 		sb.append("ErrorLog \""+host.fixPath(error_log)+"\"\n");
 		sb.append("LogLevel warn\n");

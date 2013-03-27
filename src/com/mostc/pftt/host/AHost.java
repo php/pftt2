@@ -247,7 +247,12 @@ public abstract class AHost extends Host {
 			return tmp_dir;
 		if (isWindows()) {
 			tmp_dir = getEnvValue("TEMP");
-			if (tmp_dir==null)
+			// sometimes %TEMP% will be a short name
+			// File, etc... operations will resolve between them and this needs to
+			// be resolved here too for things to match up
+			//
+			// do this here by ignoring ~ and generating temp dir as though %TEMP% wasn't set at all
+			if (tmp_dir==null||tmp_dir.contains("~"))
 				tmp_dir = getHomeDir() + "\\AppData\\Local\\Temp\\";
 			else if (!tmp_dir.endsWith("\\"))
 				tmp_dir += "\\";
@@ -289,7 +294,7 @@ public abstract class AHost extends Host {
 			return home_dir;
 		} else if (isWindows()) {
 			home_dir = getEnvValue("USERPROFILE"); // Windows
-			if (StringUtil.isEmpty(home_dir))
+			if (StringUtil.isEmpty(home_dir)||home_dir.contains("~"))
 				home_dir = getSystemDrive() + "\\Users\\" + getUsername(); // fallback ; this shouldn't happen
 			return home_dir;
 		} else {

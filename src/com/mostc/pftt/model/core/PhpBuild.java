@@ -1,5 +1,6 @@
 package com.mostc.pftt.model.core;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -44,7 +45,7 @@ public class PhpBuild extends SAPIManager {
 	private int major, minor, release;
 	
 	public PhpBuild(String build_path) {
-		this.build_path = build_path;
+		this.build_path = new File(build_path).getAbsolutePath();
 		ext_enable_map = new WeakHashMap<PhpIni,WeakHashMap<String,Boolean>>();
 	}
 	
@@ -559,9 +560,10 @@ public class PhpBuild extends SAPIManager {
 				return php_info;
 		}
 		
-		ExecOutput eo = eval(host, "phpinfo();");
+		PHPOutput eo = eval(host, "phpinfo();");
 		eo.printOutputIfCrash(Host.toContext(getClass(), "getPhpInfo"), cm);
 		php_info = eo.output;
+		eo.cleanup(host);
 		this.php_info = new WeakReference<String>(php_info);
 		return php_info;
 	}

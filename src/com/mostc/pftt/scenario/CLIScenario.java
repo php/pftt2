@@ -106,8 +106,8 @@ public class CliScenario extends AbstractSAPIScenario {
 				test_case,
 				my_temp_dir,
 				constants,
-				test_case.getPhpUnitDist().getIncludePath(),
-				test_case.getPhpUnitDist().getIncludeFiles(), 
+				include_path,
+				include_files, 
 				ini
 			);
 	}

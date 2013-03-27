@@ -59,6 +59,13 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	@Override
 	protected String execute(String template_file) throws IOException, Exception {
 		// Note: INI for test case provided in TestCaseGroupKey created in LocalPhpUnitTestPackRunner#createGroupKey
+		if (!host.exists(template_file)) {
+			for ( int i=0 ; i < 10 ; i++) {
+				Thread.sleep(1000); // wait a moment for file to exist
+				if (host.exists(template_file))
+					break;
+			}
+		}
 		
 		return http_execute("/test.php");
 	}
@@ -103,28 +110,25 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 			// with WebServerInstance#getSAPIOutput (will be recorded by PhptTelemetryWriter)
 			web.notifyCrash("PFTT: IOException during test: "+test_case.getName()+"\n"+ex_str, 0);
 			
-			// generate a failure string here too though, so that this TEST or SKIPIF section is marked as a failure
-			StringBuilder sb = new StringBuilder(512);
-			sb.append("PFTT: couldn't connect to web server after One Minute\n");
-			sb.append("PFTT: created new web server only for running this test which did not respond after\n");
-			sb.append("PFTT: another One Minute timeout. This test case breaks the web server!\n");
-			sb.append("PFTT: was trying to run: ");
-			sb.append(test_case.getName());
-			sb.append("\n");
-			sb.append("PFTT: these two lists refer only to second web server (created for specifically for only this test)\n");
-			web.getActiveTestListString(sb);
-			web.getAllTestListString(sb);
+			// if web server didn't actually crash, test will probably be marked as failure: let superclass check it
 			
-			// if TEST, runner will evaluate this as a failure
-			// if SKIPIF, runner will not skip test and will try to run it
-			//
-			// both are the most ideal behavior possible in this situation
-			//
-			// normally this shouldn't happen, so checking a string once in a while is faster than
-			//     setting a flag here and checking that flag for every test in #evalTest
-			return sb.toString();
+			return generateServerTimeoutMessage();
 		}
 	} // end protected String http_execute
+	
+	protected String generateServerTimeoutMessage() {
+		StringBuilder sb = new StringBuilder(512);
+		sb.append("PFTT: couldn't connect to web server after One Minute\n");
+		sb.append("PFTT: created new web server only for running this test which did not respond after\n");
+		sb.append("PFTT: another One Minute timeout. This test case breaks the web server!\n");
+		sb.append("PFTT: was trying to run: ");
+		sb.append(test_case.getName());
+		sb.append("\n");
+		sb.append("PFTT: these two lists refer only to second web server (created for specifically for only this test)\n");
+		web.getActiveTestListString(sb);
+		web.getAllTestListString(sb);
+		return sb.toString();
+	}
 
 	protected String do_http_execute(String path, boolean is_replacement) throws Exception {
 		path = AHost.toUnixPath(path);
@@ -215,11 +219,12 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 			conn = null;
 		}
 		conn = new DebuggingHttpClientConnection(null, response_bytes);
+		Socket socket = null;
 		try {
 			context.setAttribute(ExecutionContext.HTTP_CONNECTION, conn);
 			context.setAttribute(ExecutionContext.HTTP_TARGET_HOST, http_host);
 			
-			Socket socket = new Socket(http_host.getHostName(), http_host.getPort());
+			socket = new Socket(http_host.getHostName(), http_host.getPort());
 			conn.bind(socket, params);
 			conn.setSocketTimeout(60*1000);
 			
@@ -250,6 +255,8 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 			
 			return IOUtil.toString(response.getEntity().getContent(), IOUtil.HALF_MEGABYTE);
 		} finally {
+			if (socket!=null)
+				socket.close();
 			conn.close();
 		}
 	} // end protected String do_http_get

@@ -143,12 +143,15 @@ public class LocalHost extends AHost {
 		} else if (isWindows() && path.contains("*")) {
 			// XXX wildcard support on linux
 			path = fixPath(path);
-			
 			try {
 				if (elevated)
 					execElevated("CMD /C DEL /F /Q "+path+"", NO_TIMEOUT);
 				else
 					exec("CMD /C DEL /F /Q "+path+"", NO_TIMEOUT);
+				if (elevated)
+					execElevated("CMD /C CMD /C FOR /D %f IN ("+path+") DO RMDIR /S /Q %f", NO_TIMEOUT);
+				else
+					exec("CMD /C CMD /C FOR /D %f IN ("+path+") DO RMDIR /S /Q %f", NO_TIMEOUT);
 			} catch ( Exception ex ) {
 				ex.printStackTrace();
 				new File(path).delete();
@@ -505,7 +508,11 @@ public class LocalHost extends AHost {
 						w = process.exitValue();
 						break;
 					} catch ( IllegalThreadStateException ex ) {}
-					Thread.sleep(time);
+					try {
+						Thread.sleep(time);
+					} catch ( InterruptedException ex ) {
+						break;
+					}
 					time *= 2;
 					if (time>=400)
 						time = 50; // 50 100 200 400

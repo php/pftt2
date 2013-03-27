@@ -68,7 +68,7 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 		this.smgr = smgr;
 		
 		params = new SyncBasicHttpParams();
-		HttpProtocolParams.setVersion(params, HttpVersion.HTTP_1_1);
+		HttpProtocolParams.setVersion(params, HttpVersion.HTTP_1_0);
 		HttpProtocolParams.setContentCharset(params, "UTF-8");
 		HttpProtocolParams.setUserAgent(params, "Mozilla/5.0 (Windows NT 6.1; rv:12.0) Gecko/20120405 Firefox/14.0.1");
 		HttpProtocolParams.setUseExpectContinue(params, true);

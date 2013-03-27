@@ -28,10 +28,10 @@ public class SMBCAScenario extends AbstractSMBScenario {
 	public SMBStorageDir createStorageDir(ConsoleManager cm, AHost local_host) {
 		// check that its win8
 		if (!remote_host.isWin8OrLater()) {
-			cm.println(EPrintType.XSKIP_OPERATION, getName(), "Scenario can only be run against a Windows 2012+ Server");
+			cm.println(EPrintType.XSKIP_OPERATION, getClass(), "Scenario can only be run against a Windows 2012+ Server");
 			return null;
 		} else if (!remote_host.isWindowsServer()) {
-			cm.println(EPrintType.XSKIP_OPERATION, getName(), "Scenario can only be run against a Windows Server, not a Windows client. "+remote_host.getOSNameLong()+" "+remote_host);
+			cm.println(EPrintType.XSKIP_OPERATION, getClass(), "Scenario can only be run against a Windows Server, not a Windows client. "+remote_host.getOSNameLong()+" "+remote_host);
 			return null;
 		} else {
 			return super.createStorageDir(cm, local_host);

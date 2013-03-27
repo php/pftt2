@@ -1,6 +1,7 @@
 package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.model.ActiveTestPack;
 import com.mostc.pftt.results.ConsoleManager;
 
 /** 
@@ -58,9 +59,10 @@ public abstract class AbstractFileSystemScenario extends AbstractSerialScenario 
 		 * @see #disposeForce
 		 * @param cm
 		 * @param host
+		 * @param active_test_pack
 		 * @return
 		 */
-		boolean disposeIfEmpty(ConsoleManager cm, AHost local_host);
+		boolean disposeIfEmpty(ConsoleManager cm, AHost local_host, ActiveTestPack active_test_pack);
 		
 		/** disposes of the directory, deleting all files, shares, namespaces, etc... that
 		 * back this StorageDirectory
@@ -68,9 +70,10 @@ public abstract class AbstractFileSystemScenario extends AbstractSerialScenario 
 		 * @see #disposeIfEmpty
 		 * @param cm
 		 * @param local_host
+		 * @param active_test_pack 
 		 * @return
 		 */
-		boolean disposeForce(ConsoleManager cm, AHost local_host);
+		boolean disposeForce(ConsoleManager cm, AHost local_host, ActiveTestPack active_test_pack);
 	} // end public interface ITestPackStorageDir
 	
 	public abstract ITestPackStorageDir createStorageDir(ConsoleManager cm, AHost host);

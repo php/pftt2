@@ -176,6 +176,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			cm.println(EPrintType.SKIP_OPERATION, getClass(), "Scenario Set not implemented: "+scenario_set.getNameWithVersionInfo());
 			return;
 		} else if (!scenario_set.isSupported(cm, runner_host, build)) {
+			// ex: PHP NTS build can't be run with Apache
 			cm.println(EPrintType.SKIP_OPERATION, getClass(), "Scenario Set not supported: "+scenario_set+" host: "+runner_host+" build: "+build);
 			return;
 		}
@@ -242,7 +243,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 				cm.println(EPrintType.IN_PROGRESS, getClass(), "deleting/cleaning-up active test-pack: "+this.active_test_pack);
 				
 				// cleanup, delete test-pack, disconnect storage, etc...
-				storage_dir.disposeForce(cm, runner_host); 
+				storage_dir.disposeForce(cm, runner_host, this.active_test_pack); 
 			}
 			//
 		} finally {
@@ -461,9 +462,10 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			c = threads.size();
 			if (c==1) {
 				TestPackThread<T> t = threads.peek();
-				if(t.jobs.isEmpty()) {
-					t.stopThisThread();
-					t.interrupt();
+				if(t.jobs!=null&&t.jobs.isEmpty()) {
+					// TODO don't do this if being debugged
+					// TODO temp t.stopThisThread();
+					// TODO temp t.interrupt();
 				}
 			}
 			Thread.sleep(c>3?1000:50);

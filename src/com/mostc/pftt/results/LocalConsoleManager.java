@@ -25,6 +25,10 @@ public class LocalConsoleManager implements ConsoleManager {
 	protected PhpResultPackWriter w; // TODO
 	protected List<String> debug_list, run_test_times_list, run_group_times_list, skip_list;
 		
+	public LocalConsoleManager() {
+		this(null, null, false, false, false, false, true, false, true, false, true, false, 1, true, 1, 1, 1, null, null, null, null, false, 0, 0, false, 0);
+	}
+	
 	public LocalConsoleManager(String source_pack, PhpDebugPack debug_pack, boolean overwrite, boolean debug_all, boolean results_only, boolean show_gui, boolean disable_debug_prompt, boolean dont_cleanup_test_pack, boolean phpt_not_in_place, boolean pftt_debug, boolean no_result_file_for_pass_xskip_skip, boolean randomize_order, int run_test_times_all, boolean thread_safety, int run_test_times_list_times, int run_group_times, int run_group_times_list_times, List<String> debug_list, List<String> run_test_times_list, List<String> run_group_times_list, List<String> skip_list, boolean skip_smoke_tests, int max_test_read_count, int thread_count, boolean restart_each_test_all, int delay_between_ms) {
 		this.source_pack = source_pack;
 		this.debug_pack = debug_pack;
@@ -174,6 +178,12 @@ public class LocalConsoleManager implements ConsoleManager {
 		String ex_str = ErrorUtil.toString(ex);
 		if (!results_only) {
 			System.err.println(ex_str);
+			if (a!=null)
+				System.err.println(a);
+			if (b!=null)
+				System.err.println(b);
+			if (c!=null)
+				System.err.println(c);
 		}
 		if (w!=null) {
 			synchronized (w.global_exception_writer) {

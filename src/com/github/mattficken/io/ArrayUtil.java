@@ -7,6 +7,34 @@ import java.util.List;
 
 public class ArrayUtil {
 	
+	public static <E extends Object> E[] toArray(List<E> unknown_options) {
+		return unknown_options.toArray(newArray(unknown_options, unknown_options.size()));
+	}
+	
+	public static <E extends Object> E[] rshift(E[] array, int off) {
+		return rshift(array, off, array.length-off);
+	}
+	
+	public static <E extends Object> E[] rshift(E[] array, int off, int len) {
+		E[] out = newArray(array, len);
+		
+		System.arraycopy(array, off, out, 0, len);
+		
+		return out;
+	}
+	
+	public static <E extends Object> E[] newArray(E[] sample, int size) throws NullPointerException, ArrayIndexOutOfBoundsException {
+		return newArray(sample[0], size);
+	}
+	
+	public static <E extends Object> E[] newArray(List<E> sample, int size) throws NullPointerException, ArrayIndexOutOfBoundsException {
+		return newArray(sample.get(0), size);
+	}
+	
+	public static <E extends Object> E[] newArray(E sample, int size) throws NullPointerException {
+		return (E[]) Array.newInstance(sample.getClass(), size);
+	}
+	
 	public static <E extends Object> E[] mergeNoDuplicates(Class<E> clazz, E[] ... lists) {
 		if (lists==null)
 			return null;

@@ -66,13 +66,13 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 	public DeduplicatedSMBStorageDir createStorageDir(ConsoleManager cm, AHost local_host) {
 		// check that its win8
 		if (!remote_host.isWin8OrLater()) {
-			cm.println(EPrintType.XSKIP_OPERATION, getName(), "Scenario can only be run against a Windows 2012+ Server");
+			cm.println(EPrintType.XSKIP_OPERATION, getClass(), "Scenario can only be run against a Windows 2012+ Server");
 			return null;
 		} else if (!remote_host.isWindowsServer()) {
-			cm.println(EPrintType.XSKIP_OPERATION, getName(), "Scenario can only be run against a Windows Server, not a Windows client. "+remote_host.getOSNameLong()+" "+remote_host);
+			cm.println(EPrintType.XSKIP_OPERATION, getClass(), "Scenario can only be run against a Windows Server, not a Windows client. "+remote_host.getOSNameLong()+" "+remote_host);
 			return null;
 		} else if (volume.equals("C:")||remote_host.getSystemDrive().equalsIgnoreCase(volume)) {
-			cm.println(EPrintType.XSKIP_OPERATION, getName(), "Can not use Deduplication on a Windows System Drive (ex: C:\\)");
+			cm.println(EPrintType.XSKIP_OPERATION, getClass(), "Can not use Deduplication on a Windows System Drive (ex: C:\\)");
 			return null;
 		}
 		
@@ -81,7 +81,7 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 			DeduplicatedSMBStorageDir dir = (DeduplicatedSMBStorageDir) super.createStorageDir(cm, local_host);
 			if (dir!=null) {
 				
-				cm.println(EPrintType.COMPLETED_OPERATION, getName(), "Deduplication enabled for Share: unc="+dir.unc_path+" local="+dir.local_path+" url="+dir.url_path);
+				cm.println(EPrintType.COMPLETED_OPERATION, getClass(), "Deduplication enabled for Share: unc="+dir.unc_path+" local="+dir.local_path+" url="+dir.url_path);
 				
 				return dir;
 			}
@@ -104,7 +104,7 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 		public boolean notifyTestPackInstalled(ConsoleManager cm, AHost local_host) {
 			try {
 				// run deduplication job (on test-pack) -wait for completion
-				cm.println(EPrintType.IN_PROGRESS, getName(), "Running deduplication job... unc="+unc_path+" local="+local_path+" remote_file="+remote_path+" url="+url_path);
+				cm.println(EPrintType.IN_PROGRESS, getClass(), "Running deduplication job... unc="+unc_path+" local="+local_path+" remote_file="+remote_path+" url="+url_path);
 				
 				final TempFileExecOutput eo = remote_host.powershell(getClass(), cm, "Start-Dedupjob -Volume "+volume+" -Type Optimization -Wait", AHost.FOUR_HOURS);
 				eo.printCommandAndOutput(EPrintType.CLUE, getClass(), cm);
@@ -117,24 +117,24 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 						// pick a few files/folders... doing the share itself won't find a reparsepoint
 						for ( String file : remote_host.list(remote_path) ) {
 							ExecOutput out = remote_host.execOut("FSUTIL REPARSEPOINT QUERY "+remote_path+"\\"+file, AHost.ONE_MINUTE);
-							cm.println(EPrintType.CLUE, getName(), "REPARSEPOINT QUERY: "+remote_path+"\\"+file+"\n"+out.output);
+							cm.println(EPrintType.CLUE, getClass(), "REPARSEPOINT QUERY: "+remote_path+"\\"+file+"\n"+out.output);
 							
 							if (count++>3)
 								break;
 						}
 					} catch ( Exception ex ) {
-						cm.addGlobalException(EPrintType.CLUE, getName(), ex, "reparsepoint query exception. ignoring, continuing...");
+						cm.addGlobalException(EPrintType.CLUE, getClass(), "notifyTestPackInstalled", ex, "reparsepoint query exception. ignoring, continuing...");
 					}
 					//
 					//
 					
-					cm.println(EPrintType.COMPLETED_OPERATION, getName(), "Deduplication completed successfully. unc="+unc_path+" local="+local_path+" remote_file="+remote_path+" url="+url_path);
+					cm.println(EPrintType.COMPLETED_OPERATION, getClass(), "Deduplication completed successfully. unc="+unc_path+" local="+local_path+" remote_file="+remote_path+" url="+url_path);
 					return true;
 				} else {
-					cm.println(EPrintType.OPERATION_FAILED_CONTINUING, getName(), "Deduplication failed");
+					cm.println(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "Deduplication failed");
 				}
 			} catch ( Exception ex ) {
-				cm.addGlobalException(EPrintType.CANT_CONTINUE, getName(), ex, "Deduplication failed", remote_host, local_host, volume);
+				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "notifyTestPackInstalled", ex, "Deduplication failed", remote_host, local_host, volume);
 			}
 			return false;
 		}
@@ -161,18 +161,18 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 		// create PowerShell script to install and enable deduplication
 		try {
 			// 
-			cm.println(EPrintType.IN_PROGRESS, getName(), "Starting to Install Deduplication on: "+remote_host);
+			cm.println(EPrintType.IN_PROGRESS, getClass(), "Starting to Install Deduplication on: "+remote_host);
 			TempFileExecOutput teo = remote_host.powershell(getClass(), cm, ps_sb, AHost.ONE_MINUTE * 10);
 			teo.printCommandAndOutput(EPrintType.CLUE, getClass(), cm);
 			if (teo.cleanupIfSuccess(remote_host)) {
 				// don't delete tmp_file if it failed to help user see why
 				
-				cm.println(EPrintType.IN_PROGRESS, getName(), "Deduplication Feature Installed.");
+				cm.println(EPrintType.IN_PROGRESS, getClass(), "Deduplication Feature Installed.");
 				
 				return install_ok = true;
 			}
 		} catch ( Exception ex ) {
-			cm.addGlobalException(EPrintType.CANT_CONTINUE, getName(), ex, "Unable to Install Deduplication feature", remote_host, ps_sb);
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "installDeduplicationFeature", ex, "Unable to Install Deduplication feature", remote_host, ps_sb);
 		}
 		return install_ok = false;
 	} // end protected boolean installDeduplicationFeature

@@ -89,6 +89,8 @@ final class WindowsSnapshotDownloadUtil {
 		def build_url = null, test_pack_url = null, debug_pack_url = null;
 		root.depthFirst().findAll { 
 				if (it.name() == 'a') {
+					if (it.text().contains("x86")) { // TODO ignore x64 for now
+					
 					if (it.text().endsWith(".zip")&&it.text().toLowerCase().contains("-test-")) {
 						test_pack_url = it['@href']
 					} else if (it.text().endsWith(".zip")&&it.text().toLowerCase().contains("-"+build_type.toString().toLowerCase()+"-")&&it.text().toLowerCase().contains("-debug-")) {
@@ -97,6 +99,8 @@ final class WindowsSnapshotDownloadUtil {
 						// ignore
 					} else if (it.text().endsWith(".zip")&&it.text().toLowerCase().contains("-"+build_type.toString().toLowerCase()+"-")) {
 						build_url = it['@href'];
+					}
+					
 					}
 				}
 			} // end findAll

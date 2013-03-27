@@ -150,6 +150,11 @@ public class PhpUnitResultReader extends AbstractPhpUnitRW {
 	} // end protected class StatusListEntry
 	
 	@Override
+	public String getFailureOutput(String test_name) {
+		return ""; // TODO
+	}
+	
+	@Override
 	public String getOSName() {
 		return os_name;
 	}

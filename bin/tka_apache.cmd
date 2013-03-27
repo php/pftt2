@@ -1,0 +1,1 @@
+taskkill /im:httpd.exe /f /t

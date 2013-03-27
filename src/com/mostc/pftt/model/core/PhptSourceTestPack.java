@@ -3,6 +3,7 @@ package com.mostc.pftt.model.core;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -31,14 +32,16 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 	protected String test_pack;
 	protected File test_pack_file;
 	protected AHost host;
-	protected LinkedList<File> non_phpt_files;
-	protected HashMap<String,PhptTestCase> test_cases_by_name;
+	protected final LinkedList<File> non_phpt_files;
+	protected final HashMap<String,PhptTestCase> test_cases_by_name;
+	protected final ArrayList<PhptTestCase> test_cases;
 	
 	public PhptSourceTestPack(String test_pack) {
-		this.test_pack = test_pack;
+		this.test_pack = new File(test_pack).getAbsolutePath();
 		
 		test_cases_by_name = new HashMap<String,PhptTestCase>();
 		non_phpt_files = new LinkedList<File>();
+		test_cases = new ArrayList<PhptTestCase>();
 	}
 	
 	@Override
@@ -92,7 +95,12 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		read(test_cases, names, cm, twriter, build, false);
 	}
 	
-	public void read(List<PhptTestCase> test_cases, List<String> names, ConsoleManager cm, PhpResultPackWriter twriter, PhpBuild build, boolean ignore_missing) throws FileNotFoundException, IOException, Exception {
+	public void read(List<PhptTestCase> _test_cases, List<String> names, ConsoleManager cm, PhpResultPackWriter twriter, PhpBuild build, boolean ignore_missing) throws FileNotFoundException, IOException, Exception {
+		if (test_cases.size()>0) {
+			_test_cases.addAll(test_cases);
+			return;
+		}
+		
 		test_pack_file = new File(test_pack);
 		test_pack = test_pack_file.getAbsolutePath(); // normalize path
 		
@@ -140,6 +148,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 				}
 			});
 		
+		_test_cases.addAll(test_cases);
 		twriter.setTotalCount(test_cases.size());
 	} // end public void read
 
@@ -160,7 +169,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 				if (names!=null) {
 					boolean match = false;
 					for(String name: names) {
-						if (f.getName().toLowerCase().contains(name)) {
+						if (f.getPath().toLowerCase().contains(name)) {
 							match = true;
 							break;
 						}
@@ -213,7 +222,12 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 						
 					} else {
 						// test refers to a specific test, load it
+						try {
 						test_case = PhptTestCase.load(host, this, false, target_test_name, twriter, redirect_parent);
+						} catch ( Exception ex ) {
+							ex.printStackTrace();
+							continue; // TODO
+						}
 						
 						if (redirect_targets.contains(test_case))
 							// can only have 1 level of redirection

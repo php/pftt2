@@ -150,7 +150,8 @@ public class SSHHost extends RemoteHost {
 	}
 	
 	protected String normalizePath(String path) {
-		return path;
+		// multiple backslashes can cause problems for windows
+		return path.replace("\\\\", "\\");
 	}
 	
 	@Override

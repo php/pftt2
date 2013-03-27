@@ -21,7 +21,8 @@ class SymfonyPhpUnitTestPack extends PhpUnitSourceTestPack {
 	@Override
 	protected boolean openAfterInstall(ConsoleManager cm, AHost host) throws Exception {
 		// 1. do initial install (if not done already)
-		if (!host.exists(getRoot()+"/vendor")) {
+		println ("24 "+getRoot());
+		if (false) { // TODO !host.exists(getRoot()+"/vendor")) {
 			if (host.isWindows()) {
 				// composer needs git
 				host.exec(host.getPfttDir()+"\\cache\\dep\\git.exe /VERYSILENT /SP-", AHost.ONE_MINUTE*4)
@@ -83,13 +84,13 @@ class SymfonyPhpUnitTestPack extends PhpUnitSourceTestPack {
 	
 	@Override
 	public void prepareINI(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini) {
-		if (scenario_set.contains(OptimizerPlusScenario.class)) {
-			// when using OptimizerPlusScenario
+		if (scenario_set.contains(OpcacheScenario.class)) {
+			// when using OpcacheScenario
 			//
-			// Doctrine requires classes have annotations like @ORM\Entity. Annotations are
+			// Doctrine(Symfony) requires classes have annotations like @ORM\Entity. Annotations are
 			// comments. Comments have to be loaded and saved or doctrine won't see those annotations.
-			ini.putSingle("zend_optimizerplus.save_comments", 1);
-			ini.putSingle("zend_optimizerplus.load_comments", 1);
+			ini.putSingle("opcache.save_comments", 1);
+			ini.putSingle("opcache.load_comments", 1);
 		}
 	}
 	

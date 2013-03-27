@@ -114,7 +114,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		// TODO must be done for -auto - should be more efficient
 		host.mkdirs(test_dir);
 	
-		base_file_name = AHost.basename(test_case.getBaseName()); 
+		base_file_name = createBaseName(); 
 		
 		//
 		if (test_case.containsSection(EPhptSection.SKIPIF)) {
@@ -139,6 +139,10 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		
 		return true;
 	} // end boolean prepare
+	
+	protected String createBaseName() {
+		return AHost.basename(test_case.getBaseName());
+	}
 	
 	/** executes SKIPIF section and returns output
 	 * 

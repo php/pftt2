@@ -73,6 +73,14 @@ public final class StringUtil2 {
 		
 	} // end public static class LengthLimitStringWriter
 	
+	public static boolean hasHttp(String url) {
+		return url.startsWith("http://") || url.startsWith("https://");
+	}
+	
+	public static String ensureHttp(String url) {
+		return hasHttp(url) ? url : "http://" + url;
+	}
+	
 	private StringUtil2() {}
 	
 } // end public final class StringUtil2

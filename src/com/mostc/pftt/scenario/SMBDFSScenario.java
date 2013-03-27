@@ -5,6 +5,7 @@ import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.RemoteHost;
 import com.mostc.pftt.host.TempFileExecOutput;
+import com.mostc.pftt.model.ActiveTestPack;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
@@ -71,10 +72,10 @@ public class SMBDFSScenario extends AbstractSMBScenario {
 	@Override
 	public DFSSMBStorageDir createStorageDir(ConsoleManager cm, AHost local_host) {
 		if (!remote_host.isWindows()) {
-			cm.println(EPrintType.XSKIP_OPERATION, getName(), "Scenario can only be run against a Windows Server: "+remote_host);
+			cm.println(EPrintType.XSKIP_OPERATION, getClass(), "Scenario can only be run against a Windows Server: "+remote_host);
 			return null;
 		} else if (!remote_host.isWindowsServer()) {
-			cm.println(EPrintType.XSKIP_OPERATION, getName(), "Scenario can only be run against a Windows Server, not a Windows client. "+remote_host.getOSNameLong()+" "+remote_host);
+			cm.println(EPrintType.XSKIP_OPERATION, getClass(), "Scenario can only be run against a Windows Server, not a Windows client. "+remote_host.getOSNameLong()+" "+remote_host);
 			return null;
 		} else if (installDFSFeature(cm, local_host)) {
 			DFSSMBStorageDir dir = (DFSSMBStorageDir) super.createStorageDir(cm, local_host);
@@ -110,7 +111,7 @@ public class SMBDFSScenario extends AbstractSMBScenario {
 		protected String url_namespace_path, url_target;
 		
 		@Override
-		public boolean disposeForce(ConsoleManager cm, AHost local_host) {
+		public boolean disposeForce(ConsoleManager cm, AHost local_host, ActiveTestPack active_test_pack) {
 			// its more graceful to disconnect first, then delete the DFS namespace/share/target
 			disconnect(this, cm, local_host);
 			
@@ -160,7 +161,7 @@ public class SMBDFSScenario extends AbstractSMBScenario {
 		DFSSMBStorageDir dfs_dir = (DFSSMBStorageDir) dir;
 		
 		// make a unique name for the share and namespace
-		for ( int i=1 ; i < 65535 ; i++ ) {
+		for ( int i=300 ; i < 65535 ; i++ ) {
 			dir.remote_path = base_file_path + "-" + i;
 			dir.share_name = base_share_name + "-" + i;
 			dfs_dir.remote_namespace = base_remote_namespace + "-" + i;
@@ -237,11 +238,11 @@ public class SMBDFSScenario extends AbstractSMBScenario {
 			teo.printCommandAndOutput(EPrintType.CLUE, getClass(), cm);
 			if (teo.cleanupIfSuccess(remote_host)) {
 				
-				cm.println(EPrintType.COMPLETED_OPERATION, getName(), "DFS Feature Installed");
+				cm.println(EPrintType.COMPLETED_OPERATION, getClass(), "DFS Feature Installed");
 					
 				return install_ok = true;
 			} else {
-				cm.println(EPrintType.OPERATION_FAILED_CONTINUING, getName(), "can't exec powershell script: "+ps_sb);
+				cm.println(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "can't exec powershell script: "+ps_sb);
 			}
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "installDFSFeature", ex, "", remote_host, ps_sb);

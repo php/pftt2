@@ -40,7 +40,6 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 			Runtime.getRuntime().addShutdownHook(new Thread() {
 				@Override
 				public void run() {
-					System.out.println("PFTT: "+AbstractManagedProcessesWebServerManager.this.getName()+": terminating web server instances...");
 					// Windows BN: may leave `php.exe -S` or Apache running if they aren't terminated here
 					// NOTE: if you click stop in Eclipse, you won't get here
 					// on Windows, that means that `php.exe -S` instances will still be running
@@ -195,6 +194,15 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 			this.cmd = cmd;
 			this.hostname = hostname;
 			this.port = port;
+		}
+		
+		@Override
+		public void notifyCrash(String output, int exit_code) {
+			if (output==null)
+				output = "PFTT: web server started with: "+cmd;
+			else
+				output = "PFTT: web server started with: "+cmd + "\n" + output;
+			super.notifyCrash(output, exit_code);
 		}
 		
 		@Override

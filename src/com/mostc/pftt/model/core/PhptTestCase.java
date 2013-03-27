@@ -735,13 +735,13 @@ public class PhptTestCase extends TestCase {
 		PHPOutput output = build.eval(host, code).printHasFatalError(Host.toContext(getClass(), "readRedirectTestNames"), cm);
 		
 		ArrayList<String> test_names = new ArrayList<String>(2);
-		
 		if (!output.hasFatalError()) {
-			String base_dir = AHost.dirname(output.temp_file);
+			String wbase_dir = AHost.toUnixPath(AHost.dirname(output.temp_file));
+			String ubase_dir = AHost.toWindowsPath(AHost.dirname(output.temp_file));
 			for (String line : output.getLines()) {
 				// code may use __DIR__ to get its current directory => strip off current directory(/tmp, etc...)
-				if (line.startsWith(base_dir)) {
-					line = line.substring(base_dir.length());
+				if (line.startsWith(wbase_dir)||line.startsWith(ubase_dir)) {
+					line = line.substring(wbase_dir.length());
 					if (line.startsWith("/")||line.startsWith("\\"))
 						line = line.substring(1);
 				}
@@ -786,6 +786,8 @@ public class PhptTestCase extends TestCase {
 				PHPOutput output = build.eval(host, code).printHasFatalError(Host.toContext(getClass(), "getENV"), cm);
 				
 				lines = output.hasFatalError() ? null : output.getLines();
+				
+				output.cleanup(host);
 			} else {
 				// is plain text (php won't even compile this, see ext/standard/tests/general_functions/parse_ini_basic.phpt)
 				lines = StringUtil.splitLines(env_str);
@@ -834,6 +836,7 @@ public class PhptTestCase extends TestCase {
 				for ( int i=0 ; i < lines.length ; i+=2) {
 					env.put(lines[0], lines[1]);
 				}
+				output.cleanup(host);
 			}
 		}
 		

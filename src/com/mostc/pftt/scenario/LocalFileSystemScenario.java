@@ -1,6 +1,9 @@
 package com.mostc.pftt.scenario;
 
+import java.io.IOException;
+
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.model.ActiveTestPack;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
@@ -26,12 +29,17 @@ public class LocalFileSystemScenario extends AbstractFileSystemScenario {
 				return host.getPhpSdkDir();
 			}
 			@Override
-			public boolean disposeIfEmpty(ConsoleManager cm, AHost local_host) {
-				return true; // don't actually delete php sdk
+			public boolean disposeIfEmpty(ConsoleManager cm, AHost local_host, ActiveTestPack active_test_pack) {
+				try {
+					return active_test_pack==null?false:local_host.deleteElevated(active_test_pack.getStorageDirectory());
+				} catch (Exception ex) {
+					cm.addGlobalException(EPrintType.CLUE, LocalFileSystemScenario.class, "disposeIfEmpty", ex, "can't delete active test pack");
+					return false;
+				}
 			}
 			@Override
-			public boolean disposeForce(ConsoleManager cm, AHost local_host) {
-				return true; // don't actually delete php sdk
+			public boolean disposeForce(ConsoleManager cm, AHost local_host, ActiveTestPack active_test_pack) {
+				return active_test_pack==null?false:local_host.deleteIfExistsElevated(active_test_pack.getStorageDirectory());
 			}
 		};
 	

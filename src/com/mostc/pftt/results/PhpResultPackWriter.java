@@ -12,14 +12,16 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
-import com.mostc.pftt.model.SourceTestPack;
 import com.mostc.pftt.model.TestCase;
 import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
 import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpBuildInfo;
+import com.mostc.pftt.model.core.PhptSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
+import com.mostc.pftt.model.ui.EUITestStatus;
+import com.mostc.pftt.model.ui.UITestPack;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.ErrorUtil;
 
@@ -33,6 +35,7 @@ import com.mostc.pftt.util.ErrorUtil;
 public class PhpResultPackWriter extends PhpResultPack implements ITestResultReceiver {
 	protected File telem_dir;
 	protected final LocalHost local_host;
+	protected final HashMap<AHost,HashMap<ScenarioSet,UITestWriter>> ui_test_writer_map;
 	protected final HashMap<AHost,HashMap<ScenarioSet,PhptResultWriter>> phpt_writer_map;
 	protected final HashMap<AHost,HashMap<ScenarioSet,PhpUnitResultWriter>> phpunit_writer_map;
 	protected PrintWriter global_exception_writer;
@@ -45,9 +48,14 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	protected final String test_pack_version;
 	protected final Thread writer_thread;
 	
-	public PhpResultPackWriter(LocalHost local_host, LocalConsoleManager cm, File telem_base_dir, PhpBuild build, SourceTestPack<?,?> src_test_pack) throws Exception {
+	public PhpResultPackWriter(LocalHost local_host, LocalConsoleManager cm, File telem_base_dir, PhpBuild build) throws Exception {
+		this(local_host, cm, telem_base_dir, build, null);
+	}
+	
+	public PhpResultPackWriter(LocalHost local_host, LocalConsoleManager cm, File telem_base_dir, PhpBuild build, PhptSourceTestPack src_test_pack) throws Exception {
 		super(local_host);
 		
+		ui_test_writer_map = new HashMap<AHost,HashMap<ScenarioSet,UITestWriter>>(16);
 		phpt_writer_map = new HashMap<AHost,HashMap<ScenarioSet,PhptResultWriter>>(16);
 		phpunit_writer_map = new HashMap<AHost,HashMap<ScenarioSet,PhpUnitResultWriter>>(16);
 		
@@ -55,10 +63,10 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		
 		build_info = build.getBuildInfo(cm, host);
 		{
-			EBuildBranch tpb = src_test_pack.getTestPackBranch();
+			EBuildBranch tpb = src_test_pack==null?null:src_test_pack.getTestPackBranch();
 			test_pack_branch = tpb == null ? build_info.getBuildBranch() : tpb; // fallback
 		}
-		test_pack_version = src_test_pack.getTestPackVersionRevision();
+		test_pack_version = src_test_pack==null?build_info.getVersionRevision():src_test_pack.getTestPackVersionRevision();
 		
 		this.local_host = local_host;
 		this.cm = cm;
@@ -115,6 +123,41 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		
 	} // end protected abstract class ResultQueueEntry 
 	
+	protected class UIResultQueueEntry extends ResultQueueEntry {
+		protected final String test_name, comment, verified_html, test_pack_name_and_version;
+		protected final EUITestStatus status;
+
+		protected UIResultQueueEntry(AHost this_host, ScenarioSet this_scenario_set, String test_name, String comment, EUITestStatus status, String verified_html, String test_pack_name_and_version) {
+			super(this_host, this_scenario_set);
+			this.test_name = test_name;
+			this.comment = comment;
+			this.status = status;
+			this.verified_html = verified_html;
+			this.test_pack_name_and_version = test_pack_name_and_version;
+		}
+
+		@Override
+		public void handle() throws IllegalArgumentException, IllegalStateException, IOException {
+			HashMap<ScenarioSet,UITestWriter> smap = ui_test_writer_map.get(this_host);
+			UITestWriter w;
+			if (smap==null) {
+				smap = new HashMap<ScenarioSet,UITestWriter>();
+				w = new UITestWriter(this_host, ui_test_telem_dir(this_host, this_scenario_set), build_info, this_scenario_set.getNameWithVersionInfo(), test_pack_name_and_version);
+				ui_test_writer_map.put(this_host, smap);
+				smap.put(this_scenario_set, w);
+			} else {
+				w = smap.get(this_scenario_set);
+				if (w==null) {
+					w = new UITestWriter(this_host, ui_test_telem_dir(this_host, this_scenario_set), build_info, this_scenario_set.getNameWithVersionInfo(), test_pack_name_and_version);
+					smap.put(this_scenario_set, w);
+				}
+			}
+			
+			w.addResult(test_name, comment, status, verified_html);
+		}
+		
+	} // end protected class UIResultQueueEntry
+	
 	protected class PhptResultQueueEntry extends ResultQueueEntry {
 		protected final PhptTestResult this_result;
 		
@@ -140,7 +183,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 				}
 			}
 			
-			w.handleResult(cm, this_host, this_scenario_set, this_result);
+			w.writeResult(cm, this_host, this_scenario_set, this_result);
 			
 			// show on console
 			// TODO
@@ -149,7 +192,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 			if (cm!=null) {
 				// show in tui/gui (if open)
 				// TODO cm.showResult(host, getTotalCount(), completed++, this_result);
-				cm.showResult(host, 0, completed++, this_result);
+				cm.showResult(host, 0, 0, this_result);
 			}
 		}
 		
@@ -197,6 +240,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 			// show on console
 			// TODO
 			System.out.println(this_result.status+" "+this_result.test_case);
+
 		}
 		
 	} // end protected class PhpUnitResultQueueEntry
@@ -209,8 +253,20 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		return cm;
 	}
 	
+	public void addResult(AHost this_host, ScenarioSet this_scenario_set, String test_name, String comment, EUITestStatus status, String verified_html, UITestPack test_pack) {
+		results.add(new UIResultQueueEntry(this_host, this_scenario_set, test_name, comment, status, verified_html, test_pack.getNameAndVersionInfo()));
+	}
+	
 	public void addTestException(AHost this_host, ScenarioSet this_scenario_set, PhptTestCase test_file, Throwable ex, Object a) {
 		addTestException(this_host, this_scenario_set, test_file, ex, a, null);
+	}
+	@Override
+	public void addTestException(AHost this_host, ScenarioSet this_scenario_set, TestCase test_file, Throwable ex, Object a) {
+		addTestException(this_host, this_scenario_set, test_file, ex, a, null);
+	}
+	@Override
+	public void addTestException(AHost this_host, ScenarioSet this_scenario_set, TestCase test_case, Throwable ex, Object a, Object b) {
+		ex.printStackTrace(); // XXX provide to ConsoleManager
 	}
 	public void addTestException(AHost this_host, ScenarioSet this_scenario_set, PhptTestCase test_case, Throwable ex, Object a, Object b) {
 		String ex_str = ErrorUtil.toString(ex);
@@ -226,11 +282,15 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		// count exceptions as a result (the worst kind of failure, a pftt failure)
 		addResult(this_host, this_scenario_set, new PhptTestResult(host, EPhptTestStatus.TEST_EXCEPTION, test_case, ex_str, null, null, null, null, null, null, null, null, null, null, null));
 	}
-	int completed = 0;
+	
 	@Override
 	public void addResult(AHost this_host, ScenarioSet this_scenario_set, PhptTestResult result) {
 		// enqueue result to be handled by another thread to avoid delaying every phpt thread
 		results.add(new PhptResultQueueEntry(this_host, this_scenario_set, result));
+	}
+	
+	protected File ui_test_telem_dir(AHost this_host, ScenarioSet this_scenario_set) {
+		return new File(host.joinIntoOnePath(telem_dir.getAbsolutePath(), this_host.getName(), "UI-Test", this_scenario_set.getNameWithVersionInfo()));
 	}
 	
 	protected File phpunit_telem_dir(AHost this_host, ScenarioSet this_scenario_set, PhpUnitSourceTestPack test_pack) {
@@ -248,18 +308,6 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 			global_exception_writer.println(text);
 			global_exception_writer.flush();
 		}
-	}
-
-	@Override
-	public void addTestException(AHost this_host, ScenarioSet this_scenario_set, TestCase test_file, Throwable ex, Object a) {
-		// TODO Auto-generated method stub
-		ex.printStackTrace();
-	}
-
-	@Override
-	public void addTestException(AHost this_host, ScenarioSet this_scenario_set, TestCase test_case, Throwable ex, Object a, Object b) {
-		// TODO Auto-generated method stub
-		
 	}
 
 	@Override
@@ -284,6 +332,25 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		} catch ( Exception ex ) {
 			ex.printStackTrace();
 		}
+		
+		for ( HashMap<ScenarioSet,UITestWriter> map : ui_test_writer_map.values() ) {
+			for ( UITestWriter w : map.values() ) {
+				try {
+					w.close();
+				} catch ( Exception ex ) {
+					ex.printStackTrace();
+				}
+				
+				try {
+					UITestReportGen report = new UITestReportGen(w, w);
+					FileWriter fw = new FileWriter(new File(w.dir+"/ui_test_report.html"));
+					fw.write(report.getHTMLString(cm, false));
+					fw.close();
+				} catch ( Exception ex ) {
+					ex.printStackTrace();
+				}
+			}
+		} // end for
 		
 		for ( HashMap<ScenarioSet,PhpUnitResultWriter> map : phpunit_writer_map.values() ) {
 			for ( PhpUnitResultWriter w : map.values() ) {

@@ -1,6 +1,8 @@
 package com.github.mattficken.io;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -16,6 +18,38 @@ import com.mostc.pftt.util.apache.regexp.REProgram;
 
 public final class StringUtil {
 	public static final String EMPTY = "";
+	
+	private static Random r = new Random();
+	public static String randomLettersStr(int min, int max) {
+		final int len = r.nextInt(max-min)+min;
+		char[] chars = new char[len];
+		for ( int i=0 ; i < len ; i++ ) {
+			chars[i] = (char)( r.nextInt(127-65)+65 );
+		}
+		return new String(chars, 0, len);
+	}
+	
+	public static String toTitle(String str) {
+		return str.length() > 1 ? str.substring(0, 1).toUpperCase()+str.substring(1).toLowerCase() : str;
+	}
+	
+	public static String[] splitOnUpperCase(String input) {
+		LinkedList<String> out = new LinkedList<String>();
+		String a = "";
+		char c;
+		for ( int i=0 ; i < input.length() ; i++ ) {
+			c = input.charAt(i);
+			if (Character.isUpperCase(c)) {
+				if (a.length()>0)
+					out.add(a);
+				a = "";
+			}
+			a += c;
+		}
+		if (a.length()>0)
+			out.add(a);
+		return (String[]) out.toArray(new String[out.size()]);
+	}
 	
 	public static String chomp(String in) {
 		if (in.endsWith("\r\n"))

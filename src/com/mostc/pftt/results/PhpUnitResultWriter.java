@@ -54,7 +54,7 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 	protected PhpIni ini;
 	private boolean is_first_result = true;
 	private String last_test_suite_name;
-	private int test_count, percent_total, pass, failure, error, warning, notice, skip, deprecated, not_implemented, unsupported, test_exception, crash, bork, xskip;
+	protected int test_count;
 	
 	public PhpUnitResultWriter(File dir, PhpBuildInfo build_info, AHost host, ScenarioSet scenario_set, PhpUnitSourceTestPack test_pack) throws FileNotFoundException, IOException {
 		this.build_info = build_info;
@@ -126,8 +126,11 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 
 	// @see PHPUnit/Util/Log/JUnit.php#startTestSuite
 	public void writeResult(PhpUnitTestResult result) throws IllegalArgumentException, IllegalStateException, IOException {
-		if (result.ini!=null && (this.ini==null||!this.ini.equals(result.ini)))
+		if (closed)
+			throw new IllegalStateException("can't write result to this PhpUnitResultWriter. it is closed.");
+		else if (result.ini!=null && (this.ini==null||!this.ini.equals(result.ini)))
 			this.ini = result.ini;
+		test_count++;
 		
 		final String test_name = result.getName();
 		status_list_map.get(result.status).write(test_name, result);
@@ -157,54 +160,6 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 		
 		// write result itself
 		result.serial(serial);
-		
-		// count results
-		test_count++;
-		switch(result.status) {
-		case PASS:
-			pass++;
-			percent_total++;
-			break;
-		case FAILURE:
-			failure++;
-			percent_total++;
-			break;
-		case ERROR:
-			error++;
-			percent_total++;
-			break;
-		case WARNING:
-			warning++;
-			break;
-		case NOTICE:
-			notice++;
-			break;
-		case SKIP:
-			skip++;
-			break;
-		case DEPRECATED:
-			deprecated++;
-			break;
-		case NOT_IMPLEMENTED:
-			not_implemented++;
-			break;
-		case UNSUPPORTED:
-			unsupported++;
-			break;
-		case TEST_EXCEPTION:
-			test_exception++;
-			break;
-		case CRASH:
-			crash++;
-			percent_total++;
-			break;
-		case BORK:
-			bork++;
-			break;
-		case XSKIP:
-			xskip++;
-			break;
-		}
 	} // end public void writeResult
 	
 	private void writeTestSuiteStart(String test_suite_name) throws IllegalArgumentException, IllegalStateException, IOException {
@@ -251,24 +206,24 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 		serial.attribute(null, "test_pack_name_and_version", test_pack_name_and_version);
 		serial.attribute(null, "os_name", host.getOSNameLong());
 		serial.attribute(null, "test_count", Integer.toString(test_count));
-		serial.attribute(null, "percent_total", Integer.toString(percent_total));
-		serial.attribute(null, "pass", Integer.toString(pass));
-		serial.attribute(null, "pass_percent", Float.toString( 100.0f * (((float)pass)/((float)percent_total))));
-		serial.attribute(null, "failure", Integer.toString(failure));
-		serial.attribute(null, "failure_percent", Float.toString( 100.0f * (((float)failure)/((float)percent_total))));
-		serial.attribute(null, "error", Integer.toString(error));
-		serial.attribute(null, "error_percent", Float.toString( 100.0f * (((float)error)/((float)percent_total))));
-		serial.attribute(null, "crash", Integer.toString(crash));
-		serial.attribute(null, "crash_percent", Float.toString( 100.0f * (((float)crash)/((float)percent_total))));
-		serial.attribute(null, "skip", Integer.toString(skip));
-		serial.attribute(null, "xskip", Integer.toString(xskip));
-		serial.attribute(null, "warning", Integer.toString(warning));
-		serial.attribute(null, "notice", Integer.toString(notice));
-		serial.attribute(null, "deprecated", Integer.toString(deprecated));
-		serial.attribute(null, "not_implemented", Integer.toString(not_implemented));
-		serial.attribute(null, "unsupported", Integer.toString(unsupported));
-		serial.attribute(null, "test_exception", Integer.toString(test_exception));
-		serial.attribute(null, "bork", Integer.toString(bork));
+		serial.attribute(null, "percent_total", Integer.toString( getTestCount() ));
+		serial.attribute(null, "pass", Integer.toString(count(EPhpUnitTestStatus.PASS)));
+		serial.attribute(null, "pass_percent", Float.toString( passRate() ));
+		serial.attribute(null, "failure", Integer.toString(count(EPhpUnitTestStatus.FAILURE)));
+		serial.attribute(null, "failure_percent", Float.toString( 100.0f * (((float)count(EPhpUnitTestStatus.FAILURE))/((float)getTestCount()))));
+		serial.attribute(null, "error", Integer.toString(count(EPhpUnitTestStatus.ERROR)));
+		serial.attribute(null, "error_percent", Float.toString( 100.0f * (((float)count(EPhpUnitTestStatus.ERROR))/((float)getTestCount()))));
+		serial.attribute(null, "crash", Integer.toString(count(EPhpUnitTestStatus.CRASH)));
+		serial.attribute(null, "crash_percent", Float.toString( 100.0f * (((float)count(EPhpUnitTestStatus.CRASH))/((float)getTestCount()))));
+		serial.attribute(null, "skip", Integer.toString(count(EPhpUnitTestStatus.SKIP)));
+		serial.attribute(null, "xskip", Integer.toString(count(EPhpUnitTestStatus.XSKIP)));
+		serial.attribute(null, "warning", Integer.toString(count(EPhpUnitTestStatus.WARNING)));
+		serial.attribute(null, "notice", Integer.toString(count(EPhpUnitTestStatus.NOTICE)));
+		serial.attribute(null, "deprecated", Integer.toString(count(EPhpUnitTestStatus.DEPRECATED)));
+		serial.attribute(null, "not_implemented", Integer.toString(count(EPhpUnitTestStatus.NOT_IMPLEMENTED)));
+		serial.attribute(null, "unsupported", Integer.toString(count(EPhpUnitTestStatus.UNSUPPORTED)));
+		serial.attribute(null, "test_exception", Integer.toString(count(EPhpUnitTestStatus.TEST_EXCEPTION)));
+		serial.attribute(null, "bork", Integer.toString(count(EPhpUnitTestStatus.BORK)));
 		
 		if (ini!=null) {
 			serial.startTag("pftt", "ini");
@@ -277,7 +232,7 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 		}
 		
 		serial.endTag("pftt", "tally");
-	}
+	} // end private void writeTally
 	
 	@Override
 	public String getTestPackNameAndVersionString() {

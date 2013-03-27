@@ -4,6 +4,10 @@ def scenarios() {
 	new JoomlaScenario()
 }
 
+def getUITestPack() {
+	return null; // TODO
+}
+
 /** Joomla-Platform != Joomla-CMS
  *
  * @see https://github.com/joomla/joomla-platform
@@ -49,7 +53,7 @@ abstract class SymfonyPhpUnitTestPack extends PhpUnitSourceTestPack {
 		ini.putSingle("zend_optimizerplus.load_comments", 0);
 	}
 } // end class SymfonyPhpUnitTestPack
-class JoomlaPlatformPhpUnitTestPack extends SymfonyPhpUnitTestPack {
+class JoomlaPlatformPhpUnitTestPack extends PhpUnitSourceTestPack { //SymfonyPhpUnitTestPack {
 	
 	@Override
 	public String getNameAndVersionString() {
@@ -64,7 +68,8 @@ class JoomlaPlatformPhpUnitTestPack extends SymfonyPhpUnitTestPack {
 	@Override
 	protected boolean openAfterInstall(ConsoleManager cm, AHost host) throws Exception {
 		// 1. dependency on SymfonyPhpUnitTestPack (Joomla-Platform depends on Symfony)
-		super.openAfterInstall(cm, host);
+		//super.openAfterInstall(cm, host);
+		addIncludeDirectory(host.getPfttDir()+"/cache/working/symfony-standard/vendor/symfony/symfony/src");
 		
 		// 2.
 		addPhpUnitDist(getRoot()+"/tests/suites/database", getRoot()+"/tests/bootstrap.php");
@@ -80,7 +85,7 @@ class JoomlaPlatformPhpUnitTestPack extends SymfonyPhpUnitTestPack {
 				// this could be replaced by an include file, but the jimport calls can't be
 				"require_once '"+getRoot()+"/tests/suites/unit/joomla/application/stubs/JApplicationWebInspector.php';"
 			);
-
+		
 		return true;
 	} // end public boolean open
 	

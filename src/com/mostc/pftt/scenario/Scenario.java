@@ -130,7 +130,8 @@ public abstract class Scenario {
 				//  have to be in configuration files (in the 'conf' directory))
 				new MSAccessScenario(), // ignored if MS-Access not installed
 				new SQLite3Scenario(),
-				new NormalPathsScenario()
+				new NormalPathsScenario(),
+				new EnchantScenario()
 			};
 	} // end public static Scenario[] getAllDefaultScenarios
 	
@@ -150,6 +151,8 @@ public abstract class Scenario {
 			scenario_set.add(LOCALFILESYSTEM_SCENARIO);
 		if (!scenario_set.contains(AbstractSAPIScenario.class))
 			scenario_set.add(CLI_SCENARIO);
+		if (!scenario_set.contains(EnchantScenario.class))
+			scenario_set.add(new EnchantScenario());
 	}
 	
 	/** writes Scenario to XML

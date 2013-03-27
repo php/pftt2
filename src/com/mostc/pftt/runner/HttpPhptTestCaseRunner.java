@@ -112,6 +112,8 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			
 			return true;
 		} else if (test_case.isNamed(
+				// XXX this test crashes on apache b/c the stack size is too small (see #setStackSize in ApacheManager)
+				"ext/pcre/tests/bug47662.phpt",
 				// fpassthru() system() and exec() doesn't run on Apache
 				"ext/standard/tests/popen_pclose_basic-win32.phpt", 
 				"sapi/cli/tests/bug61546.phpt",
@@ -256,28 +258,34 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			// with WebServerInstance#getSAPIOutput (will be recorded by PhptTelemetryWriter)
 			web.notifyCrash("PFTT: IOException during test("+section+" SECTION): "+test_case.getName()+"\n"+ex_str, 0);
 			
-			// generate a failure string here too though, so that this TEST or SKIPIF section is marked as a failure
-			StringBuilder sb = new StringBuilder(512);
-			sb.append("PFTT: couldn't connect to web server after One Minute\n");
-			sb.append("PFTT: created new web server only for running this test which did not respond after\n");
-			sb.append("PFTT: another One Minute timeout. This test case breaks the web server!\n");
-			sb.append("PFTT: was trying to run ("+section+" section of): ");
-			sb.append(test_case.getName());
-			sb.append("\n");
-			sb.append("PFTT: these two lists refer only to second web server (created for specifically for only this test)\n");
-			web.getActiveTestListString(sb);
-			web.getAllTestListString(sb);
+			// test will be marked as FAIL or CRASH depending on whether web server process crashed
 			
-			// if TEST, runner will evaluate this as a failure
-			// if SKIPIF, runner will not skip test and will try to run it
-			//
-			// both are the most ideal behavior possible in this situation
-			//
-			// normally this shouldn't happen, so checking a string once in a while is faster than
-			//     setting a flag here and checking that flag for every test in #evalTest
-			return sb.toString();
+			return generateWebServerTimeoutMessage(section);
 		}
 	} // end protected String http_execute
+	
+	protected String generateWebServerTimeoutMessage(EPhptSection section) {
+		// generate a failure string here too though, so that this TEST or SKIPIF section is marked as a failure
+		StringBuilder sb = new StringBuilder(512);
+		sb.append("PFTT: couldn't connect to web server after One Minute\n");
+		sb.append("PFTT: created new web server only for running this test which did not respond after\n");
+		sb.append("PFTT: another One Minute timeout. This test case breaks the web server!\n");
+		sb.append("PFTT: was trying to run ("+section+" section of): ");
+		sb.append(test_case.getName());
+		sb.append("\n");
+		sb.append("PFTT: these two lists refer only to second web server (created for specifically for only this test)\n");
+		web.getActiveTestListString(sb);
+		web.getAllTestListString(sb);
+		
+		// if TEST, runner will evaluate this as a failure
+		// if SKIPIF, runner will not skip test and will try to run it
+		//
+		// both are the most ideal behavior possible in this situation
+		//
+		// normally this shouldn't happen, so checking a string once in a while is faster than
+		//     setting a flag here and checking that flag for every test in #evalTest
+		return sb.toString();
+	} // end protected String generateWebServerTimeoutMessage
 
 	protected String do_http_execute(String path, EPhptSection section, boolean is_replacement) throws Exception {
 		path = AHost.toUnixPath(path);
@@ -287,7 +295,15 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		if (path.startsWith(AHost.toUnixPath(active_test_pack.getStorageDirectory())))
 			// important: convert to path web server is serving up
 			path = path.substring(active_test_pack.getStorageDirectory().length());
-		if (!path.startsWith("/"))
+		if (path.startsWith("xt/"))
+			path = "/e"+path; // TODO for -phpt_not_in_place
+		else if (path.startsWith("ests/"))
+			path = "/t"+path; // TODO for -phpt_not_in_place
+		else if (path.startsWith("end/"))
+			path = "/z"+path; // TODO for -phpt_not_in_place
+		else if (path.startsWith("api/"))
+			path = "/s"+path; // TODO for -phpt_not_in_place
+		else if (!path.startsWith("/"))
 			path = "/" + path;
 		if (test_case.getName().contains("phar")) {
 			if (!path.startsWith("/ext/phar/")) {// TODO tests/") && !path.startsWith("/ext/phar//tests/") && !path.startsWith("/ext/phar/tests//") && !path.startsWith("/ext/phar//tests//")) {
@@ -336,6 +352,9 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 					return "PFTT: no web server available!\n";
 				}
 			}
+			/*if (is_replacement) {
+				Thread.sleep(60000); // TODO builtin-www
+			}*/
 				
 			// CRITICAL: keep track of test cases running on web server
 			web.notifyTestPreRequest(test_case);
@@ -378,11 +397,12 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			conn = null;
 		}
 		conn = new DebuggingHttpClientConnection(request_bytes, response_bytes);
+		Socket socket = null;
 		try {
 			context.setAttribute(ExecutionContext.HTTP_CONNECTION, conn);
 			context.setAttribute(ExecutionContext.HTTP_TARGET_HOST, http_host);
 			
-			Socket socket = new Socket(http_host.getHostName(), http_host.getPort());
+			socket = new Socket(http_host.getHostName(), http_host.getPort());
 			conn.bind(socket, params);
 			conn.setSocketTimeout(60*1000);
 			
@@ -413,6 +433,8 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			
 			return IOUtil.toString(response.getEntity().getContent(), IOUtil.HALF_MEGABYTE);
 		} finally {
+			if (socket!=null)
+				socket.close();
 			conn.close();
 		}
 	} // end protected String do_http_get

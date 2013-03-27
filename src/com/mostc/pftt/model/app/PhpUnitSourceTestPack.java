@@ -60,6 +60,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	protected final ArrayList<PhpUnitDist> php_unit_dists;
 	protected final ArrayList<String> blacklist_test_names, whitelist_test_names, include_dirs, include_files;
 	protected final QuercusContext qctx;
+	protected final ArrayList<PhpUnitTestCase> test_cases;
 	
 	public PhpUnitSourceTestPack() {
 		blacklist_test_names = new ArrayList<String>(3);
@@ -67,11 +68,13 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 		php_unit_dists = new ArrayList<PhpUnitDist>(3);
 		include_dirs = new ArrayList<String>(5);
 		include_files = new ArrayList<String>(3);
+		test_cases = new ArrayList<PhpUnitTestCase>();
 		
 		qctx = new QuercusContext();
 		
 		// add default entries to include_path
 		addIncludeDirectory(".");
+		// TODO PFTT_DIR for path
 		addIncludeDirectory("C:\\php-sdk\\PFTT\\current\\cache\\util\\PEAR\\pear");
 	}
 	
@@ -181,8 +184,12 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	 * @throws IOException
 	 * @throws Exception
 	 */
-	public void read(ConsoleManager cm, List<PhpUnitTestCase> test_cases) throws IOException, Exception {
+	public void read(ConsoleManager cm, List<PhpUnitTestCase> _test_cases) throws IOException, Exception {
 		// TODO if subdir used, only search within that
+		if (test_cases.size()>0) {
+			_test_cases.addAll(test_cases);
+			return;
+		}
 		
 		final int max_read_count = cm.getMaxTestReadCount();
 		for (PhpUnitDist php_unit_dist : php_unit_dists) {
@@ -196,6 +203,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 					return a.getName().compareTo(b.getName());
 				}
 			});
+		_test_cases.addAll(test_cases);
 	}
 	
 	/** scans for *Test.php files and reads PhpUnitTestCase(s) from them
