@@ -75,7 +75,6 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 // commit: UI testing support, first implemented for Wordpress
 //
 // TODO joomla unit testing
-//      -works, but need thread-safety for some tests
 //      -need dependency note on symfony
 //      -note: ui tests from joomla may be BRITTLE (maybe thats why they're just run by 1 guy on his laptop once in a while)
 // commit:
@@ -89,11 +88,16 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 // 
 // TODO list-config command
 //       -mention on start screen of pftt_shell
+//      call describe() on each config
 // TODO pftt explain
 //        -shows PhpIni, etc.. not as a separate file though
 //           -if you need it for debug, use it from explain
 //                -ie force people to do it at least partially the efficient PFTT way
 //           -if you need it to setup, use setup cmd
+// TODO run PHPTs for PECL extensions (the final layer of the ecosystem that pftt doesn't cover)
+//       geoip haru(pdf) http
+//       uploadprogress? xdiff? yaml? pthreads? dio?
+//       (after ported to windows) drizzle weakref fpdf gnupg  xdebug? suhosin?? 
 
 public class PfttMain {
 	protected LocalHost host;
@@ -1288,12 +1292,16 @@ public class PfttMain {
 				
 				cmd_help();
 			} else if (command.equals("cmp-report")) {
-				//PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-rcfd096f-TS-X86-VC9"));
-				//PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-re9f996c-TS-X86-VC9"));
-				PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-rc6e911e-TS-X86-VC11"));
-				PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-rf3ebb40-TS-X86-VC11"));
-				//PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-5.5.0beta1-NTS-X86-VC11"));
-				//PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PHP_5_5-Result-Pack-5.5.0beta1-NTS-X64-VC11"));
+				PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-5.3.24RC1-TS-X86-VC9"));
+				PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-5.3.24RC1-TS-X86-VC9"));
+				//PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-5.4.14RC1-NTS-X86-VC9"));
+				//PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-5.4.14RC1-NTS-X86-VC9"));
+				//PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-re9f996c-NTS-X86-VC9"));
+				//PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-r85e5e60-NTS-X86-VC9"));
+				//PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-rf3ebb40-NTS-X86-VC11"));
+				//PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-r5d535a0-NTS-X86-VC11"));
+				//PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-5.5.0beta1-TS-X86-VC11"));
+				//PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-5.5.0beta2-TS-X86-VC11"));
 				
 				for ( AbstractPhpUnitRW base : base_pack.getPhpUnit() ) {
 					for ( AbstractPhpUnitRW test : test_pack.getPhpUnit() ) {
@@ -1306,7 +1314,13 @@ public class PfttMain {
 						PhpUnitReportGen php_unit_report = new PhpUnitReportGen(base, test);
 						String html_str = php_unit_report.getHTMLString(cm, false);
 
-						File html_file = new File("c:\\php-sdk\\php_unit_report"+base.getScenarioSetNameWithVersionInfo()+".html");
+						String file_name = "PhpUnit_CMP_"+test.getTestPackNameAndVersionString()+"_"
+								+base.getBuildInfo().getBuildBranch()+"-"+base.getBuildInfo().getVersionRevision()+"-"+base.getBuildInfo().getBuildType()+"-"+base.getBuildInfo().getCPUArch()+"-"+base.getBuildInfo().getCompiler()+"_"+base.getScenarioSetNameWithVersionInfo()+
+								"_v_"
+								+test.getBuildInfo().getBuildBranch()+"-"+test.getBuildInfo().getVersionRevision()+"-"+test.getBuildInfo().getBuildType()+"-"+test.getBuildInfo().getCPUArch()+"-"+test.getBuildInfo().getCompiler()+"_"+test.getScenarioSetNameWithVersionInfo();
+						if (file_name.length()>100)
+							file_name = file_name.substring(0, 100);
+						File html_file = new File("c:\\php-sdk\\"+file_name+".html");
 						FileWriter fw = new FileWriter(html_file);
 						fw.write(html_str);
 						fw.close();
@@ -1325,7 +1339,13 @@ public class PfttMain {
 						PHPTReportGen phpt_report = new PHPTReportGen(base, test);
 						String html_str = phpt_report.getHTMLString(cm, false);
 
-						File html_file = new File("c:\\php-sdk\\phpt_report"+base.getScenarioSetNameWithVersionInfo()+".html");
+						String file_name = "PHPT_CMP_"
+								+base.getBuildInfo().getBuildBranch()+"-"+base.getBuildInfo().getVersionRevision()+"-"+base.getBuildInfo().getBuildType()+"-"+base.getBuildInfo().getCPUArch()+"-"+base.getBuildInfo().getCompiler()+"_"+base.getScenarioSetNameWithVersionInfo()+
+								"_v_"
+								+test.getBuildInfo().getBuildBranch()+"-"+test.getBuildInfo().getVersionRevision()+"-"+test.getBuildInfo().getBuildType()+"-"+test.getBuildInfo().getCPUArch()+"-"+test.getBuildInfo().getCompiler()+"_"+test.getScenarioSetNameWithVersionInfo();
+						if (file_name.length()>100)
+							file_name = file_name.substring(0, 100);
+						File html_file = new File("c:\\php-sdk\\"+file_name+".html");
 						FileWriter fw = new FileWriter(html_file);
 						fw.write(html_str);
 						fw.close();

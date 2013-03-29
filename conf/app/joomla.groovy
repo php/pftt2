@@ -89,6 +89,14 @@ class JoomlaPlatformPhpUnitTestPack extends PhpUnitSourceTestPack { //SymfonyPhp
 		return true;
 	} // end public boolean open
 	
+	@Override
+	public String[][] getNonThreadSafeTestFileNames() {
+		return [
+				["joomla/filesystem/"],
+				["joomla/language/"]
+			]
+	}
+	
 } // end class JoomlaPlatformPhpUnitTestPack
 
 def getPhpUnitSourceTestPack() {

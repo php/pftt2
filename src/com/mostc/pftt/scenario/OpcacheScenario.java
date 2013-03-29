@@ -8,22 +8,20 @@ import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
-import java.util.Date;
-
 /** Opcache provides faster PHP execution through opcode caching and optimization.
  * It improves PHP performance by storing precompiled script bytecode in the shared memory. This
  * eliminates the stages of reading code from the disk and compiling it on future access. In
  * addition, it applies a few bytecode optimization patterns that make code execution faster.
  * 
+ * 5.5+ PHP builds include OpCache. This Scenario installs OpCache on 5.3 and 5.4 builds. 
+ * 
  * Formerly known as Optimizer+, Zend Optimizer+, often abbreviated as o+ or zo+ or Optimizer Plus
  * 
- * @see http://windows.php.net/downloads/pecl/snaps/Optimizer/7.0.0-dev/
- * @see https://github.com/zend-dev/opcache
- * @see https://github.com/OSTC/opcache - fork for Windows/PHP on Windows
+ * @see http://windows.php.net/downloads/pecl/releases/opcache/7.0.1/
+ * @see https://github.com/zend-dev/ZendOptimizerPlus
  *
  */
 
-// TODO does it put memory mapped file in test-pack, build dir, or current dir??
 public class OpcacheScenario extends AbstractCodeCacheScenario {
 	private String version;
 
@@ -31,9 +29,7 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 	public String getNameWithVersionInfo() {
 		// this will return the PHP Version the DLL was build for (ex: 5.4.10)
 		// (Get-Item C:\php-sdk\php-5.4-ts-windows-vc9-x86-r064c62e\ext\php_opcache.dll).VersionInfo
-		
-		// TODO return "Opcache-" + (version==null?"Missing":version);
-		return "Opcache";
+		return version==null?"Opcache":"Opcache-"+version;
 	}
 	
 	@Override
@@ -50,18 +46,48 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 		}
 		if (found) {
 			if (cm!=null)
-				cm.println(EPrintType.CLUE, getClass(), "Found OptimizerPlus in: "+ext_dir);
+				cm.println(EPrintType.CLUE, getClass(), "Found OpCache in: "+ext_dir);
 			return true;
 		} else {
+			if (host.isWindows()) {
+				// 5.3 and 5.4 builds don't include opcache. try to install it.
+				try {
+					String dll_path = null;
+					switch(build.getVersionBranch(cm, host)) {
+					case PHP_5_3:
+						if (build.isNTS(host))
+							dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.1-5.3-nts-vc9-x86/php_opcache.dll";
+						else
+							dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.1-5.3-ts-vc9-x86/php_opcache.dll";
+						break;
+					case PHP_5_4:
+						if (build.isNTS(host))
+							dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.1-5.4-nts-vc9-x86/php_opcache.dll";
+						else
+							dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.1-5.4-ts-vc9-x86/php_opcache.dll";
+						break;
+					default:
+						break;
+					} // end switch
+					if (dll_path!=null) {
+						return host.exists(dll_path);
+					}
+				} catch ( Exception ex ) {
+					if (cm!=null)
+						cm.addGlobalException(EPrintType.SKIP_OPERATION, getClass(), "setup", ex, "failed to install opcache");
+					else
+						ex.printStackTrace();
+				} 
+			} // end if
 			if (cm!=null)
-				cm.println(EPrintType.CLUE, getClass(), "Unable to find OptimizerPlus in: "+ext_dir);
+				cm.println(EPrintType.CLUE, getClass(), "Unable to find OpCache in: "+ext_dir);
 			return false;
-		}
+		} // end if
 	} // end public boolean isSupported
 
 	@Override
 	public EAcceleratorType getAcceleratorType() {
-		return EAcceleratorType.OPTIMIZER_PLUS;
+		return EAcceleratorType.OPCACHE;
 	}
 
 	@Override
@@ -72,6 +98,10 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 			//
 			// in temp directory. name is like: ZendOptimizer+.MemoryBase@matt
 			// @see shared_alloc_win32.c (https://github.com/zend-dev/opcache/blob/master/shared_alloc_win32.c)
+			//
+			// for regular users, TEMP_DIR is often
+			// for Apache (as service) TEMP_DIR is often C:\Users\NT_Authority? (different than IIS service)
+			// for IIS (service) TEMP_DIR is often C:\Windows\Temp
 			host.deleteIfExistsElevated(host.getTempDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
 		}
 		
@@ -89,7 +119,43 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 				dll_path = host.fixPath(ext_dir + "/php_opcache.dll");
 				
 				if (host.exists(dll_path.replace(".dll", ".dont_load")))
+					// make sure PHP doesn't find it and load it automatically
 					host.moveElevated(dll_path.replace(".dll", ".dont_load"), dll_path);
+				
+				if (!host.exists(dll_path)) {
+					// try to install it for 5.3 and 5.4 builds
+					try {
+						String src_dll_path = null;
+						switch(build.getVersionBranch(cm, host)) {
+						case PHP_5_3:
+							// @see #isSuccessful (it checks if these dlls exist!)
+							if (build.isNTS(host))
+								src_dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.1-5.3-nts-vc9-x86/php_opcache.dll";
+							else
+								src_dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.1-5.3-ts-vc9-x86/php_opcache.dll";
+							break;
+						case PHP_5_4:
+							if (build.isNTS(host))
+								src_dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.1-5.4-nts-vc9-x86/php_opcache.dll";
+							else
+								src_dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.1-5.4-ts-vc9-x86/php_opcache.dll";
+							break;
+						default:
+							break;
+						} // end switch
+						if (src_dll_path!=null) {
+							host.copy(src_dll_path, dll_path);
+							
+							// install succeeded
+							version = "7.0.1"; // XXX detect version
+						}
+					} catch ( Exception ex ) {
+						if (cm!=null)
+							cm.addGlobalException(EPrintType.SKIP_OPERATION, getClass(), "setup", ex, "failed to install opcache");
+						else
+							ex.printStackTrace();
+					} 
+				}
 			} else {
 				dll_path = host.fixPath(ext_dir + "/php_opcache.so");
 				
@@ -97,7 +163,7 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 					host.moveElevated(dll_path.replace(".so", ".dont_load"), dll_path);
 			}
 		} catch ( Exception ex ) {
-			cm.addGlobalException(EPrintType.CLUE, "setup", ex, "couldn't make sure OptimizerPlus was enabled");
+			cm.addGlobalException(EPrintType.CLUE, "setup", ex, "couldn't make sure OpCache was enabled");
 			
 			return false;
 		}
@@ -106,25 +172,8 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 		if (!host.exists(dll_path)) {
 			version = null;
 			
-			return true;
+			return false; // install failed
 		}
-		
-		//
-		{
-			Date date = new Date(host.getMTime(dll_path));
-			
-			version = ((date.getYear()+1900) +
-				"-" +
-				(date.getMonth()+1) +
-				"-" +
-				date.getDate() +
-				"-" +
-				date.getHours() +
-				"h" +
-				date.getMinutes()) +
-				"m";
-		}
-		//
 		
 		// must be absolute path to opcache.so
 		ini.putMulti("zend_extension", dll_path);
@@ -143,20 +192,17 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 		ini.putSingle("opcache.fast_shutdown", 1);
 		ini.putSingle("opcache.enable_file_override", 1);
 		
-		
-		// TODO 
 		// by default all passes are run, turn off some
 		/*ini.putSingle("opcache.optimization_level",
 				ZEND_OPTIMIZER_PASS_3
 				|ZEND_OPTIMIZER_PASS_10
+				// passes other than 3 & 10 (especially 5 & 9) can break reflection (for Doctrine/Symfony)
 				//|ZEND_OPTIMIZER_PASS_4
 				//|ZEND_OPTIMIZER_PASS_6
 				//|ZEND_OPTIMIZER_PASS_7
 				//|ZEND_OPTIMIZER_PASS_8
 				//|ZEND_OPTIMIZER_PASS_1 
 				//|ZEND_OPTIMIZER_PASS_2
-				
-				// pass5 and pass9 seem to break reflection
 				//|ZEND_OPTIMIZER_PASS_5
 				//|ZEND_OPTIMIZER_PASS_9
 			);*/
@@ -182,7 +228,7 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 
 	@Override
 	public String getName() {
-		return "Opcache";
+		return "OpCache";
 	}
 
 	@Override

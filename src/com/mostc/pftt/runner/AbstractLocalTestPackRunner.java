@@ -40,7 +40,7 @@ import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.AbstractFileSystemScenario.ITestPackStorageDir;
 
 public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S extends SourceTestPack<A,T>, T extends TestCase> extends AbstractTestPackRunner<S, T> {
-	protected static final int MAX_THREAD_COUNT = 64;
+	protected static final int MAX_THREAD_COUNT = 256;
 	protected S src_test_pack;
 	protected final ConsoleManager cm;
 	protected final ITestResultReceiver twriter;
