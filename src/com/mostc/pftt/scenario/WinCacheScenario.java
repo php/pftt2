@@ -42,7 +42,10 @@ public class WinCacheScenario extends AbstractCodeCacheScenario {
 
 	@Override
 	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
-		return true;
+		// don't run WinCache on Apache-ModPHP (Apache CGI probably ok)
+		//
+		// not sure if its supported on scenarios other than CLI or IIS (so allow it)
+		return !scenario_set.contains(ApacheModPHPScenario.class);
 	}
 
 }

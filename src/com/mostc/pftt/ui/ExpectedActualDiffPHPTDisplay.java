@@ -41,9 +41,9 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 	protected TextDisplayPanel expected_display, diff_display, actual_display, test_display;
 	protected DefaultTableModel env_table_model;
 	protected JTable env_table;
-	protected JTextArea regex_compiler_dump_textarea, regex_output_textarea, http_request_textarea, http_response_textarea, ini_textarea, stdin_data_textarea, shell_script_textarea, expectf_textarea, pre_override_textarea, sapi_output_textarea;
+	protected JTextArea regex_compiler_dump_textarea, regex_output_textarea, http_request_textarea, http_response_textarea, ini_textarea, stdin_data_textarea, shell_script_textarea, expectf_textarea, pre_override_textarea, sapi_output_textarea, sapi_config_textarea;
 	protected PhptTestResult test_result;
-	protected JScrollPane regex_compiler_dump_jsp, regex_output_jsp, http_request_jsp, http_response_jsp, expectf_jsp, pre_override_jsp, sapi_output_jsp, ini_jsp, stdin_data_jsp, shell_script_jsp, env_table_jsp;
+	protected JScrollPane regex_compiler_dump_jsp, regex_output_jsp, http_request_jsp, http_response_jsp, expectf_jsp, pre_override_jsp, sapi_output_jsp, sapi_config_jsp, ini_jsp, stdin_data_jsp, shell_script_jsp, env_table_jsp;
 	protected ScrollbarSyncManager scrollbar_sync_mgr;
 	
 	public ExpectedActualDiffPHPTDisplay() {
@@ -107,6 +107,11 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 		sapi_output_textarea.setToolTipText("Output from SAPI - did web server crash? etc...");
 		sapi_output_textarea.setBackground(new Color(255, 255, 255));
 		vertical_panel.add(sapi_output_jsp = new JScrollPane(sapi_output_textarea));
+		
+		sapi_config_textarea = new JTextArea();
+		sapi_config_textarea.setToolTipText("Configuration of SAPI (httpd.conf, IIS metabase, etc...)");
+		sapi_config_textarea.setBackground(new Color(220, 150, 220));
+		vertical_panel.add(sapi_config_jsp = new JScrollPane(sapi_config_textarea));
 		
 		pre_override_textarea = new JTextArea();
 		pre_override_textarea.setToolTipText("Actual test output before any OS specific overrides applied");
@@ -249,6 +254,14 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 		} else {
 			sapi_output_jsp.setVisible(true);
 			sapi_output_textarea.setText(sapi_output);
+		}
+		//
+		String sapi_config = result.getSAPIConfig();
+		if (StringUtil.isEmpty(sapi_config)) {
+			sapi_config_jsp.setVisible(false);
+		} else {
+			sapi_config_jsp.setVisible(true);
+			sapi_config_textarea.setText(sapi_output);
 		}
 		//
 		

@@ -47,6 +47,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	protected final EBuildBranch test_pack_branch;
 	protected final String test_pack_version;
 	protected final Thread writer_thread;
+	protected final boolean first_for_build;
 	
 	public PhpResultPackWriter(LocalHost local_host, LocalConsoleManager cm, File telem_base_dir, PhpBuild build) throws Exception {
 		this(local_host, cm, telem_base_dir, build, null);
@@ -71,7 +72,13 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		this.local_host = local_host;
 		this.cm = cm;
 		this.build = build;
-		this.telem_dir = new File(host.uniqueNameFromBase(makeName(telem_base_dir, build_info).getAbsolutePath()));
+		this.telem_dir = new File(makeName(telem_base_dir, build_info).getAbsolutePath());
+		if (this.telem_dir.exists()) {
+			this.telem_dir = new File(host.uniqueNameFromBase(this.telem_dir.getAbsolutePath()));
+			first_for_build = false;
+		} else {
+			first_for_build = true;
+		}
 		this.telem_dir.mkdirs();
 		
 		try {
@@ -110,6 +117,10 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		writer_thread.start();
 	}
 	
+	public boolean isFirstForBuild() {
+		return first_for_build;
+	}
+	
 	protected abstract class ResultQueueEntry {
 		protected final AHost this_host;
 		protected final ScenarioSet this_scenario_set;
@@ -124,16 +135,18 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	} // end protected abstract class ResultQueueEntry 
 	
 	protected class UIResultQueueEntry extends ResultQueueEntry {
-		protected final String test_name, comment, verified_html, test_pack_name_and_version;
+		protected final String test_name, comment, verified_html, test_pack_name_and_version, sapi_output, sapi_config;
 		protected final EUITestStatus status;
 
-		protected UIResultQueueEntry(AHost this_host, ScenarioSet this_scenario_set, String test_name, String comment, EUITestStatus status, String verified_html, String test_pack_name_and_version) {
+		protected UIResultQueueEntry(AHost this_host, ScenarioSet this_scenario_set, String test_name, String comment, EUITestStatus status, String verified_html, String test_pack_name_and_version, String sapi_output, String sapi_config) {
 			super(this_host, this_scenario_set);
 			this.test_name = test_name;
 			this.comment = comment;
 			this.status = status;
 			this.verified_html = verified_html;
 			this.test_pack_name_and_version = test_pack_name_and_version;
+			this.sapi_output = sapi_output;
+			this.sapi_config = sapi_config;
 		}
 
 		@Override
@@ -253,8 +266,12 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		return cm;
 	}
 	
-	public void addResult(AHost this_host, ScenarioSet this_scenario_set, String test_name, String comment, EUITestStatus status, String verified_html, UITestPack test_pack) {
-		results.add(new UIResultQueueEntry(this_host, this_scenario_set, test_name, comment, status, verified_html, test_pack.getNameAndVersionInfo()));
+	/* TODO public void addResult(AHost this_host, ScenarioSet this_scenario_set, String test_name, String comment, EUITestStatus status, String verified_html, UITestPack test_pack) {
+		addResult(this_host, this_scenario_set, test_name, comment, status, verified_html, test_pack);
+	}*/
+	
+	public void addResult(AHost this_host, ScenarioSet this_scenario_set, String test_name, String comment, EUITestStatus status, String verified_html, UITestPack test_pack, String sapi_output, String sapi_config) {
+		results.add(new UIResultQueueEntry(this_host, this_scenario_set, test_name, comment, status, verified_html, test_pack.getNameAndVersionInfo(), sapi_output, sapi_config));
 	}
 	
 	public void addTestException(AHost this_host, ScenarioSet this_scenario_set, PhptTestCase test_file, Throwable ex, Object a) {

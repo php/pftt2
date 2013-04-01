@@ -88,7 +88,11 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		host.deleteFileExtension(test_pack, ".skip.php");
 		host.deleteFileExtension(test_pack, ".cmd");
 		host.deleteFileExtension(test_pack, ".sh");
-		host.deleteFileExtension(test_pack, ".php");
+		// don't delete .php (specifically run-test.php) in root of test-pack (user may want it later)
+		host.deleteFileExtension(test_pack+"/ext", ".php");
+		host.deleteFileExtension(test_pack+"/tests", ".php");
+		host.deleteFileExtension(test_pack+"/zend", ".php");
+		host.deleteFileExtension(test_pack+"/sapi", ".php");
 	}
 	
 	public void read(List<PhptTestCase> test_cases, List<String> names, ConsoleManager cm, PhpResultPackWriter twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {

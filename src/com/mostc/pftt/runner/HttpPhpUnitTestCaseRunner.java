@@ -95,6 +95,14 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 				// the user to enter Visual Studio, WinDbg or GDB
 				web.close(); 
 				
+				if (web.isCrashedAndDebugged()) {
+					// don't run again if user debugged this test already (it'll just make them debug it again)
+					markTestAsCrash();
+					
+					return null;
+				}
+					
+				
 				cm.restartingAndRetryingTest(test_case);
 				
 				// get #do_http_execute to make a new server
@@ -107,7 +115,6 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 			String ex_str = ErrorUtil.toString(ioe);
 			
 			// notify web server that it crashed. it will record this, which will be accessible
-			// with WebServerInstance#getSAPIOutput (will be recorded by PhptTelemetryWriter)
 			web.notifyCrash("PFTT: IOException during test: "+test_case.getName()+"\n"+ex_str, 0);
 			
 			// if web server didn't actually crash, test will probably be marked as failure: let superclass check it
@@ -232,7 +239,6 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 			if (cookie_str!=null)
 				request.setHeader("Cookie", cookie_str);
 			// CRITICAL: tell web server to return plain-text (not HTMl) 
-			// for some reason(w/o this), apache returns HTML formatted responses for tests like ext/standard/tests/array/rsort.phpt
 			request.setHeader("Accept", "text/plain");
 			request.setParams(params);
 			
@@ -270,8 +276,13 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	}
 	
 	@Override
-	public String getCrashedSAPIOutput() {
+	public String getSAPIOutput() {
 		return web!=null&&web.isCrashedOrDebuggedAndClosed() ? web.getSAPIOutput() : null;
+	}
+	
+	@Override
+	public String getSAPIConfig() {
+		return web==null?null:web.getSAPIConfig();
 	}
 
 } // end public class HttpPhpUnitTestCaseRunner

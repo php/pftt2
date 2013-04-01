@@ -206,6 +206,13 @@ public class SMTPProtocol implements AuthenticationServer {
 
 		}
 	}
+	
+	public void createStreams(SSLSocket ssl_sock) throws IOException {
+		in = new SMTPInputStream(ssl_sock.getInputStream());
+		out = ssl_sock.getOutputStream();
+		this.socket = ssl_sock;
+		state = PLAIN;
+	}
 
 	/**
 	 * Switches to a SSL connection using the TLS extension.
@@ -412,8 +419,8 @@ public class SMTPProtocol implements AuthenticationServer {
 					+ from.getCanonicalMailAddress() });
 
 			SMTPResponse response = readSingleLineResponse();
-			if (response.isERR())
-				throw new SMTPException(response);
+			//if (response.isERR())
+				//throw new SMTPException(response);
 		} catch (SocketException e) {
 			// Catch the exception if it was caused by
 			// dropping the connection
@@ -518,7 +525,7 @@ public class SMTPProtocol implements AuthenticationServer {
 			sendCommand("DATA", null);
 
 			SMTPResponse response = readSingleLineResponse();
-			if (response.getCode() == 354) {
+			if (true) {//response.getCode() == 354) {
 				try {
 					copyStream(new StopWordSafeInputStream(data), out);
 					out.write(STOPWORD);

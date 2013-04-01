@@ -216,7 +216,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			return;
 		not_crashed = false; // @see #runTest
 		
-		twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, null, null, null, null, ini, env, null, stdin_post, null, null, null, null, web==null?null:web.getSAPIOutput()));
+		twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, null, null, null, null, ini, env, null, stdin_post, null, null, null, null, web==null?null:web.getSAPIOutput(), web==null?null:web.getSAPIConfig()));
 	}
 	
 	/** executes SKIPIF, TEST or CLEAN over http.
@@ -243,6 +243,13 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				// the user to enter Visual Studio, WinDbg or GDB
 				web.close(); 
 				
+				if (web.isCrashedAndDebugged()) {
+					// don't run again if user debugged this test already (it'll just make them debug it again)
+					markTestAsCrash();
+					
+					return null;
+				}
+				
 				cm.restartingAndRetryingTest(test_case);
 				
 				// get #do_http_execute to make a new server
@@ -255,7 +262,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			String ex_str = ErrorUtil.toString(ioe);
 			
 			// notify web server that it crashed. it will record this, which will be accessible
-			// with WebServerInstance#getSAPIOutput (will be recorded by PhptTelemetryWriter)
+			// with WebServerInstance#getSAPIOutput (will be recorded by PhpResultPackWriter)
 			web.notifyCrash("PFTT: IOException during test("+section+" SECTION): "+test_case.getName()+"\n"+ex_str, 0);
 			
 			// test will be marked as FAIL or CRASH depending on whether web server process crashed
@@ -352,9 +359,6 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 					return "PFTT: no web server available!\n";
 				}
 			}
-			/*if (is_replacement) {
-				Thread.sleep(60000); // TODO builtin-www
-			}*/
 				
 			// CRITICAL: keep track of test cases running on web server
 			web.notifyTestPreRequest(test_case);
@@ -382,7 +386,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			
 			}
 		}
-	}
+	} // end protected String do_http_execute
 	
 	protected String do_http_get(String path) throws Exception {
 		return do_http_get(path, 0);
@@ -556,13 +560,18 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	}
 
 	@Override
-	public String getCrashedSAPIOutput() {
+	public String getSAPIOutput() {
 		return web!=null&&web.isCrashedOrDebuggedAndClosed() ? web.getSAPIOutput() : null;
 	}
 
 	@Override
 	protected String[] splitCmdString() {
 		return web==null?StringUtil.EMPTY_ARRAY:web.getCmdArray();
+	}
+
+	@Override
+	public String getSAPIConfig() {
+		return web==null?null:web.getSAPIConfig();
 	}
 
 } // end public class HttpPhptTestCaseRunner

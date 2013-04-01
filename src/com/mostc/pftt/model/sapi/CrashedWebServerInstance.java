@@ -79,8 +79,17 @@ public class CrashedWebServerInstance extends WebServerInstance {
 
 	@Override
 	public String getDocroot() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
-}
+	@Override
+	public String getSAPIConfig() {
+		return null;
+	}
+
+	@Override
+	public boolean isCrashedAndDebugged() {
+		return false;
+	}
+
+} // end public class CrashedWebServerInstance

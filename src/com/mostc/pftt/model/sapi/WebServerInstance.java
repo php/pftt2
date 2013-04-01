@@ -67,7 +67,7 @@ public abstract class WebServerInstance extends SAPIInstance {
 			return sapi_output;
 		}
 	}
-	
+		
 	/** handles reporting an instance that crashed
 	 * 
 	 * @param output - any output server returned when it crashed (or null)
@@ -93,7 +93,7 @@ public abstract class WebServerInstance extends SAPIInstance {
 			
 			// if crash, record output with all tests that were running during crash
 			crashed = true;
-			
+						
 			StringBuilder sb = new StringBuilder(1024);
 			
 			sb.append("PFTT: web server crashed with exit code: "+exit_code+" status="+AHost.guessExitCodeStatus(null, exit_code)+" \n");
@@ -172,7 +172,7 @@ public abstract class WebServerInstance extends SAPIInstance {
 		}
 	}
 	
-	/** returns TRUE if this web server crashed
+	/** returns TRUE if this web server crashed OR crashed and debugged
 	 * 
 	 * @return
 	 */
@@ -182,6 +182,12 @@ public abstract class WebServerInstance extends SAPIInstance {
 			return crashed;
 		}
 	}
+	
+	/** returns TRUE if this web server is crashed AND debugged
+	 * 
+	 * @return
+	 */
+	public abstract boolean isCrashedAndDebugged();
 	
 	public abstract String hostname();
 	public abstract int port();

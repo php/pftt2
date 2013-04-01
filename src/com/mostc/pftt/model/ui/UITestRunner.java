@@ -73,7 +73,7 @@ public class UITestRunner implements IUITestBranch {
 					LocalHost host = new LocalHost();
 					build.open(cm, host);
 					PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, new File("c:/php-sdk"), build);
-				UITestRunner test = new UITestRunner(null, "http://10.200.51.109", host, ScenarioSet.getDefaultScenarioSets().get(0), tmgr, test_pack);
+				UITestRunner test = new UITestRunner(null, "http://192.168.1.73/", host, ScenarioSet.getDefaultScenarioSets().get(0), tmgr, test_pack);
 				test.setUp();
 				// TODO new MediaWikiUITestPack().run(test);
 				test_pack.run(test);
@@ -163,7 +163,7 @@ public class UITestRunner implements IUITestBranch {
 				try {
 					tests.add(clazz.newInstance());
 				} catch ( Exception ex ) {
-					runner.tmgr.addResult(runner.this_host, runner.this_scenario_set, clazz.getSimpleName(), ErrorUtil.toString(ex), EUITestStatus.TEST_EXCEPTION, null, runner.test_pack);
+					// TODO runner.tmgr.addResult(runner.this_host, runner.this_scenario_set, clazz.getSimpleName(), ErrorUtil.toString(ex), EUITestStatus.TEST_EXCEPTION, null, runner.test_pack);
 					return new DummyUITestRunner(EUITestStatus.TEST_EXCEPTION, user_account);
 				}
 			}
@@ -171,7 +171,7 @@ public class UITestRunner implements IUITestBranch {
 				try {
 					cleanup_test = cleanup_clazz.newInstance();
 				} catch ( Exception ex ) {
-					runner.tmgr.addResult(runner.this_host, runner.this_scenario_set, cleanup_clazz.getSimpleName(), ErrorUtil.toString(ex), EUITestStatus.TEST_EXCEPTION, null, runner.test_pack);
+					// TODO runner.tmgr.addResult(runner.this_host, runner.this_scenario_set, cleanup_clazz.getSimpleName(), ErrorUtil.toString(ex), EUITestStatus.TEST_EXCEPTION, null, runner.test_pack);
 					return new DummyUITestRunner(EUITestStatus.TEST_EXCEPTION, user_account);
 				}
 			}
@@ -276,7 +276,7 @@ public class UITestRunner implements IUITestBranch {
 					} // end switch
 				} // end if
 				
-				runner.tmgr.addResult(runner.this_host, runner.this_scenario_set, test_name, comment, status, runner.driver.getPageSource(), runner.test_pack);
+				// TODO runner.tmgr.addResult(runner.this_host, runner.this_scenario_set, test_name, comment, status, runner.driver.getPageSource(), runner.test_pack);
 				
 				this.last_status = status;
 			} // end for
@@ -369,7 +369,7 @@ public class UITestRunner implements IUITestBranch {
 		}
 		@Override
 		public void testException(String test_name, String msg) {
-			runner.tmgr.addResult(runner.this_host, runner.this_scenario_set, test_name, msg, EUITestStatus.TEST_EXCEPTION, null, runner.test_pack);
+			// TODO runner.tmgr.addResult(runner.this_host, runner.this_scenario_set, test_name, msg, EUITestStatus.TEST_EXCEPTION, null, runner.test_pack);
 		}
 		/* -- end IUITestBranch impl -- */
 		

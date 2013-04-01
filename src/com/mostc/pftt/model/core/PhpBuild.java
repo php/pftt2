@@ -475,6 +475,38 @@ public class PhpBuild extends SAPIManager {
 		return branch;
 	}
 	
+	public boolean is53(ConsoleManager cm, Host host) {
+		try {
+			return getVersionBranch(cm, host) == EBuildBranch.PHP_5_3;
+		} catch ( Exception ex ) {
+			return false;
+		}
+	}
+	
+	public boolean is54(ConsoleManager cm, Host host) {
+		try {
+			return getVersionBranch(cm, host) == EBuildBranch.PHP_5_4;
+		} catch ( Exception ex ) {
+			return false;
+		}
+	}
+	
+	public boolean is55(ConsoleManager cm, Host host) {
+		try {
+			return getVersionBranch(cm, host) == EBuildBranch.PHP_5_5;
+		} catch ( Exception ex ) {
+			return false;
+		}
+	}
+	
+	public boolean is56(ConsoleManager cm, Host host) {
+		try {
+			return getVersionBranch(cm, host) == EBuildBranch.PHP_5_6;
+		} catch ( Exception ex ) {
+			return false;
+		}
+	}
+	
 	/** checks to see if the extension is enabled or statically builtin to this build
 	 *  
 	 *  Note that PhpIni#hasExtension only checks to see if the extension is enabled in a PhpIni whereas

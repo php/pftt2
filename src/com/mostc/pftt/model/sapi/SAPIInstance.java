@@ -14,4 +14,5 @@ public abstract class SAPIInstance {
 	public abstract boolean isRunning();
 	public abstract String getInstanceInfo(ConsoleManager cm);
 	public abstract boolean isCrashedOrDebuggedAndClosed();
+	public abstract String getSAPIConfig();
 }

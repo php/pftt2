@@ -68,6 +68,11 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 				return StringUtil.EMPTY;
 			}
 		}
+
+		@Override
+		public String getSAPIConfig() {
+			return null;
+		}
 		
 	} // end public static class BuiltinWebServerInstance
 	

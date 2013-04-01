@@ -265,22 +265,23 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		final String cmdline = httpd+" -X -f "+host.fixPath(apache_conf_file);
 		
 		// @see #createWebServerInstance for where command is executed to create httpd.exe process
-		return new ApacheWebServerInstance(apache_version, this, docroot, cmdline, ini, env, listen_address, port, host, conf_dir, apache_conf_file, error_log);
+		return new ApacheWebServerInstance(apache_version, this, docroot, cmdline, ini, env, listen_address, port, host, conf_dir, apache_conf_file, error_log, conf_str);
 	} // end protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance
 	
 	public class ApacheWebServerInstance extends ManagedProcessWebServerInstance {
-		protected final String conf_dir, apache_conf_file, error_log;
+		protected final String conf_dir, apache_conf_file, conf_str, error_log;
 		protected final AHost host;
 		protected final EApacheVersion apache_version;
 		protected WeakReference<String> log_ref;
 		
-		public ApacheWebServerInstance(EApacheVersion apache_version, ApacheManager ws_mgr, String docroot, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port, AHost host, String conf_dir, String apache_conf_file, String error_log) {
+		public ApacheWebServerInstance(EApacheVersion apache_version, ApacheManager ws_mgr, String docroot, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port, AHost host, String conf_dir, String apache_conf_file, String error_log, String conf_str) {
 			super(ws_mgr, docroot, cmd, ini, env, hostname, port);
 			this.apache_version = apache_version;
 			this.host = host;
 			this.conf_dir = conf_dir;
 			this.apache_conf_file = apache_conf_file;
 			this.error_log = error_log;
+			this.conf_str = conf_str;
 		}
 		
 		@Override
@@ -341,6 +342,11 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "getInstanceInfo", ex, "");
 				return StringUtil.EMPTY;
 			}
+		}
+
+		@Override
+		public String getSAPIConfig() {
+			return conf_str;
 		}
 		
 	} // end public class ApacheWebServerInstance

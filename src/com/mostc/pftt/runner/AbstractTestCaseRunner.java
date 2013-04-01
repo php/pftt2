@@ -19,5 +19,7 @@ public abstract class AbstractTestCaseRunner {
 	 * @see WebserverInstance#getSAPIOutput
 	 * @return
 	 */
-	public abstract String getCrashedSAPIOutput();
+	public abstract String getSAPIOutput();
+	
+	public abstract String getSAPIConfig();
 }

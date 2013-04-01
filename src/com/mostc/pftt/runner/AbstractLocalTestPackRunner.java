@@ -463,9 +463,10 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			if (c==1) {
 				TestPackThread<T> t = threads.peek();
 				if(t.jobs!=null&&t.jobs.isEmpty()) {
-					// TODO don't do this if being debugged
-					// TODO temp t.stopThisThread();
-					// TODO temp t.interrupt();
+					if (!t.isDebuggerAttached()) {
+						t.stopThisThread();
+						t.interrupt();
+					}
 				}
 			}
 			Thread.sleep(c>3?1000:50);
@@ -486,6 +487,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		protected final AtomicBoolean run_thread;
 		protected final boolean parallel;
 		protected final int run_test_times_all;
+		protected TestCaseGroupKey group_key;
 		
 		protected TestPackThread(boolean parallel) {
 			this.run_thread = new AtomicBoolean(true);
@@ -556,6 +558,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			return "{"+super.toString()+" "+(jobs==null?null:jobs.toString()+"}");
 		}
 		protected void exec_jobs(TestCaseGroupKey group_key, LinkedBlockingQueue<T> jobs, AtomicInteger test_count) {
+			this.group_key = group_key; //
 			T test_case;
 			SAPIInstance sa = null;
 			LinkedList<T> completed_tests = new LinkedList<T>();
@@ -655,6 +658,22 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		protected void stopThisThread() {
 			// continue running current CliTestCaseRunner, but don't start any more of them
 			run_thread.set(false);
+			
+			// kill any web server, etc... used only by this thread
+			if (group_key instanceof SharedSAPIInstanceTestCaseGroupKey) {
+				SAPIInstance sapi = ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance();
+				if (sapi!=null)
+					sapi.close();
+			}
+		}
+		
+		public boolean isDebuggerAttached() {
+			if (group_key instanceof SharedSAPIInstanceTestCaseGroupKey) {
+				SAPIInstance sapi = ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance();
+				if (sapi instanceof WebServerInstance)
+					return ((WebServerInstance)sapi).isDebuggerAttached();
+			}
+			return false;
 		}
 		
 	} // end public abstract class TestPackThread

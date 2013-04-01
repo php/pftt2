@@ -77,6 +77,33 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner 
 			
 			return true;
 		}
+		if (build.is53(cm, host)) {
+			// XXX
+			if (test_case.isNamed(
+					"ext/filter/tests/bug39763.phpt", 
+					"ext/pcre/tests/bug33200.phpt",
+					"ext/session/tests/004.phpt",
+					"ext/session/tests/009.phpt", 
+					"ext/session/tests/013.phpt",
+					"ext/standard/tests/filters/php_user_filter_01.phpt", 
+					"ext/standard/tests/filters/php_user_filter_02.phpt",
+					"ext/standard/tests/filters/php_user_filter_03.phpt",
+					"tests/classes/method_override_optional_arg_002.phpt",
+					"tests/security/magic_quotes_gpc.phpt",
+					"zend/tests/objects_002.phpt",
+					"zend/tests/objects_003.phpt",
+					"zend/tests/objects_004.phpt",
+					"zend/tests/objects_005.phpt",
+					"zend/tests/objects_006.phpt",
+					"zend/tests/objects_007.phpt",
+					"zend/tests/objects_008.phpt",
+					"zend/tests/objects_009.phpt",
+					"zend/tests/objects_010.phpt")) {
+				twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null, null));
+				
+				return true;	
+			}
+		}
 		if (test_case.containsSection(EPhptSection.REQUEST)||test_case.isNamed(
 			// these tests randomly fail (ignore them)
 			"ext/standard/tests/network/gethostbyname_error006.phpt",

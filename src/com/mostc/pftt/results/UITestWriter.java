@@ -19,6 +19,10 @@ public class UITestWriter extends AbstractUITestRW {
 
 	@Override
 	public void addResult(String test_name, String comment, EUITestStatus status, String verified_html) {
+		addResult(test_name, comment, status, verified_html, null, null);
+	}
+	
+	public void addResult(String test_name, String comment, EUITestStatus status, String verified_html, String sapi_output, String sapi_config) {
 		// make sure name is unique
 		if (hasTestNamed(test_name)) {
 			for ( int i=2 ; i < 100 ; i++ ) {

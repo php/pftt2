@@ -315,7 +315,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		if (output.isCrashed()) {
 			not_crashed = false; // @see #runTest
 			
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, "PFTT: exit_code="+output.exit_code+" status="+output.guessExitCodeStatus(host)+"\n"+output.output, null, null, null, ini, env, null, stdin_post, null, null, null, null, output.output));
+			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, "PFTT: exit_code="+output.exit_code+" status="+output.guessExitCodeStatus(host)+"\n"+output.output, null, null, null, ini, env, null, stdin_post, null, null, null, null, output.output, null));
 		}
 		
 		return output.output;
@@ -329,7 +329,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	} // end void executeClean
 
 	@Override
-	public String getCrashedSAPIOutput() {
+	public String getSAPIOutput() {
 		if (output.isCrashed()) 
 			return output.isEmpty() ? 
 				"PFTT: test printed nothing. was expected to print something. exited with non-zero code (probably crash): "+output.exit_code 
@@ -415,6 +415,11 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	@Override
 	protected String getShellScript() {
 		return shell_script;
+	}
+
+	@Override
+	public String getSAPIConfig() {
+		return null;
 	}
 	
 } // end public class CliTestCaseRunner

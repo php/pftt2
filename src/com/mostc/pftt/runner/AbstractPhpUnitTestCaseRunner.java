@@ -140,16 +140,16 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 		if (checkRequireOnceError(output)) {
 			status = EPhpUnitTestStatus.TEST_EXCEPTION;
 			
-			tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, getCrashedSAPIOutput()));
+			tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, getSAPIOutput(), getSAPIConfig()));
 		} else if (is_crashed) {
 			if (PAT_CLASS_NOT_FOUND.matcher(output).find()) {
 				status = EPhpUnitTestStatus.UNSUPPORTED;
 				
-				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, getCrashedSAPIOutput()));
+				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, getSAPIOutput(), getSAPIConfig()));
 			} else if (PAT_FATAL_ERROR.matcher(output).find()) {
 				status = EPhpUnitTestStatus.ERROR;
 				
-				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, getCrashedSAPIOutput()));
+				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, getSAPIOutput(), getSAPIConfig()));
 			} else {
 				// CRASH may really be a syntax error (BORK), check to make sure
 				final ExecOutput syntax_eo = host.execOut(
@@ -161,11 +161,11 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 					// its a syntax error - BORK, as test case can't run
 					status = EPhpUnitTestStatus.BORK;
 					
-					tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, syntax_eo.output, ini, getCrashedSAPIOutput()));
+					tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, syntax_eo.output, ini, getSAPIOutput(), getSAPIConfig()));
 				} else {
 					status = EPhpUnitTestStatus.CRASH;
 					
-					tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, getCrashedSAPIOutput()));
+					tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, getSAPIOutput(), getSAPIConfig()));
 				}
 			}
 		} else {
@@ -213,9 +213,9 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 			if (status.isNotPass()) {
 				final String output_str = StringUtil.join(lines, 1, "\n");
 				
-				tmgr.addResult(host, scenario_set, notifyNotPass(new PhpUnitTestResult(test_case, status, scenario_set, host, output_str, ini, getCrashedSAPIOutput())));
+				tmgr.addResult(host, scenario_set, notifyNotPass(new PhpUnitTestResult(test_case, status, scenario_set, host, output_str, ini, getSAPIOutput(), getSAPIConfig())));
 			} else {
-				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, null, ini, getCrashedSAPIOutput()));
+				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, null, ini, getSAPIOutput(), getSAPIConfig()));
 			}
 		}
 		

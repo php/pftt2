@@ -15,7 +15,7 @@ ECHO Command Aliases:
 ECHO core_all      core_named    core_list  ca cn cl
 ECHO app_all       all_named     app_list   aa an al
 ECHO ui_all        ui_named      ui_list    ua un ul
-ECHO release_get   release_list  rl    rg   rgn   rgp
+ECHO release_get   release_list  rl    rg   rgn   rgp rctest
 @ECHO.
 ECHO Cleanup: 
 ECHO tka_apache    tka_php     tka_windbg     `net use`

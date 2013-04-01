@@ -71,7 +71,7 @@ public class WordpressTestPack implements UITestPack {
 				new LinkCategoryDelete(),
 				new MediaAddNew(),
 				new MediaLibrary(),
-				new MediaDelete(),
+				new MediaDelete(),*/
 				new PagesAddNew(),
 				new PagesAllPages(),
 				new PagesTrash(),
@@ -80,7 +80,7 @@ public class WordpressTestPack implements UITestPack {
 				new PostsAll(),
 				new PostQuickEdit(),
 				new PostEdit(),
-				new PostsTrash(),
+				new PostTrash(),
 				new PostCategoriesAll(),
 				new PostCategoriesAdd(),
 				new PostCategoriesDelete(),
@@ -92,12 +92,12 @@ public class WordpressTestPack implements UITestPack {
 				new PluginsInstalledActivate(),
 				// akismet is an important plugin (any real wordpress instance needs it activated)
 				new PluginsAkismetConfiguration(), // depends on PluginsInstalledActivate
-				new PluginsInstalledDeactivate(),*/
-				new PostsAddNew(),
+				new PluginsInstalledDeactivate(),
+				/*new PostsAddNew(),
 				new CommentsAllComments(),
 				new CommentsTrash(),
 				new CommentsApprove(),
-				new CommentsUnapprove()
+				new CommentsUnapprove()*/
 				// change settings, especially timezone and date/time format
 				/*new SettingsGeneralChangeTimezone(),
 				new SettingsChangeDateTimeFormat(),
@@ -106,18 +106,18 @@ public class WordpressTestPack implements UITestPack {
 				new SettingsDiscussion(),
 				new SettingsMedia(),
 				new SettingsPrivacy(),
-				new SettingsPermalinks(),
+				new SettingsPermalinks(),*/
 				new ToolsExport(),
 				new ToolsImport(),
-				new EditProfile(),
+				// TODO new EditProfile(),
 				new UsersAddNew(),
 				new UsersAllUsers(),
 				new UsersDeleteNew(),
 				new UsersChangeRole(),
-				new UsersUpdateUser()*/
+				new UsersUpdateUser()
 			);
 		// TODO test all user roles - for some roles, retest posting and approving comments
-		///testUserRole(anon_branch, subscriber_user, subscriber_user_new_passwd);
+		testUserRole(anon_branch, subscriber_user, subscriber_user_new_passwd);
 		// test admin login with wrong password
 		if (!admin_user.username.equalsIgnoreCase(admin_user_wrong_passwd.username)||admin_user.password.equals(admin_user_wrong_passwd.password)) {
 			anon_branch.testException("Admin-Login-2", "Don't have the wrong password to try to login as admin");
@@ -234,16 +234,15 @@ public class WordpressTestPack implements UITestPack {
 	class AppearanceThemesActivate extends AppearanceTest {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.linkText("Themes"));
-			driver.click(By.linkText("Activate"));
+			driver.clickLinkText("Themes");
+			driver.clickLinkText("Activate");
 			return EUITestStatus.PASS;
 		}
 	}
 	abstract class AppearanceTest extends AdminTest {
+		@Override
 		public boolean start(SimpleDriver driver) throws Exception {
-			if (!super.start(driver))
-				return false;
-			return driver.click(By.linkText("Appearance"));
+			return super.start(driver) && driver.clickLinkText("Appearance");
 		}
 		protected boolean verifyChangesSaved(SimpleDriver driver) {
 			return driver.hasText("Changes saved");
@@ -253,10 +252,9 @@ public class WordpressTestPack implements UITestPack {
 		}
 	}
 	abstract class AppearanceWidget extends AppearanceTest {
+		@Override
 		public boolean start(SimpleDriver driver) throws Exception {
-			if (!super.start(driver))
-				return false;
-			return driver.click(By.linkText("Widgets"));
+			return super.start(driver) && driver.clickLinkText("Widgets");
 		}
 	}
 	class AppearanceWidgetDeleteCalendar extends AppearanceWidget {
@@ -468,8 +466,9 @@ public class WordpressTestPack implements UITestPack {
 		}
 	}
 	abstract class Link extends AdminTest {
+		@Override
 		public boolean start(SimpleDriver driver) throws Exception {
-			return super.start(driver) && driver.click(By.linkText("Links"));
+			return super.start(driver) && driver.clickLinkText("Links");
 		}
 	}
 	class LinkAll extends Link {
@@ -484,7 +483,7 @@ public class WordpressTestPack implements UITestPack {
 	class LinkAddNew extends Link {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.linkText("Add New"));
+			driver.clickLinkText("Add New");
 			driver.inputType(By.id("link_name"), "Nifty blogging software");
 			driver.inputType(By.id("link_url"), "http://windows.php.net/");
 			driver.inputType(By.id("link_description"), "show when someone hovers over link");
@@ -559,14 +558,12 @@ public class WordpressTestPack implements UITestPack {
 		}
 	}
 	abstract class Pages extends AdminTest {
+		@Override
 		public boolean start(SimpleDriver driver) throws Exception {
-			if (!super.start(driver))
-				return false;
-			driver.click(By.cssSelector("div.wp-submenu.sub-open > div.wp-submenu-wrap > ul > li.wp-first-item > a.wp-first-item"));
-			return true;
+			return super.start(driver) && driver.clickLinkText("Pages");
 		}
 	}
-	class PagesAddNew extends AdminTest {
+	class PagesAddNew extends Pages {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
 			driver.click(By.partialLinkText("Add New"));
@@ -593,26 +590,23 @@ public class WordpressTestPack implements UITestPack {
 	class PagesEdit extends Pages {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.cssSelector("a[title=\"Edit this item\"]"));
-			driver.click(By.id("publish"));
-			return EUITestStatus.PASS;
+			driver.clickLinkText("Edit");
+			driver.clickId("publish");
+			return driver.hasTextPF("updated");
 		}
 	}
 	class PagesQuickEdit extends Pages {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.cssSelector("a.editinline"));
-			driver.click(By.partialLinkText("Update"));
-			return EUITestStatus.PASS;
+			driver.clickLinkText("Quick Edit");
+			driver.clickId("publish");
+			return driver.hasTextPF("updated");
 		}
 	}
 	abstract class Posts extends AdminTest { 
 		@Override
 		public boolean start(SimpleDriver driver) throws Exception {
-			if (!super.start(driver))
-				return false;
-			driver.click(By.linkText("Posts"));
-			return true;
+			return super.start(driver) && driver.clickLinkText("Posts");
 		}
 	}
 	class PostsAll extends Posts {
@@ -621,7 +615,7 @@ public class WordpressTestPack implements UITestPack {
 			return driver.hasTextPF("Posts", "All");
 		}
 	}
-	class PostsTrash extends Posts {
+	class PostTrash extends Posts {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
 			driver.click(By.partialLinkText("Trash"));
@@ -631,27 +625,38 @@ public class WordpressTestPack implements UITestPack {
 	class PostQuickEdit extends Posts {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.linkText("Quick Edit"));
-			driver.click(By.id("publish"));
+			driver.clickLinkText("Quick Edit");
+			driver.clickId("publish");
 			return driver.hasTextPF("Post updated");
 		}
 	}
 	class PostEdit extends Posts {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.linkText("Edit"));
-			driver.click(By.id("publish"));
+			driver.clickLinkText("Edit");
+			driver.clickId("publish");
 			return driver.hasTextPF("Post updated");
 		}
 	}
-	class PostCategoriesAll extends AdminTest {
+	abstract class PostCategories extends Posts {
+		@Override
+		public boolean start(SimpleDriver driver) throws Exception {
+			return super.start(driver) && driver.click(By.partialLinkText("Categories"));
+		}
+	}
+	abstract class PostTags extends Posts {
+		@Override
+		public boolean start(SimpleDriver driver) throws Exception {
+			return super.start(driver) && driver.click(By.partialLinkText("Tags"));
+		}
+	}
+	class PostCategoriesAll extends PostCategories {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.partialLinkText("Categories"));
 			return driver.hasTextPF("Categories", "All");
 		}
 	}
-	class PostCategoriesAdd extends AdminTest {
+	class PostCategoriesAdd extends PostCategories {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
 			driver.inputType(By.id("tag-name"), "New Category2"); // TODO
@@ -661,7 +666,7 @@ public class WordpressTestPack implements UITestPack {
 			return driver.hasTextPF("Added");
 		}
 	}
-	class PostCategoriesDelete extends AdminTest {
+	class PostCategoriesDelete extends PostCategories {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
 			driver.click(By.cssSelector("input[name=\"delete_tags[]\"]"));
@@ -670,17 +675,15 @@ public class WordpressTestPack implements UITestPack {
 			return driver.hasTextPF("Deleted");
 		}
 	}
-	class PostTagsAll extends AdminTest {
+	class PostTagsAll extends PostTags {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.partialLinkText("Tags"));
 			return driver.hasTextPF("Posts", "All");
 		}
 	}
-	class PostTagsAdd extends AdminTest {
+	class PostTagsAdd extends PostTags {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.partialLinkText("Tags"));
 			driver.inputType(By.id("tag-name"), "NewTag");
 			driver.inputType(By.id("tag-slug"), "NewTag");
 			driver.inputType(By.id("tag-description"), "some themes may show it");
@@ -688,10 +691,9 @@ public class WordpressTestPack implements UITestPack {
 			return driver.hasTextPF("Added");
 		}
 	}
-	class PostTagsDelete extends AdminTest {
+	class PostTagsDelete extends PostTags {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.partialLinkText("Tags"));
 			driver.click(By.cssSelector("input[name=\"delete_tags[]\"]"));
 			driver.selectByValue(By.cssSelector("select[name=\"action\"]"), "Delete");
 			driver.click(By.id("doaction"));
@@ -713,10 +715,10 @@ public class WordpressTestPack implements UITestPack {
 	class PluginsInstalledActivate extends AdminTest {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.linkText("Installed Plugins"));
-			driver.click(By.id("checkbox_daab5d2d514cf7d293376be3ded708f0"));
+			driver.clickLinkText("Installed Plugins");
+			driver.clickId("checkbox_daab5d2d514cf7d293376be3ded708f0");
 			driver.selectByText(By.name("action"), "Activate");
-			driver.click(By.id("doaction"));
+			driver.clickId("doaction");
 			return driver.hasTextPF("Activated");
 		}
 	}
@@ -790,17 +792,17 @@ public class WordpressTestPack implements UITestPack {
 	class CommentsTrash extends Comments {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.cssSelector("input[name=\"delete_comments[]\"]"));
+			//driver.click(By.cssSelector("input[name=\"delete_comments[]\"]"));
 			driver.selectByText(By.cssSelector("select[name=\"action\"]"), "Move to Trash");
 			driver.click(By.id("doaction"));
-			return driver.hasTextPF("moved to the Trash");
+			return driver.hasTextPF("comment moved to the Trash");
 		}
 	}
 	class CommentsApprove extends Comments {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.xpath("//li[@id='menu-comments']/a"));
-			driver.click(By.cssSelector("input[name=\"delete_comments[]\"]"));
+			//driver.click(By.xpath("//li[@id='menu-comments']/a"));
+			//driver.click(By.cssSelector("input[name=\"delete_comments[]\"]"));
 			driver.selectByText(By.cssSelector("select[name=\"action\"]"), "Approve");
 			driver.click(By.id("doaction"));
 			return driver.hasTextPF("Approved");
@@ -809,29 +811,31 @@ public class WordpressTestPack implements UITestPack {
 	class CommentsUnapprove extends Comments {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.xpath("//li[@id='menu-comments']/a"));
-			driver.click(By.cssSelector("input[name=\"delete_comments[]\"]"));
+			//driver.click(By.xpath("//li[@id='menu-comments']/a"));
+			//driver.click(By.cssSelector("input[name=\"delete_comments[]\"]"));
 			driver.selectByText(By.cssSelector("select[name=\"action\"]"), "Unapprove");
 			driver.click(By.id("doaction"));
 			return driver.hasTextPF("Approve");
 		}
 	}
 	abstract class Settings extends AdminTest {
-		
+		public boolean start(SimpleDriver driver) throws Exception {
+			return super.start(driver) && driver.clickLinkText("Settings");
+		}
 	}
 	class SettingsGeneralChangeTimezone extends Settings {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.linkText("General"));
+			driver.clickLinkText("General");
 			driver.selectByText(By.id("timezone_string"), "UTC-8");
-			driver.click(By.id("submit"));
+			driver.clickId("submit");
 			return EUITestStatus.PASS;
 		}
 	}
 	class SettingsChangeDateTimeFormat extends Settings {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.cssSelector("div.wp-submenu.sub-open > div.wp-submenu-wrap > ul > li.wp-first-item > a.wp-first-item"));
+			driver.clickLinkText("General");
 			driver.click(By.cssSelector("label[title=\"Y/m/d\"] > input[name=\"date_format\"]"));
 			driver.click(By.cssSelector("label[title=\"g:i A\"] > input[name=\"time_format\"]"));
 			driver.click(By.id("submit"));
@@ -894,8 +898,9 @@ public class WordpressTestPack implements UITestPack {
 	class ToolsExport extends AdminTest {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
+			driver.clickLinkText("Tools");
 			driver.click(By.partialLinkText("Export"));
-			driver.click(By.id("submit"));
+			driver.clickId("submit");
 			return EUITestStatus.PASS;
 		}
 	}
@@ -932,7 +937,13 @@ public class WordpressTestPack implements UITestPack {
 			return EUITestStatus.PASS;
 		}
 	}
-	class UsersAddNew extends AdminTest {
+	abstract class Users extends AdminTest {
+		@Override
+		public boolean start(SimpleDriver driver) throws Exception {
+			return super.start(driver) && driver.clickLinkText("Users");
+		}
+	}
+	class UsersAddNew extends Users {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
 			driver.click(By.xpath("(//a[contains(text(),'Add New')])[6]"));
@@ -945,14 +956,6 @@ public class WordpressTestPack implements UITestPack {
 			driver.inputType(By.id("pass2"), "password01!"); // TODO
 			driver.click(By.id("createusersub"));
 			return EUITestStatus.PASS;
-		}
-	}
-	abstract class Users extends AdminTest {
-		public boolean start(SimpleDriver driver) throws Exception {
-			if (!super.start(driver))
-				return false;
-			driver.click(By.cssSelector("div.wp-submenu.sub-open > div.wp-submenu-wrap > ul > li.wp-first-item > a.wp-first-item"));
-			return true;
 		}
 	}
 	class UsersAllUsers extends Users {
@@ -979,7 +982,8 @@ public class WordpressTestPack implements UITestPack {
 	class UsersUpdateUser extends Users {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.cssSelector("#user-2 > td.username.column-username > div.row-actions > span.edit > a"));
+			driver.clickLinkText("Users");
+			driver.clickLinkText("Edit");
 			driver.inputType(By.id("description"), "Founder of CompuGlobalHyperMegaNet");
 			driver.click(By.id("submit"));
 			return EUITestStatus.PASS;
@@ -1035,14 +1039,14 @@ public class WordpressTestPack implements UITestPack {
 	class WidgetEntriesRSS extends Widget {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.linkText("Entries RSS"));
+			driver.clickLinkText("Entries RSS");
 			return EUITestStatus.PASS;
 		}
 	}
 	class WidgetCommentsRSS extends Widget {
 		@Override
 		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.linkText("Comments RSS"));
+			driver.clickLinkText("Comments RSS");
 			return EUITestStatus.PASS;
 		}
 	}

@@ -23,7 +23,7 @@ public class PhpUnitTestResult {
 	public final Host host;
 	public final String output;
 	public String http_response;
-	protected String sapi_output;
+	protected String sapi_output, sapi_config;
 	public PhpIni ini;
 	
 	public PhpUnitTestResult(PhpUnitTestCase test_case, EPhpUnitTestStatus status, ScenarioSet scenario_set, Host host, String output) {
@@ -37,14 +37,19 @@ public class PhpUnitTestResult {
 		this.output = output;
 	}
 	
-	public PhpUnitTestResult(PhpUnitTestCase test_case, EPhpUnitTestStatus status, ScenarioSet scenario_set, Host host, String output, PhpIni ini, String sapi_output) {
+	public PhpUnitTestResult(PhpUnitTestCase test_case, EPhpUnitTestStatus status, ScenarioSet scenario_set, Host host, String output, PhpIni ini, String sapi_output, String sapi_config) {
 		this(test_case, status, scenario_set, host, output);
 		this.sapi_output = sapi_output;
+		this.sapi_config = sapi_config;
 		this.ini = ini;
 	}
 	
 	public String getName() {
 		return test_case.getName();
+	}
+	
+	public String getSAPIConfig() {
+		return sapi_config;
 	}
 	
 	public String getSAPIOutput() {
@@ -130,6 +135,18 @@ public class PhpUnitTestResult {
 				serial.startTag("pftt", "ini");
 				serial.text(ini.toString());
 				serial.endTag("pftt", "ini");
+			}
+			
+			if (StringUtil.isNotEmpty(sapi_output)) {
+				serial.startTag(null, "SAPIOutput");
+				serial.text(sapi_output);
+				serial.endTag(null, "SAPIOutput");
+			}
+			
+			if (StringUtil.isNotEmpty(sapi_config)) {
+				serial.startTag(null, "SAPIConfig");
+				serial.text(sapi_config);
+				serial.endTag(null, "SAPIConfig");
 			}
 		}
 		//

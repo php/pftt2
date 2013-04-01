@@ -122,7 +122,12 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 					// make sure PHP doesn't find it and load it automatically
 					host.moveElevated(dll_path.replace(".dll", ".dont_load"), dll_path);
 				
-				if (!host.exists(dll_path)) {
+				if (host.exists(dll_path)) {
+					// may have already setup scenario
+					if (build.is54(cm, host)||build.is53(cm, host))
+						// 5.4 and 5.3 don't include opcache, so provide the version of opcache being used
+						version = "7.0.1";
+				} else {
 					// try to install it for 5.3 and 5.4 builds
 					try {
 						String src_dll_path = null;

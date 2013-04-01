@@ -395,6 +395,9 @@ public abstract class AHost extends Host {
 		public boolean isCrashedOrDebuggedAndClosed() {
 			return isCrashExitCode(AHost.this, getExitCode(), true);
 		}
+		public boolean isCrashedAndDebugged() {
+			return isDebuggerAttachedExitCode(AHost.this, getExitCode());
+		}
 		/** immediately returns the output the process has returned (if process is still running, it may
 		 * return more output after this call)
 		 * 
@@ -451,6 +454,14 @@ public abstract class AHost extends Host {
 		
 		return exit_code != 0;
 	} // end public static boolean isCrashExitCode
+	
+	public static boolean isDebuggerAttachedExitCode(AHost host, int exit_code) {
+		if (host.isWindows()) {
+			return exit_code == NTStatus.STATUS_DEBUGGER_INACTIVE;
+		} else {
+			return false;
+		}
+	}
 	
 	/** guesses a status code as a String for the exit code, or returns null
 	 * 

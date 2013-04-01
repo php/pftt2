@@ -71,6 +71,9 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
  * 
  */
 
+// TODO check all usage of System.exit
+// TODO check symfony thread safety
+//
 // TODO UI testing
 // commit: UI testing support, first implemented for Wordpress
 //
@@ -1292,14 +1295,17 @@ public class PfttMain {
 				
 				cmd_help();
 			} else if (command.equals("cmp-report")) {
-				PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-5.3.24RC1-TS-X86-VC9"));
-				PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-5.3.24RC1-TS-X86-VC9"));
+				//PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-5.3.24RC1-TS-X86-VC9"));
+				//PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-5.3.24RC1-TS-X86-VC9"));
+				PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-rfe2612d-nTS-X86-VC9"));
+				PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-rfecce5a-nTS-X86-VC9"));
+				
 				//PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-5.4.14RC1-NTS-X86-VC9"));
 				//PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-5.4.14RC1-NTS-X86-VC9"));
-				//PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-re9f996c-NTS-X86-VC9"));
-				//PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-r85e5e60-NTS-X86-VC9"));
-				//PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-rf3ebb40-NTS-X86-VC11"));
-				//PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-r5d535a0-NTS-X86-VC11"));
+				//PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-ref93a93-TS-X86-VC9"));
+				//PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-r72426a4-TS-X86-VC9"));
+				//PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-rbed44e5-NTS-X86-VC11"));
+				//PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-r586dc07-NTS-X86-VC11"));
 				//PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-5.5.0beta1-TS-X86-VC11"));
 				//PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-5.5.0beta2-TS-X86-VC11"));
 				

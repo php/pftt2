@@ -83,6 +83,12 @@ public class ArrayUtil {
 		
 		return clazz == null ? null : (E[]) out.toArray((E[])Array.newInstance(clazz, out.size()));
 	}
+	
+	public static <E extends Object> List<E> toList(E e) {
+		ArrayList<E> o = new ArrayList<E>(1);
+		o.add(e);
+		return o;
+	}
 
 	public static <E extends Object> List<E> toList(Collection<E> c) {
 		if (c instanceof List)

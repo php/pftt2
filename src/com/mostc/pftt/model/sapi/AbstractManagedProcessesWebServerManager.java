@@ -103,11 +103,14 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 				{
 					Socket sock = null;
 					boolean connected = false;
-					for ( int i=0 ; i < 3 ; i++ ) {
+					long start_time = System.currentTimeMillis();
+					int socket_attempts;
+					// builtin web server needs many attempts and large timeouts
+					for ( socket_attempts=0 ; socket_attempts < 10 ; socket_attempts++ ) {
 						connected = false;
 						try {
 							sock = new Socket();
-							sock.setSoTimeout(100*(i+1));
+							sock.setSoTimeout(Math.min(60000, 100*((int)(Math.pow(socket_attempts+1, socket_attempts+1)))));
 							sock.connect(new InetSocketAddress(listen_address, port));
 							if (sock.isConnected()) {
 								connected = true;
@@ -120,7 +123,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 					}
 					if (!connected) {
 						// kill server and try again
-						throw new IOException("socket not connected");
+						throw new IOException("Could not socket to web server after it was started. Web server did not respond to socket. Tried "+socket_attempts+" times, waiting "+(System.currentTimeMillis()-start_time)+" millis total.");
 					}
 				}
 				//
@@ -173,7 +176,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 		} // end for
 		
 		// fallback
-		sapi_output += "PFTT: wasn't able to start web server instance (after "+total_attempts+" attempts)... giving up.\n";
+		sapi_output = "PFTT: could not start web server instance (after "+total_attempts+" attempts)... giving up.\n" + sapi_output;
 		
 		// return this failure message to client code
 		return new CrashedWebServerInstance(this, ini, env, sapi_output);
@@ -194,6 +197,11 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 			this.cmd = cmd;
 			this.hostname = hostname;
 			this.port = port;
+		}
+		
+		@Override
+		public boolean isCrashedAndDebugged() {
+			return process.isCrashedAndDebugged();
 		}
 		
 		@Override

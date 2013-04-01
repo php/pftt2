@@ -137,7 +137,14 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 		
 		//
 		// CRITICAL
-		ini.putMulti(PhpIni.ERROR_REPORTING, PhpIni.E_ALL_NOTICE_WARNING);
+		// be very careful changing ERROR_REPORTING. it can cause false failures.
+		// WHENEVER changing this setting, you MUST test a ts and nts build from 5.3, 5.4, 5.5 with at least CLI and Apache scenarios
+		// before AND after to make sure this didn't break anything. PHPT tests are especially sensitive to this setting (can cause false PHPT failures).
+		// 
+		// testing 5.3 is especially important
+		//
+		// NOTE: 5.3 php builds do not include E_STRICT with E_ALL. you must explicitly include both here!
+		ini.putMulti(PhpIni.ERROR_REPORTING, build.is53(cm, host)?PhpIni.E_ALL_STRICT:PhpIni.E_ALL_NOTICE_WARNING);
 		// CRITICAL
 		ini.putMulti(PhpIni.DISPLAY_ERRORS, PhpIni.ON);
 		// CRITICAL

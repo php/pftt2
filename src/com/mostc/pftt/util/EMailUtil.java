@@ -3,8 +3,11 @@ package com.mostc.pftt.util;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
+import java.net.Socket;
 import java.nio.charset.Charset;
 import java.util.Collection;
+
+import javax.net.ssl.SSLSocket;
 
 import org.columba.ristretto.auth.AuthenticationException;
 import org.columba.ristretto.composer.MimeTreeRenderer;
@@ -17,6 +20,9 @@ import org.columba.ristretto.message.MimeHeader;
 import org.columba.ristretto.message.MimeType;
 import org.columba.ristretto.smtp.SMTPException;
 import org.columba.ristretto.smtp.SMTPProtocol;
+import org.columba.ristretto.ssl.RistrettoSSLSocketFactory;
+
+import com.github.mattficken.io.ArrayUtil;
 
 /** Utility functions for emailing messages
  *
@@ -30,6 +36,13 @@ import org.columba.ristretto.smtp.SMTPProtocol;
 
 public final class EMailUtil {
 
+	public static void main(String[] args) throws Exception {
+		SMTPProtocol smtp = connect("smtp.gmail.com", 465, Address.parse("tomattficken@gmail.com"), ESMTPSSL.EXPLICIT_SSL, ESMTPAuthMethod.PLAIN, "tomattficken@gmail.com", "plasticmouse".toCharArray());
+		System.err.println(smtp);
+		System.err.println(smtp.getState());
+		sendHTMLMessage(smtp, Address.parse("tomattficken@gmail.com"), ArrayUtil.toList(Address.parse("v-mafick@microsoft.com")), "subject", "<html><body><h1>html_msg_Str</h1></body></html>");
+	}
+	
 	public static void sendTextMessage(SMTPProtocol smtp, Address from, Collection<Address> to, String subject, String text_msg_str) throws IOException, SMTPException, Exception {
 		sendTextAndHTMLMessage(smtp, from, to, subject, null, text_msg_str);
 	}
@@ -127,17 +140,19 @@ public final class EMailUtil {
 		boolean authenticated = (auth_method == ESMTPAuthMethod.NONE);
 
 		if (smtp.getState() == SMTPProtocol.NOT_CONNECTED) {
-			System.out.println("130");
-			if (use_ssl==ESMTPSSL.EXPLICIT_SSL)
-				smtp.startTLS();
+			if (use_ssl==ESMTPSSL.EXPLICIT_SSL) {
+				SSLSocket ssl_sock = (SSLSocket) RistrettoSSLSocketFactory.getInstance().createSocket(smtp.getHostName(), 465);// TODO temp smtp.getPort());
+				
+				ssl_sock.startHandshake();
+				
+				smtp.createStreams(ssl_sock);
+			} else {
+				smtp.openPort();
+			}
 			
-			smtp.openPort();
-
-			// TODO smtp.helo(InetAddress.getByName("redmond.corp.microsoft.com"));// TODO InetAddress.getLocalHost());
-			smtp.helo(InetAddress.getByName("smtp.exchange.microsoft.com"));// TODO InetAddress.getLocalHost());
+			smtp.helo(InetAddress.getLocalHost());
 
 			if (use_ssl==ESMTPSSL.IMPLICIT_SSL) {
-				System.out.println("139");
 				smtp.startTLS();
 			}
 		}
@@ -164,10 +179,4 @@ public final class EMailUtil {
 	
 	private EMailUtil() {}
 	
-	public static void main(String[] args) throws Exception {
-		SMTPProtocol smtp = EMailUtil.connect("smtp.exchange.microsoft.com", new Address("v-mafick@microsoft.com"), ESMTPSSL.IMPLICIT_SSL, ESMTPAuthMethod.DIGEST_MD5, "v-mafick@redmond.corp.microsoft.com", "$PLASTICMOUSE30".toCharArray());
-		
-		System.out.println(smtp);
-		EMailUtil.sendHTMLMessage(smtp, new Address("v-mafick@microsoft.com"), java.util.Arrays.asList(new Address[]{new Address("v-mafick@microsoft.com")}), "test", "<html><body><h1>test</h1><p>msg</p></body></html>");
-	}
 } // end public final class EMailUtil

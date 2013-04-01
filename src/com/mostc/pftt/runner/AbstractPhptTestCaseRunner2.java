@@ -487,7 +487,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		if (test_case.isXFail()) {
 			result = new PhptTestResult(host, EPhptTestStatus.XFAIL_WORKS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual);
 		} else {
-			result = notifyFail(new PhptTestResult(host, EPhptTestStatus.FAIL, test_case, output, actual_lines, expected_lines, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), diff, expectf, preoverride_actual, getCrashedSAPIOutput()));
+			result = notifyFail(new PhptTestResult(host, EPhptTestStatus.FAIL, test_case, output, actual_lines, expected_lines, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), diff, expectf, preoverride_actual, getSAPIOutput(), getSAPIConfig()));
 		}
 		
 		//

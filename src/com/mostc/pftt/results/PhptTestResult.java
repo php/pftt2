@@ -65,7 +65,7 @@ public class PhptTestResult {
 	/** the difference (as string) between the actual and expected output */
 	@Nullable
 	public String diff_str;
-	protected String sapi_output;
+	protected String sapi_output, sapi_config;
 	public PhpIni ini;
 	/** the whole http request, headers and body (utf-8 encoded) */
 	public String http_request;
@@ -81,12 +81,13 @@ public class PhptTestResult {
 	}
 	
 	public PhptTestResult(AHost host, EPhptTestStatus status, PhptTestCase test_case, String actual, String[] actual_lines, String[] expected_lines, Charset actual_cs, PhpIni ini, Map<String,String> env, String[] cmd_array, byte[] stdin_data, String shell_script, Diff<String> diff, String expectf_output, String preoverride_actual) {
-		this(host, status, test_case, actual, actual_lines, expected_lines, actual_cs, ini, env, cmd_array, stdin_data, shell_script, diff, expectf_output, preoverride_actual, null);
+		this(host, status, test_case, actual, actual_lines, expected_lines, actual_cs, ini, env, cmd_array, stdin_data, shell_script, diff, expectf_output, preoverride_actual, null, null);
 	}
 	
-	public PhptTestResult(AHost host, EPhptTestStatus status, PhptTestCase test_case, String actual, String[] actual_lines, String[] expected_lines, Charset actual_cs, PhpIni ini, Map<String,String> env, String[] cmd_array, byte[] stdin_data, String shell_script, Diff<String> diff, String expectf_output, String preoverride_actual, String sapi_output) {
+	public PhptTestResult(AHost host, EPhptTestStatus status, PhptTestCase test_case, String actual, String[] actual_lines, String[] expected_lines, Charset actual_cs, PhpIni ini, Map<String,String> env, String[] cmd_array, byte[] stdin_data, String shell_script, Diff<String> diff, String expectf_output, String preoverride_actual, String sapi_output, String sapi_config) {
 		this();
 		this.sapi_output = sapi_output;
+		this.sapi_config = sapi_config;
 		this.actual_cs = actual_cs;
 		this.host = host;
 		this.status = status;
@@ -109,6 +110,10 @@ public class PhptTestResult {
 	
 	public String getSAPIOutput() {
 		return sapi_output;
+	}
+	
+	public String getSAPIConfig() {
+		return sapi_config;
 	}
 	
 	@Override
@@ -262,6 +267,12 @@ public class PhptTestResult {
 				serial.endTag(null, "SAPIOutput");
 			}
 			
+			if (StringUtil.isNotEmpty(sapi_config)) {
+				serial.startTag(null, "SAPIConfig");
+				serial.text(sapi_config);
+				serial.endTag(null, "SAPIConfig");
+			}
+			
 			if (StringUtil.isNotEmpty(preoverride_actual)) {
 				serial.startTag(null, "preoverrideActual");
 				serial.text(preoverride_actual);
@@ -384,6 +395,8 @@ public class PhptTestResult {
 					result.stdin_data = parser.getText().getBytes();
 				else if (tag_name.equals("SAPIOutput"))
 					result.sapi_output = parser.getText();
+				else if (tag_name.equals("SAPIConfig"))
+					result.sapi_config = parser.getText();
 				else if (tag_name.equals("preoverrideActual"))
 					result.preoverride_actual = parser.getText();
 				else if (tag_name.equals("ini"))

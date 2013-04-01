@@ -76,7 +76,6 @@ public class WinDebugManager extends DebuggerManager {
 		cm.println(EPrintType.TIP, getClass(), "  WinDebug command: k       - show callstack");
 		cm.println(EPrintType.TIP, getClass(), "  WinDebug command: g       - go (until next exception)");
 		cm.println(EPrintType.TIP, getClass(), "  WinDebug command: <F9>    - set breakpoint");
-		cm.println(EPrintType.TIP, getClass(), "  PFTT will usually run a crashed test a 2nd time to confirm, so you'll see twice as many crashes as are reported");
 	}
 
 	public static class WinDebug extends Debugger {

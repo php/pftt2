@@ -96,7 +96,7 @@ public class PhpResultPackReader extends PhpResultPack {
 				if (!scenario_dir.isDirectory())
 					continue;
 				
-				String scenario_set_name = scenario_dir.getName().toLowerCase();
+				String scenario_set_name = scenario_dir.getName();
 				PhpUnitResultReader php_unit_reader = new PhpUnitResultReader();
 				php_unit_reader.open(cm, scenario_dir, scenario_set_name, reader.build_info);
 				

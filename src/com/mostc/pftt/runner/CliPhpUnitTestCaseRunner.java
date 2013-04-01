@@ -41,8 +41,13 @@ public class CliPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	}
 
 	@Override
-	public String getCrashedSAPIOutput() {
+	public String getSAPIOutput() {
 		return eo == null ? null : eo.output;
+	}
+
+	@Override
+	public String getSAPIConfig() {
+		return null;
 	}
 
 } // end public class CliPhpUnitTestCaseRunner
