@@ -65,7 +65,7 @@ public class PhpIni {
 	public static final String U_INVALID_SUBSTITUTE = "U_INVALID_SUBSTITUTE";
 	public static final String DOT_HTML = ".html";
 	public static final String E_ALL_NOTICE_WARNING = "E_ALL | E_NOTICE | E_WARNING";
-	public static final String E_ALL_STRICT = "E_ALL | E_STRICT";
+	public static final String E_ALL_STRICT_DEPRECATED = "E_ALL | E_STRICT | E_DEPRECATED";
 	//
 	private static String dllName(String name) {
 		// FUTURE macos x and solaris support

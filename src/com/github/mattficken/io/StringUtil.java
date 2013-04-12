@@ -2,6 +2,8 @@ package com.github.mattficken.io;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
+import java.util.ListIterator;
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -18,13 +20,35 @@ import com.mostc.pftt.util.apache.regexp.REProgram;
 
 public final class StringUtil {
 	public static final String EMPTY = "";
+		
+	public static void intern(List<String> in) {
+		intern(in.listIterator());
+	}
+	
+	public static void intern(ListIterator<String> in) {
+		while (in.hasNext()) {
+			in.set(in.next().intern());
+		}
+	}
+	
+	public static String max(String in, int len) {
+		return in.length() > len ? in.substring(0, len) : in;
+	}
+	
+	public static String min(String in, int len) {
+		return min(in, len, ' ');
+	}
+	
+	public static String min(String in, int len, char c) {
+		return padLast(in, len, c);
+	}
 	
 	private static Random r = new Random();
 	public static String randomLettersStr(int min, int max) {
 		final int len = r.nextInt(max-min)+min;
 		char[] chars = new char[len];
 		for ( int i=0 ; i < len ; i++ ) {
-			chars[i] = (char)( r.nextInt(127-65)+65 );
+			chars[i] = (char)( r.nextInt(26)+65 );
 		}
 		return new String(chars, 0, len);
 	}
@@ -99,11 +123,19 @@ public final class StringUtil {
 	public static String toString(char c) {
 		return new String(new char[]{c});
 	}
+	
+	public static String padLast(String string, int len, char c) {
+		StringBuilder sb = new StringBuilder();
+		sb.append(string);
+		while (sb.length()+string.length()<len)
+			sb.append(c);
+		return sb.toString();
+	}
 
-	public static Object padFirst(String string, int len, char c) {
+	public static String padFirst(String string, int len, char c) {
 		if (string.length()>=len)
 			return string;
-		StringBuffer sb = new StringBuffer();
+		StringBuilder sb = new StringBuilder();
 		while (sb.length()+string.length() < len)
 			sb.append(c);
 		sb.append(string);

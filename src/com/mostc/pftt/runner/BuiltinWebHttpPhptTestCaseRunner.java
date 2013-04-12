@@ -7,6 +7,7 @@ import org.apache.http.params.HttpParams;
 import org.apache.http.protocol.HttpProcessor;
 import org.apache.http.protocol.HttpRequestExecutor;
 
+import com.github.mattficken.io.Trie;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.core.EPhptSection;
 import com.mostc.pftt.model.core.EPhptTestStatus;
@@ -29,7 +30,16 @@ public class BuiltinWebHttpPhptTestCaseRunner extends HttpPhptTestCaseRunner {
 	public static boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
 		if (HttpPhptTestCaseRunner.willSkip(cm, twriter, host, scenario_set, type, build, test_case)) {
 			return true;
-		} else if (test_case.isNamed(
+		} else if (test_case.isNamed(NOT_ON_BUILTIN_WEB_SERVER)) {
+
+			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on web servers", null, null, null, null, null, null, null, null, null, null, null));
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
+	public static Trie NOT_ON_BUILTIN_WEB_SERVER = PhptTestCase.createNamed(
 				// XXX these don't work right on the builtin web server 
 				"ext/mbstring/tests/mb_ereg_search.phpt",
 				"ext/json/tests/pass001.phpt",
@@ -99,14 +109,8 @@ public class BuiltinWebHttpPhptTestCaseRunner extends HttpPhptTestCaseRunner {
 				"tests/basic/023.phpt",
 				"tests/basic/bug29971.phpt",
 				"tests/lang/short_tags.002.phpt",
-				"zend/tests/errmsg_021.phpt")) {
-
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on web servers", null, null, null, null, null, null, null, null, null, null, null));
-			return true;
-		} else {
-			return false;
-		}
-	}
+				"zend/tests/errmsg_021.phpt"
+			);
 	
 	public BuiltinWebHttpPhptTestCaseRunner(PhpIni ini,
 			Map<String, String> env, HttpParams params, HttpProcessor httpproc,
@@ -121,23 +125,36 @@ public class BuiltinWebHttpPhptTestCaseRunner extends HttpPhptTestCaseRunner {
 	}
 	
 	@Override
+	protected void stop(boolean force) {
+		if (test_socket==null)
+			return;
+		if (web!=null)
+			web.close();
+		try {
+			test_socket.close();
+		} catch ( Exception ex ) {
+		}
+		test_socket = null;
+	}
+	
+	@Override
 	protected String createBaseName() {
 		// some intl tests have + in their name... sending this to the builtin web server breaks it (HTTP 404)
 		return super.createBaseName().replace("+", "");
 	}
 	
 	@Override
-	protected String do_http_execute(String path, EPhptSection section, boolean is_replacement) throws Exception {
+	protected String do_http_execute(String path, EPhptSection section) throws Exception {
 		try {
-			return super.do_http_execute(path, section, is_replacement);
+			return super.do_http_execute(path, section);
 		} catch ( IOException ex ) {
 			// wait and then try again (may its taking a long time to startup? - this seems to decrease the number of timeouts)
 			Thread.sleep(10000);
 			try {
-				return super.do_http_execute(path, section, is_replacement);
+				return super.do_http_execute(path, section);
 			} catch ( IOException ex2 ) {
 				Thread.sleep(10000);
-				return super.do_http_execute(path, section, is_replacement);
+				return super.do_http_execute(path, section);
 			}
 		}
 	}

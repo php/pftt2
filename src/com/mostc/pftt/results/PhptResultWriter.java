@@ -162,7 +162,7 @@ public class PhptResultWriter extends AbstractPhptRW {
 				// write result info in XML format
 				serial.startDocument(null, null);
 				// write result and reference to the XSL stylesheet
-				result.serialize(serial, store_all, StringUtil.repeat("../", AHost.countUp(test_case_base_name, dir.getAbsolutePath()))+"/phptresult.xsl");
+				result.serialize(serial, store_all, StringUtil.repeat("../", 1+AHost.countUp(test_case_base_name, dir.getAbsolutePath()))+"/phptresult.xsl");
 				serial.endDocument();
 				
 				serial.flush();

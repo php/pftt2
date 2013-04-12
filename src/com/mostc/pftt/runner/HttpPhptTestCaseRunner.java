@@ -22,6 +22,7 @@ import org.apache.http.protocol.HttpRequestExecutor;
 
 import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.StringUtil;
+import com.github.mattficken.io.Trie;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.core.EPhptSection;
 import com.mostc.pftt.model.core.EPhptTestStatus;
@@ -50,11 +51,13 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected final WebServerManager smgr;
 	protected final ByteArrayOutputStream request_bytes, response_bytes;
 	protected WebServerInstance web = null;
+	protected boolean is_replacement = false;
 	protected String cookie_str;
 	protected DebuggingHttpClientConnection conn;
 	protected final HttpParams params;
 	protected final HttpProcessor httpproc;
 	protected final HttpRequestExecutor httpexecutor;
+	protected Socket test_socket;
 
 	public HttpPhptTestCaseRunner(PhpIni ini, Map<String,String> env, HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
 		super(ini, thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
@@ -102,16 +105,43 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "ARGS section not supported for testing against web servers", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return true;
-		} else if (cm.isDisableDebugPrompt()&&test_case.isNamed(
-					// causes a blocking winpopup msg about a few php_*.dll DLLs that couldn't be loaded
-					// (ignore these for automated testing, but still show them for manual testing)
-					"ext/zlib/tests/008.phpt",
-					"ext/zlib/tests/ob_gzhandler_legacy_002.phpt"
-				)) {
+		} else if (cm.isDisableDebugPrompt()&&test_case.isNamed(BLOCKING_WINPOPUP)) {
 			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test shows blocking winpopup msg", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return true;
-		} else if (test_case.isNamed(
+		} else if (test_case.isNamed(NOT_VALID_ON_WEB_SERVERS)) {
+			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on web servers", null, null, null, null, null, null, null, null, null, null, null));
+			
+			return true;
+		} else if (host.isWindows() && test_case.isNamed(NOT_VALID_ON_WEB_SERVERS_WINDOWS)) {
+			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on web servers", null, null, null, null, null, null, null, null, null, null, null));
+			
+			return true;
+		} else {
+			return false;
+		}
+	} // end public static boolean willSkip
+	public static Trie BLOCKING_WINPOPUP = PhptTestCase.createNamed(
+				// causes a blocking winpopup msg about a few php_*.dll DLLs that couldn't be loaded
+				// (ignore these for automated testing, but still show them for manual testing)
+				"ext/zlib/tests/008.phpt",
+				"ext/zlib/tests/ob_gzhandler_legacy_002.phpt"
+			);
+	public static Trie NOT_VALID_ON_WEB_SERVERS_WINDOWS = PhptTestCase.createNamed(
+				// on Windows/Apache, already start with output buffering
+				// so the expected output is different (but is not a bug)
+				"tests/output/ob_get_level_basic_001.phpt",
+				"tests/output/ob_get_length_basic_001.phpt",
+				"tests/output/ob_clean_basic_001.phpt",
+				"tests/output/ob_get_status.phpt",
+				"tests/output/ob_010.phpt",
+				"tests/output/ob_011.phpt",
+				"tests/output/bug60321.phpt",
+				"ext/phar/tests/phar_create_in_cwd.phpt",
+				"ext/phar/tests/phar_commitwrite.phpt",
+				"tests/output/ob_start_error_005.phpt"
+			);
+	public static Trie NOT_VALID_ON_WEB_SERVERS = PhptTestCase.createNamed(
 				// XXX this test crashes on apache b/c the stack size is too small (see #setStackSize in ApacheManager)
 				"ext/pcre/tests/bug47662.phpt",
 				// fpassthru() system() and exec() doesn't run on Apache
@@ -177,30 +207,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				"ext/standard/tests/general_functions/bug43293_2.phpt",
 				// fopen("stdout") not supported under apache
 				"tests/strings/002.phpt"
-				)) {
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on web servers", null, null, null, null, null, null, null, null, null, null, null));
-			
-			return true;
-		} else if (host.isWindows() && test_case.isNamed(
-			// on Windows/Apache, already start with output buffering
-			// so the expected output is different (but is not a bug)
-			"tests/output/ob_get_level_basic_001.phpt",
-			"tests/output/ob_get_length_basic_001.phpt",
-			"tests/output/ob_clean_basic_001.phpt",
-			"tests/output/ob_get_status.phpt",
-			"tests/output/ob_010.phpt",
-			"tests/output/ob_011.phpt",
-			"tests/output/bug60321.phpt",
-			"ext/phar/tests/phar_create_in_cwd.phpt",
-			"ext/phar/tests/phar_commitwrite.phpt",
-			"tests/output/ob_start_error_005.phpt")) {
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on web servers", null, null, null, null, null, null, null, null, null, null, null));
-			
-			return true;
-		} else {
-			return false;
-		}
-	} // end public static boolean willSkip
+			);
 	
 	@Override
 	protected void prepareTest() throws Exception {
@@ -231,7 +238,8 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected String http_execute(String path, EPhptSection section) throws Exception {
 		try {
 			try {
-				return do_http_execute(path, section, false);
+				this.is_replacement = false;
+				return do_http_execute(path, section);
 			} catch ( IOException ex1 ) { // SocketTimeoutException or ConnectException
 				if (cm.isPfttDebug()) {
 					ex1.printStackTrace();
@@ -256,7 +264,8 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				// this will make a new WebServerInstance that will only be used to run this 1 test
 				// (so other tests will not interfere with this test at all)
 				web = null; 
-				return do_http_execute(path, section, true);
+				this.is_replacement = true;
+				return do_http_execute(path, section);
 			}
 		} catch ( IOException ioe ) {
 			String ex_str = ErrorUtil.toString(ioe);
@@ -294,7 +303,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		return sb.toString();
 	} // end protected String generateWebServerTimeoutMessage
 
-	protected String do_http_execute(String path, EPhptSection section, boolean is_replacement) throws Exception {
+	protected String do_http_execute(String path, EPhptSection section) throws Exception {
 		path = AHost.toUnixPath(path);
 		if (path.startsWith(AHost.toUnixPath(active_test_pack.getRunningDirectory())))
 			// important: convert to path web server is serving up
@@ -392,6 +401,19 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		return do_http_get(path, 0);
 	}
 	
+	@Override
+	protected void stop(boolean force) {
+		if (test_socket==null)
+			return;
+		if (force && is_replacement && web !=null && !web.isDebuggerAttached())
+			web.close();
+		try {
+			test_socket.close();
+		} catch ( Exception ex ) {
+		}
+		test_socket = null;
+	}
+	
 	protected String do_http_get(String path, int i) throws Exception {
 		HttpContext context = new BasicHttpContext(null);
 		HttpHost http_host = new HttpHost(web.hostname(), web.port());
@@ -401,13 +423,13 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			conn = null;
 		}
 		conn = new DebuggingHttpClientConnection(request_bytes, response_bytes);
-		Socket socket = null;
+		test_socket = null;
 		try {
 			context.setAttribute(ExecutionContext.HTTP_CONNECTION, conn);
 			context.setAttribute(ExecutionContext.HTTP_TARGET_HOST, http_host);
 			
-			socket = new Socket(http_host.getHostName(), http_host.getPort());
-			conn.bind(socket, params);
+			test_socket = new Socket(http_host.getHostName(), http_host.getPort());
+			conn.bind(test_socket, params);
 			conn.setSocketTimeout(60*1000);
 			
 			HttpGet request = new HttpGet(path);
@@ -437,8 +459,8 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			
 			return IOUtil.toString(response.getEntity().getContent(), IOUtil.HALF_MEGABYTE);
 		} finally {
-			if (socket!=null)
-				socket.close();
+			if (test_socket!=null)
+				test_socket.close();
 			conn.close();
 		}
 	} // end protected String do_http_get

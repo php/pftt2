@@ -3,6 +3,8 @@ package com.mostc.pftt.runner;
 import java.io.IOException;
 import java.util.Map;
 
+import com.github.mattficken.Overridable;
+import com.github.mattficken.io.Trie;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.core.EPhptSection;
 import com.mostc.pftt.model.core.EPhptTestStatus;
@@ -33,6 +35,13 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner 
 	
 	public abstract void runTest() throws IOException, Exception, Throwable;
 	
+	protected abstract void stop(boolean force);
+	
+	@Overridable
+	protected int getMaxTestRuntimeSeconds() {
+		return 60;
+	}
+	
 	public static Map<String, String> generateENVForTestCase(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhptTestCase test_case) throws Exception {
 		// read ENV vars from test, from its parent (if a test redirected to this test), and merge from scenario
 		//
@@ -50,6 +59,51 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner 
 		return env;
 	}
 	
+	public static Trie TESTS53 = PhptTestCase.createNamed(
+				"ext/filter/tests/bug39763.phpt", 
+				"ext/pcre/tests/bug33200.phpt",
+				"ext/session/tests/004.phpt",
+				"ext/session/tests/009.phpt", 
+				"ext/session/tests/013.phpt",
+				"ext/standard/tests/filters/php_user_filter_01.phpt", 
+				"ext/standard/tests/filters/php_user_filter_02.phpt",
+				"ext/standard/tests/filters/php_user_filter_03.phpt",
+				"tests/classes/method_override_optional_arg_002.phpt",
+				"tests/security/magic_quotes_gpc.phpt",
+				"zend/tests/objects_002.phpt",
+				"zend/tests/objects_003.phpt",
+				"zend/tests/objects_004.phpt",
+				"zend/tests/objects_005.phpt",
+				"zend/tests/objects_006.phpt",
+				"zend/tests/objects_007.phpt",
+				"zend/tests/objects_008.phpt",
+				"zend/tests/objects_009.phpt",
+				"zend/tests/objects_010.phpt"
+			);
+	public static Trie RANDOMLY_FAIL = PhptTestCase.createNamed(
+				// these tests randomly fail (ignore them)
+				"ext/standard/tests/network/gethostbyname_error006.phpt",
+				"ext/standard/tests/php_ini_loaded_file.phpt", 
+				"tests/run-test/test010.phpt", 
+				"ext/standard/tests/misc/time_sleep_until_basic.phpt", 
+				"ext/standard/tests/misc/time_nanosleep_basic.phpt",
+				"ext/mbstring/tests/bug45239.phpt",
+				"ext/mbstring/tests/bug63447_001.phpt",
+				"ext/mbstring/tests/bug63447_002.phpt",
+				"ext/mbstring/tests/htmlent.phpt",
+				"ext/intl/tests/formatter_format2.phpt",
+				"ext/intl/tests/intl_get_error_message.phpt",
+				"ext/intl/tests/rbbiter_getbinaryrules_basic.phpt",
+				"ext/intl/tests/rbbiter_getrules_basic.phpt",
+				"ext/mbstring/tests/mb_ereg_replace-compat-03.phpt",
+				"sapi/cli/tests/cli_process_title_windows.phpt",
+				"ext/mbstring/tests/ini_language.phpt",
+				"ext/mbstring/tests/mb_parse_str02.phpt",
+				"ext/mbstring/tests/overload02.phpt",
+				"ext/mbstring/tests/php_gr_jp_16242.phpt"
+			);
+	public static Trie NON_WINDOWS_EXTS = PhptTestCase.createExtensions("sysvmsg", "sysvshm", "gettext", "exif", "readline", "posix");
+	public static Trie SCENARIO_EXTS = PhptTestCase.createExtensions("dba", "sybase", "snmp", "interbase", "ldap", "imap", "ftp", "curl", "sql", "oci", "pcntl", "soap", "xmlrpc", "pdo", "odbc");
 	/** @see AbstractSAPIScenario#willSkip
 	 * 
 	 * @param twriter
@@ -63,7 +117,7 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner 
 	 */
 	public static boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
 		if (host.isWindows()) {
-			if (test_case.getName().contains("sysvmsg")||test_case.getName().contains("sysvshm")||test_case.getName().contains("gettext")||test_case.getName().contains("exif")||test_case.getName().contains("readline")||test_case.getName().contains("posix")) {
+			if (test_case.isExtension(NON_WINDOWS_EXTS)) {
 				// extensions not supported on Windows
 				twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "OS not supported", null, null, null, null, null, null, null, null, null, null, null));
 				
@@ -78,57 +132,18 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner 
 			return true;
 		}
 		if (build.is53(cm, host)) {
-			// XXX
-			if (test_case.isNamed(
-					"ext/filter/tests/bug39763.phpt", 
-					"ext/pcre/tests/bug33200.phpt",
-					"ext/session/tests/004.phpt",
-					"ext/session/tests/009.phpt", 
-					"ext/session/tests/013.phpt",
-					"ext/standard/tests/filters/php_user_filter_01.phpt", 
-					"ext/standard/tests/filters/php_user_filter_02.phpt",
-					"ext/standard/tests/filters/php_user_filter_03.phpt",
-					"tests/classes/method_override_optional_arg_002.phpt",
-					"tests/security/magic_quotes_gpc.phpt",
-					"zend/tests/objects_002.phpt",
-					"zend/tests/objects_003.phpt",
-					"zend/tests/objects_004.phpt",
-					"zend/tests/objects_005.phpt",
-					"zend/tests/objects_006.phpt",
-					"zend/tests/objects_007.phpt",
-					"zend/tests/objects_008.phpt",
-					"zend/tests/objects_009.phpt",
-					"zend/tests/objects_010.phpt")) {
+			if (test_case.isNamed(TESTS53)) {
 				twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null, null));
 				
 				return true;	
 			}
 		}
-		if (test_case.containsSection(EPhptSection.REQUEST)||test_case.isNamed(
-			// these tests randomly fail (ignore them)
-			"ext/standard/tests/network/gethostbyname_error006.phpt",
-			"ext/standard/tests/php_ini_loaded_file.phpt", 
-			"tests/run-test/test010.phpt", 
-			"ext/standard/tests/misc/time_sleep_until_basic.phpt", 
-			"ext/standard/tests/misc/time_nanosleep_basic.phpt",
-			"ext/mbstring/tests/bug45239.phpt",
-			"ext/mbstring/tests/bug63447_001.phpt",
-			"ext/mbstring/tests/bug63447_002.phpt",
-			"ext/mbstring/tests/htmlent.phpt",
-			"ext/intl/tests/formatter_format2.phpt",
-			"ext/intl/tests/intl_get_error_message.phpt",
-			"ext/intl/tests/rbbiter_getbinaryrules_basic.phpt",
-			"ext/intl/tests/rbbiter_getrules_basic.phpt",
-			"ext/mbstring/tests/mb_ereg_replace-compat-03.phpt",
-			"sapi/cli/tests/cli_process_title_windows.phpt",
-			"ext/mbstring/tests/ini_language.phpt",
-			"ext/mbstring/tests/mb_parse_str02.phpt",
-			"ext/mbstring/tests/overload02.phpt",
-			"ext/mbstring/tests/php_gr_jp_16242.phpt")) {
+		// TODO || ?
+		if (test_case.containsSection(EPhptSection.REQUEST)||test_case.isNamed(RANDOMLY_FAIL)) {
 			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return true;
-		} else if (test_case.getName().contains("dba")||test_case.getName().contains("sybase")||test_case.getName().contains("snmp")||test_case.getName().contains("interbase")||test_case.getName().contains("ldap")||test_case.getName().contains("imap")||test_case.getName().contains("ftp")||test_case.getName().contains("curl")||test_case.getName().contains("sql")||test_case.getName().contains("oci")||test_case.getName().contains("pcntl")||test_case.getName().contains("soap")||test_case.getName().contains("xmlrpc")||test_case.getName().contains("pdo")||test_case.getName().contains("odbc")) {
+		} else if (test_case.isExtension("soap")||test_case.isExtension("imap")||test_case.isExtension("pdo")||test_case.isExtension("pdo_mysql")) {
 			// TODO don't run these SKIPIFs without the scenario loaded
 			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.SKIP, test_case, "test would've been skipped", null, null, null, null, null, null, null, null, null, null, null));
 			

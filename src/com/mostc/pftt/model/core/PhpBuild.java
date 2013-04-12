@@ -411,8 +411,14 @@ public class PhpBuild extends SAPIManager {
 					version_str = line.substring("PHP Version => ".length());
 					
 					String[] split = version_str.split("[\\.|\\-]");
-					major = Integer.parseInt(split[0]);
-					minor = Integer.parseInt(split[1]);
+					try {
+						major = Integer.parseInt(split[0]);
+						minor = Integer.parseInt(split[1]);
+					} catch ( NumberFormatException ex ) {
+						// guess
+						major = 5;
+						minor = 5;
+					}
 					//
 					if (revision==null)
 						revision = version_str;
@@ -436,18 +442,38 @@ public class PhpBuild extends SAPIManager {
 						}
 					}
 					
-					return version_str;
+					break;
 				}
 			}
 		}
 		if (revision!=null) {
 			if (revision.startsWith("r")) {
-				release = Integer.parseInt(revision.substring(1), 16);
-			} else {
-				release = Integer.parseInt(revision);
+				try {
+					release = Integer.parseInt(revision.substring(1), 16);
+				} catch ( NumberFormatException ex ) {
+					release = 0; // clarity
+				}
+			} else if (revision.contains(".")) {
+				String[] parts = revision.split("\\.");
+				if (parts.length==3) {
+					// 5.4.14*
+					String a = parts[2].toLowerCase();
+					if (a.contains("rc")) {
+						// 5.4.14rc1
+						a = a.substring(0, a.indexOf("rc"));
+					} else if (a.contains("beta")) {
+						// 5.5.0beta3
+						a = a.substring(0, a.indexOf("beta"));
+					}
+					try {
+						release = Integer.parseInt(a);
+					} catch ( NumberFormatException ex ) {
+						release = 0; // clarity
+					}
+				}
 			}
 		}
-		return null; // shouldn't happen
+		return version_str;
 	}
 	
 	public int getVersionMajor(ConsoleManager cm, Host host) throws Exception {
@@ -534,12 +560,14 @@ public class PhpBuild extends SAPIManager {
 			ini = ini.getExtensionsOnly();
 		
 		WeakHashMap<String,Boolean> map = ext_enable_map.get(ini);
-		if (map==null) {
-			map = new WeakHashMap<String,Boolean>();
-			ext_enable_map.put(ini, map);
-		} else if (map.containsKey(ext_name)) { 
-			return map.get(ext_name);
+		if (map!=null) {
+			Boolean b = map.get(ext_name);
+			//return b == null ? false : b.booleanValue();
+			return true;
 		}
+			
+		map = new WeakHashMap<String,Boolean>();
+		ext_enable_map.put(ini, map);
 				
 		if (ini!=null) {
 			String[] extensions = ini.getExtensions();

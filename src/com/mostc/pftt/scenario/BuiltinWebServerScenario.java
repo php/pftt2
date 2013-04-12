@@ -62,7 +62,7 @@ public class BuiltinWebServerScenario extends AbstractWebServerScenario {
 	@Override
 	public int getTestThreadCount(AHost host) {
 		// XXX update this calculation from time to time as this web server's performance improves (probably decrease number)
-		return 32 * host.getCPUCount();
+		return 24 * host.getCPUCount();
 	}
 
 	@Override

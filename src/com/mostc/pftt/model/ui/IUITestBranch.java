@@ -18,8 +18,34 @@ public interface IUITestBranch {
 	IUITestBranch testXFail(String comment, Class<UITest> ...tests);
 	IUITestBranch testXFail(UIAccount account, Class<UITest> test, Class<UITest> cleanup_test);
 	IUITestBranch testXFail(UIAccount account, String comment, Class<UITest> test, Class<UITest> cleanup_test);
-	EUITestStatus status();
+	EUITestStatus getStatus();
+	EUITestExecutionStyle getExecutionStyle();
 	UIAccount getUserAccount();
 	boolean isDummy();
 	void testException(String test_name, String msg);
+	
+	/** dummy method that does nothing so you can comment out all the tests you're passing to #test without also having
+	 * to comment out the call to #test
+	 * 
+	 * @return
+	 */
+	IUITestBranch test();
+	/** dummy method that does nothing so you can comment out all the tests you're passing to #test without also having
+	 * to comment out the call to #test
+	 * 
+	 * @return
+	 */
+	IUITestBranch test(String comment);
+	/** dummy method that does nothing so you can comment out all the tests you're passing to #testXFail without also having
+	 * to comment out the call to #testXFail
+	 * 
+	 * @return
+	 */
+	IUITestBranch testXFail();
+	/** dummy method that does nothing so you can comment out all the tests you're passing to #testXFail without also having
+	 * to comment out the call to #testXFail
+	 * 
+	 * @return
+	 */
+	IUITestBranch testXFail(String comment);
 }

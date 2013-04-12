@@ -4,8 +4,10 @@ import java.io.File;
 import java.util.Collection;
 
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
 import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.PhpBuildInfo;
+import com.mostc.pftt.model.ui.UITestPack;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 /** Manages PHP test results (PHPT, PhpUnit, etc...)
@@ -14,8 +16,7 @@ import com.mostc.pftt.scenario.ScenarioSet;
  *
  */
 
-//TODO log cli args to result-pack
-//   -warn if -no_nts is used
+//TODO log console options to result-pack
 //TODO store consolemanager logs in result-pack
 //   -including smoke checks from dfs and deduplication scenrios
 public abstract class PhpResultPack {
@@ -56,10 +57,38 @@ public abstract class PhpResultPack {
 	public abstract AbstractPhptRW getPHPT(AHost host, ScenarioSet scenario_set);
 	public abstract Collection<AbstractPhptRW> getPHPT(AHost host);
 	public abstract Collection<AbstractPhptRW> getPHPT();
-	public abstract AbstractPhpUnitRW getPhpUnit(AHost host, ScenarioSet scenario_set);
+	public abstract Collection<AbstractPhpUnitRW> getPhpUnit(AHost host, ScenarioSet scenario_set);
 	public abstract Collection<AbstractPhpUnitRW> getPhpUnit(AHost host);
 	public abstract Collection<AbstractPhpUnitRW> getPhpUnit();
+	public abstract AbstractPhpUnitRW getPhpUnit(AHost host, String test_pack_name_and_version, ScenarioSet scenario_set);
+	public abstract Collection<AbstractPhpUnitRW> getPhpUnit(AHost host, String test_pack_name_and_version);
+	public abstract Collection<AbstractPhpUnitRW> getPhpUnit(String test_pack_name_and_version);
+	public abstract AbstractUITestRW getUITest(AHost host, ScenarioSet scenario_set);
+	public abstract Collection<AbstractUITestRW> getUITest(AHost host);
+	public abstract Collection<AbstractUITestRW> getUITest();
+	public abstract Collection<AbstractUITestRW> getUITest(AHost host, String test_pack_name_and_version, ScenarioSet scenario_set);
+	public abstract Collection<AbstractUITestRW> getUITest(AHost host, String test_pack_name_and_version);
+	public abstract Collection<AbstractUITestRW> getUITest(String test_pack_name_and_version);
 	public abstract PhpBuildInfo getBuildInfo();
+	
+	public AbstractPhpUnitRW getPhpUnit(AHost host, PhpUnitSourceTestPack test_pack, ScenarioSet scenario_set) {
+		return getPhpUnit(host, test_pack.getNameAndVersionString(), scenario_set);
+	}
+	public Collection<AbstractPhpUnitRW> getPhpUnit(AHost host, PhpUnitSourceTestPack test_pack) {
+		return getPhpUnit(host, test_pack.getNameAndVersionString());
+	}
+	public Collection<AbstractPhpUnitRW> getPhpUnit(PhpUnitSourceTestPack test_pack) {
+		return getPhpUnit(test_pack.getNameAndVersionString());
+	}
+	public Collection<AbstractUITestRW> getUITest(AHost host, UITestPack test_pack, ScenarioSet scenario_set) {
+		return getUITest(host, test_pack.getNameAndVersionInfo(), scenario_set);
+	}
+	public Collection<AbstractUITestRW> getUITest(AHost host, UITestPack test_pack) {
+		return getUITest(host, test_pack.getNameAndVersionInfo());
+	}
+	public Collection<AbstractUITestRW> getUITest(UITestPack test_pack) {
+		return getUITest(test_pack.getNameAndVersionInfo());
+	}
 	
 	public static float round1(float value) {
 		float ret = ( (float) Math.round( value * 10.0f ) ) / 10.0f;

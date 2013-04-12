@@ -21,6 +21,7 @@ import com.github.mattficken.io.ByLineReader;
 import com.github.mattficken.io.CharsetDeciderDecoder;
 import com.github.mattficken.io.DefaultCharsetDeciderDecoder;
 import com.github.mattficken.io.StringUtil;
+import com.github.mattficken.io.Trie;
 import com.ibm.icu.charset.CharsetICU;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
@@ -222,9 +223,9 @@ public class PhptTestCase extends TestCase {
 //			if (section_text.containsKey("REDIRECTTEST")) {
 //				borked = false;
 //			} else {
-				if (test_case.containsSection("FILEEOF")) {
+				if (test_case.containsSection(EPhptSection.FILEEOF)) {
 					test_case.section_text.put(EPhptSection.FILE, StringUtil.replaceAll(RE_EOF, "", test_case.get("FILEEOF")));
-					test_case.section_text.remove("FILEEOF");
+					test_case.section_text.remove(EPhptSection.FILEEOF);
 				}
 //			}
 				
@@ -233,6 +234,10 @@ public class PhptTestCase extends TestCase {
 				test_case.put(v, v.prepareSection(keep_all, test_case.get(v)));
 			}
 				
+			if (test_case.isNamed("ext/standard/tests/file/bug24482.phpt")) {
+				// TODO have a method in config file to allow for injecting PHP code here
+				test_case.put(EPhptSection.FILE, "<?php clearstatcache(); ?>" + test_case.get(EPhptSection.FILE));
+			}
 		}
 		reader.close();
 		
@@ -651,13 +656,15 @@ public class PhptTestCase extends TestCase {
 		return name.equals(o);
 	}
 	
-	public boolean isNamed(String...names) {
-		// XXX someday, do a Trie structure here to speed up checking
-		for (String name:names) {
-			if (this.name.equals(name))
-				return true;
-		}
-		return false;
+	public static Trie createNamed(String ...names) {
+		Trie trie = new Trie('/');
+		for ( String name : names )
+			trie.addString(name);
+		return trie;
+	}
+	
+	public boolean isNamed(Trie names) {
+		return names.equals(name);
 	}
 	
 	/** returns the name of this test.
@@ -668,6 +675,21 @@ public class PhptTestCase extends TestCase {
 	 */
 	public String getName() {
 		return name;
+	}
+	
+	public boolean isExtension(String ext_name) {
+		return name.startsWith("ext/"+ext_name+"/");
+	}
+	
+	public static Trie createExtensions(String ...ext_names) {
+		Trie trie = new Trie('/');
+		for ( String ext_name : ext_names ) 
+			trie.addString("ext/"+ext_name+"/");
+		return trie;
+	}
+	
+	public boolean isExtension(Trie ext_names) {
+		return ext_names.startsWith(name);
 	}
 	
 	public String getBaseName() {
@@ -965,7 +987,9 @@ public class PhptTestCase extends TestCase {
 	 * @return
 	 */
 	public boolean isSlowTest() {
-		return name.startsWith("ext/phar/")||isNamed(
+		return isExtension("phar") || isNamed(SLOW_TESTS);
+	}
+	public static Trie SLOW_TESTS = createNamed(
 				// tests that check the SKIP_SLOW_TESTS env var (ie tests considered slow by their authors)
 				//
 				// (PFTT always runs those tests. PFTT never sets SKIP_SLOW_TESTS)
@@ -1044,7 +1068,6 @@ public class PhptTestCase extends TestCase {
 				"ext/session/tests/020.phpt",
 				"zend/tests/unset_cv05.phpt"
 			);
-	}
 
 	public static DefaultCharsetDeciderDecoder newCharsetDeciderDecoder() {
 		return new DefaultCharsetDeciderDecoder(CharsetDeciderDecoder.EXPRESS_RECOGNIZERS);

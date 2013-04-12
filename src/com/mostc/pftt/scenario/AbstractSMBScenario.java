@@ -325,7 +325,8 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 				return true;
 			}
 		} catch ( Exception ex ) {
-			cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "disconnect", ex, "Unable to disconnect: local="+dir.local_path, host, dir.local_path);
+			if (cm!=null)
+				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "disconnect", ex, "Unable to disconnect: local="+dir.local_path, host, dir.local_path);
 		}
 		return false;
 	}

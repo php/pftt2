@@ -350,19 +350,19 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	public PhpUnitActiveTestPack install(ConsoleManager cm, AHost host,
 			String local_test_pack_dir, String remote_test_pack_dir)
 			throws IllegalStateException, IOException, Exception {
-		
-		final String src_root = getSourceRoot(new LocalHost());
+		LocalHost local_host = new LocalHost();
+		final String src_root = getSourceRoot(local_host);
 		if (!new File(src_root).isDirectory()) {
 			throw new IOException("source-test-pack not found: "+src_root);
 		}
 		
 		// using #uploadCompressWith7Zip instead of just #upload makes a huge difference
 		// for PhpUnit test-packs because of the large number of small files that have to be uploaded
-		host.uploadCompressWith7Zip(cm, getClass(), src_root, new LocalHost(), remote_test_pack_dir);
+		host.uploadCompressWith7Zip(cm, getClass(), src_root, local_host, remote_test_pack_dir);
 		
 		setRoot(local_test_pack_dir);
 		
-		openAfterInstall(cm, host);
+		openAfterInstall(cm, local_host);
 		
 		return new PhpUnitActiveTestPack(local_test_pack_dir, remote_test_pack_dir);
 	}

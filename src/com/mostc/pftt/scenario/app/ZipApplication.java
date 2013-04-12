@@ -10,6 +10,8 @@ import com.mostc.pftt.scenario.ApplicationScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 public abstract class ZipApplication extends ApplicationScenario {
+	/** not set until #setup */
+	protected String app_dir;
 	
 	@Override
 	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
@@ -21,7 +23,7 @@ public abstract class ZipApplication extends ApplicationScenario {
 		
 		String zip_file = getZipAppFileName();
 		
-		String app_dir = host.joinIntoOnePath(web.getDefaultDocroot(host, build), AHost.removeFileExt(AHost.basename(zip_file)));
+		app_dir = host.joinIntoOnePath(web.getDefaultDocroot(host, build), AHost.removeFileExt(AHost.basename(zip_file)));
 		
 		if (!host.exists(app_dir)) {
 			//

@@ -9,6 +9,8 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 
 import com.github.mattficken.io.StringUtil;
+import com.github.mattficken.io.Trie;
+import com.mostc.pftt.host.AHost.ExecHandle;
 import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
@@ -38,10 +40,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected ExecOutput output;
 	protected String selected_php_exe, shell_script, test_cmd, skip_cmd, shell_file, ini_dir;
 	
-	public static boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
-		if (AbstractPhptTestCaseRunner2.willSkip(cm, twriter, host, scenario_set, type, build, test_case)) {
-			return true;
-		} else if (cm.isDisableDebugPrompt()&&test_case.isNamed(
+	public static Trie DISABLE_DEBUG_PROMPT = PhptTestCase.createNamed(
 				// these ext/session tests, on CLI sapi, cause a blocking winpopup msg about some mystery 'Syntax Error'
 				//  (ignore these for automated testing, but still show them for manual testing)
 				"sapi/cgi/tests/apache_request_headers.phpt",
@@ -75,11 +74,9 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				"ext/session/tests/bug41600.phpt",
 				"ext/standard/tests/mail/mail_basic5.phpt",
 				"ext/standard/tests/mail/mail_basic4.phpt",
-				"ext/standard/tests/mail/mail_basic3.phpt")) {
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null, null));
-			
-			return true;
-		} else if (test_case.isNamed(
+				"ext/standard/tests/mail/mail_basic3.phpt"
+			);
+	public static Trie RANDOMLY_FAIL = PhptTestCase.createNamed(
 				// uses both POST and GET
 				"tests/basic/003.phpt",
 				//
@@ -140,13 +137,21 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				"ext/standard/tests/network/tcp4loop.phpt",
 				"zend/tests/multibyte/multibyte_encoding_003.phpt",
 				"zend/tests/multibyte/multibyte_encoding_002.phpt"
-			)) {
-				twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null, null));
-				
-				return true;
+			);
+	public static boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+		if (AbstractPhptTestCaseRunner2.willSkip(cm, twriter, host, scenario_set, type, build, test_case)) {
+			return true;
+		} else if (cm.isDisableDebugPrompt()&&test_case.isNamed(DISABLE_DEBUG_PROMPT)) {
+			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null, null));
+			
+			return true;
+		} else if (test_case.isNamed(RANDOMLY_FAIL)) {
+			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null, null));
+			
+			return true;
 		}
 		return false;
-	}
+	} // end public static boolean willSkip
 	
 	public CliPhptTestCaseRunner(PhpIni ini, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
 		super(ini, thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
@@ -305,20 +310,43 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		}
 		return null;
 	} // end String executeSkipIf
+	
+	protected ExecHandle running_test_handle;
+	@Override
+	protected void stop(boolean force) {
+		if (running_test_handle==null)
+			return;
+		
+		running_test_handle.close(force);
+	}
 
 	@Override
 	protected String executeTest() throws Exception { 
 		// execute PHP to execute the TEST code ... allow up to 60 seconds for execution
 		//      if test is taking longer than 40 seconds to run, spin up an additional thread to compensate (so other non-slow tests can be executed)
-		output = host.execOut(shell_file, AHost.ONE_MINUTE, env, stdin_post, test_case.isNon8BitCharset()?test_case.getCommonCharset():null, active_test_pack.getStorageDirectory(), thread, 40);
+		running_test_handle = host.execThread(
+					shell_file, 
+					env,
+					active_test_pack.getStorageDirectory(),
+					stdin_post
+				);
+		StringBuilder output_sb = new StringBuilder(1024);
 		
-		if (output.isCrashed()) {
+		running_test_handle.run(output_sb, test_case.isNon8BitCharset()?test_case.getCommonCharset():null, 60, thread, 40);
+		
+		String output_str = output_sb.toString();
+		
+		if (false) {// TODO running_test_handle.isCrashed()) {
 			not_crashed = false; // @see #runTest
 			
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, "PFTT: exit_code="+output.exit_code+" status="+output.guessExitCodeStatus(host)+"\n"+output.output, null, null, null, ini, env, null, stdin_post, null, null, null, null, output.output, null));
+			int exit_code = running_test_handle.getExitCode();
+			
+			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, "PFTT: exit_code="+exit_code+" status="+AHost.guessExitCodeStatus(host, exit_code)+"\n"+output_str, null, null, null, ini, env, null, stdin_post, null, null, null, null, output_str, null));
 		}
 		
-		return output.output;
+		running_test_handle = null;
+		
+		return output_str;
 	} // end String executeTest
 	
 	@Override
@@ -330,7 +358,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 
 	@Override
 	public String getSAPIOutput() {
-		if (output.isCrashed()) 
+		if (output!=null&&output.isCrashed()) 
 			return output.isEmpty() ? 
 				"PFTT: test printed nothing. was expected to print something. exited with non-zero code (probably crash): "+output.exit_code 
 				: output.output;

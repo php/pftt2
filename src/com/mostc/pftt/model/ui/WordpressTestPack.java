@@ -4,48 +4,102 @@ import java.util.Calendar;
 import java.util.Locale;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.WebElement;
 
 import com.github.mattficken.io.StringUtil;
+import com.mostc.pftt.model.ui.UIAccount.IUserType;
 
-// PFTT-Wordpress-2013-03-19-15-14
+/**
+ * 
+ * @author Matt Ficken
+ *
+ */
+
+// TIP: when can't find text of something you just added, try finding the link (@see LinkCategoryAdd)
 public class WordpressTestPack implements UITestPack {
 	
 	@Override
 	public String getNameAndVersionInfo() {
-		return "PFTT-Wordpress";
+		return "Wordpress-3.5.1-2013-04-11-16-07";
 	}
 	@Override
 	public boolean isDevelopment() {
-		return true;
+		return false;
 	}
 	@Override
 	public String getBaseURL() {
 		return "/wordpress/";
 	}
 	
-	public void run(IUITestBranch anon_branch) {
-		// TODO make sure it tests moderator approving the comment
+	@Override
+	public String getNotes() {
+		return "Should implement Tools-Import and Media-Add to test file uploading - an operation that has an above average chance of failure (test on remote file systems)\n also should test setting WP_LANG to other languages (multi-byte?) and FORCE_SSL (both in wp-config.php)";
+	}
+	
+	public static String toSlug(String text) {
+		return text.replace(" ", "_");
+	}
+	
+	public static enum EWordpressUserRole implements IUserType {
+		ANONYMOUS {
+				@Override
+				public boolean isAnonymous() {
+					return true;
+				}
+			},
+		ADMINISTRATOR,
+		EDITOR,
+		AUTHOR,
+		CONTRIBUTOR,
+		SUBSCRIBER;
+
+		@Override
+		public String getType() {
+			return StringUtil.toTitle(toString());
+		}
+		@Override
+		public String getDefaultUserName() {
+			return StringUtil.toTitle(toString());
+		}
+		@Override
+		public boolean isAnonymous() {
+			return false;
+		}
+		
+	} // end public static enum EWordpressUserRole
+	
+	@Override
+	public void start(IUITestBranch anon_branch) { 
 		UIAccount admin_user = new UIAccount("admin", "password01!");
 		//
-		UIAccount admin_user_wrong_passwd = new UIAccount("admin", "wrong_password");
-		//
-		UIAccount subscriber_user = new UIAccount("user", "password01!");
+		UIAccount subscriber_user = new UIAccount(EWordpressUserRole.SUBSCRIBER, "password01!");
+		UIAccount contributor_user = new UIAccount(EWordpressUserRole.CONTRIBUTOR, "password01!");
+		UIAccount author_user = new UIAccount(EWordpressUserRole.AUTHOR, "password01!");
+		UIAccount editor_user = new UIAccount(EWordpressUserRole.EDITOR, "password01!");
 		// new password for `subscriber_user` 
-		UIAccount subscriber_user_new_passwd = new UIAccount("user", "wrong_password");
-		
+		UIAccount subscriber_user_new_passwd = new UIAccount(subscriber_user, "wrong_password");
+		UIAccount contributor_user_new_passwd = new UIAccount(subscriber_user, "wrong_password");
+		UIAccount author_user_new_passwd = new UIAccount(author_user, "wrong_password");
+		UIAccount editor_user_new_passwd = new UIAccount(editor_user, "wrong_password");
+		UIAccount admin_user_wrong_passwd = new UIAccount(admin_user, "wrong_password");
 		/////////////
 		
-		/*anon_branch.test(
+		anon_branch.test(
+		 		new MainPage(),
 				// test widgets that are there by default (before adding/removing widgets)
 				new WidgetRecentComments(),
 				new WidgetRecentPosts(),
 				new WidgetArchives(),
 				new WidgetCategories()
 			);
-		anon_branch.test("Comment without being Logged In", new CommentAdd());*/
+		anon_branch.test("Comment without being Logged In", new CommentAdd()); 
 		anon_branch.test(admin_user, new LoginTest(), new LogoutTest())
 			.test(
-				/*new AppearanceThemesActivate(),
+				new WelcomeLinksTest(),
+				new CountWaitingCommentsGt1(), // XXX depends on CommentAdd test above
+				new RecentCommentsDashboardWidget(),
+				new RearrangeDashboardWidgets(),
+				new AppearanceThemesActivate(),
 				new AppearanceWidgetAddArchives(),
 				new AppearanceWidgetAddCalendar(),
 				new AppearanceWidgetAddCategories(),
@@ -59,72 +113,54 @@ public class WordpressTestPack implements UITestPack {
 				new AppearanceWidgetAddSearch(),
 				new AppearanceWidgetAddTagCloud(),
 				new AppearanceWidgetAddText(),
-				new AppearanceWidgetAddTwentyElevenEphemera(),
-				new AppearanceMenusActivate(),
+				new AppearanceWidgetAddTwentyElevenEphemera(), 
+				new AppearanceMenusActivate(), 
 				new AppearanceHeaderSet(),
 				new AppearanceBackgroundSet(),
-				new LinkAddNew(),
-				new LinkAll(),
-				new LinkDelete(),
-				new LinkCategories(),
-				new LinkCategoryAdd(),
-				new LinkCategoryDelete(),
-				new MediaAddNew(),
-				new MediaLibrary(),
-				new MediaDelete(),*/
-				new PagesAddNew(),
-				new PagesAllPages(),
-				new PagesTrash(),
-				new PagesEdit(),
-				new PagesQuickEdit(),
-				new PostsAll(),
-				new PostQuickEdit(),
-				new PostEdit(),
-				new PostTrash(),
-				new PostCategoriesAll(),
-				new PostCategoriesAdd(),
-				new PostCategoriesDelete(),
-				new PostTagsAll(),
-				new PostTagsAdd(),
-				new PostTagsDelete(),
-				new PluginsInstalledPlugins(),
-				// test activating and deactivating plugins
-				new PluginsInstalledActivate(),
-				// akismet is an important plugin (any real wordpress instance needs it activated)
-				new PluginsAkismetConfiguration(), // depends on PluginsInstalledActivate
-				new PluginsInstalledDeactivate(),
-				/*new PostsAddNew(),
-				new CommentsAllComments(),
-				new CommentsTrash(),
-				new CommentsApprove(),
-				new CommentsUnapprove()*/
 				// change settings, especially timezone and date/time format
-				/*new SettingsGeneralChangeTimezone(),
+				new SettingsGeneralChangeTimezone(),
 				new SettingsChangeDateTimeFormat(),
 				new SettingsWriting(),
 				new SettingsReading(),
 				new SettingsDiscussion(),
 				new SettingsMedia(),
 				new SettingsPrivacy(),
-				new SettingsPermalinks(),*/
+				new SettingsPermalinks(),
 				new ToolsExport(),
 				new ToolsImport(),
-				// TODO new EditProfile(),
-				new UsersAddNew(),
+				new PluginsInstalledPlugins(),
+				// test activating and deactivating plugins
+				// XXX deactivate plugin on cleanup
+				new PluginsInstalledActivate(),
+				// akismet is an important plugin (any real wordpress instance needs it activated)
+				new PluginsAkismetConfiguration(), // XXX express dependency on PluginsInstalledActivate
+				new PluginsInstalledDeactivate(),
 				new UsersAllUsers(),
-				new UsersDeleteNew(),
-				new UsersChangeRole(),
-				new UsersUpdateUser()
+				new UsersAllAddNew(),
+				new UsersAllFilter(),
+				new UsersAllSearch(),
+				// XXX if exiting, or skipping or stopping execution, should delete these users to cleanup for next time
+				new UsersAddNew(author_user, EWordpressUserRole.AUTHOR),
+				new UsersAddNew(editor_user, EWordpressUserRole.EDITOR),
+				new UsersAddNew(contributor_user, EWordpressUserRole.CONTRIBUTOR),
+				new UsersAddNew(subscriber_user, EWordpressUserRole.SUBSCRIBER),
+				new UsersEdit(author_user),
+				new UsersEdit(editor_user),
+				new UsersEdit(contributor_user),
+				new UsersEdit(subscriber_user)
 			);
-		// TODO test all user roles - for some roles, retest posting and approving comments
-		testUserRole(anon_branch, subscriber_user, subscriber_user_new_passwd);
 		// test admin login with wrong password
 		if (!admin_user.username.equalsIgnoreCase(admin_user_wrong_passwd.username)||admin_user.password.equals(admin_user_wrong_passwd.password)) {
 			anon_branch.testException("Admin-Login-2", "Don't have the wrong password to try to login as admin");
 		} else {
 			anon_branch.testXFail(admin_user_wrong_passwd, "Must not be able to login as admin with wrong password", new LoginTest(), new LogoutTest());
 		}
-		anon_branch.test(
+		
+		// these 2 operations, especially without being logged in, are the most critical functions of wordpress
+		anon_branch.test(new CommentAdd(), new PostView());
+		
+		anon_branch.test("Make sure added widgets are visible",
+				new MainPage(),
 				new WidgetArchives(),
 				new WidgetCalendar(),
 				new WidgetCategories(),
@@ -135,858 +171,1623 @@ public class WordpressTestPack implements UITestPack {
 				new WidgetCommentsRSS(),
 				new WidgetEntriesRSS(),
 				new WidgetSearch(),
-				new WidgetTagCloud(),
-				new WidgetText()
+				new WidgetTagCloud()
 			);
-		anon_branch.test(admin_user, "Delete extra widgets (cleanup)", new LoginTest(), new LogoutTest())
+		
+		// test all user roles
+		testUserRole(EWordpressUserRole.ADMINISTRATOR, anon_branch, admin_user, null);
+		boolean e = testUserRole(EWordpressUserRole.EDITOR, anon_branch, editor_user, editor_user_new_passwd);
+		testUserRole(EWordpressUserRole.AUTHOR, anon_branch, author_user, author_user_new_passwd);
+		testUserRole(EWordpressUserRole.CONTRIBUTOR, anon_branch, contributor_user, contributor_user_new_passwd);
+		boolean s = testUserRole(EWordpressUserRole.SUBSCRIBER, anon_branch, subscriber_user, subscriber_user_new_passwd);
+				
+		anon_branch.test(admin_user, new LoginTest(), new LogoutTest())
 			.test(
-				new AppearanceWidgetDeleteCalendar(),
-				new AppearanceWidgetDeleteCustomMenu(),
-				new AppearanceWidgetDeleteLinks(),
-				new AppearanceWidgetDeleteMeta(),
-				new AppearanceWidgetDeletePages(),
-				new AppearanceWidgetDeleteSearch(),
-				new AppearanceWidgetDeleteTagCloud(),
-				new AppearanceWidgetDeleteText()
+				new UsersChangeRole(editor_user, EWordpressUserRole.SUBSCRIBER),
+				new UsersChangeRole(author_user, EWordpressUserRole.SUBSCRIBER),
+				new UsersChangeRole(contributor_user, EWordpressUserRole.SUBSCRIBER),
+				new UsersChangeRole(subscriber_user, EWordpressUserRole.EDITOR)
+				);
+		if (e&&s) {
+			anon_branch.test(subscriber_user_new_passwd, "Approve comments after role changed from subscriber to editor", new LoginTest(), new LogoutTest())
+				.test(
+					new CommentsApprove()
 					);
+			anon_branch.testXFail(editor_user_new_passwd, "Can't approve comments after role changed from editor to subscriber", new LoginTest(), new LogoutTest())
+				.test(
+					new CommentsApprove()
+					);
+		}
+		
+		
+		anon_branch.test(admin_user, "Admin Cleanup", new LoginTest(), new LogoutTest())
+			.test(
+						new UsersDelete(author_user),
+						new UsersDelete(editor_user),
+						new UsersDelete(contributor_user),
+						new UsersDelete(subscriber_user),
+						new UsersDeleteIncludingAttributions(),
+						new UsersDeleteIncludingAttributions(),
+						new AppearanceWidgetDeleteCalendar(),
+						new AppearanceWidgetDeleteCustomMenu(),
+						new AppearanceWidgetDeleteLinks(),
+						new AppearanceWidgetDeleteMeta(),
+						new AppearanceWidgetDeletePages(),
+						new AppearanceWidgetDeleteSearch(),
+						new AppearanceWidgetDeleteTagCloud(),
+						new AppearanceWidgetDeleteText()
+					);
+		// XXX skip these if delete user failed
+		anon_branch.testXFail(author_user, "can't login as deleted user", new LoginTest(), new LogoutTest());
+		anon_branch.testXFail(editor_user, "can't login as deleted user", new LoginTest(), new LogoutTest());
+		anon_branch.testXFail(contributor_user, "can't login as deleted user", new LoginTest(), new LogoutTest());
+		anon_branch.testXFail(subscriber_user, "can't login as deleted user", new LoginTest(), new LogoutTest());
 		anon_branch.test("Ensure still visible after extra widgets deleted",
-				new CommentAdd(),
-				new PostView(),
+				new MainPage(),
 				new WidgetRecentComments(),
 				new WidgetRecentPosts(),
 				new WidgetArchives(),
 				new WidgetCategories()
 			);
-	} // end void 
+	} // end public void run 
 	
-	void testUserRole(IUITestBranch anon_branch, UIAccount user, UIAccount user_new_passwd) {
-		anon_branch.test(user, new LoginTest(), new LogoutTest())
-			.test(
-				new PostsAddNew(),
-				new PostView(),
-				new CommentAdd()
-			);
-		// try to change password 
-		if (!user.username.equalsIgnoreCase(user_new_passwd.username)) {
-			anon_branch.testException("Subscriber-Login-2", "Try to change password with wrong username");
-		} else if (user.password.equals(user_new_passwd.password)) {
-			anon_branch.testException("Subscriber-Login-2", "Try to change password to current password");
+	protected boolean testUserRole(EWordpressUserRole role, IUITestBranch anon_branch, UIAccount user, UIAccount user_new_passwd) {
+		boolean ok;
+		if (role==EWordpressUserRole.SUBSCRIBER||role==EWordpressUserRole.AUTHOR) {
+			ok = anon_branch.test(user, new LoginTest(), new LogoutTest())
+				.test(
+					new PostsAddNew(),
+					new PostView(),
+					new CommentAdd(),
+					new EditProfile()
+				).getStatus().isPass();
 		} else {
-			anon_branch.test(user, new LoginTest(), new LogoutTest())
-				.test(new ChangePassword(user_new_passwd))
-					.test(new LogoutTest()) // logout first, to test logging back in (which is the test that should fail)
-					.testXFail(user, "Must not be able to login with old password after password changed", new LoginTest(), new LogoutTest());
+			ok = anon_branch.test(user, new LoginTest(), new LogoutTest())
+				.test(
+					new CollapseDashboardMenu(),
+					new QuickPress(),
+					new RightNow(),
+					new Help(),
+					new RecentDraftsDashboardWidget(),
+					new ScreenOptions(),
+					new MySiteMenu(),
+					new WordpressMenu(),
+					new PlusNewPost(),
+					new PlusNewMedia(),
+					new PlusNewLink(),
+					new PlusNewPage(),
+					new PlusNewUser(),
+					new EditProfile(),
+					new LinkAddNew(),
+					new LinkAll(),
+					new LinkAllAddNew(),
+					new LinkFilter(),
+					new LinkSearch(),
+					new LinkDelete(),
+					new LinkCategoriesAll(),
+					new LinkCategoriesAllAddNew(),
+					new LinkCategoriesFilter(),
+					new LinkCategoriesSearch(),
+					new LinkCategoryAdd(),
+					new LinkCategoryDelete(),
+					new MediaAddNew(),
+					new MediaLibrary(),
+					new MediaDelete(),
+					new PagesAddNew(),
+					new PagesAllPages(),
+					new PagesAllAddNew(),
+					new PagesFilter(),
+					new PagesSearch(),
+					new PagesTrash(),
+					new PagesTrashUndo(),
+					new PagesEdit(),
+					new PagesQuickEdit(),
+					new PostsAll(),
+					new PostsAllAddNew(),
+					new PostsFilter(),
+					new PostsSearch(),
+					new PostQuickEdit(),
+					new PostEdit(),
+					new PostTrash(),
+					new PostTrashUndo(),
+					new PostCategoriesAll(),
+					new PostCategoriesAllAddNew(),
+					new PostCategoriesFilter(),
+					new PostCategoriesSearch(),
+					new PostCategoriesAdd(),
+					new PostCategoriesDelete(),
+					new PostTagsAll(),
+					new PostTagsAllAddNew(),
+					new PostTagsFilter(),
+					new PostTagsSearch(),
+					new PostTagsAdd(),
+					new PostTagsDelete(),
+					new PostsAddNew(),
+					new CommentsAllComments(),
+					new CommentsAllFilter(),
+					new CommentsAllSearch(),
+					new CommentsTrash(),
+					new CommentsTrashUndo(),
+					new CommentsApprove(),
+					new CommentsUnapprove()
+				).getStatus().isPass();
+		} // end if
+		//
+		
+		
+		// try to change password 
+		if (role!=EWordpressUserRole.ADMINISTRATOR) {
+			if (!user.username.equalsIgnoreCase(user_new_passwd.username)) {
+				// XXX get actual test name - clean that up
+				anon_branch.testException(WPTest.createUniqueTestName(role, "Login-2"), "Try to change password with wrong username");
+			} else if (user.password.equals(user_new_passwd.password)) {
+				anon_branch.testException(WPTest.createUniqueTestName(role, "Login-2"), "Try to change password to current password");
+			} else {
+				ok = anon_branch.test(user, new LoginTest(), new LogoutTest())
+					.test(new ChangePassword(user_new_passwd))
+						.test(new LogoutTest()) // logout first, to test logging back in (which is the test that should fail)
+						.testXFail(user, "Must not be able to login with old password after password changed", new LoginTest(), new LogoutTest())
+					.getStatus().isPass();
+			}
+			ok = anon_branch.test(new LostPassword())
+				.getStatus().isPass();
 		}
-		anon_branch.test(new LostPassword());
-	} // end void
+		return ok;
+	} // end protected boolean testUserRole
 	
-	abstract class WPTest extends UITest {
+	abstract class WPTest extends EasyUITest {
 		@Override
-		public boolean start(SimpleDriver driver) throws Exception {
-			driver.get("/");
+		public boolean start(IUITestDriver driver) throws Exception {
+			get("/");
 			return true;
 		}
 	}
 	abstract class LoggedInTest extends WPTest {
 		@Override
-		public boolean start(SimpleDriver driver) throws Exception {
-			if (true) {// TODO driver.hasElementNow(By.cssSelector("a[title=\"Password Lost and Found\"]"))) {
+		public boolean start(IUITestDriver driver) throws Exception {
+			if (hasText("Log in")||hasElementNow(By.cssSelector("a[title=\"Password Lost and Found\"]"))) {
 				// NOT LOGGED IN ANY MORE, need to login again
 				// return testChildPass(new LoginTest(), driver);
-				driver.inputType("user_login", user_account.username);
-				driver.inputType("user_pass", user_account.password);
-				driver.clickId("wp-submit");
-				
-			}// else {
+				inputTypeId("user_login", user_account.username);
+				inputTypeId("user_pass", user_account.password);
+				clickId("wp-submit");
+				return hasText("Log Out");
+			} else {
 				return true;
-			//}
+			}
 		}
 	}
-	abstract class AdminTest extends LoggedInTest {
+	abstract class DashboardTest extends LoggedInTest {
 		@Override
-		public boolean start(SimpleDriver driver) throws Exception {
-			driver.get("/wp-admin/index.php");
+		public boolean start(IUITestDriver driver) throws Exception {
+			//dashboardStart();
 			return super.start(driver);
+		}
+		protected void dashboardStart() {
+			get("/wp-admin/");
 		}
 	}
 	
 	class LoginTest extends WPTest {
 		@Override
-		public EUITestStatus test(final SimpleDriver driver) throws Exception {
+		public EUITestStatus test(final IUITestDriver driver) throws Exception {
 			// go to url, `log in` hyperlink might not always be there (depends on widgets and themes)
-			driver.get("/wp-login.php");
-			driver.inputType("user_login", user_account.username);
-			driver.inputType("user_pass", user_account.password);
-			driver.clickId("wp-submit");
-			return !driver.hasText("incorrect") && driver.hasElement(By.cssSelector("#wp-admin-bar-logout > a.ab-item")) ? EUITestStatus.PASS : EUITestStatus.FAIL;
+			get("/wp-login.php");
+			inputTypeId("user_login", user_account.username);
+			inputTypeId("user_pass", user_account.password);
+			clickId("wp-submit");
+			return !hasText("incorrect") && hasElement(By.cssSelector("#wp-admin-bar-logout > a.ab-item")) ? EUITestStatus.PASS : EUITestStatus.FAIL;
 		}
 	} // end class LoginTest
 	class LogoutTest extends WPTest {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			if (driver.hasElement(By.partialLinkText("Log in"))) 
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			if (hasElement(By.partialLinkText("Log in"))) 
 				return EUITestStatus.PASS;
-			driver.click(By.cssSelector("#wp-admin-bar-logout > a.ab-item"));
-			driver.click(By.partialLinkText("Back"));
-			return driver.hasElementPF(By.partialLinkText("Log in"));
+			click(By.cssSelector("#wp-admin-bar-logout > a.ab-item"));
+			clickPartialLinkText("Back");
+			return hasElementPF(By.partialLinkText("Log in"));
+		}
+	}
+	class WelcomeLinksTest extends DashboardTest {
+		@Override
+		public String getComment() {
+			return "Links from Welcome message on Dashboard(if this fails some other tests should fail too)";
+		}
+		static final String WELCOME_MESSAGE = "Welcome";
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			if (!hasText(WELCOME_MESSAGE))
+				return EUITestStatus.SKIP; // message already dismissed - can't test it
+					
+			// try all these links from the message - each will be checked for error/warning messages
+			//       -these pages will be tested specifically and in detail in other tests (don't need to do it here)
+			for ( String link_text : new String[]{
+			            "Choose your privacy setting",
+			            "Select your tagline and time zone",
+			            "Turn comments on or off",
+			            "Fill in your profile",
+			            "Create an About Me page",
+			            "Write your first post",
+			            "Set a background color",
+			            "Select a new header image",
+			            "Add some widgets"
+					} ) {
+				clickLinkText(link_text);
+				// return to dashboard for next link
+				dashboardStart();
+			}
+			// test dimissing the message
+			clickLinkText("Dismiss this message");
+			// make sure the message is gone
+			return hasNotTextAllPF(WELCOME_MESSAGE);
+		}
+	}
+	class CollapseDashboardMenu extends DashboardTest {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class RecentCommentsDashboardWidget extends DashboardTest {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class QuickPress extends DashboardTest {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class RightNow extends DashboardTest {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class Help extends DashboardTest {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class RecentDraftsDashboardWidget extends DashboardTest {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class ScreenOptions extends DashboardTest {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class MySiteMenu extends DashboardTest {
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class RearrangeDashboardWidgets extends DashboardTest {
+		// using Drang-And-Drop to move around widgets on the dashboard main page
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class WordpressMenu extends DashboardTest {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class PlusNewPost extends DashboardTest {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class PlusNewLink extends DashboardTest {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class PlusNewPage extends DashboardTest {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class PlusNewMedia extends DashboardTest {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class PlusNewUser extends DashboardTest {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class CountWaitingCommentsGt1 extends DashboardTest {
+		@Override
+		public String getComment() {
+			return "Check for a waiting comment listed on the top of the dashboard";
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			// should be at least 1
+			// XXX express order here - CommentsAdd test must be run before this (otherwise this might be 0)
+			return hasElementPF(By.xpath("//span[@id='ab-awaiting-mod' and text() > 0 ]"));
 		}
 	}
 	class AppearanceThemesActivate extends AppearanceTest {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.clickLinkText("Themes");
-			driver.clickLinkText("Activate");
-			return EUITestStatus.PASS;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			clickLinkText("Themes");
+			clickLinkText("Activate");
+			return hasTextAllPF("New theme activated");
 		}
 	}
-	abstract class AppearanceTest extends AdminTest {
+	abstract class AppearanceTest extends DashboardTest {
 		@Override
-		public boolean start(SimpleDriver driver) throws Exception {
-			return super.start(driver) && driver.clickLinkText("Appearance");
+		public boolean start(IUITestDriver driver) throws Exception {
+			return super.start(driver) && clickLinkText("Appearance");
 		}
-		protected boolean verifyChangesSaved(SimpleDriver driver) {
-			return driver.hasText("Changes saved");
+		protected boolean verifyChangesSaved() {
+			return hasText("Changes saved");
 		}
-		protected EUITestStatus verifyChangesSavedPF(SimpleDriver driver) {
-			return verifyChangesSaved(driver) ? EUITestStatus.PASS : EUITestStatus.FAIL;
+		protected EUITestStatus verifyChangesSavedPF() {
+			return pf(verifyChangesSaved());
+		}		
+		protected boolean verifyUpdated() {
+			return hasText("updated");
+		}
+		protected EUITestStatus verifyUpdatedPF() {
+			return pf(verifyUpdated());
 		}
 	}
 	abstract class AppearanceWidget extends AppearanceTest {
 		@Override
-		public boolean start(SimpleDriver driver) throws Exception {
-			return super.start(driver) && driver.clickLinkText("Widgets");
+		public boolean start(IUITestDriver driver) throws Exception {
+			return super.start(driver) && clickLinkText("Widgets");
 		}
 	}
 	class AppearanceWidgetDeleteCalendar extends AppearanceWidget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			// TODO don't be dependent on the order of the widgets on the dashboard page
-			driver.click(By.cssSelector("#widget-33_calendar-2 > div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.edit"));
-			driver.click(By.id("removewidget"));
-			return verifyChangesSavedPF(driver);
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(getElement(By2.partialId("widget", "calendar")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.edit"));
+			clickId("removewidget");
+			return verifyChangesSavedPF();
 		}
 	}
 	class AppearanceWidgetDeleteCustomMenu extends AppearanceWidget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.cssSelector("#widget-23_nav_menu-2 > div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.edit"));
-			driver.click(By.id("removewidget"));
-			return verifyChangesSavedPF(driver);
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(getElement(By2.partialId("widget", "nav_menu")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.edit"));
+			clickId("removewidget");
+			return verifyChangesSavedPF();
 		}
 	}
 	class AppearanceWidgetDeleteLinks extends AppearanceWidget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.cssSelector("#widget-23_links-2 > div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.edit"));
-			driver.click(By.id("removewidget"));
-			return verifyChangesSavedPF(driver);
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(getElement(By2.partialId("widget", "links")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.edit"));
+			clickId("removewidget");
+			return verifyChangesSavedPF();
 		}
 	}
 	class AppearanceWidgetDeleteMeta extends AppearanceWidget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.cssSelector("#widget-20_meta-2 > div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.edit"));
-			driver.click(By.id("removewidget"));
-			return verifyChangesSavedPF(driver);
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(getElement(By2.partialId("widget", "meta")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.edit"));
+			clickId("removewidget");
+			return verifyChangesSavedPF();
 		}
 	}
 	class AppearanceWidgetDeletePages extends AppearanceWidget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.cssSelector("#widget-23_pages-2 > div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.edit"));
-			driver.click(By.id("removewidget"));
-			return verifyChangesSavedPF(driver);
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(getElement(By2.partialId("widget", "pages")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.edit"));
+			clickId("removewidget");
+			return verifyChangesSavedPF();
 		}
 	}
 	class AppearanceWidgetDeleteSearch extends AppearanceWidget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.cssSelector("#widget-26_search-3 > div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.edit"));
-			driver.click(By.id("removewidget"));
-			return verifyChangesSavedPF(driver);
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(getElement(By2.partialId("widget", "search")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.edit"));
+			clickId("removewidget");
+			return verifyChangesSavedPF();
 		}
 	}
 	class AppearanceWidgetDeleteTagCloud extends AppearanceWidget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.cssSelector("#widget-26_tag_cloud-3 > div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.edit"));
-			driver.click(By.id("removewidget"));
-			return verifyChangesSavedPF(driver);
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(getElement(By2.partialId("widget", "tag_cloud")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.edit"));
+			clickId("removewidget");
+			return verifyChangesSavedPF();
 		}
 	}
 	class AppearanceWidgetDeleteText extends AppearanceWidget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.cssSelector("#widget-26_text-2 > div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.edit"));
-			driver.click(By.id("removewidget"));
-			return verifyChangesSavedPF(driver);
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(getElement(By2.partialId("widget", "text")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.edit"));
+			clickId("removewidget");
+			return verifyChangesSavedPF();
 		}
 	}
 	class AppearanceWidgetAddArchives extends AppearanceWidget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
 			// each widget is given an auto-generated id that depends on its order (same css class) ... can only select by id
 			// ex: #widget-3_archives-__i__
-			driver.click(driver.getElement(By2.partialId("widget", "archives")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
-			driver.click(By.id("savewidget"));
-			return verifyChangesSavedPF(driver);
+			click(getElement(By2.partialId("widget", "archives")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
+			clickId("savewidget");
+			return verifyChangesSavedPF();
 		}
 	}
 	class AppearanceWidgetAddCalendar extends AppearanceWidget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(driver.getElement(By2.partialId("widget", "calendar")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
-			driver.click(By.id("savewidget"));
-			return verifyChangesSavedPF(driver);
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(getElement(By2.partialId("widget", "calendar")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
+			clickId("savewidget");
+			return verifyChangesSavedPF();
 		}
 	}
 	class AppearanceWidgetAddCategories extends AppearanceWidget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(driver.getElement(By2.partialId("widget", "categories")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
-			driver.click(By.id("savewidget"));
-			return verifyChangesSavedPF(driver);
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(getElement(By2.partialId("widget", "categories")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
+			clickId("savewidget");
+			return verifyChangesSavedPF();
 		}
 	}
 	class AppearanceWidgetAddCustomMenu extends AppearanceWidget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(driver.getElement(By2.partialId("widget", "menu")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
-			driver.click(By.id("savewidget"));
-			return verifyChangesSavedPF(driver);
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(getElement(By2.partialId("widget", "menu")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
+			clickId("savewidget");
+			return verifyChangesSavedPF();
 		}
 	}
 	class AppearanceWidgetAddLinks extends AppearanceWidget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(driver.getElement(By2.partialId("widget", "links")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
-			driver.click(By.id("savewidget"));
-			return verifyChangesSavedPF(driver);
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(getElement(By2.partialId("widget", "links")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
+			clickId("savewidget");
+			return verifyChangesSavedPF();
 		}
 	}
 	class AppearanceWidgetAddMeta extends AppearanceWidget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(driver.getElement(By2.partialId("widget", "meta")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
-			driver.click(By.id("savewidget"));
-			return verifyChangesSavedPF(driver);
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(getElement(By2.partialId("widget", "meta")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
+			clickId("savewidget");
+			return verifyChangesSavedPF();
 		}
 	}
 	class AppearanceWidgetAddPages extends AppearanceWidget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(driver.getElement(By2.partialId("widget", "pages")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
-			driver.click(By.id("savewidget"));
-			return verifyChangesSavedPF(driver);
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(getElement(By2.partialId("widget", "pages")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
+			clickId("savewidget");
+			return verifyChangesSavedPF();
 		}
 	}
 	class AppearanceWidgetAddRecentComments extends AppearanceWidget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(driver.getElement(By2.partialId("widget", "recent-comments")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
-			driver.click(By.id("savewidget"));
-			return verifyChangesSavedPF(driver);
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(getElement(By2.partialId("widget", "recent-comments")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
+			clickId("savewidget");
+			return verifyChangesSavedPF();
 		}
 	}
 	class AppearanceWidgetAddRecentPosts extends AppearanceWidget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(driver.getElement(By2.partialId("widget", "recent-posts")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
-			driver.click(By.id("savewidget"));
-			return verifyChangesSavedPF(driver);
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(getElement(By2.partialId("widget", "recent-posts")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
+			clickId("savewidget");
+			return verifyChangesSavedPF();
 		}
 	}
 	class AppearanceWidgetAddRSS extends AppearanceWidget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(driver.getElement(By2.partialId("widget", "rss")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
-			driver.click(By.id("savewidget"));
-			return verifyChangesSavedPF(driver);
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(getElement(By2.partialId("widget", "rss")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
+			clickId("savewidget");
+			return verifyChangesSavedPF();
 		}
 	}
 	class AppearanceWidgetAddSearch extends AppearanceWidget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(driver.getElement(By2.partialId("widget", "search")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
-			driver.click(By.id("savewidget"));
-			return verifyChangesSavedPF(driver);
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(getElement(By2.partialId("widget", "search")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
+			clickId("savewidget");
+			return verifyChangesSavedPF();
 		}
 	}
 	class AppearanceWidgetAddTagCloud extends AppearanceWidget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			/*driver.click(driver.getElement(By2.partialId("widget", "tag_cloud")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
-			driver.click(By.id("savewidget"));
-			return verifyChangesSavedPF(driver);*/
-			return null; // TODO
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(getElement(By2.partialId("widget", "tag_cloud")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
+			clickId("savewidget");
+			return verifyChangesSavedPF();
 		}
 	}
 	class AppearanceWidgetAddText extends AppearanceWidget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			/*driver.click(driver.getElement(By2.partialId("widget", "text")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
-			driver.click(By.id("savewidget"));
-			return verifyChangesSavedPF(driver);*/
-			return null; // TODO
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(getElement(By2.partialId("widget", "text")), By.cssSelector("div.widget-top > div.widget-title-action > a.widget-control-edit.hide-if-js > span.add"));
+			clickId("savewidget");
+			return verifyChangesSavedPF();
 		}
 	}
 	class AppearanceWidgetAddTwentyElevenEphemera extends WPTest {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
 			return EUITestStatus.NOT_IMPLEMENTED;
 		}
 	}
 	class AppearanceMenusActivate extends AppearanceTest {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.partialLinkText("Menus"));
-			driver.click(By.cssSelector("abbr[title=\"Add menu\"]"));
-			driver.inputType(By.id("menu-name"), "Custom Menu");
-			driver.click(By.id("save_menu_header"));
-			driver.click(By.id("save_menu_header"));
-			return verifyChangesSavedPF(driver);
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			clickPartialLinkText("Menus");
+			click(By.cssSelector("abbr[title=\"Add menu\"]"));
+			inputTypeId("menu-name", StringUtil.randomLettersStr(5, 10));
+			clickId("save_menu_header");
+			clickId("save_menu_header");
+			return verifyUpdatedPF();
 		}
 	}
 	class AppearanceHeaderSet extends AppearanceTest {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.partialLinkText("Header"));
-			driver.click(By.cssSelector("div.default-header > label > input[name=\"default-header\"]"));
-			driver.click(By.id("save-header-options"));
-			return verifyChangesSavedPF(driver);
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			clickPartialLinkText("Header");
+			click(By.cssSelector("div.default-header > label > input[name=\"default-header\"]"));
+			clickId("save-header-options");
+			return verifyUpdatedPF();
 		}
 	}
 	class AppearanceBackgroundSet extends AppearanceTest {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.partialLinkText("Background"));
-			driver.click(By.id("pickcolor"));
-			driver.click(By.id("save-background-options"));
-			return verifyChangesSavedPF(driver);
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			clickPartialLinkText("Background");
+			clickId("pickcolor");
+			clickId("save-background-options");
+			return verifyUpdatedPF();
 		}
 	}
-	abstract class Link extends AdminTest {
+	abstract class Link extends DashboardTest {
 		@Override
-		public boolean start(SimpleDriver driver) throws Exception {
-			return super.start(driver) && driver.clickLinkText("Links");
+		public boolean start(IUITestDriver driver) throws Exception {
+			return super.start(driver) && clickLinkText("Links");
 		}
 	}
 	class LinkAll extends Link {
-
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			// TODO Auto-generated method stub
-			return null;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return hasTextAllPF("Links");
 		}
-		
+	}
+	class LinkAllAddNew extends Link {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class LinkFilter extends Link {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class LinkSearch extends Link {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
 	}
 	class LinkAddNew extends Link {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.clickLinkText("Add New");
-			driver.inputType(By.id("link_name"), "Nifty blogging software");
-			driver.inputType(By.id("link_url"), "http://windows.php.net/");
-			driver.inputType(By.id("link_description"), "show when someone hovers over link");
-			driver.click(By.id("in-link-category-2"));
-			driver.click(By.id("link_target_top"));
-			driver.click(By.id("co-worker"));
-			driver.click(By.id("co-resident"));
-			driver.click(By.id("child"));
-			driver.click(By.id("friend"));
-			driver.click(By.id("publish"));
-			return EUITestStatus.PASS;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			clickLinkText("Add New");
+			inputTypeId("link_name", StringUtil.randomLettersStr(10, 20));
+			inputTypeId("link_url", "http://windows.php.net/");
+			inputTypeId("link_description", "PHP on Windows");
+			clickId("in-link-category-2");
+			clickId("link_target_top");
+			clickId("co-worker");
+			clickId("co-resident");
+			clickId("child");
+			clickId("friend");
+			clickId("publish");
+			return hasTextAllPF("added");
 		}
 	}
 	class LinkDelete extends Link {
-
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			// TODO Auto-generated method stub
-			return null;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(getElement(By2.partialClassName("link")), By.cssSelector("th.check-column > input[name=\"linkcheck[]\"]"));
+			selectByTextName("action", "Delete");
+			clickId("doaction");
+			return hasTextAllPF("deleted");
 		}
-		
 	}
-	class LinkCategories extends Link {
-
+	abstract class LinkCategory extends Link {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			// TODO Auto-generated method stub
-			return null;
+		public boolean start(IUITestDriver driver) throws Exception {
+			return super.start(driver) && clickLinkText("Link Categories");
 		}
-		
 	}
-	class LinkCategoryAdd extends Link {
-
+	class LinkCategoriesAll extends LinkCategory {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			// TODO Auto-generated method stub
-			return null;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return hasTextAllPF("Link Categories");
 		}
-		
 	}
-	class LinkCategoryDelete extends Link {
-
+	class LinkCategoriesAllAddNew extends DashboardTest {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			// TODO Auto-generated method stub
-			return null;
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
 		}
-		
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class LinkCategoriesFilter extends DashboardTest {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class LinkCategoriesSearch extends LinkCategory {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class LinkCategoryAdd extends LinkCategory {
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			String cat_name = StringUtil.randomLettersStr(10, 15);
+			String cat_slug = toSlug(cat_name);
+			String description = StringUtil.randomLettersStr(20, 30);
+			
+			inputTypeId("tag-name", cat_name);
+			inputTypeId("tag-slug", cat_slug);
+			inputTypeId("tag-description", description);
+			clickId("submit");
+			// get list of categories back (not status message) ... check category list
+			return pf(clickLinkText(cat_name));
+		}
+	}
+	class LinkCategoryDelete extends LinkCategory {
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(By.cssSelector("input[name=\"delete_tags[]\"]"));
+			selectByTextName("action", "Delete");
+			clickId("doaction");
+			return hasTextAllPF("deleted");
+		}
 	}
 	class MainPage extends WPTest {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
 			return EUITestStatus.PASS;
 		}
 	}
-	class MediaAddNew extends AdminTest {
+	class MediaAddNew extends DashboardTest {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return null;
+		}
+	}
+	class MediaLibrary extends DashboardTest {
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
 			return EUITestStatus.NOT_IMPLEMENTED;
 		}
 	}
-	class MediaLibrary extends AdminTest {
+	class MediaDelete extends DashboardTest {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
 			return EUITestStatus.NOT_IMPLEMENTED;
 		}
 	}
-	class MediaDelete extends AdminTest {
+	abstract class Pages extends DashboardTest {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			return EUITestStatus.NOT_IMPLEMENTED;
-		}
-	}
-	abstract class Pages extends AdminTest {
-		@Override
-		public boolean start(SimpleDriver driver) throws Exception {
-			return super.start(driver) && driver.clickLinkText("Pages");
+		public boolean start(IUITestDriver driver) throws Exception {
+			return super.start(driver) && clickLinkText("Pages");
 		}
 	}
 	class PagesAddNew extends Pages {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.partialLinkText("Add New"));
-			driver.inputType(By.id("title"), "title");
-			driver.click(By.id("publish"));
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			clickPartialLinkText("Add New");
+			inputTypeId("title", "title");
+			clickId("publish");
 			return EUITestStatus.PASS;
 		}
 	}
 	class PagesAllPages extends Pages {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			return EUITestStatus.PASS;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return hasTextAllPF("Pages");
+		}
+	}
+	class PagesAllAddNew extends DashboardTest {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class PagesFilter extends DashboardTest {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class PagesSearch extends DashboardTest {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
 		}
 	}
 	class PagesTrash extends Pages {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.cssSelector("input[name=\"post[]\"]"));
-			driver.selectByText(By.cssSelector("select[name=\"action\"]"), "Move to Trash");
-			driver.click(By.id("doaction"));
-			return EUITestStatus.PASS;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(By.cssSelector("input[name=\"post[]\"]"));
+			selectByText(By.cssSelector("select[name=\"action\"]"), "Move to Trash");
+			clickId("doaction");
+			return hasTextAllPF("moved to the Trash");
+		}
+	}
+	class PagesTrashUndo extends DashboardTest {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
 		}
 	}
 	class PagesEdit extends Pages {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.clickLinkText("Edit");
-			driver.clickId("publish");
-			return driver.hasTextPF("updated");
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			WebElement a = getElement(By.xpath("//a[contains(@href, '/wp-admin/post.php')]"));
+			click(a);
+			clickId("publish");
+			return hasTextAllPF("updated");
 		}
 	}
 	class PagesQuickEdit extends Pages {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.clickLinkText("Quick Edit");
-			driver.clickId("publish");
-			return driver.hasTextPF("updated");
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			WebElement a = getElement(By.xpath("//a[contains(@href, '/wp-admin/edit.php')]"));
+			click(a);
+			clickId("publish");
+			return hasTextAllPF("updated");
 		}
 	}
-	abstract class Posts extends AdminTest { 
+	abstract class Posts extends DashboardTest { 
 		@Override
-		public boolean start(SimpleDriver driver) throws Exception {
-			return super.start(driver) && driver.clickLinkText("Posts");
+		public boolean start(IUITestDriver driver) throws Exception {
+			return super.start(driver) && clickLinkText("Posts");
 		}
 	}
 	class PostsAll extends Posts {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			return driver.hasTextPF("Posts", "All");
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return hasTextAllPF("Posts", "All");
+		}
+	}
+	class PostsAllAddNew extends Posts {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class PostsFilter extends Posts {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class PostsSearch extends Posts {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
 		}
 	}
 	class PostTrash extends Posts {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.partialLinkText("Trash"));
-			return EUITestStatus.PASS;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(By2.partialId("cb-select"));
+			selectByTextName("action", "Move to Trash");
+			clickId("doaction");
+			return hasTextAllPF("moved to the Trash");
+		}
+	}
+	class PostTrashUndo extends Posts {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
 		}
 	}
 	class PostQuickEdit extends Posts {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.clickLinkText("Quick Edit");
-			driver.clickId("publish");
-			return driver.hasTextPF("Post updated");
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			WebElement a = getElement(By.xpath("//a[contains(@href, '/wp-admin/edit.php')]"));
+			click(a);
+			clickId("publish");
+			return hasTextAllPF("Post updated");
 		}
 	}
 	class PostEdit extends Posts {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.clickLinkText("Edit");
-			driver.clickId("publish");
-			return driver.hasTextPF("Post updated");
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			WebElement a = getElement(By.xpath("//a[contains(@href, '/wp-admin/post.php')]"));
+			click(a);
+			clickId("publish");
+			return hasTextAllPF("Post updated");
 		}
 	}
 	abstract class PostCategories extends Posts {
 		@Override
-		public boolean start(SimpleDriver driver) throws Exception {
-			return super.start(driver) && driver.click(By.partialLinkText("Categories"));
+		public boolean start(IUITestDriver driver) throws Exception {
+			return super.start(driver) && clickPartialLinkText("Categories");
 		}
 	}
 	abstract class PostTags extends Posts {
 		@Override
-		public boolean start(SimpleDriver driver) throws Exception {
-			return super.start(driver) && driver.click(By.partialLinkText("Tags"));
+		public boolean start(IUITestDriver driver) throws Exception {
+			return super.start(driver) && clickPartialLinkText("Tags");
 		}
 	}
 	class PostCategoriesAll extends PostCategories {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			return driver.hasTextPF("Categories", "All");
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return hasTextAllPF("Categories", "All");
+		}
+	}
+	class PostCategoriesAllAddNew extends PostCategories {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class PostCategoriesFilter extends PostCategories {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class PostCategoriesSearch extends PostCategories {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
 		}
 	}
 	class PostCategoriesAdd extends PostCategories {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.inputType(By.id("tag-name"), "New Category2"); // TODO
-			driver.inputType(By.id("tag-slug"), "new_category2"); // TODO
-			driver.inputType(By.id("tag-description"), "some themes may show this");
-			driver.click(By.id("submit"));
-			return driver.hasTextPF("Added");
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			String cat_name = StringUtil.randomLettersStr(5, 7)+" "+StringUtil.randomLettersStr(5, 7);
+			String cat_slug = toSlug(cat_name);
+			
+			inputTypeId("tag-name", cat_name);
+			inputTypeId("tag-slug", cat_slug);
+			inputTypeId("tag-description", "some themes may show this");
+			clickId("submit");
+			return pf(clickLinkText(cat_name));
 		}
 	}
 	class PostCategoriesDelete extends PostCategories {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.cssSelector("input[name=\"delete_tags[]\"]"));
-			driver.selectByText(By.cssSelector("select[name=\"action\"]"), "Delete");
-			driver.click(By.id("doaction"));
-			return driver.hasTextPF("Deleted");
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(By.cssSelector("input[name=\"delete_tags[]\"]"));
+			selectByText(By.cssSelector("select[name=\"action\"]"), "Delete");
+			clickId("doaction");
+			return hasTextAllPF("Items deleted");
 		}
 	}
 	class PostTagsAll extends PostTags {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			return driver.hasTextPF("Posts", "All");
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return hasTextAllPF("Posts", "All");
+		}
+	}
+	class PostTagsAllAddNew extends PostTags {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class PostTagsFilter extends PostTags {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class PostTagsSearch extends PostTags {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
 		}
 	}
 	class PostTagsAdd extends PostTags {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.inputType(By.id("tag-name"), "NewTag");
-			driver.inputType(By.id("tag-slug"), "NewTag");
-			driver.inputType(By.id("tag-description"), "some themes may show it");
-			driver.click(By.id("submit"));
-			return driver.hasTextPF("Added");
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			String tag_name = StringUtil.randomLettersStr(5, 7);
+			String tag_slug = tag_name;
+			
+			inputTypeId("tag-name", tag_name);
+			inputTypeId("tag-slug", tag_slug);
+			inputTypeId("tag-description", "some themes may show it");
+			clickId("submit");
+			return pf(clickLinkText(tag_name));
 		}
 	}
 	class PostTagsDelete extends PostTags {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.cssSelector("input[name=\"delete_tags[]\"]"));
-			driver.selectByValue(By.cssSelector("select[name=\"action\"]"), "Delete");
-			driver.click(By.id("doaction"));
-			return driver.hasTextPF("Deleted");
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(By.cssSelector("input[name=\"delete_tags[]\"]"));
+			selectByTextName("action", "Delete");
+			clickId("doaction");
+			return hasTextAllPF("deleted");
 		}
 	}
-	abstract class Plugins extends AdminTest {
+	abstract class Plugins extends DashboardTest {
 		@Override
-		public boolean start(SimpleDriver driver) throws Exception {
-			return super.start(driver) && driver.click(By.partialLinkText("Plugins"));
+		public boolean start(IUITestDriver driver) throws Exception {
+			return super.start(driver) && clickPartialLinkText("Plugins");
 		}
 	}
 	class PluginsInstalledPlugins extends Plugins {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			return EUITestStatus.PASS;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return hasTextAllPF("Installed Plugins");
 		}
 	}
-	class PluginsInstalledActivate extends AdminTest {
+	class PluginsInstalledActivate extends Plugins {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.clickLinkText("Installed Plugins");
-			driver.clickId("checkbox_daab5d2d514cf7d293376be3ded708f0");
-			driver.selectByText(By.name("action"), "Activate");
-			driver.clickId("doaction");
-			return driver.hasTextPF("Activated");
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			clickLinkText("Activate"); // XXX assumes Akismet is first
+			selectByText(By.name("action"), "Activate");
+			return hasTextAllPF("activated");
 		}
 	}
 	class PluginsAkismetConfiguration extends Plugins {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.cssSelector("span.0 > a"));
-			return EUITestStatus.PASS;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			clickLinkText("Akismet Configuration");
+			clickName("submit");
+			return hasTextAllPF("Options saved");
 		}
 	}
-	class PluginsInstalledDeactivate extends AdminTest {
+	class PluginsInstalledDeactivate extends Plugins {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.cssSelector("a[title=\"Deactivate this plugin\"]"));
-			return driver.hasTextPF("Deactivated");
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			clickLinkText("Deactivate");
+			return hasTextAllPF("deactivated");
 		}
 	}
 	class PostView extends WPTest {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
 			return EUITestStatus.NOT_IMPLEMENTED; // TODO
 		}
 	}
 	class PostsAddNew extends Posts {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.partialLinkText("Add New"));
-			driver.inputType(By.id("title"), "enter title here");
-			driver.click(By.id("save-post"));
-			driver.click(By.id("publish"));
-			return driver.hasText("updated") || driver.hasText("published") ? EUITestStatus.PASS : EUITestStatus.FAIL;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			clickPartialLinkText("Add New");
+			inputTypeId("title", "enter title here");
+			clickId("save-post");
+			clickId("publish");
+			return hasText("updated") || hasText("published") ? EUITestStatus.PASS : EUITestStatus.FAIL;
 		}
 	}
 	class CommentAdd extends WPTest {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
 			final String text = StringUtil.randomLettersStr(20, 40);
 			
 			// open comment page:
 			// find link titled: `Comment on <post title>`
-			driver.driver().findElement(By.cssSelector("a[title=\"Comment on enter title here\"]")).click();
+			driver().findElement(By.cssSelector("a[title=\"Comment on enter title here\"]")).click();
 
 			if (isAnon()) {
 				// fill in name and email fields
-				driver.inputType(By.id("author"), "anonymous author");
-				driver.inputType(By.id("email"), "a@a.com");
+				inputTypeId("author", "anonymous author");
+				inputTypeId("email", "a@a.com");
 			}
 			
 			// enter comment text
-			driver.inputType("comment", text);
+			inputTypeId("comment", text);
 			
 			// submit comment form
-			driver.click(By.id("submit"));
+			clickId("submit");
 			
 			// verify
-			return driver.hasTextPF(text);
+			return hasTextAllPF(text);
 		}
 	}
-	abstract class Comments extends AdminTest {
+	abstract class Comments extends DashboardTest {
 		@Override
-		public boolean start(SimpleDriver driver) throws Exception {
-			return super.start(driver) && driver.click(By.partialLinkText("Comments"));
+		public boolean start(IUITestDriver driver) throws Exception {
+			return super.start(driver) && clickPartialLinkText("Comments");
 		}
 	}
 	class CommentsAllComments extends Comments {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			return driver.hasTextPF("Comments", "All");
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return hasTextAllPF("Comments", "All");
+		}
+	}
+	class CommentsAllFilter extends Comments {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class CommentsAllSearch extends Comments {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
 		}
 	}
 	class CommentsTrash extends Comments {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			//driver.click(By.cssSelector("input[name=\"delete_comments[]\"]"));
-			driver.selectByText(By.cssSelector("select[name=\"action\"]"), "Move to Trash");
-			driver.click(By.id("doaction"));
-			return driver.hasTextPF("comment moved to the Trash");
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(getElement(By2.partialClassName("comment")), By.cssSelector("th.check-column > input[name=\"delete_comments[]\"]"));
+			selectByText(By.cssSelector("select[name=\"action\"]"), "Move to Trash");
+			clickId("doaction");
+			return hasTextAllPF("comment moved to the Trash");
+		}
+	}
+	class CommentsTrashUndo extends Comments {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
 		}
 	}
 	class CommentsApprove extends Comments {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			//driver.click(By.xpath("//li[@id='menu-comments']/a"));
-			//driver.click(By.cssSelector("input[name=\"delete_comments[]\"]"));
-			driver.selectByText(By.cssSelector("select[name=\"action\"]"), "Approve");
-			driver.click(By.id("doaction"));
-			return driver.hasTextPF("Approved");
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			//click(By.xpath("//li[@id='menu-comments']/a"));
+			//click(By.cssSelector("input[name=\"delete_comments[]\"]"));
+			selectByText(By.cssSelector("select[name=\"action\"]"), "Approve");
+			clickId("doaction");
+			return hasTextAllPF("Approved");
 		}
 	}
 	class CommentsUnapprove extends Comments {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			//driver.click(By.xpath("//li[@id='menu-comments']/a"));
-			//driver.click(By.cssSelector("input[name=\"delete_comments[]\"]"));
-			driver.selectByText(By.cssSelector("select[name=\"action\"]"), "Unapprove");
-			driver.click(By.id("doaction"));
-			return driver.hasTextPF("Approve");
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			//click(By.xpath("//li[@id='menu-comments']/a"));
+			//click(By.cssSelector("input[name=\"delete_comments[]\"]"));
+			selectByText(By.cssSelector("select[name=\"action\"]"), "Unapprove");
+			clickId("doaction");
+			return hasTextAllPF("Approve");
 		}
 	}
-	abstract class Settings extends AdminTest {
-		public boolean start(SimpleDriver driver) throws Exception {
-			return super.start(driver) && driver.clickLinkText("Settings");
+	abstract class Settings extends DashboardTest {
+		public boolean start(IUITestDriver driver) throws Exception {
+			return super.start(driver) && clickLinkText("Settings");
+		}
+		protected EUITestStatus verifyChangedPF() {
+			return pf(verifyChanged());
+		}
+		protected boolean verifyChanged() {
+			return hasText("changed");
+		}
+		protected EUITestStatus verifySavedPF() {
+			return pf(verifySaved());
+		}
+		protected boolean verifySaved() {
+			return hasText("saved");
+		}
+		protected boolean verifyUpdated() {
+			return hasText("updated");
+		}
+		protected EUITestStatus verifyUpdatedPF() {
+			return pf(verifyUpdated());
 		}
 	}
 	class SettingsGeneralChangeTimezone extends Settings {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.clickLinkText("General");
-			driver.selectByText(By.id("timezone_string"), "UTC-8");
-			driver.clickId("submit");
-			return EUITestStatus.PASS;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			clickLinkText("General");
+			selectByTextId("timezone_string", "UTC-8");
+			clickId("submit");
+			return verifySavedPF();
 		}
 	}
 	class SettingsChangeDateTimeFormat extends Settings {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.clickLinkText("General");
-			driver.click(By.cssSelector("label[title=\"Y/m/d\"] > input[name=\"date_format\"]"));
-			driver.click(By.cssSelector("label[title=\"g:i A\"] > input[name=\"time_format\"]"));
-			driver.click(By.id("submit"));
-			return EUITestStatus.PASS;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			clickLinkText("General");
+			click(By.cssSelector("label[title=\"Y/m/d\"] > input[name=\"date_format\"]"));
+			click(By.cssSelector("label[title=\"g:i A\"] > input[name=\"time_format\"]"));
+			clickId("submit");
+			return pf(
+					isChecked(By.cssSelector("label[title=\"Y/m/d\"] > input[name=\"date_format\"]")) &&
+					isChecked(By.cssSelector("label[title=\"g:i A\"] > input[name=\"time_format\"]")) &&
+					verifySaved()
+				);
 		}
 	}
 	class SettingsWriting extends Settings {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.partialLinkText("Writing"));
-			driver.inputType(By.id("default_post_edit_rows"), "30");
-			driver.click(By.id("submit"));
-			return EUITestStatus.PASS;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			clickPartialLinkText("Writing");
+			inputTypeId("default_post_edit_rows", "30");
+			clickId("submit");
+			return pf(
+					hasValue(By.id("default_post_edit_rows"), "30") &&
+					verifySaved()
+				);
 		}
 	}
 	class SettingsReading extends Settings {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.partialLinkText("Reading"));
-			driver.inputType(By.id("posts_per_page"), "20");
-			driver.click(By.id("submit"));
-			return EUITestStatus.PASS;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			clickPartialLinkText("Reading");
+			inputTypeId("posts_per_page", "20");
+			clickId("submit");
+			return pf(
+					hasValue(By.id("posts_per_page"), "20") &&
+					verifySaved()
+				);
 		}
 	}
 	class SettingsDiscussion extends Settings {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.partialLinkText("Discussion"));
-			driver.click(By.id("avatar_gravatar_default"));
-			driver.click(By.id("submit"));
-			return EUITestStatus.PASS;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			clickPartialLinkText("Discussion");
+			clickId("avatar_gravatar_default");
+			clickId("submit");
+			return verifySavedPF();
 		}
 	}
 	class SettingsMedia extends Settings {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.partialLinkText("Media"));
-			driver.click(By.id("submit"));
-			return EUITestStatus.PASS;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			// find Media in Settings, not top-level Media (media library) link
+			click(By.xpath("//a[contains(text(),'Media')]"));
+			clickId("submit");
+			return verifySavedPF();
 		}
 	}
 	class SettingsPrivacy extends Settings {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.partialLinkText("Privacy"));
-			driver.click(By.id("blog-public"));
-			driver.click(By.id("submit"));
-			return EUITestStatus.PASS;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			clickPartialLinkText("Privacy");
+			clickId("blog-public");
+			clickId("submit");
+			return verifySavedPF();
 		}
 	}
 	class SettingsPermalinks extends Settings {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.partialLinkText("Permalinks"));
-			driver.click(By.xpath("(//input[@name='selection'])[2]"));
-			driver.click(By.id("submit"));
-			return EUITestStatus.PASS;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			/* clickPartialLinkText("Permalinks"));
+			click(By.xpath("(//input[@name='selection'])[2]"));
+			clickId("submit"));
+			return verifyUpdated(driver);*/
+			
+			// TODO this breaks wordpress - test variations of this
+			return null;
 		}
 	}
-	class ToolsExport extends AdminTest {
+	abstract class Tools extends DashboardTest {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.clickLinkText("Tools");
-			driver.click(By.partialLinkText("Export"));
-			driver.clickId("submit");
-			return EUITestStatus.PASS;
+		public boolean start(IUITestDriver driver) throws Exception {
+			return super.start(driver) && clickLinkText("Tools");
 		}
 	}
-	class ToolsImport extends AdminTest {
+	class ToolsExport extends Tools {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			return EUITestStatus.NOT_IMPLEMENTED;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return null;
+		}
+	}
+	class ToolsImport extends Tools {
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			/*upload(By.id("file"), ".csv", "");
+			clickId("submit");
+			return hasTextPF("Imported");*/
+			return null;
 		}
 	}
 	class LostPassword extends WPTest {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
 			return EUITestStatus.NOT_IMPLEMENTED;
 		}
 	}
-	class ChangePassword extends WPTest {
+	abstract class EditProfilePassword extends LoggedInTest {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			return super.start(driver) && clickLinkText("Howdy, "+user_account.username);
+		}
+	}
+	class ChangePassword extends EditProfilePassword {
 		final UIAccount new_account;
 		public ChangePassword(UIAccount new_account) {
 			this.new_account = new_account;
 		}
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.cssSelector("#wp-admin-bar-edit-profile > a.ab-item"));
-			driver.inputType(By.id("pass1"), new_account.password);
-			driver.inputType(By.id("pass2"), new_account.password);
-			driver.click(By.id("submit"));
-			return EUITestStatus.PASS;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			inputTypeId("pass1", new_account.password);
+			inputTypeId("pass2", new_account.password);
+			clickId("submit");
+			return hasTextAllPF("Profile updated");
 		}
 	}
-	class EditProfile extends WPTest {
+	class EditProfile extends EditProfilePassword {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.cssSelector("#wp-admin-bar-edit-profile > a.ab-item"));
-			return EUITestStatus.PASS;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			inputTypeId("description", StringUtil.randomLettersStr(5, 10));
+			clickId("submit");
+			return hasTextAllPF("Profile updated");
 		}
 	}
-	abstract class Users extends AdminTest {
+	abstract class Users extends DashboardTest {
 		@Override
-		public boolean start(SimpleDriver driver) throws Exception {
-			return super.start(driver) && driver.clickLinkText("Users");
+		public boolean start(IUITestDriver driver) throws Exception {
+			return super.start(driver) && clickLinkText("Users");
 		}
 	}
 	class UsersAddNew extends Users {
+		final UIAccount user_account;
+		final EWordpressUserRole role;
+		
+		public UsersAddNew(UIAccount user_account, EWordpressUserRole role) {
+			this.user_account = user_account;
+			this.role = role;
+		}
+
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.xpath("(//a[contains(text(),'Add New')])[6]"));
-			driver.inputType(By.id("user_login"), "Homer");
-			driver.inputType(By.id("email"), "homer@compuglobalhypermega.net");
-			driver.inputType(By.id("first_name"), "homer");
-			driver.inputType(By.id("last_name"), "Simpson");
-			driver.inputType(By.id("url"), "http://compuglobalhypermega.net");
-			driver.inputType(By.id("pass1"), "password01!");
-			driver.inputType(By.id("pass2"), "password01!"); // TODO
-			driver.click(By.id("createusersub"));
-			return EUITestStatus.PASS;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(By.xpath("(//a[contains(text(),'Add New')])[6]"));
+			inputTypeId("user_login", user_account.username);
+			inputTypeId("email", user_account.username+"@compuglobalhypermega.net");
+			inputTypeId("first_name", user_account.username);
+			inputTypeId("last_name", "Simpson");
+			inputTypeId("url", "http://compuglobalhypermega.net");
+			inputTypeId("pass1", user_account.password);
+			inputTypeId("pass2", user_account.password);
+			selectByTextId("role", role.getType());
+			clickId("createusersub");
+			return hasTextAllPF("New user created");
 		}
 	}
 	class UsersAllUsers extends Users {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			return EUITestStatus.PASS;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return hasTextAllPF("Users");
 		}
 	}
-	class UsersDeleteNew extends Users {
+	class UsersAllAddNew extends Comments {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			return EUITestStatus.PASS;
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class UsersAllFilter extends Comments {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class UsersAllSearch extends Comments {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
+		}
+	}
+	class UsersDelete extends Users {
+		final UIAccount user_account;
+		
+		public UsersDelete(UIAccount user_account) {
+			this.user_account = user_account;
+		}
+
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(getElement(By.xpath("//a[text()='"+user_account.username+"']/../../..")), By.name("users[]"));
+			selectByTextName("action", "Delete");
+			clickId("doaction"); // go to confirmation page
+			clickId("submit"); // confirm deletion
+			return hasTextAllPF("User deleted");
+		}
+	}
+	class UsersDeleteIncludingAttributions extends Comments {
+		@Override
+		public boolean start(IUITestDriver driver) throws Exception {
+			// overriding super#start just for performance
+			// remove this method and use super#start if you actually implement this test
+			return true;
+		}
+		@Override
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return EUITestStatus.NOT_IMPLEMENTED;
 		}
 	}
 	class UsersChangeRole extends Users {
+		final UIAccount user_account;
+		final EWordpressUserRole new_role;
+		
+		public UsersChangeRole(UIAccount user_account, EWordpressUserRole new_role) {
+			this.user_account = user_account;
+			this.new_role = new_role;
+		}
+
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.click(By.id("user_2"));
-			driver.selectByText(By.id("new_role"), "Editor");
-			driver.click(By.id("changeit"));
-			return EUITestStatus.PASS;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			click(getElement(By.xpath("//a[text()='"+user_account.username+"']/../../..")), By.name("users[]"));
+			selectByTextId("new_role", new_role.getType());
+			clickId("changeit");
+			return hasTextAllPF("Changed");
 		}
 	}
-	class UsersUpdateUser extends Users {
+	class UsersEdit extends Users {
+		final UIAccount user_account;
+		
+		UsersEdit(UIAccount user_account) {
+			this.user_account = user_account;
+		}
+		
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.clickLinkText("Users");
-			driver.clickLinkText("Edit");
-			driver.inputType(By.id("description"), "Founder of CompuGlobalHyperMegaNet");
-			driver.click(By.id("submit"));
-			return EUITestStatus.PASS;
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			WebElement row = getElement(By.xpath("//a[text()='"+user_account.username+"']/../../.."));
+			focus(row);
+			click(row, By.linkText("Edit"));
+			inputTypeId("description", "Founder of CompuGlobalHyperMegaNet");
+			clickId("submit");
+			return hasTextAllPF("Updated");
 		}
 	}
 	abstract class Widget extends WPTest {
@@ -994,78 +1795,72 @@ public class WordpressTestPack implements UITestPack {
 	}
 	class WidgetArchives extends Widget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			return driver.hasElementPF(By.xpath("//h3[contains(., 'Archives')]"));
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return hasElementPF(By.xpath("//h3[contains(., 'Archives')]"));
 		}
 	}
 	class WidgetCalendar extends Widget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
 			Calendar cal = Calendar.getInstance();
 			String current_month_name = cal.getDisplayName(Calendar.MONTH, Calendar.LONG, Locale.US);
-			return driver.hasElementPF(By.xpath("//a[contains(., '"+current_month_name+"')]"));
+			return hasElementPF(By.xpath("//a[contains(., '"+current_month_name+"')]"));
 		}
 	}
 	class WidgetCategories extends Widget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			return driver.hasElementPF(By.xpath("//h3[contains(., 'Categories')]"));
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return hasElementPF(By.xpath("//h3[contains(., 'Categories')]"));
 		}
 	}
 	class WidgetMeta extends Widget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			return driver.hasElementPF(By.xpath("//h3[contains(., 'Meta')]"));
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return hasElementPF(By.xpath("//h3[contains(., 'Meta')]"));
 		}
 	}
 	class WidgetPages extends Widget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			return driver.hasElementPF(By.xpath("//h3[contains(., 'Pages')]"));
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return hasElementPF(By.xpath("//h3[contains(., 'Pages')]"));
 		}
 	}
 	class WidgetRecentComments extends Widget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			return driver.hasElementPF(By.xpath("//h3[contains(., 'Comments')]"));
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return hasElementPF(By.xpath("//h3[contains(., 'Comments')]"));
 		}
 	}
 	class WidgetRecentPosts extends Widget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			return driver.hasElementPF(By.xpath("//h3[contains(., 'Recent Posts')]"));
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return hasElementPF(By.xpath("//h3[contains(., 'Recent Posts')]"));
 		}
 	}
 	class WidgetEntriesRSS extends Widget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.clickLinkText("Entries RSS");
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			clickLinkText("Entries RSS");
 			return EUITestStatus.PASS;
 		}
 	}
 	class WidgetCommentsRSS extends Widget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			driver.clickLinkText("Comments RSS");
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			clickLinkText("Comments RSS");
 			return EUITestStatus.PASS;
 		}
 	}
 	class WidgetSearch extends Widget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			return driver.hasElementPF(By.xpath("//input[@value='Search']"));
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return hasElementPF(By.xpath("//input[@value='Search']"));
 		}
 	}
 	class WidgetTagCloud extends Widget {
 		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			return driver.hasElementPF(By.xpath("//h3[contains(., 'Tag')]"));
+		public EUITestStatus test(IUITestDriver driver) throws Exception {
+			return hasElementPF(By.xpath("//h3[contains(., 'Tag')]"));
 		}
 	}
-	class WidgetText extends Widget {
-		@Override
-		public EUITestStatus test(SimpleDriver driver) throws Exception {
-			return EUITestStatus.NOT_IMPLEMENTED;
-		}
-	}
-}
+} // end public class WordpressTestPack

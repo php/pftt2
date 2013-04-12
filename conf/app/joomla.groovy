@@ -93,7 +93,19 @@ class JoomlaPlatformPhpUnitTestPack extends PhpUnitSourceTestPack { //SymfonyPhp
 	public String[][] getNonThreadSafeTestFileNames() {
 		return [
 				["joomla/filesystem/"],
-				["joomla/language/"]
+				["joomla/language/"],
+				["joomla/cache/"],
+				["joomla/application/"],
+				["joomla/user/"],
+				["controller/"],
+				["joomla/database/"],
+				["joomla/form/"],
+				["joomla/github/"],
+				["joomla/google/"],
+				["joomla/grid/"],
+				["joomla/html/html/"],
+				["joomla/image/"],
+				["joomla/input/"]
 			]
 	}
 	

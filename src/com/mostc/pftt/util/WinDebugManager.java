@@ -204,7 +204,7 @@ public class WinDebugManager extends DebuggerManager {
 		return host.anyExist(getWinDebugPaths(host, build));
 	}
 
-	public static void checkIfWinDebugInstalled(AHost host, PhpBuild build) {
+	public static boolean checkIfWinDebugInstalled(AHost host, PhpBuild build) {
 		String win_dbg_exe = findWinDebugExe(host, build);
 		
 		if (StringUtil.isEmpty(win_dbg_exe)) {
@@ -221,8 +221,9 @@ public class WinDebugManager extends DebuggerManager {
 			System.err.println("PFTT: searched for WinDebug at these locations: "+StringUtil.toString(WinDebugManager.getWinDebugPaths(host, build)));
 			System.err.println("PFTT: install WinDebug or remove -debug_all or -debug_list console option");
 			System.err.println("PFTT: download WinDebug here: http://msdn.microsoft.com/en-us/windows/hardware/gg463009.aspx");
-			System.exit(-245);
+			return false;
 		}
+		return true;
 	}
 	
 } // end public class WinDebugManager

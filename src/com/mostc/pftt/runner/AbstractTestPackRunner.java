@@ -53,7 +53,6 @@ public abstract class AbstractTestPackRunner<S extends SourceTestPack, T extends
 		public void notifySlowTest() {
 			if (slowCreateNewThread()) {
 				createNewThread();
-				stopThisThread();
 			}
 		}
 		

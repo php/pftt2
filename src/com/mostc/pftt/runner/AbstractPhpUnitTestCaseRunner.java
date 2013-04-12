@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import com.github.mattficken.Overridable;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.ExecOutput;
@@ -228,6 +229,13 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 	
 	protected boolean checkRequireOnceError(String output) {
 		return PAT_REQUIRE_ONCE_FAIL.matcher(output).find();
+	}
+	
+	
+	protected abstract void stop(boolean force);
+	@Overridable
+	protected int getMaxTestRuntimeSeconds() {
+		return 60;
 	}
 
 	/** configures PhpUnit globals to use the given database.

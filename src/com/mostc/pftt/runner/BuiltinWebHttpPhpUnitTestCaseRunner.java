@@ -34,17 +34,30 @@ public class BuiltinWebHttpPhpUnitTestCaseRunner extends HttpPhpUnitTestCaseRunn
 	}
 	
 	@Override
-	protected String do_http_execute(String path, boolean is_replacement) throws Exception {
+	protected void stop(boolean force) {
+		if (test_socket==null)
+			return;
+		if (web!=null)
+			web.close();
 		try {
-			return super.do_http_execute(path, is_replacement);
+			test_socket.close();
+		} catch ( Exception ex ) {
+		}
+		test_socket = null;
+	}
+	
+	@Override
+	protected String do_http_execute(String path) throws Exception {
+		try {
+			return super.do_http_execute(path);
 		} catch ( IOException ex ) {
 			// wait and then try again (may its taking a long time to startup? - this seems to decrease the number of timeouts)
 			Thread.sleep(10000);
 			try {
-				return super.do_http_execute(path, is_replacement);
+				return super.do_http_execute(path);
 			} catch ( IOException ex2 ) {
 				Thread.sleep(10000);
-				return super.do_http_execute(path, is_replacement);
+				return super.do_http_execute(path);
 			}
 		}
 	}

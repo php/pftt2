@@ -280,7 +280,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 				debug_handle.close();
 			}
 			
-			process.close();
+			process.close(true);
 		}
 
 		@Override

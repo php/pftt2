@@ -416,6 +416,11 @@ public abstract class AHost extends Host {
 		 * @return
 		 */
 		public abstract int getExitCode();
+		
+		
+		
+		// TODO
+		public abstract void run(StringBuilder output_sb, Charset charset, int timeout_sec, TestPackRunnerThread thread, int slow_sec) throws IOException, InterruptedException;
 	} // end public abstract class ExecHandle
 	
 	/** checks exit code to see if it means process crashed

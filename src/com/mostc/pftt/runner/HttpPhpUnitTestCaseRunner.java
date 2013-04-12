@@ -35,11 +35,13 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	protected final WebServerManager smgr;
 	protected final ByteArrayOutputStream response_bytes;
 	protected WebServerInstance web = null;
+	protected boolean is_replacement = false;
 	protected String cookie_str;
 	protected DebuggingHttpClientConnection conn;
 	protected final HttpParams params;
 	protected final HttpProcessor httpproc;
 	protected final HttpRequestExecutor httpexecutor;
+	protected Socket test_socket;
 
 	public HttpPhpUnitTestCaseRunner(ITestResultReceiver tmgr,
 			HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web,
@@ -55,7 +57,7 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 		// don't need request_bytes, just doing a really basic HTTP GET
 		this.response_bytes = new ByteArrayOutputStream();
 	}
-
+	
 	@Override
 	protected String execute(String template_file) throws IOException, Exception {
 		// Note: INI for test case provided in TestCaseGroupKey created in LocalPhpUnitTestPackRunner#createGroupKey
@@ -83,7 +85,8 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	protected String http_execute(String path) throws Exception {
 		try {
 			try {
-				return do_http_execute(path, false);
+				this.is_replacement = false;
+				return do_http_execute(path);
 			} catch ( IOException ex1 ) { // SocketTimeoutException or ConnectException
 				if (cm.isPfttDebug()) {
 					ex1.printStackTrace();
@@ -109,7 +112,8 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 				// this will make a new WebServerInstance that will only be used to run this 1 test
 				// (so other tests will not interfere with this test at all)
 				web = null; 
-				return do_http_execute(path, true);
+				this.is_replacement = true;
+				return do_http_execute(path);
 			}
 		} catch ( IOException ioe ) {
 			String ex_str = ErrorUtil.toString(ioe);
@@ -137,7 +141,7 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 		return sb.toString();
 	}
 
-	protected String do_http_execute(String path, boolean is_replacement) throws Exception {
+	protected String do_http_execute(String path) throws Exception {
 		path = AHost.toUnixPath(path);
 		if (!path.startsWith("/"))
 			path = "/" + path;
@@ -217,6 +221,19 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 		return do_http_get(path, 0);
 	}
 	
+	@Override
+	protected void stop(boolean force) {
+		if (test_socket==null)
+			return;
+		if (force && is_replacement && web !=null && !web.isDebuggerAttached() )
+			web.close();
+		try {
+			test_socket.close();
+		} catch ( Exception ex ) {
+		}
+		test_socket = null;
+	}
+	
 	protected String do_http_get(String path, int i) throws Exception {
 		HttpContext context = new BasicHttpContext(null);
 		HttpHost http_host = new HttpHost(web.hostname(), web.port());
@@ -226,13 +243,13 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 			conn = null;
 		}
 		conn = new DebuggingHttpClientConnection(null, response_bytes);
-		Socket socket = null;
+		test_socket = null;
 		try {
 			context.setAttribute(ExecutionContext.HTTP_CONNECTION, conn);
 			context.setAttribute(ExecutionContext.HTTP_TARGET_HOST, http_host);
 			
-			socket = new Socket(http_host.getHostName(), http_host.getPort());
-			conn.bind(socket, params);
+			test_socket = new Socket(http_host.getHostName(), http_host.getPort());
+			conn.bind(test_socket, params);
 			conn.setSocketTimeout(60*1000);
 			
 			HttpGet request = new HttpGet(path);
@@ -250,7 +267,7 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 			httpexecutor.postProcess(response, httpproc, context);
 			
 			//
-			// support for HTTP redirects: used by some PHAR tests
+			// support for HTTP redirects
 			if (i<10) {
 				Header lh = response.getFirstHeader("Location");
 				if (lh!=null) {
@@ -261,8 +278,8 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 			
 			return IOUtil.toString(response.getEntity().getContent(), IOUtil.HALF_MEGABYTE);
 		} finally {
-			if (socket!=null)
-				socket.close();
+			if (test_socket!=null)
+				test_socket.close();
 			conn.close();
 		}
 	} // end protected String do_http_get

@@ -19,9 +19,9 @@ public class MySQLScenario extends AbstractDatabaseScenario {
 	//
 	// can do SQL Server,  SMB share, date, HTTP, FTP, IMAP servers (to download, upload files, email)
 	//
-	String host, db_name, static_db_name, user, password;
-	String dsn, username, database;
-	int port;
+	public String host, db_name, static_db_name, user, password;
+	public String dsn, username, database;
+	public int port;
 	
 	public MySQLScenario(AHost host) {
 		

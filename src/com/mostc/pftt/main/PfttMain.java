@@ -30,10 +30,15 @@ import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpDebugPack;
 import com.mostc.pftt.model.core.PhptSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
+import com.mostc.pftt.model.sapi.ApacheManager;
+import com.mostc.pftt.model.sapi.WebServerInstance;
 import com.mostc.pftt.model.smoke.ESmokeTestStatus;
 import com.mostc.pftt.model.smoke.PhptTestCountsMatchSmokeTest;
 import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.model.smoke.RequiredFeaturesSmokeTest;
+import com.mostc.pftt.model.ui.EUITestExecutionStyle;
+import com.mostc.pftt.model.ui.UITestPack;
+import com.mostc.pftt.model.ui.UITestRunner;
 import com.mostc.pftt.results.AbstractPhpUnitRW;
 import com.mostc.pftt.results.AbstractPhptRW;
 import com.mostc.pftt.results.AbstractReportGen;
@@ -71,16 +76,37 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
  * 
  */
 
-// TODO check all usage of System.exit
-// TODO check symfony thread safety
+// commit: fix WMIC/WERFault process-storm and other weirdness
 //
 // TODO UI testing
 // commit: UI testing support, first implemented for Wordpress
 //
+// TODO app_named ui_list ui_named
+// TODO different versions in config files
+//          -c apache224,apache244
+// TODO need way to enter development versions of application tests and UI tests
+//       could have conf/dev folder
+//          -what about the phpunit tests themselves (Where stored?)
+//                call PhpUnitSourceTestPack#isDevelopment
+//                       if true, prepend /dev/ to all paths
+//                     cache/working/dev instead of cache/working
+//            aa -c dev/symfony-2.3
+//                  dev/ indicates conf/dev for config file
+//       rctest should have an rc_hosts config file
+//          -store example in conf/internal_examples
+//              -so rctest will just use that unless/until user creates one in conf/internal
 // TODO joomla unit testing
-//      -need dependency note on symfony
-//      -note: ui tests from joomla may be BRITTLE (maybe thats why they're just run by 1 guy on his laptop once in a while)
+//   -need dependency note on symfony
 // commit:
+//
+// TODO WincacheUScenario for CLI
+//     -and APCUScenario
+//       which both extend UserCache (not a code cache) - can use with and without opcache or apc or wincache
+//
+// TODO joomla ui test
+//          https://github.com/joomla/joomla-cms/tree/master/tests/system
+//          -as big as wordpress +INTERNATIONALIZATION
+//          -note: ui tests from joomla may be BRITTLE (maybe thats why they're just run by 1 guy on his laptop once in a while)
 //
 // TODO installation ... single .zip file to download with install wizard/script
 //         http://izpack.org/   include Java JDK
@@ -89,15 +115,34 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //           -could just have a simple java program decompress a .zip file into c:\php-sdk
 //            and then distribute that program and a JDK using Install4J
 // 
+// TODO iis and iis-express
+// TODO mysql* postgresql curl ftp - including symfony, joomla, phpt
+// TODO http PECL extension 
+//     -by this point PFTT will cover at least some of every part of the PHP ecosystem
 // TODO list-config command
 //       -mention on start screen of pftt_shell
 //      call describe() on each config
+//    break up list by file folder
+//      dev/app:
+//      dev/internal:
+//      dev:
+//      app:
+//      internal:
+//      conf:
 // TODO pftt explain
 //        -shows PhpIni, etc.. not as a separate file though
 //           -if you need it for debug, use it from explain
 //                -ie force people to do it at least partially the efficient PFTT way
 //           -if you need it to setup, use setup cmd
-// TODO run PHPTs for PECL extensions (the final layer of the ecosystem that pftt doesn't cover)
+// 
+// improve documentation
+//     -including HOW TO run Php on Windows - on windows.php.net or wiki.php.net?
+//     -recommended configuration, etc... (for Apache, PHP, IIS, wordpress, mysql, etc...)
+// test MSIE and other web browsers with UI Tests
+// test UI of other applications
+// run phpunit tests of other applications
+// firebird mssql via odbc and pdo_odbc
+// PECL extensions to consider testing:
 //       geoip haru(pdf) http
 //       uploadprogress? xdiff? yaml? pthreads? dio?
 //       (after ported to windows) drizzle weakref fpdf gnupg  xdebug? suhosin?? 
@@ -282,7 +327,9 @@ public class PfttMain {
 		System.out.println("app_all <build[,build2]> - runs all application tests specified in a Scenario config file against build");
 		System.out.println("app_named <build[,build2]> <test name fragment> - runs named application tests (tests specified in a Scenario config file)");
 		System.out.println("app_list <build[,build2]> <file> - runs application tests from list in file (tests specified in a Scenario config file)");
-		// TODO ui_all ui_named ui_list
+		System.out.println("ui_all <build[,build2]> - runs all UI tests against application");
+		System.out.println("ui_list <build[,build2]> <file> - runs UI tests listed in file against application");
+		System.out.println("ui_named <build[,build2]> <test name> - runs named UI tests against application");
 		// TODO fs test
 		System.out.println("help");
 		System.out.println("perf <build> - performance test of build");
@@ -380,24 +427,25 @@ public class PfttMain {
 	}
 	
 	public static void cmd_app_all(PhpResultPackWriter tmgr, PfttMain rt, LocalConsoleManager cm, Config config, PhpBuild build) throws Exception {
-		PhpUnitSourceTestPack test_pack = config.getPhpUnitSourceTestPack(cm);
-		if (test_pack==null) {
+		List<PhpUnitSourceTestPack> test_packs = config.getPhpUnitSourceTestPacks(cm);
+		if (test_packs.isEmpty()) {
 			cm.println(EPrintType.CLUE, PfttMain.class, "No test-pack provided by configuration file(s)");
 			return;
 		}
-		cm.println(EPrintType.CLUE, PfttMain.class, "Test-Pack: "+test_pack);
-		
-		cm.println(EPrintType.CLUE, PfttMain.class, "Writing Result-Pack: "+tmgr.getTelemetryDir());
-		
-		AbstractPhpUnitRW rw;
-		for (ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.WEB_APPLICATION)) {
-			List<AHost> hosts = config.getHosts();
-			AHost host = hosts.isEmpty()?rt.host:hosts.get(0);
-			LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, host, rt.host);
-			r.runAllTests(test_pack);
-			rw = tmgr.getPhpUnit(rt.host, scenario_set);
-			if (rw!=null)
-				rw.close();
+		for ( PhpUnitSourceTestPack test_pack : test_packs ) {
+			cm.println(EPrintType.CLUE, PfttMain.class, "Test-Pack: "+test_pack);
+			
+			cm.println(EPrintType.CLUE, PfttMain.class, "Writing Result-Pack: "+tmgr.getTelemetryDir());
+			
+			for (ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.WEB_APPLICATION)) {
+				List<AHost> hosts = config.getHosts();
+				AHost host = hosts.isEmpty()?rt.host:hosts.get(0);
+				LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, host, rt.host);
+				r.runAllTests(test_pack);
+				for ( AbstractPhpUnitRW rw : tmgr.getPhpUnit(rt.host, scenario_set) ) {
+					rw.close();
+				}
+			}
 		}
 	}
 	
@@ -771,7 +819,8 @@ public class PfttMain {
 	 */
 	protected static void checkDebugger(ConsoleManager cm, AHost host, PhpBuild build) {
 		if ((cm.isDebugAll()||cm.isDebugList()) && host.isWindows()) {
-			WinDebugManager.checkIfWinDebugInstalled(host, build);
+			if (!WinDebugManager.checkIfWinDebugInstalled(host, build))
+				System.exit(-245);
 		}
 	}
 	
@@ -927,6 +976,8 @@ public class PfttMain {
 		
 		if (config_files.size()>0) {
 			config = Config.loadConfigFromFiles(cm, (String[])config_files.toArray(new String[config_files.size()]));
+			if (config==null)
+				System.exit(-255);
 			System.out.println("PFTT: Config: loaded "+config_files);
 		} else {
 			File default_config_file = new File(rt.host.getPfttDir()+"/conf/default.groovy");
@@ -959,37 +1010,39 @@ public class PfttMain {
 					checkDebugger(cm, rt.host, build);
 					build.open(cm, rt.host);
 					
-					PhpUnitSourceTestPack test_pack = config.getPhpUnitSourceTestPack(cm);
-					if (test_pack==null) {
+					List<PhpUnitSourceTestPack> test_packs = config.getPhpUnitSourceTestPacks(cm);
+					if (test_packs.isEmpty()) {
 						cm.println(EPrintType.CLUE, PfttMain.class, "No test-pack provided by configuration file(s)");
 						break;
 					}
-					cm.println(EPrintType.CLUE, PfttMain.class, "Test-Pack: "+test_pack);
-					
-					if (tmgr==null||!tmgr.getBuildInfo().equals(build.getBuildInfo(cm, rt.host))) {
-						if (tmgr!=null)
-							tmgr.close();
-						tmgr = new PhpResultPackWriter(rt.host, cm, rt.telem_dir(), build);
-					}
-					cm.println(EPrintType.CLUE, PfttMain.class, "Writing Result-Pack: "+tmgr.getTelemetryDir());
-					
-					checkUAC(is_uac, false, config, cm, EScenarioSetPermutationLayer.PHP_CORE);
-					
-					AbstractPhpUnitRW rw;
-					for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.WEB_APPLICATION)) {
-					
-						List<AHost> hosts = config.getHosts();
-						AHost host = hosts.isEmpty()?rt.host:hosts.get(0);
-						LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, host, rt.host);
-						LinkedList<String> test_names = new LinkedList<String>();
-						readStringListFromFile(test_names, test_list_file);
-						// TODO test_pack.read(test_cases, cm, twriter, build)
-						// TODO r.runTestList(test_pack, test_cases);
-						rw = tmgr.getPhpUnit(rt.host, scenario_set);
-						if (rw!=null)
-							rw.close();
+					for ( PhpUnitSourceTestPack test_pack : test_packs ) {
+						cm.println(EPrintType.CLUE, PfttMain.class, "Test-Pack: "+test_pack);
 						
-					} // end for (scenario_set)
+						if (tmgr==null||!tmgr.getBuildInfo().equals(build.getBuildInfo(cm, rt.host))) {
+							if (tmgr!=null)
+								tmgr.close();
+							tmgr = new PhpResultPackWriter(rt.host, cm, rt.telem_dir(), build);
+						}
+						cm.println(EPrintType.CLUE, PfttMain.class, "Writing Result-Pack: "+tmgr.getTelemetryDir());
+						
+						checkUAC(is_uac, false, config, cm, EScenarioSetPermutationLayer.PHP_CORE);
+						
+						
+						for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.WEB_APPLICATION)) {
+						
+							List<AHost> hosts = config.getHosts();
+							AHost host = hosts.isEmpty()?rt.host:hosts.get(0);
+							LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, host, rt.host);
+							LinkedList<String> test_names = new LinkedList<String>();
+							readStringListFromFile(test_names, test_list_file);
+							// TODO test_pack.read(test_cases, cm, twriter, build)
+							// TODO r.runTestList(test_pack, test_cases);
+							for ( AbstractPhpUnitRW rw : tmgr.getPhpUnit(rt.host, scenario_set) ) {
+								rw.close();
+							}
+							
+						} // end for (scenario_set)
+					}
 				} // end for (build)
 			} else if (command.equals("app_all")||command.equals("appall")||command.equals("aa")) {
 				if (!(args.length > args_i+1)) {
@@ -1297,24 +1350,29 @@ public class PfttMain {
 			} else if (command.equals("cmp-report")) {
 				//PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-5.3.24RC1-TS-X86-VC9"));
 				//PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-5.3.24RC1-TS-X86-VC9"));
-				PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-rfe2612d-nTS-X86-VC9"));
-				PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-rfecce5a-nTS-X86-VC9"));
-				
+				PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-r1b60c18-TS-X86-VC9"));
+				PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-recdf8bc-TS-X86-VC9"));
 				//PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-5.4.14RC1-NTS-X86-VC9"));
 				//PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-5.4.14RC1-NTS-X86-VC9"));
-				//PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-ref93a93-TS-X86-VC9"));
-				//PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-r72426a4-TS-X86-VC9"));
-				//PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-rbed44e5-NTS-X86-VC11"));
-				//PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-r586dc07-NTS-X86-VC11"));
+				//PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-ra35d386-TS-X86-VC9"));
+				//PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-raab5659-TS-X86-VC9"));
+				//PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-ra9f9ff6-nTS-X86-VC11"));
+				//PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-r1c498e6-nTS-X86-VC11"));
 				//PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-5.5.0beta1-TS-X86-VC11"));
 				//PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-5.5.0beta2-TS-X86-VC11"));
 				
 				for ( AbstractPhpUnitRW base : base_pack.getPhpUnit() ) {
 					for ( AbstractPhpUnitRW test : test_pack.getPhpUnit() ) {
 						System.err.println("PhpUnit "+base.getScenarioSetNameWithVersionInfo()+" "+test.getScenarioSetNameWithVersionInfo());
-						if (!(base.getScenarioSetNameWithVersionInfo().contains("opcache")==test.getScenarioSetNameWithVersionInfo().contains("opcache")
-								&&base.getScenarioSetNameWithVersionInfo().contains("cli")==test.getScenarioSetNameWithVersionInfo().contains("cli")
-								&&base.getScenarioSetNameWithVersionInfo().contains("apache")==test.getScenarioSetNameWithVersionInfo().contains("apache")))
+						if (!(base.getScenarioSetNameWithVersionInfo().toLowerCase().contains("opcache")==test.getScenarioSetNameWithVersionInfo().toLowerCase().contains("opcache")
+								&&(
+										test.getScenarioSetNameWithVersionInfo().toLowerCase().contains("cli")||
+										test.getScenarioSetNameWithVersionInfo().toLowerCase().contains("builtin")||
+										test.getScenarioSetNameWithVersionInfo().toLowerCase().contains("apache")
+										)
+								&&base.getScenarioSetNameWithVersionInfo().toLowerCase().contains("cli")==test.getScenarioSetNameWithVersionInfo().toLowerCase().contains("cli")
+								&&base.getScenarioSetNameWithVersionInfo().toLowerCase().contains("builtin")==test.getScenarioSetNameWithVersionInfo().toLowerCase().contains("builtin")
+								&&base.getScenarioSetNameWithVersionInfo().toLowerCase().contains("apache")==test.getScenarioSetNameWithVersionInfo().toLowerCase().contains("apache")))
 							continue;
 						
 						PhpUnitReportGen php_unit_report = new PhpUnitReportGen(base, test);
@@ -1324,8 +1382,7 @@ public class PfttMain {
 								+base.getBuildInfo().getBuildBranch()+"-"+base.getBuildInfo().getVersionRevision()+"-"+base.getBuildInfo().getBuildType()+"-"+base.getBuildInfo().getCPUArch()+"-"+base.getBuildInfo().getCompiler()+"_"+base.getScenarioSetNameWithVersionInfo()+
 								"_v_"
 								+test.getBuildInfo().getBuildBranch()+"-"+test.getBuildInfo().getVersionRevision()+"-"+test.getBuildInfo().getBuildType()+"-"+test.getBuildInfo().getCPUArch()+"-"+test.getBuildInfo().getCompiler()+"_"+test.getScenarioSetNameWithVersionInfo();
-						if (file_name.length()>100)
-							file_name = file_name.substring(0, 100);
+						file_name = StringUtil.max(file_name, 80);
 						File html_file = new File("c:\\php-sdk\\"+file_name+".html");
 						FileWriter fw = new FileWriter(html_file);
 						fw.write(html_str);
@@ -1349,8 +1406,7 @@ public class PfttMain {
 								+base.getBuildInfo().getBuildBranch()+"-"+base.getBuildInfo().getVersionRevision()+"-"+base.getBuildInfo().getBuildType()+"-"+base.getBuildInfo().getCPUArch()+"-"+base.getBuildInfo().getCompiler()+"_"+base.getScenarioSetNameWithVersionInfo()+
 								"_v_"
 								+test.getBuildInfo().getBuildBranch()+"-"+test.getBuildInfo().getVersionRevision()+"-"+test.getBuildInfo().getBuildType()+"-"+test.getBuildInfo().getCPUArch()+"-"+test.getBuildInfo().getCompiler()+"_"+test.getScenarioSetNameWithVersionInfo();
-						if (file_name.length()>100)
-							file_name = file_name.substring(0, 100);
+						file_name = StringUtil.max(file_name, 80);
 						File html_file = new File("c:\\php-sdk\\"+file_name+".html");
 						FileWriter fw = new FileWriter(html_file);
 						fw.write(html_str);
@@ -1358,7 +1414,45 @@ public class PfttMain {
 						Desktop.getDesktop().browse(html_file.toURI());
 					}
 				}
+
+			} else if (command.equals("ui_named")) {
+				// TODO
+			} else if (command.equals("ui_list")) {
+				// TODO
+			} else if (command.equals("ui_all")) {
+				ApacheManager ws_mgr = new ApacheManager();
 				
+				WebServerInstance web;
+				for ( PhpBuild build : PfttMain.newBuilds(cm, rt.host, args[args_i+1]) ) {
+					if (tmgr==null)
+						tmgr = new PhpResultPackWriter(rt.host, cm, new File("c:/php-sdk"), build);	
+				
+					List<AHost> hosts = config.getHosts();
+					if (hosts.isEmpty())
+						hosts = ArrayUtil.toList((AHost)rt.host);
+					for ( UITestPack test_pack : config.getUITestPacks(cm) ) {
+						for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.WEB_APPLICATION) ) {
+							for ( AHost host : hosts ) {
+								web = ws_mgr.getWebServerInstance(cm, host, scenario_set, build, null, null, null, null, cm.isDebugAll(), test_pack.getNameAndVersionInfo());
+							
+								UITestRunner runner = new UITestRunner(
+											null,
+											cm.isDebugAll()?EUITestExecutionStyle.INTERACTIVE:EUITestExecutionStyle.NORMAL,
+											null,
+											"http://"+(host.isRemote()?host.getAddress():"localhost")+"/",
+											host,
+											ScenarioSet.getDefaultScenarioSets().get(0),
+											tmgr,
+											test_pack
+										);
+								tmgr.addNotes(host, test_pack, scenario_set, runner.getWebBrowserNameAndVersion(), test_pack.getNotes());
+								runner.setUp();
+								test_pack.start(runner);
+								runner.tearDown();
+							} // end for (hosts)
+						} // end for (scenario_sets)
+					} // end for (test_packs)
+				} // end for (builds)
 			} else {
 				no_show_gui(show_gui, command);
 				

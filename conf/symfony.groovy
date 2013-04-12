@@ -17,12 +17,24 @@ class SymfonyPhpUnitTestPack extends PhpUnitSourceTestPack {
 	protected String getSourceRoot(AHost host) {
 		return host.getPfttDir()+"/cache/working/symfony-standard";
 	}
+	@Override
+	protected Object clone() throws CloneNotSupportedException {
+		// TODO Auto-generated method stub
+		return super.clone();
+	}
+	public String[][] getNonThreadSafeTestFileNames() {
+		return [
+			["Symfony/Component/HttpFoundation"],
+			["Symfony/Component/HttpKernel"],
+			["Symfony/Component/Security/Tests/Acl/"],
+			["Symfony/Component/Form/Tests/"]
+		]
+	}
  
 	@Override
 	protected boolean openAfterInstall(ConsoleManager cm, AHost host) throws Exception {
 		// 1. do initial install (if not done already)
-		println ("24 "+getRoot());
-		if (false) { // TODO !host.exists(getRoot()+"/vendor")) {
+		if (!host.exists(getRoot()+"/vendor")) {
 			if (host.isWindows()) {
 				// composer needs git
 				host.exec(host.getPfttDir()+"\\cache\\dep\\git.exe /VERYSILENT /SP-", AHost.ONE_MINUTE*4)

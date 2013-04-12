@@ -20,6 +20,7 @@ import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
+import com.mostc.pftt.model.ui.UITestPack;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
@@ -47,6 +48,12 @@ import groovy.lang.MetaMethod;
  * 			new SSHHost("192.168.1.1", "administrator", "password01!")
  * 		]
  * }
+ * def getPhpUnitSourceTestPack() {
+ *	// PhpUnit test-pack
+ * }
+ * def getUITestPack() {
+ *  // UI test-pack
+ * }
  * def scenario_sets() {
  * 		[
  * 			// provide address of a MySQL server
@@ -69,6 +76,7 @@ public final class Config {
 	public static final String SCENARIO_SETS_METHOD = "scenario_sets";
 	public static final String SCENARIOS_METHOD = "scenarios";
 	public static final String GET_PHP_UNIT_SOURCE_TEST_PACK_METHOD = "getPhpUnitSourceTestPack";
+	public static final String GET_UI_TEST_PACK_METHOD = "getUITestPack";
 	public static final String CONFIGURE_SMTP_METHOD = "configure_smtp";
 	public static final String CONFIGURE_FTP_CLIENT_METHOD = "configure_ftp_client";
 	//
@@ -76,13 +84,20 @@ public final class Config {
 	protected final LinkedList<Scenario> scenarios;
 	protected final LinkedList<ScenarioSet> scenario_sets;
 	protected final HashMap<EScenarioSetPermutationLayer,List<ScenarioSet>> permuted_scenario_sets;
-	protected GroovyObject configure_smtp_method, configure_ftp_client_method, get_php_unit_source_test_pack_method;
-	protected String configure_smtp_file, configure_ftp_client_file, get_php_unit_source_test_pack_file;
+	protected GroovyObject configure_smtp_method, configure_ftp_client_method;
+	protected final List<GroovyObject> get_php_unit_source_test_pack_methods, get_ui_test_pack_methods;
+	protected String configure_smtp_file, configure_ftp_client_file;
+	protected final List<String> get_php_unit_source_test_pack_files, get_ui_test_pack_files;
 	
 	protected Config() {
 		hosts = new LinkedList<AHost>();
 		scenario_sets = new LinkedList<ScenarioSet>();
 		scenarios = new LinkedList<Scenario>();
+		
+		get_php_unit_source_test_pack_methods = new ArrayList<GroovyObject>(2);
+		get_ui_test_pack_methods = new ArrayList<GroovyObject>(2);
+		get_php_unit_source_test_pack_files = new ArrayList<String>(2);
+		get_ui_test_pack_files = new ArrayList<String>(2);
 		
 		permuted_scenario_sets = new HashMap<EScenarioSetPermutationLayer,List<ScenarioSet>>();
 	}
@@ -190,24 +205,40 @@ public final class Config {
 		return false;
 	}
 	
+	public List<UITestPack> getUITestPacks(ConsoleManager cm) {
+		ArrayList<UITestPack> out = new ArrayList<UITestPack>(get_ui_test_pack_methods.size());
+		for ( GroovyObject m : get_ui_test_pack_methods ) {
+			try {
+				out.add((UITestPack) m.invokeMethod(GET_UI_TEST_PACK_METHOD, null));
+			} catch ( Exception ex ) {
+				if (cm==null)
+					ex.printStackTrace(System.err);
+				else
+					cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "getUITestPacks", ex, "", get_ui_test_pack_files);
+			}
+		}
+		return out;
+	}
+	
 	/**
 	 * 
 	 * still need to call #open on the returned PhpUnitSourceTestPack
 	 * @param cm
 	 * @return
 	 */
-	public PhpUnitSourceTestPack getPhpUnitSourceTestPack(ConsoleManager cm) {
-		if (get_php_unit_source_test_pack_method==null)
-			return null;
-		try {
-			return (PhpUnitSourceTestPack) get_php_unit_source_test_pack_method.invokeMethod(GET_PHP_UNIT_SOURCE_TEST_PACK_METHOD, null);
-		} catch ( Exception ex ) {
-			if (cm==null)
-				ex.printStackTrace(System.err);
-			else
-				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "getPhpUnitSourceTestPack", ex, "", get_php_unit_source_test_pack_file);
+	public List<PhpUnitSourceTestPack> getPhpUnitSourceTestPacks(ConsoleManager cm) {
+		ArrayList<PhpUnitSourceTestPack> out = new ArrayList<PhpUnitSourceTestPack>(get_php_unit_source_test_pack_methods.size());
+		for ( GroovyObject m : get_php_unit_source_test_pack_methods ) {
+			try {
+				out.add((PhpUnitSourceTestPack) m.invokeMethod(GET_PHP_UNIT_SOURCE_TEST_PACK_METHOD, null));
+			} catch ( Exception ex ) {
+				if (cm==null)
+					ex.printStackTrace(System.err);
+				else
+					cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "getPhpUnitSourceTestPack", ex, "", get_php_unit_source_test_pack_files);
+			}
 		}
-		return null;
+		return out;
 	}
 	
 	public static Config loadConfigFromStreams(ConsoleManager cm, InputStream... ins) throws CompilationFailedException, InstantiationException, IllegalAccessException, IOException {
@@ -295,8 +326,7 @@ public final class Config {
 												config_files.add(config_file);
 										} else {
 											System.err.println("User Error: config file not found: "+config_file);
-											System.exit(-255);
-											break;
+											return null;
 										}
 									}
 								}
@@ -353,6 +383,7 @@ public final class Config {
 		// a hack to import common classes for configuration files (XXX do this a better way)
 		StringBuilder sb = new StringBuilder(128+code.length());
 		// import all standard Scenarios and Host types
+		sb.append("import ");sb.append(UITestPack.class.getPackage().getName());sb.append(".*;\n");
 		sb.append("import ");sb.append(PhpUnitSourceTestPack.class.getPackage().getName());sb.append(".*;\n");
 		sb.append("import ");sb.append(PhptTestCase.class.getPackage().getName());sb.append(".*;\n");
 		sb.append("import ");sb.append(JoomlaScenario.class.getPackage().getName());sb.append(".*;\n");
@@ -501,10 +532,8 @@ public final class Config {
 		}
 		try {
 			if (hasMethod(go, GET_PHP_UNIT_SOURCE_TEST_PACK_METHOD)) {
-				if (config.get_php_unit_source_test_pack_method!=null)
-					cm.println(EPrintType.OPERATION_FAILED_CONTINUING, "Config", GET_PHP_UNIT_SOURCE_TEST_PACK_METHOD+"("+config.get_php_unit_source_test_pack_file+") overriden by : "+file_name);
-				config.get_php_unit_source_test_pack_method = go;
-				config.get_php_unit_source_test_pack_file = file_name;
+				config.get_php_unit_source_test_pack_methods.add(go);
+				config.get_php_unit_source_test_pack_files.add(file_name);
 			}
 		} catch ( MissingPropertyExceptionNoStack ex ) {
 		} catch ( MissingMethodExceptionNoStack ex ) {
@@ -514,6 +543,21 @@ public final class Config {
 			 	ex.printStackTrace(System.err);
 			} else {
 				cm.addGlobalException(EPrintType.CANT_CONTINUE, Config.class, "loadObjectToConfig", ex, GET_PHP_UNIT_SOURCE_TEST_PACK_METHOD, file_name);
+			}
+		}
+		try {
+			if (hasMethod(go, GET_UI_TEST_PACK_METHOD)) {
+				config.get_ui_test_pack_methods.add(go);
+				config.get_ui_test_pack_files.add(file_name);
+			}
+		} catch ( MissingPropertyExceptionNoStack ex ) {
+		} catch ( MissingMethodExceptionNoStack ex ) {
+		} catch ( Exception ex ) {
+			if (cm==null) {
+				System.err.println("file_name="+file_name);
+			 	ex.printStackTrace(System.err);
+			} else {
+				cm.addGlobalException(EPrintType.CANT_CONTINUE, Config.class, "loadObjectToConfig", ex, GET_UI_TEST_PACK_METHOD, file_name);
 			}
 		}
 	} // end protected static void loadObjectToConfig

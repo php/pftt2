@@ -1,6 +1,7 @@
 package com.mostc.pftt.results;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -10,6 +11,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.TestCase;
@@ -35,9 +37,9 @@ import com.mostc.pftt.util.ErrorUtil;
 public class PhpResultPackWriter extends PhpResultPack implements ITestResultReceiver {
 	protected File telem_dir;
 	protected final LocalHost local_host;
-	protected final HashMap<AHost,HashMap<ScenarioSet,UITestWriter>> ui_test_writer_map;
+	protected final HashMap<AHost,HashMap<String,HashMap<String,HashMap<ScenarioSet,UITestWriter>>>> ui_test_writer_map;
 	protected final HashMap<AHost,HashMap<ScenarioSet,PhptResultWriter>> phpt_writer_map;
-	protected final HashMap<AHost,HashMap<ScenarioSet,PhpUnitResultWriter>> phpunit_writer_map;
+	protected final HashMap<AHost,HashMap<String,HashMap<ScenarioSet,PhpUnitResultWriter>>> phpunit_writer_map;
 	protected PrintWriter global_exception_writer;
 	protected LocalConsoleManager cm;
 	protected PhpBuild build;
@@ -56,9 +58,9 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	public PhpResultPackWriter(LocalHost local_host, LocalConsoleManager cm, File telem_base_dir, PhpBuild build, PhptSourceTestPack src_test_pack) throws Exception {
 		super(local_host);
 		
-		ui_test_writer_map = new HashMap<AHost,HashMap<ScenarioSet,UITestWriter>>(16);
+		ui_test_writer_map = new HashMap<AHost,HashMap<String,HashMap<String,HashMap<ScenarioSet,UITestWriter>>>>(16);
 		phpt_writer_map = new HashMap<AHost,HashMap<ScenarioSet,PhptResultWriter>>(16);
-		phpunit_writer_map = new HashMap<AHost,HashMap<ScenarioSet,PhpUnitResultWriter>>(16);
+		phpunit_writer_map = new HashMap<AHost,HashMap<String,HashMap<ScenarioSet,PhpUnitResultWriter>>>(16);
 		
 		cm.w = this;
 		
@@ -135,41 +137,78 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	} // end protected abstract class ResultQueueEntry 
 	
 	protected class UIResultQueueEntry extends ResultQueueEntry {
-		protected final String test_name, comment, verified_html, test_pack_name_and_version, sapi_output, sapi_config;
+		protected final String test_name, comment, verified_html, sapi_output, sapi_config, web_browser_name_and_version;
 		protected final EUITestStatus status;
+		protected final byte[] screenshot_png;
+		protected final UITestPack test_pack;
 
-		protected UIResultQueueEntry(AHost this_host, ScenarioSet this_scenario_set, String test_name, String comment, EUITestStatus status, String verified_html, String test_pack_name_and_version, String sapi_output, String sapi_config) {
+		protected UIResultQueueEntry(AHost this_host, ScenarioSet this_scenario_set, String test_name, String comment, EUITestStatus status, String verified_html, byte[] screenshot_png, UITestPack test_pack, String web_browser_name_and_version, String sapi_output, String sapi_config) {
 			super(this_host, this_scenario_set);
 			this.test_name = test_name;
 			this.comment = comment;
 			this.status = status;
 			this.verified_html = verified_html;
-			this.test_pack_name_and_version = test_pack_name_and_version;
+			this.screenshot_png = screenshot_png;
+			this.web_browser_name_and_version= web_browser_name_and_version;
+			this.test_pack = test_pack;
 			this.sapi_output = sapi_output;
 			this.sapi_config = sapi_config;
 		}
 
 		@Override
 		public void handle() throws IllegalArgumentException, IllegalStateException, IOException {
-			HashMap<ScenarioSet,UITestWriter> smap = ui_test_writer_map.get(this_host);
-			UITestWriter w;
-			if (smap==null) {
-				smap = new HashMap<ScenarioSet,UITestWriter>();
-				w = new UITestWriter(this_host, ui_test_telem_dir(this_host, this_scenario_set), build_info, this_scenario_set.getNameWithVersionInfo(), test_pack_name_and_version);
-				ui_test_writer_map.put(this_host, smap);
-				smap.put(this_scenario_set, w);
-			} else {
-				w = smap.get(this_scenario_set);
-				if (w==null) {
-					w = new UITestWriter(this_host, ui_test_telem_dir(this_host, this_scenario_set), build_info, this_scenario_set.getNameWithVersionInfo(), test_pack_name_and_version);
-					smap.put(this_scenario_set, w);
-				}
-			}
+			UITestWriter w = getWriter(this_host, this_scenario_set, test_pack, web_browser_name_and_version);
 			
-			w.addResult(test_name, comment, status, verified_html);
+			w.addResult(test_name, comment, status, verified_html, screenshot_png, sapi_output, sapi_config);
+			
+			System.out.println(status+" "+test_name); // TODO
 		}
 		
 	} // end protected class UIResultQueueEntry
+	
+	protected UITestWriter getWriter(AHost this_host, ScenarioSet this_scenario_set, UITestPack test_pack, String web_browser_name_and_version) throws IllegalArgumentException, IllegalStateException, FileNotFoundException, IOException {
+		String test_pack_name_and_version = test_pack.getNameAndVersionInfo().intern();
+		
+		HashMap<String,HashMap<String,HashMap<ScenarioSet,UITestWriter>>> a = ui_test_writer_map.get(this_host);
+		HashMap<String,HashMap<ScenarioSet,UITestWriter>> b;
+		HashMap<ScenarioSet,UITestWriter> c;
+		UITestWriter w;
+		if (a==null) {
+			w = new UITestWriter(this_host, ui_test_telem_dir(this_host, this_scenario_set, test_pack, web_browser_name_and_version), build_info, this_scenario_set.getNameWithVersionInfo(), test_pack_name_and_version, web_browser_name_and_version, test_pack.getNotes());
+			a = new HashMap<String,HashMap<String,HashMap<ScenarioSet,UITestWriter>>>();
+			b = new HashMap<String,HashMap<ScenarioSet,UITestWriter>>();
+			c = new HashMap<ScenarioSet,UITestWriter>();
+			ui_test_writer_map.put(this_host, a);
+			a.put(test_pack_name_and_version, b);
+			b.put(web_browser_name_and_version, c);
+			c.put(this_scenario_set, w);
+		} else {
+			b = a.get(test_pack_name_and_version);
+			if (b==null) {
+				w = new UITestWriter(this_host, ui_test_telem_dir(this_host, this_scenario_set, test_pack, web_browser_name_and_version), build_info, this_scenario_set.getNameWithVersionInfo(), test_pack_name_and_version, web_browser_name_and_version, test_pack.getNotes());
+				b = new HashMap<String,HashMap<ScenarioSet,UITestWriter>>();
+				c = new HashMap<ScenarioSet,UITestWriter>();
+				a.put(test_pack_name_and_version, b);
+				b.put(web_browser_name_and_version, c);
+				c.put(this_scenario_set, w);
+			} else {
+				c = b.get(web_browser_name_and_version);
+				if (c==null) {
+					w = new UITestWriter(this_host, ui_test_telem_dir(this_host, this_scenario_set, test_pack, web_browser_name_and_version), build_info, this_scenario_set.getNameWithVersionInfo(), test_pack_name_and_version, web_browser_name_and_version, test_pack.getNotes());
+					c = new HashMap<ScenarioSet,UITestWriter>();
+					b.put(web_browser_name_and_version, c);
+					c.put(this_scenario_set, w);	
+				} else {
+					w = c.get(this_scenario_set);
+					if (w==null) {
+						w = new UITestWriter(this_host, ui_test_telem_dir(this_host, this_scenario_set, test_pack, web_browser_name_and_version), build_info, this_scenario_set.getNameWithVersionInfo(), test_pack_name_and_version, web_browser_name_and_version, test_pack.getNotes());
+						c.put(this_scenario_set, w);	
+					}
+				}
+			}
+		}
+		return w;
+	}
 	
 	protected class PhptResultQueueEntry extends ResultQueueEntry {
 		protected final PhptTestResult this_result;
@@ -221,10 +260,12 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 
 		@Override
 		public void handle() throws IllegalArgumentException, IllegalStateException, IOException {
-			HashMap<ScenarioSet,PhpUnitResultWriter> smap = phpunit_writer_map.get(this_host);
-			PhpUnitResultWriter w; 
-			if (smap==null) {
-				smap = new HashMap<ScenarioSet,PhpUnitResultWriter>();
+			final String test_pack_name_and_version = this_result.test_case.getPhpUnitDist().getSourceTestPack().getNameAndVersionString().intern();
+			
+			HashMap<String,HashMap<ScenarioSet,PhpUnitResultWriter>> a = phpunit_writer_map.get(this_host);
+			HashMap<ScenarioSet,PhpUnitResultWriter> b;
+			PhpUnitResultWriter w;
+			if (a==null) {
 				w = new PhpUnitResultWriter(
 						phpunit_telem_dir(this_host, this_scenario_set, this_result.test_case.getPhpUnitDist().getSourceTestPack()),
 						build_info,
@@ -232,11 +273,15 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 						this_scenario_set,
 						this_result.test_case.getPhpUnitDist().getSourceTestPack()
 					);
-				phpunit_writer_map.put(this_host, smap);
-				smap.put(this_scenario_set, w);
+				
+				a = new HashMap<String,HashMap<ScenarioSet,PhpUnitResultWriter>>();
+				b = new HashMap<ScenarioSet,PhpUnitResultWriter>();
+				phpunit_writer_map.put(this_host, a);
+				a.put(test_pack_name_and_version, b);
+				b.put(this_result.scenario_set, w);
 			} else {
-				w = smap.get(this_scenario_set);
-				if (w==null) {
+				b = a.get(test_pack_name_and_version);
+				if (b==null) {
 					w = new PhpUnitResultWriter(
 							phpunit_telem_dir(this_host, this_scenario_set, this_result.test_case.getPhpUnitDist().getSourceTestPack()),
 							build_info,
@@ -244,16 +289,32 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 							this_scenario_set,
 							this_result.test_case.getPhpUnitDist().getSourceTestPack()
 						);
-					smap.put(this_scenario_set, w);
+					
+					b = new HashMap<ScenarioSet,PhpUnitResultWriter>();
+					phpunit_writer_map.put(this_host, a);
+					a.put(test_pack_name_and_version, b);
+					b.put(this_result.scenario_set, w);
+				} else {
+					w = b.get(this_result.scenario_set);
+					if (w==null) {
+						w = new PhpUnitResultWriter(
+								phpunit_telem_dir(this_host, this_scenario_set, this_result.test_case.getPhpUnitDist().getSourceTestPack()),
+								build_info,
+								this_host, 
+								this_scenario_set,
+								this_result.test_case.getPhpUnitDist().getSourceTestPack()
+							);
+						
+						b.put(this_result.scenario_set, w);
+					}
 				}
-			}
+			} // end if
 			
 			w.writeResult(this_result);
 			
 			// show on console
 			// TODO
 			System.out.println(this_result.status+" "+this_result.test_case);
-
 		}
 		
 	} // end protected class PhpUnitResultQueueEntry
@@ -266,12 +327,8 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		return cm;
 	}
 	
-	/* TODO public void addResult(AHost this_host, ScenarioSet this_scenario_set, String test_name, String comment, EUITestStatus status, String verified_html, UITestPack test_pack) {
-		addResult(this_host, this_scenario_set, test_name, comment, status, verified_html, test_pack);
-	}*/
-	
-	public void addResult(AHost this_host, ScenarioSet this_scenario_set, String test_name, String comment, EUITestStatus status, String verified_html, UITestPack test_pack, String sapi_output, String sapi_config) {
-		results.add(new UIResultQueueEntry(this_host, this_scenario_set, test_name, comment, status, verified_html, test_pack.getNameAndVersionInfo(), sapi_output, sapi_config));
+	public void addResult(AHost this_host, ScenarioSet this_scenario_set, String test_name, String comment, EUITestStatus status, String verified_html, byte[] screenshot_png, UITestPack test_pack, String web_browser_name_and_version, String sapi_output, String sapi_config) {
+		results.add(new UIResultQueueEntry(this_host, this_scenario_set, test_name, comment, status, verified_html, screenshot_png, test_pack, web_browser_name_and_version, sapi_output, sapi_config));
 	}
 	
 	public void addTestException(AHost this_host, ScenarioSet this_scenario_set, PhptTestCase test_file, Throwable ex, Object a) {
@@ -306,16 +363,17 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		results.add(new PhptResultQueueEntry(this_host, this_scenario_set, result));
 	}
 	
-	protected File ui_test_telem_dir(AHost this_host, ScenarioSet this_scenario_set) {
-		return new File(host.joinIntoOnePath(telem_dir.getAbsolutePath(), this_host.getName(), "UI-Test", this_scenario_set.getNameWithVersionInfo()));
+	// TODO rename these
+	protected File ui_test_telem_dir(AHost this_host, ScenarioSet this_scenario_set, UITestPack test_pack, String web_browser_name_and_version) { 
+		return new File(host.joinIntoOnePath(telem_dir.getAbsolutePath(), this_host.getName(), "UI-Test", test_pack.getNameAndVersionInfo().intern(), StringUtil.max(this_scenario_set.getNameWithVersionInfo(), 80), web_browser_name_and_version));
 	}
 	
 	protected File phpunit_telem_dir(AHost this_host, ScenarioSet this_scenario_set, PhpUnitSourceTestPack test_pack) {
-		return new File(host.joinIntoOnePath(telem_dir.getAbsolutePath(), this_host.getName(), "PhpUnit", test_pack.getName(), this_scenario_set.getNameWithVersionInfo()));
+		return new File(host.joinIntoOnePath(telem_dir.getAbsolutePath(), this_host.getName(), "PhpUnit", test_pack.getNameAndVersionString().intern(), StringUtil.max(this_scenario_set.getNameWithVersionInfo(), 80)));
 	}
 	
 	protected File phpt_telem_dir(AHost this_host, ScenarioSet this_scenario_set) {
-		return new File(host.joinIntoOnePath(telem_dir.getAbsolutePath(), this_host.getName(), "PHPT", this_scenario_set.getNameWithVersionInfo()));
+		return new File(host.joinIntoOnePath(telem_dir.getAbsolutePath(), this_host.getName(), "PHPT", StringUtil.max(this_scenario_set.getNameWithVersionInfo(), 80)));
 	}
 	
 	@Override
@@ -350,42 +408,48 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 			ex.printStackTrace();
 		}
 		
-		for ( HashMap<ScenarioSet,UITestWriter> map : ui_test_writer_map.values() ) {
-			for ( UITestWriter w : map.values() ) {
-				try {
-					w.close();
-				} catch ( Exception ex ) {
-					ex.printStackTrace();
-				}
-				
-				try {
-					UITestReportGen report = new UITestReportGen(w, w);
-					FileWriter fw = new FileWriter(new File(w.dir+"/ui_test_report.html"));
-					fw.write(report.getHTMLString(cm, false));
-					fw.close();
-				} catch ( Exception ex ) {
-					ex.printStackTrace();
+		for ( HashMap<String,HashMap<String,HashMap<ScenarioSet,UITestWriter>>> a : ui_test_writer_map.values() ) {
+			for ( HashMap<String,HashMap<ScenarioSet,UITestWriter>> b : a.values() ) {
+				for ( HashMap<ScenarioSet,UITestWriter> c : b.values() ) {
+					for (UITestWriter w : c.values() ) {
+						try {
+							w.close();
+						} catch ( Exception ex ) {
+							ex.printStackTrace();
+						}
+						
+						try {
+							UITestReportGen report = new UITestReportGen(w, w);
+							FileWriter fw = new FileWriter(new File(w.dir+"/ui_test_report.html"));
+							fw.write(report.getHTMLString(cm, false));
+							fw.close();
+						} catch ( Exception ex ) {
+							ex.printStackTrace();
+						}
+					}
 				}
 			}
 		} // end for
 		
-		for ( HashMap<ScenarioSet,PhpUnitResultWriter> map : phpunit_writer_map.values() ) {
-			for ( PhpUnitResultWriter w : map.values() ) {
-				try {
-					w.close();
-				} catch ( Exception ex ) {
-					ex.printStackTrace();
-				}
-				
-				try {
-					PhpUnitReportGen report = new PhpUnitReportGen(w, w);
-					FileWriter fw = new FileWriter(new File(w.dir+"/php_unit_report.html"));
-					fw.write(report.getHTMLString(cm, false));
-					fw.close();
-				} catch ( Exception ex ) {
-					ex.printStackTrace();
-				}
-			} // end for
+		for ( HashMap<String,HashMap<ScenarioSet,PhpUnitResultWriter>> a : phpunit_writer_map.values() ) {
+			for ( HashMap<ScenarioSet,PhpUnitResultWriter> b : a.values() ) {
+				for ( PhpUnitResultWriter w : b.values() ) {
+					try {
+						w.close();
+					} catch ( Exception ex ) {
+						ex.printStackTrace();
+					}
+					
+					try {
+						PhpUnitReportGen report = new PhpUnitReportGen(w, w);
+						FileWriter fw = new FileWriter(new File(w.dir+"/php_unit_report.html"));
+						fw.write(report.getHTMLString(cm, true));
+						fw.close();
+					} catch ( Exception ex ) {
+						ex.printStackTrace();
+					}
+				} // end for
+			}
 		}
 		
 		for ( HashMap<ScenarioSet,PhptResultWriter> map : phpt_writer_map.values() ) {
@@ -399,7 +463,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 				try {
 					PHPTReportGen report = new PHPTReportGen(w, w);
 					FileWriter fw = new FileWriter(new File(w.dir+"/phpt_report.html"));
-					fw.write(report.getHTMLString(cm, false));
+					fw.write(report.getHTMLString(cm, true));
 					fw.close();
 				} catch ( Exception ex ) {
 					ex.printStackTrace();
@@ -441,21 +505,29 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	}
 
 	@Override
-	public AbstractPhpUnitRW getPhpUnit(AHost host, ScenarioSet scenario_set) {
-		HashMap<ScenarioSet,PhpUnitResultWriter> map_a = phpunit_writer_map.get(host);
-		if (map_a==null)
-			return null;
-		else
-			return map_a.get(scenario_set);
+	public Collection<AbstractPhpUnitRW> getPhpUnit(AHost host, ScenarioSet scenario_set) {
+		HashMap<String,HashMap<ScenarioSet,PhpUnitResultWriter>> a = phpunit_writer_map.get(host);
+		LinkedList<AbstractPhpUnitRW> out = new LinkedList<AbstractPhpUnitRW>();
+		if (a==null)
+			return out;
+		for ( HashMap<ScenarioSet,PhpUnitResultWriter> b : a.values() ) {
+			PhpUnitResultWriter w = b.get(scenario_set);
+			if (w!=null)
+				out.add(w);
+		}
+		return out;
 	}
 
 	@Override
 	public Collection<AbstractPhpUnitRW> getPhpUnit(AHost host) {
-		HashMap<ScenarioSet,PhpUnitResultWriter> map_a = phpunit_writer_map.get(host);
-		if (map_a==null)
-			return null;
-		ArrayList<AbstractPhpUnitRW> out = new ArrayList<AbstractPhpUnitRW>(map_a.size());
-		out.addAll(map_a.values());
+		HashMap<String,HashMap<ScenarioSet,PhpUnitResultWriter>> a = phpunit_writer_map.get(host);
+		LinkedList<AbstractPhpUnitRW> out = new LinkedList<AbstractPhpUnitRW>();
+		if (a==null)
+			return out;
+		for ( HashMap<ScenarioSet,PhpUnitResultWriter> b : a.values() ) {
+			for ( PhpUnitResultWriter w : b.values() )
+				out.add(w);
+		}
 		return out;
 	}
 
@@ -463,8 +535,8 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	public Collection<AbstractPhpUnitRW> getPhpUnit() {
 		LinkedList<AbstractPhpUnitRW> out = new LinkedList<AbstractPhpUnitRW>();
 		for ( AHost host : phpunit_writer_map.keySet() ) {
-			for ( ScenarioSet scenario_set : phpunit_writer_map.get(host).keySet() ) {
-				out.add(phpunit_writer_map.get(host).get(scenario_set));
+			for ( String test_pack_name_and_version : phpunit_writer_map.get(host).keySet() ) {
+				out.addAll(phpunit_writer_map.get(host).get(test_pack_name_and_version).values());
 			}
 		}
 		return out;
@@ -477,6 +549,143 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	@Override
 	public PhpBuildInfo getBuildInfo() {
 		return build_info;
+	}
+
+	@Override
+	public AbstractPhpUnitRW getPhpUnit(AHost host, String test_pack_name_and_version, ScenarioSet scenario_set) {
+		HashMap<String,HashMap<ScenarioSet,PhpUnitResultWriter>> a = phpunit_writer_map.get(host);
+		if (a==null)
+			return null;
+		HashMap<ScenarioSet,PhpUnitResultWriter> b = a.get(test_pack_name_and_version);
+		return b == null ? null : b.get(scenario_set);
+	}
+
+	@Override
+	public Collection<AbstractPhpUnitRW> getPhpUnit(AHost host, String test_pack_name_and_version) {
+		HashMap<String,HashMap<ScenarioSet,PhpUnitResultWriter>> a = phpunit_writer_map.get(host);
+		LinkedList<AbstractPhpUnitRW> out = new LinkedList<AbstractPhpUnitRW>();
+		if (a==null)
+			return out;
+		HashMap<ScenarioSet,PhpUnitResultWriter> b = a.get(test_pack_name_and_version);
+		if (b==null)
+			return out;
+		for ( PhpUnitResultWriter w : b.values() )
+			out.add(w);
+		return out;
+	}
+
+	@Override
+	public Collection<AbstractPhpUnitRW> getPhpUnit(String test_pack_name_and_version) {
+		LinkedList<AbstractPhpUnitRW> out = new LinkedList<AbstractPhpUnitRW>();
+		for ( HashMap<String,HashMap<ScenarioSet,PhpUnitResultWriter>> a : phpunit_writer_map.values() ) {
+			HashMap<ScenarioSet,PhpUnitResultWriter> b = a.get(test_pack_name_and_version);
+			if (b==null)
+				continue;
+			for ( PhpUnitResultWriter w : b.values() )
+				out.add(w);
+		}
+		return out;
+	}
+
+	@Override
+	public AbstractUITestRW getUITest(AHost host, ScenarioSet scenario_set) {
+		HashMap<String,HashMap<String,HashMap<ScenarioSet,UITestWriter>>> a = ui_test_writer_map.get(host);
+		if (a==null)
+			return null;
+		for ( HashMap<String,HashMap<ScenarioSet,UITestWriter>> b : a.values() ) {
+			for ( HashMap<String,HashMap<ScenarioSet,UITestWriter>> c : a.values() ) {
+				for ( HashMap<ScenarioSet,UITestWriter> d : b.values() ) {
+					for (UITestWriter w : d.values() )
+						return w;
+				}
+			}
+		}
+		return null;
+	}
+
+	@Override
+	public Collection<AbstractUITestRW> getUITest(AHost host) {
+		HashMap<String,HashMap<String,HashMap<ScenarioSet,UITestWriter>>> a = ui_test_writer_map.get(host);
+		LinkedList<AbstractUITestRW> out = new LinkedList<AbstractUITestRW>();
+		if (a==null)
+			return out;
+		for ( HashMap<String,HashMap<ScenarioSet,UITestWriter>> b : a.values() ) {
+			for ( HashMap<ScenarioSet,UITestWriter> c : b.values() ) {
+				for (UITestWriter w : c.values() )
+					out.add(w);
+			}
+		}
+		return out;
+	}
+
+	@Override
+	public Collection<AbstractUITestRW> getUITest() {
+		LinkedList<AbstractUITestRW> out = new LinkedList<AbstractUITestRW>();
+		for ( HashMap<String,HashMap<String,HashMap<ScenarioSet,UITestWriter>>> a : ui_test_writer_map.values() ) {
+			for ( HashMap<String,HashMap<ScenarioSet,UITestWriter>> b : a.values() ) {
+				for ( HashMap<ScenarioSet,UITestWriter> c : b.values() ) {
+					for (UITestWriter w : c.values() )
+						out.add(w);
+				}
+			}
+		}
+		return out;
+	}
+
+	@Override
+	public Collection<AbstractUITestRW> getUITest(AHost host, String test_pack_name_and_version, ScenarioSet scenario_set) {
+		LinkedList<AbstractUITestRW> out = new LinkedList<AbstractUITestRW>();
+		HashMap<String,HashMap<String,HashMap<ScenarioSet,UITestWriter>>> a = ui_test_writer_map.get(host);
+		if (a!=null) {
+			HashMap<String,HashMap<ScenarioSet,UITestWriter>> b = a.get(test_pack_name_and_version);
+			if (b!=null) {
+				for ( HashMap<ScenarioSet,UITestWriter> c : b.values() ) {
+					UITestWriter w = c.get(scenario_set);
+					if (w!=null)
+						out.add(w);
+				}
+			}
+		}
+		return out;
+	}
+
+	@Override
+	public Collection<AbstractUITestRW> getUITest(AHost host, String test_pack_name_and_version) {
+		LinkedList<AbstractUITestRW> out = new LinkedList<AbstractUITestRW>();
+		HashMap<String,HashMap<String,HashMap<ScenarioSet,UITestWriter>>> a = ui_test_writer_map.get(host);
+		if (a!=null) {
+			HashMap<String,HashMap<ScenarioSet,UITestWriter>> b = a.get(test_pack_name_and_version);
+			if (b!=null) {
+				for ( HashMap<ScenarioSet,UITestWriter> c : b.values() ) {
+					for ( UITestWriter w : c.values() )
+						out.add(w);
+				}
+			}
+		}
+		return out;
+	}
+
+	@Override
+	public Collection<AbstractUITestRW> getUITest(String test_pack_name_and_version) {
+		LinkedList<AbstractUITestRW> out = new LinkedList<AbstractUITestRW>();
+		for ( HashMap<String,HashMap<String,HashMap<ScenarioSet,UITestWriter>>> a : ui_test_writer_map.values() ) {
+			HashMap<String,HashMap<ScenarioSet,UITestWriter>> b = a.get(test_pack_name_and_version);
+			if (b==null)
+				continue;
+			for ( HashMap<ScenarioSet,UITestWriter> c : b.values() ) {
+				for ( UITestWriter w : c.values() )
+					out.add(w);
+			}
+		}
+		return out;
+	}
+
+	public void addNotes(AHost host, UITestPack test_pack, ScenarioSet scenario_set, String web_browser, String notes) {
+		try {
+			getWriter(host, scenario_set, test_pack, web_browser).addNotes(notes);
+		} catch ( Exception ex ) {
+			ex.printStackTrace();
+		}
 	}
 	
 } // end public class PhpResultPackWriter

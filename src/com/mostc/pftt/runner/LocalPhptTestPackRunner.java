@@ -161,15 +161,27 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 	}
 	
 	public class PhptThread extends TestPackThread<PhptTestCase> {
-
+		protected AbstractPhptTestCaseRunner r;
+		
 		protected PhptThread(boolean parallel) {
 			super(parallel);
 		}
 
 		@Override
 		protected void runTest(TestCaseGroupKey group_key, PhptTestCase test_case) throws IOException, Exception, Throwable {
-			AbstractPhptTestCaseRunner r = sapi_scenario.createPhptTestCaseRunner(this, group_key, test_case, cm, twriter, runner_host, scenario_set, build, src_test_pack, active_test_pack);
+			r = sapi_scenario.createPhptTestCaseRunner(this, group_key, test_case, cm, twriter, runner_host, scenario_set, build, src_test_pack, active_test_pack);
 			r.runTest();
+		}
+
+		@Override
+		protected void stopRunningCurrentTest() {
+			if (r!=null)
+				r.stop(true);
+		}
+		
+		@Override
+		protected int getMaxTestRuntimeSeconds() {
+			return r == null ? 60 : r.getMaxTestRuntimeSeconds();
 		}
 		
 	} // end public class PhptThread

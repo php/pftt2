@@ -52,6 +52,7 @@ import com.sshtools.j2ssh.sftp.SftpFile;
 import com.sshtools.j2ssh.transport.HostKeyVerification;
 import com.sshtools.j2ssh.transport.TransportProtocolException;
 import com.sshtools.j2ssh.transport.publickey.SshPublicKey;
+import com.sshtools.j2ssh.util.InvalidStateException;
 
 /** represents a Remote Host accessed via SSH.
  * 
@@ -530,19 +531,41 @@ public class SSHHost extends RemoteHost {
 		public OutputStream getSTDIN() {
 			return session.getOutputStream();
 		}
+
+		@Override
+		public void run(StringBuilder output_sb, Charset charset, int timeout_sec, final TestPackRunnerThread thread, int slow_sec) throws IOException, InterruptedException {
+			do_run(session, charset, timeout_sec, thread, slow_sec);
+			output_sb.append(out.toString());
+		}
 		
 	} // end protected class SSHExecHandle
 	
 	@Override
-	public ExecOutput execOut(final String cmd, int timeout, Map<String, String> env, byte[] stdin_post, Charset charset, String chdir, final TestPackRunnerThread thread, int thread_slow_sec) throws Exception {
+	public ExecOutput execOut(final String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_post, Charset charset, String chdir, final TestPackRunnerThread thread, int slow_sec) throws Exception {
 		final ByteArrayIOStream out = new ByteArrayIOStream(1024);
 		
 		final ExecOutput eo = new ExecOutput();
 		
 		//
-		final AtomicBoolean run = new AtomicBoolean(true);
 		final SessionChannelClient session = do_exec(cmd, env, chdir, stdin_post, out);
-		if (timeout>NO_TIMEOUT) {
+		
+		do_run(session, charset, timeout_sec, thread, slow_sec);
+		
+		
+		//
+		eo.cmd = cmd;
+		eo.exit_code = session.getExitCode();
+		/* TODO if (reader instanceof AbstractDetectingCharsetReader)
+			eo.charset = ((AbstractDetectingCharsetReader)reader).cs; */
+		eo.output = out.toString();
+		//
+		
+		return eo;
+	} // end public ExecOutput execOut
+	
+	protected void do_run(final SessionChannelClient session, Charset charset, int timeout_sec, final TestPackRunnerThread thread, int slow_sec) throws InvalidStateException, InterruptedException {
+		final AtomicBoolean run = new AtomicBoolean(true);
+		if (timeout_sec>NO_TIMEOUT) {
 			timer.schedule(new TimerTask() {
 					public void run() {
 						try {
@@ -553,14 +576,14 @@ public class SSHHost extends RemoteHost {
 							ex.printStackTrace();
 						}
 					}
-				}, timeout*1000);
+				}, timeout_sec*1000);
 		}
-		if (thread != null && thread_slow_sec>FOUR_HOURS) {
+		if (thread != null && slow_sec>FOUR_HOURS) {
 			timer.schedule(new TimerTask() {
 					public void run() {
 						thread.notifySlowTest();
 					}
-				}, thread_slow_sec*1000);
+				}, slow_sec*1000);
 		}
 		//
 		
@@ -585,17 +608,7 @@ public class SSHHost extends RemoteHost {
 		
 		// wait for exit
 		session.getState().waitForState(ChannelState.CHANNEL_CLOSED);
-		
-		//
-		eo.cmd = cmd;
-		eo.exit_code = session.getExitCode();
-		/* TODO if (reader instanceof AbstractDetectingCharsetReader)
-			eo.charset = ((AbstractDetectingCharsetReader)reader).cs; */
-		eo.output = out.toString();
-		//
-		
-		return eo;
-	} // end public ExecOutput execOut
+	}
 
 	@Override
 	public ExecOutput execOut(String cmd, int timeout, String chdir) throws Exception {

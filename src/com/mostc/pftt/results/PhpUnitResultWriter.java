@@ -60,7 +60,7 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 		this.build_info = build_info;
 		this.host = host;
 		this.scenario_set = scenario_set;
-		this.test_pack_name_and_version = test_pack.getNameAndVersionString();
+		this.test_pack_name_and_version = test_pack.getNameAndVersionString().intern();
 		
 		this.dir = dir;
 		dir.mkdirs();
@@ -68,7 +68,7 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 		fail_output_by_name = new HashMap<String,String>(800);
 		
 		// include scenario-set in file name to make it easier to view a bunch of them in Notepad++ or other MDIs
-		File file = new File(dir+"/phpunit_"+test_pack.getName()+"_"+scenario_set.getNameWithVersionInfo()+".xml");
+		File file = new File(dir+"/"+StringUtil.max("phpunit_"+test_pack.getName()+"_"+scenario_set.getNameWithVersionInfo(), 80)+".xml");
 		
 		// XXX write host, scenario_set and build to file (do in #writeTally or #close)
 		serial  = new KXmlSerializer();

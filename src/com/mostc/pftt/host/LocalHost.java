@@ -7,6 +7,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.ref.SoftReference;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -22,6 +23,8 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 
 import org.jvnet.winp.WinProcess;
@@ -204,24 +207,19 @@ public class LocalHost extends AHost {
 	}
 	@Override
 	public LocalExecHandle execThread(String commandline, Map<String,String> env, String chdir, byte[] stdin_data) throws Exception {
-		return exec_impl(splitCmdString(commandline), env, chdir, NO_TIMEOUT, stdin_data);
+		return exec_impl(splitCmdString(commandline), env, chdir, stdin_data);
 	}
 	@Override
 	public ExecOutput execOut(final String commandline, int timeout, Map<String,String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread thread, int thread_slow_sec) throws Exception {
-		ThreadSlowTask task = null;
-		if (thread!=null && thread_slow_sec>NO_TIMEOUT) {
-			task = new ThreadSlowTask(thread);
-			timer.schedule(task, thread_slow_sec * 1000);
-		}
+		
 
-		LocalExecHandle eh = exec_impl(splitCmdString(commandline), env, chdir, timeout, stdin_data); 
+		LocalExecHandle eh = exec_impl(splitCmdString(commandline), env, chdir, stdin_data); 
 			
 		StringBuilder output_sb = new StringBuilder(1024);
 		
-		eh.run(output_sb, charset);
+		eh.run(output_sb, charset, timeout, thread, thread_slow_sec);
 		
-		if (task!=null)
-			task.cancel();
+		
 		
 		final ExecOutput out = new ExecOutput();
 		out.cmd = commandline;
@@ -347,6 +345,7 @@ public class LocalHost extends AHost {
 	}
 	
 	public class LocalExecHandle extends ExecHandle {
+		protected int exit_code = 0;
 		protected Process process;
 		protected OutputStream stdin;
 		protected InputStream stdout, stderr;
@@ -414,7 +413,7 @@ public class LocalHost extends AHost {
 						int process_id = 0;
 						
 						// first: find the process id
-						getWindowsProcessID(process);
+						process_id = getWindowsProcessID(process);
 						
 						
 						// NOTE: on Windows, if WER is not disabled(enabled by default), if a process crashes,
@@ -423,26 +422,7 @@ public class LocalHost extends AHost {
 						if (force && (tries > 1 && tries < 5)) {
 							// need to kill this process (execution timeout or other critical)
 							// but have failed at least once to kill it
-							//
-							// see if its exit/killing is blocked by werfault.exe
-							//
-							try {
-								String[] lines = execOut("WMIC path win32_process get Processid,Commandline", AHost.ONE_MINUTE).getLines();
-								String prev_line = "";
-								for ( String line : lines ) {
-									line = line.toLowerCase();
-									if (line.contains("werfault.exe") && line.contains("-p "+process_id)) {
-										// blocking werfault.exe (not actually the process parent, its a separate SVC)
-										int blocking_process_id = Integer.parseInt(prev_line.trim());
-										
-										// kill werfault.exe so we can try killing the target process again
-										winKillProcess("werfault.exe", blocking_process_id);
-									}
-									prev_line = line;
-								}
-							} catch ( Exception ex ) {
-								ex.printStackTrace();
-							}
+							ensureWERFaultIsNotRunning(process_id);
 						}
 						//
 						
@@ -479,33 +459,17 @@ public class LocalHost extends AHost {
 			} // end for
 		} // end public void close
 		
-		protected void winKillProcess(String image_name, int process_id) {
-			// third:instead, run TASKKILL and provide it both the process id and image/program name
-			//
-			// image name: ex: `php.exe` 
-			// /F => forcefully terminate ('kill')
-			// /T => terminate all child processes (process is cmd.exe and PHP is a child)
-			//      process.destory might not do this, so thats why its CRITICAL that TASKKILL
-			//      be tried before process.destroy
-			try {
-				Runtime.getRuntime().exec("TASKKILL /FI \"IMAGENAME eq "+image_name+"\" /FI \"PID eq "+process_id+"\" /F /T");
-			} catch (Throwable t3) {
-				t3.printStackTrace();
-			}
-		}
-		
 		protected void run(StringBuilder output_sb, Charset charset) throws IOException, InterruptedException {
 			exec_copy_lines(output_sb, stdout, charset);
 			// ignores STDERR
 			
 			//
-			int w;
 			if (isWindows()) {
 				// BN: sometimes crashing processes can cause an infinite loop in Process#waitFor
 				//       it is unclear what makes those crashing processes different... may be the order they occur in.
 				for (int time = 50;;) {
 					try {
-						w = process.exitValue();
+						exit_code = process.exitValue();
 						break;
 					} catch ( IllegalThreadStateException ex ) {}
 					try {
@@ -518,7 +482,7 @@ public class LocalHost extends AHost {
 						time = 50; // 50 100 200 400
 				}
 			} else {
-				w = process.waitFor();
+				exit_code = process.waitFor();
 			}
 			//
 			
@@ -558,11 +522,7 @@ public class LocalHost extends AHost {
 
 		@Override
 		public int getExitCode() {
-			try {
-				return process.exitValue();
-			} catch ( Exception ex ) {
-				return 0;
-			}
+			return exit_code;
 		}
 
 		public int getProcessID() {
@@ -578,8 +538,104 @@ public class LocalHost extends AHost {
 		public OutputStream getSTDIN() {
 			return process.getOutputStream();
 		}
+
+		@Override
+		public void run(StringBuilder output_sb, Charset charset, int timeout_sec, TestPackRunnerThread thread, int thread_slow_sec) throws IOException, InterruptedException {
+			ExitMonitorTask a = null;
+			ThreadSlowTask b = null;
+			if (thread!=null && thread_slow_sec>NO_TIMEOUT) {
+				b = new ThreadSlowTask(thread);
+				timer.schedule(b, thread_slow_sec * 1000);
+			}
+			
+			if (timeout_sec>NO_TIMEOUT) {
+				a = new ExitMonitorTask(this);
+				timer.schedule(a, timeout_sec*1000);
+			}
+			
+			
+			this.run(output_sb, charset);
+			
+			if (a!=null)
+				a.cancel();
+			if (b!=null)
+				b.cancel();
+		}
 		
 	} // end public class LocalExecHandle
+	
+	protected static void winKillProcess(String image_name, int process_id) {
+		// third:instead, run TASKKILL and provide it both the process id and image/program name
+		//
+		// image name: ex: `php.exe` 
+		// /F => forcefully terminate ('kill')
+		// /T => terminate all child processes (process is cmd.exe and PHP is a child)
+		//      process.destory might not do this, so thats why its CRITICAL that TASKKILL
+		//      be tried before process.destroy
+		try {
+			Runtime.getRuntime().exec("TASKKILL /FI \"IMAGENAME eq "+image_name+"\" /FI \"PID eq "+process_id+"\" /F /T");
+		} catch (Throwable t3) {
+			t3.printStackTrace();
+		}
+	}
+	
+	private SoftReference<String[]> wer_fault_query;
+	private final ReentrantLock wer_fault_query_lock = new ReentrantLock();
+	/** finds and kills any WERFault.exe processes (WER popup message) created for given process.
+	 * 
+	 * this method will only launch one WMIC query process at a time per Localhost instance. this added complexity (complexity
+	 * entirely handled internally by this method) is needed to avoid a WMIC process-storm if this method is called many times (30+)
+	 * in quick succession.
+	 * 
+	 * @param process_id
+	 */
+	protected void ensureWERFaultIsNotRunning(int process_id) {
+		// lock if no other thread is waiting
+		final boolean no_other_thread_is_waiting = wer_fault_query_lock.tryLock();
+		
+		if (!no_other_thread_is_waiting)
+			// wait and lock until other thread is done
+			wer_fault_query_lock.lock();
+		
+		
+		String[] lines = null;
+		if (wer_fault_query!=null)
+			lines = wer_fault_query.get();
+		
+		if (lines==null||no_other_thread_is_waiting) {
+			// only query again if:
+			//    a. no query result cached
+			//    b. didn't have to wait for another thread
+			//          if did have to wait for another thread, use the cached query result if available
+			//          to limit the number of WMIC processes that are launched
+			try {
+				// run wmic to find all the werfault.exe processes
+				lines = execOut("WMIC path win32_process get Processid,Commandline", AHost.ONE_MINUTE).getLines();
+			} catch ( Exception ex ) {
+			}
+			
+			wer_fault_query = new SoftReference<String[]>(lines);
+		}
+		wer_fault_query_lock.unlock();
+		
+		if (lines==null)
+			return; // just in case
+		
+		String prev_line = "";
+		for ( String line : lines ) {
+			line = line.toLowerCase();
+			// search werfault.exe process list for a werfault.exe created for process_id
+			if (line.contains("werfault.exe") && line.contains("-p "+process_id)) {
+				//
+				// blocking werfault.exe (not actually the process parent, its a separate SVC service)
+				int blocking_process_id = Integer.parseInt(prev_line.trim());
+				
+				// kill werfault.exe so we can try killing the target process again
+				winKillProcess("werfault.exe", blocking_process_id);
+			}
+			prev_line = line;
+		}
+	} // end protected void ensureWERFaultIsNotRunning
 	
 	public static int getWindowsProcessID(Process process) {
 		try {
@@ -653,7 +709,7 @@ public class LocalHost extends AHost {
 		return (String[])parts.toArray(new String[]{});
 	} // end public static String[] splitCmdString
 	
-	protected LocalExecHandle exec_impl(String[] cmd_array, Map<String,String> env, String chdir, int timeout, byte[] stdin_data) throws IOException, InterruptedException {
+	protected LocalExecHandle exec_impl(String[] cmd_array, Map<String,String> env, String chdir, byte[] stdin_data) throws IOException, InterruptedException {
 		ProcessBuilder builder = new ProcessBuilder(cmd_array);
 		if (env!=null) {
 			//
@@ -701,10 +757,7 @@ public class LocalHost extends AHost {
 
 		LocalExecHandle h = new LocalExecHandle(process, stdin, stdout, stderr, cmd_array);
 		
-		if (timeout>NO_TIMEOUT) {
-			h.task = new ExitMonitorTask(h);
-			timer.schedule(h.task, timeout*1000);
-		}
+		
 		
 		return h;
 	} // end protected LocalExecHandle exec_impl

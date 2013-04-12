@@ -27,10 +27,11 @@ public class EnchantScenario extends AbstractINIScenario {
 			String dst = build.getBuildPath()+"/share/";
 			if (!host.exists(dst)) {
 				host.copyElevated(host.getPfttDir()+"/cache/util/enchant/share", dst);
-			}
 			
-			// make sure libraries are where they need to be also
-			host.copy(build.getBuildPath()+"/libenchant*", build.getBuildPath()+"/lib/enchant/");
+				
+				// make sure libraries are where they need to be also
+				host.copy(build.getBuildPath()+"/libenchant*", build.getBuildPath()+"/lib/enchant/");
+			}
 			
 			return true;
 		} catch ( Exception ex ) {

@@ -1,0 +1,9 @@
+package com.mostc.pftt.model.ui;
+
+public enum EUITestExecutionStyle {
+	NORMAL,
+	UNATTENDED,
+	INTERACTIVE,
+	FAIL_TO_NOT_IMPLEMENTED_INTERACTIVE,
+	FAIL_TO_NOT_IMPLEMENTED_UNATTENDED
+}

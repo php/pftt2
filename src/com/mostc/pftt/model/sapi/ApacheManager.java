@@ -81,12 +81,15 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		}
 	}
 	
-	public static String httpd(EApacheVersion apache_version, Host host) {
+	protected String httpd(EApacheVersion apache_version, Host host) {
 		if (host.isWindows()) {
-			if (apache_version==EApacheVersion.APACHE_2_2)
+			if (apache_version==EApacheVersion.APACHE_2_2) {
+				version = "ApacheLounge-2.2.4-VC10-x86";
 				return host.getSystemDrive() + "\\Apache2\\bin\\httpd.exe";
-			else
+			} else {
+				version = "ApacheLounge-2.4.4-VC11-x86";
 				return host.getSystemDrive() + "\\Apache24\\bin\\httpd.exe";
+			}
 		} else {
 			return "/usr/sbin/httpd";
 		}
@@ -401,8 +404,10 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		// critical: path MUST NOT end with / or \
 		if (docroot.endsWith("/")||docroot.endsWith("\\"))
 			docroot = docroot.substring(0, docroot.length()-1);
-		conf_dir = host.fixPath(conf_dir);
-		if (!conf_dir.endsWith("/")&&!conf_dir.endsWith("\\"))
+		// conf dir must use / not \
+		conf_dir = Host.toUnixPath(conf_dir);
+		// and conf_dir must end with /
+		if (!conf_dir.endsWith("/"))
 			conf_dir += host.dirSeparator();
 		
 		StringBuilder sb = new StringBuilder(400);
@@ -500,9 +505,10 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		return host.isWindows() ? apache_version==EApacheVersion.APACHE_2_2 ? host.getSystemDrive() + "\\Apache2\\htdocs" : host.getSystemDrive() + "\\Apache24\\htdocs" : "/var/www/localhost/htdocs";
 	}
 
+	String version;
 	@Override
 	public String getNameWithVersionInfo() {
-		return "Apache-ModPHP-ApacheLounge-2.4.4-VC11-x86"; // TODO
+		return "Apache-ModPHP" + (version==null?"":"-"+version);
 	}
 
 	public void addToDebugPath(AHost host, Collection<String> debug_path) {

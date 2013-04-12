@@ -47,6 +47,7 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 	final HttpProcessor httpproc;
 	final HttpRequestExecutor httpexecutor;
 	final ApacheManager smgr;
+	String[][] nts_file_names;
 	
 	public LocalPhpUnitTestPackRunner(ConsoleManager cm, ITestResultReceiver twriter, ScenarioSet scenario_set, PhpBuild build, AHost storage_host, AHost runner_host) {
 		super(cm, twriter, scenario_set, build, storage_host, runner_host);
@@ -86,7 +87,10 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 	protected String temp_base_dir;
 	@Override
 	protected void setupStorageAndTestPack(ITestPackStorageDir storage_dir, List<PhpUnitTestCase> test_cases) throws Exception {
-		if (!(storage_dir instanceof SMBStorageDir)) {
+		// important: TODO comment
+		nts_file_names = src_test_pack.getNonThreadSafeTestFileNames();
+		
+		if (!(storage_dir instanceof SMBStorageDir)) { // TODO generalize
 			temp_base_dir = runner_host.getPhpSdkDir()+"/temp/";
 			
 			active_test_pack = src_test_pack.installInPlace(cm, runner_host);
@@ -148,10 +152,9 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 
 	@Override
 	protected boolean handleNTS(TestCaseGroupKey group_key, PhpUnitTestCase test_case) {
-		final String[][] names = src_test_pack.getNonThreadSafeTestFileNames();
-		if (names==null)
+		if (nts_file_names==null)
 			return false;
-		for ( String[] ext_names : names ) {
+		for ( String[] ext_names : nts_file_names ) {
 			if (test_case.fileNameStartsWithAny(ext_names)) {
 				addNTSTestCase(ext_names, group_key, test_case);
 				
@@ -167,7 +170,8 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 	}
 	
 	public class PhpUnitThread extends TestPackThread<PhpUnitTestCase> {
-		final String my_temp_dir;
+		protected final String my_temp_dir;
+		protected AbstractPhpUnitTestCaseRunner r;
 
 		protected PhpUnitThread(boolean parallel) throws IllegalStateException, IOException {
 			super(parallel);
@@ -185,7 +189,7 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 
 		@Override
 		protected void runTest(TestCaseGroupKey group_key, PhpUnitTestCase test_case) throws IOException, Exception, Throwable {
-			AbstractPhpUnitTestCaseRunner r = sapi_scenario.createPhpUnitTestCaseRunner(
+			r = sapi_scenario.createPhpUnitTestCaseRunner(
 					this,
 					group_key,
 					cm,
@@ -203,6 +207,17 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 					group_key.getPhpIni()
 				);
 			r.runTest();
+		}
+
+		@Override
+		protected void stopRunningCurrentTest() {
+			if (r!=null)
+				r.stop(true);
+		}
+		
+		@Override
+		protected int getMaxTestRuntimeSeconds() {
+			return r == null ? 60 : r.getMaxTestRuntimeSeconds();
 		}
 		
 	} // end public class PhpUnitThread
