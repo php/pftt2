@@ -152,6 +152,14 @@ public class PhpBuildInfo {
 		return cpu_arch;
 	}
 	
+	public boolean isX64() {
+		return cpu_arch == ECPUArch.X64;
+	}
+	
+	public boolean isX86() {
+		return cpu_arch == ECPUArch.X86;
+	}
+	
 	public EOSType getOSType() {
 		return os_type;
 	}

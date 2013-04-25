@@ -293,7 +293,8 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 							// in such cases, so nothing special needs to be done here for them
 							clazz.getName(),
 							// name of method within the class
-							e.getValue().getName()
+							e.getValue().getName(),
+							e.getValue().getArgs().length
 						));
 					
 					if (max_read_count > 0 && test_cases.size() >= max_read_count)

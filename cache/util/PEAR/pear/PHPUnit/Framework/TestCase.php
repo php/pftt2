@@ -484,6 +484,20 @@ abstract class PHPUnit_Framework_TestCase extends PHPUnit_Framework_Assert imple
         $this->expectedExceptionCode    = $exceptionCode;
         $this->expectedExceptionTrace   = debug_backtrace();
     }
+	
+	public function pftt_step1() {
+		$this->setExpectedExceptionFromAnnotation();
+        $this->setUp();
+        $this->checkRequirements();
+        $this->assertPreConditions();
+	}
+	public function pftt_step2() {
+		$this->verifyMockObjects();
+        $this->assertPostConditions();
+	}
+	public function pftt_step3() {
+        $this->tearDown();
+	}
 
     /**
      * @since  Method available since Release 3.4.0

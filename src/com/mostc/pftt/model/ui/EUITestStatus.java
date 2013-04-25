@@ -25,11 +25,20 @@ public enum EUITestStatus {
 				return true;
 			}
 		},
-	FAIL,
+	FAIL {
+			@Override
+			public boolean isFail() {
+				return true;
+			}
+		},
 	/** FAIL and warning message(s) are found from the Application - may explain the failure */
 	FAIL_WITH_WARNING {
 			@Override
 			public boolean isWarning() {
+				return true;
+			}
+			@Override
+			public boolean isFail() {
 				return true;
 			}
 		},
@@ -50,6 +59,9 @@ public enum EUITestStatus {
 		return false;
 	}
 	public boolean isWarning() {
+		return false;
+	}
+	public boolean isFail() {
 		return false;
 	}
 	

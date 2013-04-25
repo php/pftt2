@@ -18,6 +18,9 @@ REM unfortunately, elevation will open a 2nd command processor window for the PF
 REM
 REM search console options for -uac or -auto or -debug_all or -debug_list
 
+REM if running in PFTT shell, can assume already running under UAC, so don't run with elevate (stay in pftt shell)
+IF DEFINED PFTT_SHELL GOTO :run_it
+
 SET pftt_args="str %*"
 SET pftt_temp=%pftt_args:uac=%
 IF NOT %pftt_args% EQU %pftt_temp% ( GOTO set_elevator )

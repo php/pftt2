@@ -854,6 +854,10 @@ public class PhpBuild extends SAPIManager {
 	public boolean isX86() {
 		return !build_path.toLowerCase().contains("x64");
 	}
+	
+	public boolean isX64() {
+		return !isX86();
+	}
 
 	/** returns all info about this build in a single PhpBuildInfo object
 	 * 

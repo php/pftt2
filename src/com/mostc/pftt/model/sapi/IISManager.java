@@ -49,7 +49,7 @@ public class IISManager extends WebServerManager {
 	}
 	
 	@Override
-	public boolean start(ConsoleManager cm, Host host, PhpBuild build) {
+	public boolean start(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
 		try {
 			return host.execElevated(cm, getClass(), "net start w3svc", AHost.ONE_MINUTE*2);
 		} catch ( Exception ex ) {
@@ -59,7 +59,7 @@ public class IISManager extends WebServerManager {
 	}
 	
 	@Override
-	public boolean stop(ConsoleManager cm, Host host, PhpBuild build) {
+	public boolean stop(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
 		try {
 			return host.execElevated(cm, getClass(), "net stop w3svc", AHost.ONE_MINUTE*2);
 		} catch ( Exception ex ) {
@@ -223,7 +223,7 @@ public class IISManager extends WebServerManager {
 			if (!running)
 				return;
 			
-			stop(null, host, build);
+			stop(null, host, build, null);
 			undoConfigure(null, host);
 			running = false;
 		}

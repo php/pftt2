@@ -18,7 +18,6 @@ import org.apache.http.protocol.RequestUserAgent;
 
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
-import com.mostc.pftt.host.HostGroup;
 import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.EPhptSection;
 import com.mostc.pftt.model.core.ESAPIType;
@@ -86,37 +85,17 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 		httpexecutor = new HttpRequestExecutor();
 	}
 	
-	
-	/**
-	 * 
-	 * @param cm
-	 * @param host
-	 * @param build
-	 * @param scenario_set
-	 * @param docroot
-	 * @return
-	 */
-	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, final String docroot) {
-		if (host instanceof AHost) {
-			return smgr.getWebServerInstance(cm, (AHost)host, scenario_set, build, null, null, docroot, null, false, this).isRunning() ? EScenarioStartState.STARTED : EScenarioStartState.FAILED_TO_START;
-		} else {
-			EScenarioStartState state = EScenarioStartState.SKIP, _state = null;
-			for (Host h : (HostGroup)host ) {
-				_state = start(cm, h, build, scenario_set);
-				if (EScenarioStartState.FAILED_TO_START==state)
-					return EScenarioStartState.FAILED_TO_START;
-				state = _state;
-			}
-			return state;
-		}
-	}
-	
 	/**
 	 * 
 	 */
 	@Override
-	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
-		return smgr.start(cm, host, build) ? EScenarioStartState.STARTED : EScenarioStartState.FAILED_TO_START;
+	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
+		return smgr.start(cm, host, build, ini) ? EScenarioStartState.STARTED : EScenarioStartState.FAILED_TO_START;
+	}
+	
+	@Override
+	public boolean stop(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
+		return smgr.stop(cm, host, build, ini);
 	}
 	
 	public String getDefaultDocroot(Host host, PhpBuild build) {
@@ -176,8 +155,8 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 	}
 	
 	@Override
-	public AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(PhpUnitThread thread, TestCaseGroupKey group_key, ConsoleManager cm, ITestResultReceiver twriter, Map<String,String> globals, Map<String,String> env, AHost runner_host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini) {
-		return new HttpPhpUnitTestCaseRunner(twriter, params, httpproc, httpexecutor, smgr, (WebServerInstance) ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance(), globals, env, cm, runner_host, scenario_set, build, test_case, my_temp_dir, constants, include_path, include_files, ini);
+	public AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(PhpUnitThread thread, TestCaseGroupKey group_key, ConsoleManager cm, ITestResultReceiver twriter, Map<String,String> globals, Map<String,String> env, AHost runner_host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
+		return new HttpPhpUnitTestCaseRunner(twriter, params, httpproc, httpexecutor, smgr, (WebServerInstance) ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance(), globals, env, cm, runner_host, scenario_set, build, test_case, my_temp_dir, constants, include_path, include_files, ini, reflection_only);
 	}
 	
 } // end public abstract class AbstractWebServerScenario

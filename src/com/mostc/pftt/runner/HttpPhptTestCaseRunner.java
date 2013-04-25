@@ -454,6 +454,10 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				if (lh!=null) {
 					return do_http_get(lh.getValue(), i+1);
 				}
+				if (response.getStatusLine().getStatusCode()==404) {
+					// file not found, try a 2nd time (maybe not committed to filesystem)
+					return do_http_get(path, 100); // 100 => only try one more time
+				}
 			}
 			//
 			
@@ -582,7 +586,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	}
 
 	@Override
-	public String getSAPIOutput() {
+	protected String doGetSAPIOutput() {
 		return web!=null&&web.isCrashedOrDebuggedAndClosed() ? web.getSAPIOutput() : null;
 	}
 

@@ -8,15 +8,18 @@ SET PFTT_LIB=%PFTT_HOME%\lib
 SET CLASSPATH=%PFTT_HOME%\build;%PFTT_LIB%\apache-mime4j-0.6.jar;%PFTT_LIB%\commons-exec-1.1.jar;%PFTT_LIB%\cssparser-0.9.8.jar;%PFTT_LIB%\guava-14.0.jar;%PFTT_LIB%\hamcrest-core-1.3.jar;%PFTT_LIB%\httpclient-4.2.1.jar;%PFTT_LIB%\httpcore-4.2.1.jar;%PFTT_LIB%\httpmime-4.2.1.jar;%PFTT_LIB%\jna-3.4.0.jar;%PFTT_LIB%\jna-platform-3.4.0.jar;%PFTT_LIB%\json-20080701.jar;%PFTT_LIB%\jzlib-1.1.1.jar;%PFTT_LIB%\nekohtml-1.9.17.jar;%PFTT_LIB%\phantomjsdriver-1.0.1.jar;%PFTT_LIB%\selenium-java-2.31.0.jar;%PFTT_LIB%\htmlcleaner-2.2.jar;%PFTT_LIB%\groovy-1.8.6.jar;%PFTT_LIB%\icu4j-49_1.jar;%PFTT_LIB%\icudata.jar;%PFTT_LIB%\icutzdata.jar;%PFTT_LIB%\jansi-1.7.jar;%PFTT_LIB%\jline-0.9.94.jar;%PFTT_LIB%\xercesImpl.jar;%PFTT_LIB%\xmlpull-1.1.3.1.jar;%PFTT_LIB%\commons-cli-1.2.jar;%PFTT_LIB%\antlr-2.7.7.jar;%PFTT_LIB%\asm-3.2.jar;%PFTT_LIB%\asm-analysis-3.2.jar;%PFTT_LIB%\asm-commons-3.2.jar;%PFTT_LIB%\asm-tree-3.2.jar;%PFTT_LIB%\asm-util-3.2.jar;%PFTT_LIB%\winp-1.14.jar;%PFTT_LIB%\commons-net-3.1.jar;%PFTT_LIB%\commons-codec-1.6.jar;%PFTT_LIB%\commons-lang-2.6.jar;%PFTT_LIB%\commons-logging-1.1.1.jar;%PFTT_LIB%\jzlib-1.1.1.jar;%PFTT_LIB%\mina-core-2.0.7.jar;%PFTT_LIB%\mina-statemachine-2.0.7.jar;%PFTT_LIB%\slf4j-api-1.7.2.jar;%PFTT_LIB%\slf4j-log4j12-1.7.2.jar;%PFTT_LIB%\php_parser.jar;%PFTT_LIB%\log4j-1.2.17.jar
 
 
-REM if user added -uac or -auto or -debug* console options, run elevated in UAC
+REM if user added -uac -auto -debug* console options or setup or stop commands, run elevated in UAC
 REM user will get at most 1 UAC popup dialog
-REM UAC popups break automation because there is no way to automate clicking on them
+REM UAC popups break unattended automation because there is no way to automate clicking on them
 REM having 1 UAC popup at start when -auto is used will hopefully get the user to realize
 REM pftt must be run automatically with elevated privileges or automated testing will fail
 REM
 REM unfortunately, elevation will open a 2nd command processor window for the PFTT console
 REM
-REM search console options for -uac or -auto or -debug_all or -debug_list
+REM search console options for -uac or -auto or -debug_all or -debug_list or stop or setup
+
+REM if running in PFTT shell, can assume already running under UAC, so don't run with elevate (stay in pftt shell)
+IF DEFINED PFTT_SHELL GOTO :run_it
 
 SET pftt_args="str %*"
 SET pftt_temp=%pftt_args:uac=%
@@ -27,6 +30,13 @@ IF NOT %pftt_args% EQU %pftt_temp% ( GOTO set_elevator )
 SET pftt_args="str %*"
 SET pftt_temp=%pftt_args:auto=%
 IF NOT %pftt_args% EQU %pftt_temp% ( GOTO set_elevator )
+SET pftt_args="str %*"
+SET pftt_temp=%pftt_args:setup=%
+IF NOT %pftt_args% EQU %pftt_temp% ( GOTO set_elevator )
+SET pftt_args="str %*"
+SET pftt_temp=%pftt_args:stop=%
+IF NOT %pftt_args% EQU %pftt_temp% ( GOTO set_elevator )
+
 
 REM not using elevate, clear these vars!
 SET ELEVATOR=

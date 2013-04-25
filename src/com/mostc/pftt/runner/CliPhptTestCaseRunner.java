@@ -357,7 +357,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	} // end void executeClean
 
 	@Override
-	public String getSAPIOutput() {
+	protected String doGetSAPIOutput() {
 		if (output!=null&&output.isCrashed()) 
 			return output.isEmpty() ? 
 				"PFTT: test printed nothing. was expected to print something. exited with non-zero code (probably crash): "+output.exit_code 

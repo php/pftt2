@@ -5,6 +5,7 @@ import java.util.Map;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.runner.AbstractPhpUnitTestCaseRunner;
 
@@ -40,7 +41,7 @@ public class MySQLScenario extends AbstractDatabaseScenario {
 	}*/
 	@Override
 	public boolean isImplemented() {
-		return false;
+		return true;
 	}
 	void stop(Object host) {
 		// already stopped?
@@ -50,7 +51,7 @@ public class MySQLScenario extends AbstractDatabaseScenario {
 		// TODO mysql.exec("DROP DATABASE $db_name");
 	}
 	@Override
-	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhpIni _ini) {
 		return EScenarioStartState.SKIP;
 	}
 	void start(Object host) {
@@ -100,7 +101,7 @@ public class MySQLScenario extends AbstractDatabaseScenario {
 	@Override
 	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		// TODO Auto-generated method stub
-		return false;
+		return true;
 	}
 	@Override
 	public void getENV(Map<String, String> env) {

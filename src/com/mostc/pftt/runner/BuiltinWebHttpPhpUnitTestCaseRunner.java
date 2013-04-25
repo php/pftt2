@@ -27,10 +27,10 @@ public class BuiltinWebHttpPhpUnitTestCaseRunner extends HttpPhpUnitTestCaseRunn
 			ScenarioSet scenario_set, PhpBuild build,
 			PhpUnitTestCase test_case, String my_temp_dir,
 			Map<String, String> constants, String include_path,
-			String[] include_files, PhpIni ini) {
+			String[] include_files, PhpIni ini, boolean reflection_only) {
 		super(tmgr, params, httpproc, httpexecutor, smgr, web, globals, env, cm, host,
 				scenario_set, build, test_case, my_temp_dir, constants, include_path,
-				include_files, ini);
+				include_files, ini, reflection_only);
 	}
 	
 	@Override

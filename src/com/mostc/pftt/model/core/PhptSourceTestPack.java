@@ -37,7 +37,8 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 	protected final ArrayList<PhptTestCase> test_cases;
 	
 	public PhptSourceTestPack(String test_pack) {
-		this.test_pack = new File(test_pack).getAbsolutePath();
+		this.test_pack_file = new File(test_pack);
+		this.test_pack = this.test_pack_file.getAbsolutePath();
 		
 		test_cases_by_name = new HashMap<String,PhptTestCase>();
 		non_phpt_files = new LinkedList<File>();
@@ -104,9 +105,6 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 			_test_cases.addAll(test_cases);
 			return;
 		}
-		
-		test_pack_file = new File(test_pack);
-		test_pack = test_pack_file.getAbsolutePath(); // normalize path
 		
 		LinkedList<PhptTestCase> redirect_targets = new LinkedList<PhptTestCase>();
 		

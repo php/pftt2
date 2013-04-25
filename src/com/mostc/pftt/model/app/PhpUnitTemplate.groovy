@@ -28,13 +28,14 @@ public class PhpUnitTemplate {
 	 * @param globals - global variables for the PhpUnitTestCase
 	 * @param constants - constant values to define for the PhpUnitTestCase
 	 * @param env - environment variables
+	 * @param reflection_only - if true, the only reference to the test method will be made in reflection. Opcache may optimize the test method out (so test will appear to PASS - check by running test that should be a FAILURE or ERROR)
 	 * @return
 	 */
-	public static String renderTemplate(AHost host, PhpUnitTestCase test_case, String preamble_code, String bootstrap_file, String cwd, String include_path, String[] included_files, Map<String, String> globals, Map<String, String> constants, HashMap<String, String> env, String my_temp_dir) {
-		return renderTemplate(host, test_case, preamble_code, bootstrap_file, cwd, include_path, included_files, globals, constants, env, my_temp_dir, false);
+	public static String renderTemplate(AHost host, PhpUnitTestCase test_case, String preamble_code, String bootstrap_file, String cwd, String include_path, String[] included_files, Map<String, String> globals, Map<String, String> constants, HashMap<String, String> env, String my_temp_dir, boolean reflection_only) {
+		return renderTemplate(host, test_case, preamble_code, bootstrap_file, cwd, include_path, included_files, globals, constants, env, my_temp_dir, reflection_only, false);
 	}
 	
-	public static String renderTemplate(AHost host, PhpUnitTestCase test_case, String preamble_code, String bootstrap_file, String cwd, String include_path, String[] included_files, Map<String, String> globals, Map<String, String> constants, HashMap<String, String> env, String my_temp_dir, boolean strict) {
+	public static String renderTemplate(AHost host, PhpUnitTestCase test_case, String preamble_code, String bootstrap_file, String cwd, String include_path, String[] included_files, Map<String, String> globals, Map<String, String> constants, HashMap<String, String> env, String my_temp_dir, boolean reflection_only, boolean strict) {
 		// XXX will need to get these values from PHP code 
 		// data source: PhpUnit_Framework_TestCase constructor (default value)
 		String data = "a:0:{}";
@@ -111,7 +112,9 @@ function __phpunit_run_isolated_test()
 
 	register_shutdown_function('tryReportFatal');
 
-	\$test = null;
+	\$test = NULL;
+	\$status = PHPUnit_Runner_BaseTestRunner::STATUS_SKIPPED;
+	\$status_msg = NULL;
 	try {
 		\$test = new $test_case.className('$test_case.methodName', unserialize('$data'), '$dataName');
 		\$test->setDependencyInput(unserialize('$dependencyInput'));
@@ -119,9 +122,42 @@ function __phpunit_run_isolated_test()
 		
 		ob_end_clean();
 		ob_start();
+
+""");
+	//
+	if (reflection_only) {
+		// test method is only referenced in a string value. its not in the call-graph. opcache may optimize it out
+pw.println("""
 		\$test->run(\$result);
+		\$status = \$test->getStatus();
+		\$status_msg = \$test->getStatusMessage();""");
+	} else {
+		// @see PhpUnit_Framework_TestCase::runBare
+		//
+		// this calls the method with inline reference. opcache will see this in the call-graph so it shouldn't optimize it out
+pw.println("""clearstatcache();
+		\$test->pftt_step1();
+        \$test->$test_case.methodName();
+        \$test->pftt_step2();
+		try {
+			\$test->pftt_step3();
+		} catch ( Exception \$e2 ) {}
 		\$output = ob_get_clean();
-	} catch ( Exception \$e ) {
+	} catch (PHPUnit_Framework_IncompleteTest \$e) {
+		\$status     = PHPUnit_Runner_BaseTestRunner::STATUS_INCOMPLETE;
+		\$status_msg = \$e->getMessage();
+	} catch (PHPUnit_Framework_SkippedTest \$e) {
+		\$status     = PHPUnit_Runner_BaseTestRunner::STATUS_SKIPPED;
+		\$status_msg = \$e->getMessage();
+	} catch (PHPUnit_Framework_AssertionFailedError \$e) {
+		\$status     = PHPUnit_Runner_BaseTestRunner::STATUS_FAILURE;
+		\$status_msg = \$e->getMessage();
+	} catch (Exception \$e) {
+		\$status     = PHPUnit_Runner_BaseTestRunner::STATUS_ERROR;
+		\$status_msg = \$e->getMessage();""");
+	} // end if (reflection_only)
+	//
+pw.println("""	} catch ( Exception \$e ) {
 		\$output = ob_get_clean();
 		echo 'ERROR'; echo PHP_EOL;
 		echo '$test_case.className'; echo PHP_EOL;
@@ -141,7 +177,7 @@ function __phpunit_run_isolated_test()
 	case PHPUnit_Runner_BaseTestRunner::STATUS_SKIPPED:
 		echo 'SKIP';
 		echo PHP_EOL;
-		echo \$test->getStatusMessage();
+		echo \$status_msg;
 		echo PHP_EOL;
 		echo \$output;
 		var_dump(get_loaded_extensions());
@@ -152,14 +188,14 @@ function __phpunit_run_isolated_test()
 	case PHPUnit_Runner_BaseTestRunner::STATUS_INCOMPLETE:
 		echo 'NOT_IMPLEMENTED';
 		echo PHP_EOL;
-		echo \$test->getStatusMessage();
+		echo \$status_msg;
 		echo PHP_EOL;
 		echo \$output;
 		break;
 	case PHPUnit_Runner_BaseTestRunner::STATUS_FAILURE:
 		echo 'FAILURE';
 		echo PHP_EOL;
-		echo \$test->getStatusMessage();
+		echo \$status_msg;
 		echo PHP_EOL;
 		echo \$output;
 		break;
@@ -179,7 +215,7 @@ function __phpunit_run_isolated_test()
 		}
 		echo \$status;
 		echo PHP_EOL;
-		echo \$test->getStatusMessage();
+		echo \$status_msg;
 		echo PHP_EOL;
 		echo \$output;
 		break;
@@ -302,5 +338,23 @@ ob_end_clean();
 	//   -value can be a nested array
 	//
 	// array has many nested arrays
+	
+/*  add this code to PhpUnit_Framework_TestCase
+ * 
+ * public function pftt_step1() {
+		$this->setExpectedExceptionFromAnnotation();
+        $this->setUp();
+        $this->checkRequirements();
+        $this->assertPreConditions();
+	}
+	public function pftt_step2() {
+		$this->verifyMockObjects();
+        $this->assertPostConditions();
+	}
+	public function pftt_step3() {
+        $this->tearDown();
+	}
+ * 
+ */
 	
 } // end class PhpUnitTemplate

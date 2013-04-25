@@ -55,8 +55,9 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 	protected final String my_temp_dir;
 	protected final PhpIni ini;
 	protected boolean is_crashed;
+	protected final boolean reflection_only;
 
-	public AbstractPhpUnitTestCaseRunner(ITestResultReceiver tmgr, Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini) {
+	public AbstractPhpUnitTestCaseRunner(ITestResultReceiver tmgr, Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
 		this.tmgr = tmgr;
 		this.globals = globals;
 		this.env = env;
@@ -70,6 +71,7 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 		this.include_path = include_path;
 		this.include_files = include_files;
 		this.ini = ini;
+		this.reflection_only = reflection_only;
 	}
 	
 	protected static Pattern PAT_CLASS_NOT_FOUND, PAT_REQUIRE_ONCE_FAIL, PAT_SYNTAX_ERROR, PAT_FATAL_ERROR;
@@ -109,7 +111,8 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 				globals,
 				constants,
 				env,
-				my_temp_dir
+				my_temp_dir,
+				reflection_only
 			);
 	}
 	

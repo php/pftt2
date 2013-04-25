@@ -1,6 +1,7 @@
 package com.github.mattficken.io;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
@@ -323,26 +324,38 @@ public final class StringUtil {
 		return a == null ? 0 : a.hashCode();
 	}
 	
-	public static String join(ArrayList<String> strings, String delim) {
+	public static String join(List<String> strings, String delim) {
 		return join(strings, 0, strings.size(), delim);
 	}
 	
-	public static String join(ArrayList<String> strings, int off, String delim) {
+	public static String join(List<String> strings, int off, String delim) {
 		return join(strings, off, strings.size() - off, delim);
 	}
 	
-	public static String join(ArrayList<String> strings, int off, int len, String delim) {
+	public static String join(List<String> strings, int off, int len, String delim) {
 		if (strings.size() <= 0)
 			return EMPTY;
 		else if (strings.size() == 1)
 			return strings.get(0);
 		
 		StringBuilder sb = new StringBuilder(256);
-		sb.append(strings.get(off));
-		off++;
-		for ( int i=0 ; i < len && off < strings.size() ; i++, off++ ) {
-			sb.append(delim);
+		if (off==0 && !(strings instanceof ArrayList)) {
+			// performance optimization primarily for LinkedLists
+			Iterator<String> it = strings.iterator();
+			if (it.hasNext()) {
+				sb.append(it.next());
+				for ( int i=1 ; i < len && it.hasNext() ; i++ ) {
+					sb.append(delim);
+					sb.append(it.next());
+				}
+			}
+		} else {
 			sb.append(strings.get(off));
+			off++;
+			for ( int i=0 ; i < len && off < strings.size() ; i++, off++ ) {
+				sb.append(delim);
+				sb.append(strings.get(off));
+			}
 		}
 		return sb.toString();
 	}

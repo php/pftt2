@@ -234,10 +234,8 @@ public class PhptTestCase extends TestCase {
 				test_case.put(v, v.prepareSection(keep_all, test_case.get(v)));
 			}
 				
-			if (test_case.isNamed("ext/standard/tests/file/bug24482.phpt")) {
-				// TODO have a method in config file to allow for injecting PHP code here
-				test_case.put(EPhptSection.FILE, "<?php clearstatcache(); ?>" + test_case.get(EPhptSection.FILE));
-			}
+			// TODO have a method in config file to allow for injecting PHP code here
+			//       @see ext/standard/tests/file
 		}
 		reader.close();
 		

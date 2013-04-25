@@ -23,8 +23,8 @@ public abstract class AbstractApacheScenario extends AbstractProductionWebServer
 	}
 	
 	@Override
-	public void addToDebugPath(AHost host, Collection<String> debug_path) {
-		((ApacheManager)smgr).addToDebugPath(host, debug_path);
+	public void addToDebugPath(ConsoleManager cm, AHost host, PhpBuild build, Collection<String> debug_path) {
+		((ApacheManager)smgr).addToDebugPath(cm, host, build, debug_path);
 	}
 	
 	@Override

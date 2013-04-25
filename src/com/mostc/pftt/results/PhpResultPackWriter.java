@@ -44,7 +44,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	protected LocalConsoleManager cm;
 	protected PhpBuild build;
 	protected LinkedBlockingQueue<ResultQueueEntry> results;
-	protected boolean run = true;
+	protected boolean run_writer_thread = true;
 	protected final PhpBuildInfo build_info;
 	protected final EBuildBranch test_pack_branch;
 	protected final String test_pack_version;
@@ -100,7 +100,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 				public void run() {
 					ResultQueueEntry q = null;
 					
-					while (run || !results.isEmpty()) {
+					while (run_writer_thread || !results.isEmpty()) {
 						try {
 							q = results.take();
 						} catch ( Exception ex ) {
@@ -124,19 +124,21 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	}
 	
 	protected abstract class ResultQueueEntry {
+		public abstract void handle() throws IllegalArgumentException, IllegalStateException, IOException;
+	}
+	
+	protected abstract class HSResultQueueEntry extends ResultQueueEntry {
 		protected final AHost this_host;
 		protected final ScenarioSet this_scenario_set;
 		
-		protected ResultQueueEntry(AHost this_host, ScenarioSet this_scenario_set) {
+		protected HSResultQueueEntry(AHost this_host, ScenarioSet this_scenario_set) {
 			this.this_host = this_host;
 			this.this_scenario_set = this_scenario_set;
 		}
 		
-		public abstract void handle() throws IllegalArgumentException, IllegalStateException, IOException;
-		
-	} // end protected abstract class ResultQueueEntry 
+	}
 	
-	protected class UIResultQueueEntry extends ResultQueueEntry {
+	protected class UIResultQueueEntry extends HSResultQueueEntry {
 		protected final String test_name, comment, verified_html, sapi_output, sapi_config, web_browser_name_and_version;
 		protected final EUITestStatus status;
 		protected final byte[] screenshot_png;
@@ -210,7 +212,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		return w;
 	}
 	
-	protected class PhptResultQueueEntry extends ResultQueueEntry {
+	protected class PhptResultQueueEntry extends HSResultQueueEntry {
 		protected final PhptTestResult this_result;
 		
 		protected PhptResultQueueEntry(AHost this_host, ScenarioSet this_scenario_set, PhptTestResult this_result) {
@@ -250,7 +252,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		
 	} // end protected class PhptResultQueueEntry
 	
-	protected class PhpUnitResultQueueEntry extends ResultQueueEntry {
+	protected class PhpUnitResultQueueEntry extends HSResultQueueEntry {
 		protected final PhpUnitTestResult this_result;
 		
 		protected PhpUnitResultQueueEntry(AHost this_host, ScenarioSet this_scenario_set, PhpUnitTestResult this_result) {
@@ -319,7 +321,16 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		
 	} // end protected class PhpUnitResultQueueEntry
 	
-	public File getTelemetryDir() {
+	protected class CloseQueueEntry extends ResultQueueEntry {
+
+		@Override
+		public void handle() throws IllegalArgumentException, IllegalStateException, IOException {
+			doClose();
+		}
+		
+	}
+	
+	public File getResultPackPath() {
 		return telem_dir;
 	}
 	
@@ -392,11 +403,17 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	
 	@Override
 	public void close() {
+		if (run_writer_thread)
+			results.add(new CloseQueueEntry());
+		else
+			doClose();
+	}
+	
+	protected void doClose() {
+		run_writer_thread = false;
+		
 		try {
-			run = false;
-			
-			writer_thread.interrupt();
-			writer_thread.join();
+			global_exception_writer.close();
 		} catch ( Exception ex ) {
 			ex.printStackTrace();
 		}
@@ -472,7 +489,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		}
 		
 		
-	} // end public void close
+	} // end protected void doClose
 
 	@Override
 	public AbstractPhptRW getPHPT(AHost host, ScenarioSet scenario_set) {

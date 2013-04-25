@@ -17,7 +17,20 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 public abstract class EasyUITest extends UITest implements IUITestDriver {
 	protected IUITestDriver driver;
+	
+	public abstract EUITestStatus test() throws Exception;
+	public abstract boolean start() throws Exception;
 
+	public final boolean start(IUITestDriver driver) throws Exception {
+		this.driver = driver;
+		return start();
+	}
+	
+	public final EUITestStatus test(IUITestDriver driver) throws Exception {
+		this.driver = driver;
+		return test();
+	}
+	
 	@Override
 	public String getWebBrowserNameAndVersion() {
 		return driver.getWebBrowserNameAndVersion();
@@ -452,6 +465,18 @@ public abstract class EasyUITest extends UITest implements IUITestDriver {
 	@Override
 	public boolean isCheckedId(String id) {
 		return driver.isCheckedId(id);
+	}
+	@Override
+	public String randomSentence(int word_count) {
+		return driver.randomSentence(word_count);
+	}
+	@Override
+	public String randomSentence(int min_word_count, int max_word_count) {
+		return driver.randomSentence(min_word_count, max_word_count);
+	}
+	@Override
+	public String randomSentence(int min_word_count, int max_word_count, int max_char_len) {
+		return driver.randomSentence(min_word_count, max_word_count, max_char_len);
 	}
 	
 } // end public abstract class EasyUITest

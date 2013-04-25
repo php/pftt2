@@ -66,7 +66,7 @@ public class UITestReader extends AbstractUITestRW {
 						EUITestStatus status = EUITestStatus.valueOf(parser.getAttributeValue(null, "status"));
 						String comment = parser.getAttributeValue(null, "comment");
 						
-						UITestResult result = new UITestResult(test_name, comment, status, null);
+						UITestResult result = new UITestResult(test_name, comment, status);
 						
 						results_by_name.put(test_name, result);
 						results_by_status.get(status).add(result);
@@ -99,12 +99,6 @@ public class UITestReader extends AbstractUITestRW {
 		}
 	} // end protected void readTally
 
-	@Override
-	public String getHTMLURL(String test_name) {
-		// @see UITestWriter#addResult
-		return dir+File.separator+test_name+".html";
-	}
-	
 	@Override
 	public String getOSName() {
 		return os_name;

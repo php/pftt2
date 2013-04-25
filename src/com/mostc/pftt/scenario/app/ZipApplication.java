@@ -15,6 +15,8 @@ public abstract class ZipApplication extends ApplicationScenario {
 	
 	@Override
 	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		if (true)
+			return true; // TODO
 		AbstractWebServerScenario web = AbstractWebServerScenario.getWebServerScenario(scenario_set);
 		if (web == null) {
 			cm.println(EPrintType.SKIP_OPERATION, getClass(), "add a web server (ex: apache) to -config console option and try again");
@@ -23,7 +25,7 @@ public abstract class ZipApplication extends ApplicationScenario {
 		
 		String zip_file = getZipAppFileName();
 		
-		app_dir = host.joinIntoOnePath(web.getDefaultDocroot(host, build), AHost.removeFileExt(AHost.basename(zip_file)));
+		app_dir = host.joinIntoOnePath("C:/PHP-SDK/APPS/", AHost.removeFileExt(AHost.basename(zip_file)));
 		
 		if (!host.exists(app_dir)) {
 			//
@@ -35,7 +37,7 @@ public abstract class ZipApplication extends ApplicationScenario {
 		if (!configure(cm, host, build, scenario_set, app_dir))
 			return false;
 		
-		web.start(cm, host, build, scenario_set, web.getDefaultDocroot(host, build));
+		//web.start(cm, host, build, scenario_set, web.getDefaultDocroot(host, build));
 		
 		return true;
 	} // end public boolean setup

@@ -49,8 +49,8 @@ public class UITestWriter extends AbstractUITestRW {
 	}
 
 	@Override
-	public void addResult(String test_name, String comment, EUITestStatus status, String verified_html) {
-		addResult(test_name, comment, status, verified_html, null, null, null);
+	public void addResult(String test_name, String comment, EUITestStatus status) {
+		addResult(test_name, comment, status, null, null, null, null);
 	}
 	
 	public void addResult(String test_name, String comment, EUITestStatus status, String verified_html, byte[] screenshot_png, String sapi_output, String sapi_config) {
@@ -85,7 +85,7 @@ public class UITestWriter extends AbstractUITestRW {
 			// record html
 			if (verified_html!=null) {
 				try {
-					FileOutputStream fout = new FileOutputStream(new File(dir+"/"+test_name+".html"));
+					FileOutputStream fout = new FileOutputStream(getHTMLURL(test_name));
 					fout.write(verified_html.getBytes());
 					fout.close();
 				} catch ( IOException ex ) {
@@ -101,7 +101,7 @@ public class UITestWriter extends AbstractUITestRW {
 		// increment
 		count.put(status, count.get(status) + 1);
 		
-		super.addResult(test_name, comment, status, verified_html);
+		super.addResult(test_name, comment, status);
 		
 		try {
 			serial.startTag(null, "test");
@@ -142,11 +142,6 @@ public class UITestWriter extends AbstractUITestRW {
 		serial.attribute(null, "not_implemented", Integer.toString(count.get(EUITestStatus.NOT_IMPLEMENTED)));
 		serial.endTag(null, "tally");	
 		out.close(); 
-	}
-	
-	public String getHTMLURL(String test_name) {
-		UITestResult result = results_by_name.get(test_name);
-		return result == null ? null : result.verified_html;
 	}
 
 	@Override

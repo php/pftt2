@@ -1,11 +1,36 @@
 package com.mostc.pftt.model.core;
 
 public enum EBuildBranch {
-	PHP_5_3,
-	PHP_5_4,
-	MASTER,
-	PHP_5_5,
-	PHP_5_6;
+	PHP_5_3 {
+		@Override
+		public ECPUArch getCPUArch() {
+			return ECPUArch.X86;
+		}
+	},
+	PHP_5_4 {
+		@Override
+		public ECPUArch getCPUArch() {
+			return ECPUArch.X86;
+		}
+	},
+	MASTER {
+		@Override
+		public ECPUArch getCPUArch() {
+			return null; // could be X86 or X64
+		}
+	},
+	PHP_5_5 {
+		@Override
+		public ECPUArch getCPUArch() {
+			return null; // could be X86 or X64
+		}
+	},
+	PHP_5_6 {
+		@Override
+		public ECPUArch getCPUArch() {
+			return null; // could be X86 or X64
+		}
+	};
 	
 	/** flexibly matches different values, guessing which EBuildBranch it refers to
 	 * 
@@ -47,4 +72,7 @@ public enum EBuildBranch {
 		else
 			return null;
 	}
+
+	public abstract ECPUArch getCPUArch();
+	
 }

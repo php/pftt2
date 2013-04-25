@@ -51,6 +51,40 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 		}
 	}
 	
+	public static class CouldConnect {
+		public boolean connect = false;
+		public long start_time;
+		public int attempts;
+	}
+	
+	public static CouldConnect canConnect(String listen_address, int port) {
+		Socket sock = null;
+		CouldConnect could = new CouldConnect();
+		could.start_time = System.currentTimeMillis();
+		// builtin web server needs many attempts and large timeouts
+		for ( could.attempts=0 ; could.attempts < 10 ; could.attempts++ ) {
+			could.connect = false;
+			try {
+				sock = new Socket();
+				sock.setSoTimeout(Math.max(200, Math.min(60000, 100*((int)(Math.pow(could.attempts+1, could.attempts+1))))));
+				sock.connect(new InetSocketAddress(listen_address, port));
+				if (sock.isConnected()) {
+					could.connect = true;
+					return could;
+				}
+			} catch ( IOException ex ) {
+			} finally {
+				try {
+					sock.close();
+				} catch (IOException e) {
+				}
+			}
+		}
+		could.connect = false; // ensure
+		return could;
+	} // end public static CouldConnect canConnect
+	
+	static final int MAX_TOTAL_ATTEMPTS = 3;
 	@Override
 	protected WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String,String> env, final String docroot, final boolean debugger_attached, final Object server_name) {
 		String sapi_output = "";
@@ -58,7 +92,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 		boolean found_port;
 		int total_attempts = 0;
 		int port = PORT_RANGE_START;
-		for ( ; total_attempts < 3 ; total_attempts++) {
+		for ( ; total_attempts < MAX_TOTAL_ATTEMPTS ; total_attempts++) {
 			
 			// find port number not currently in use
 			port_attempts = 0;
@@ -100,31 +134,10 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 				final AHost.ExecHandle handlef = handle;
 								
 				// ensure server can be connected to
-				{
-					Socket sock = null;
-					boolean connected = false;
-					long start_time = System.currentTimeMillis();
-					int socket_attempts;
-					// builtin web server needs many attempts and large timeouts
-					for ( socket_attempts=0 ; socket_attempts < 10 ; socket_attempts++ ) {
-						connected = false;
-						try {
-							sock = new Socket();
-							sock.setSoTimeout(Math.min(60000, 100*((int)(Math.pow(socket_attempts+1, socket_attempts+1)))));
-							sock.connect(new InetSocketAddress(listen_address, port));
-							if (sock.isConnected()) {
-								connected = true;
-								break;
-							}
-						} catch ( IOException ex ) {
-						} finally {
-							sock.close();
-						}
-					}
-					if (!connected) {
-						// kill server and try again
-						throw new IOException("Could not socket to web server after it was started. Web server did not respond to socket. Tried "+socket_attempts+" times, waiting "+(System.currentTimeMillis()-start_time)+" millis total.");
-					}
+				CouldConnect could = canConnect(listen_address, port); 
+				if (!could.connect) {
+					// kill server and try again
+					throw new IOException("Could not socket to web server after it was started. Web server did not respond to socket. Tried "+could.attempts+" times, waiting "+(System.currentTimeMillis()-could.start_time)+" millis total.");
 				}
 				//
 				//
@@ -167,6 +180,17 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 				
 				return web;
 			} catch ( Exception ex ) {
+				if (host.isWindows() && total_attempts + 1 < MAX_TOTAL_ATTEMPTS && ex instanceof IOException && ex.getMessage().contains("Not enough storage")) {
+					// host is low/out of memory
+					//
+					// wait longer before trying again (hopefully will have more memory)
+					//
+					//
+					try {
+						Thread.sleep(30000 * (MAX_TOTAL_ATTEMPTS-total_attempts));
+					} catch ( InterruptedException ex2 ) {}
+				}
+				
 				if (handle!=null && !handle.isCrashed())
 					// make sure process is killed in this case (don't kill crashed process)
 					handle.close();

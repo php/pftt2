@@ -12,6 +12,7 @@ import org.htmlcleaner.SimpleXmlSerializer;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.core.EBuildType;
 import com.mostc.pftt.model.core.EBuildBranch;
+import com.mostc.pftt.model.core.ECPUArch;
 
 /** Util for parsing the Snapshot download pages on windows.php.net to find
  * newest snapshot to download
@@ -19,6 +20,7 @@ import com.mostc.pftt.model.core.EBuildBranch;
  * Though there may be separate NTS and TS test-packs listed(they are identical), this will use whichever test-pack file is present,
  * as there are not different types of test-packs (there is no NTS or TS test-pack).
  * 
+ * @see http://windows.php.net/downloads/snaps/
  * @see #findNewestPair
  * @see #downloadPair
  * @author Matt Ficken
@@ -73,14 +75,14 @@ final class WindowsSnapshotDownloadUtil {
 		return new URL(getDownloadURL(branch).toString()+"/"+revision);
 	}
 		
-	static FindBuildTestPackPair getDownloadURL(EBuildBranch branch, EBuildType build_type, String revision) {
+	static FindBuildTestPackPair getDownloadURL(EBuildBranch branch, EBuildType build_type, ECPUArch cpu_arch, String revision) {
 		URL snap_url = toSnapURL(branch, revision);
-		FindBuildTestPackPair pair = findPair(build_type, snap_url);
+		FindBuildTestPackPair pair = findPair(build_type, cpu_arch, snap_url);
 		pair.branch = branch;
 		return pair;
 	}
 	
-	static FindBuildTestPackPair findPair(EBuildType build_type, URL snap_url) {
+	static FindBuildTestPackPair findPair(EBuildType build_type, ECPUArch cpu_arch, URL snap_url) {
 		HtmlCleaner cleaner = new HtmlCleaner();
 		def node = cleaner.clean(snap_url);
 		String xml_str = new SimpleXmlSerializer(cleaner.getProperties()).getXmlAsString(node);
@@ -89,17 +91,19 @@ final class WindowsSnapshotDownloadUtil {
 		def build_url = null, test_pack_url = null, debug_pack_url = null;
 		root.depthFirst().findAll { 
 				if (it.name() == 'a') {
-					if (it.text().contains("x86")) { // TODO ignore x64 for now
+					if (it.text().contains(cpu_arch.toString().toLowerCase())) {
 					
-					if (it.text().endsWith(".zip")&&it.text().toLowerCase().contains("-test-")) {
-						test_pack_url = it['@href']
-					} else if (it.text().endsWith(".zip")&&it.text().toLowerCase().contains("-"+build_type.toString().toLowerCase()+"-")&&it.text().toLowerCase().contains("-debug-")) {
-						debug_pack_url = it['@href']
-					} else if (it.text().toLowerCase().contains("-devel-")) {
-						// ignore
-					} else if (it.text().endsWith(".zip")&&it.text().toLowerCase().contains("-"+build_type.toString().toLowerCase()+"-")) {
-						build_url = it['@href'];
-					}
+						if (it.text().endsWith(".zip")&&it.text().toLowerCase().contains("-test-")) {
+							test_pack_url = it['@href']
+						} else if (it.text().endsWith(".zip")&&it.text().toLowerCase().contains("-"+build_type.toString().toLowerCase()+"-")&&it.text().toLowerCase().contains("-debug-")) {
+							debug_pack_url = it['@href']
+						} else if (it.text().toLowerCase().contains("-devel-")) {
+							// ignore
+						} else if (it.text().endsWith(".zip")&&it.text().toLowerCase().contains("-"+build_type.toString().toLowerCase()+"-")) {
+							build_url = it['@href'];
+						}
+						
+						
 					
 					}
 				}
@@ -107,6 +111,7 @@ final class WindowsSnapshotDownloadUtil {
 		if (build_url==null&&test_pack_url==null)
 			return null;
 		FindBuildTestPackPair pair = new FindBuildTestPackPair();
+		pair.cpu_arch = cpu_arch;
 		pair.build_type = build_type;
 		if (build_url!=null)
 			pair.build = new URL("http://"+snap_url.getHost()+"/"+build_url);
@@ -119,6 +124,7 @@ final class WindowsSnapshotDownloadUtil {
 		
 	static class FindBuildTestPackPair {
 		URL build, test_pack, debug_pack;
+		ECPUArch cpu_arch;
 		EBuildType build_type;
 		EBuildBranch branch;
 	}	
@@ -130,9 +136,10 @@ final class WindowsSnapshotDownloadUtil {
 	 * 
 	 * @param url
 	 * @param build_type
+	 * @param cpu_arch
 	 * @return
 	 */
-	static boolean hasBuildTypeAndTestPack(URL snap_url, EBuildType build_type) {
+	static boolean hasBuildTypeAndTestPack(URL snap_url, EBuildType build_type, ECPUArch cpu_arch) {
 		HtmlCleaner cleaner = new HtmlCleaner();
 		def node = cleaner.clean(snap_url);
 		String xml_str = new SimpleXmlSerializer(cleaner.getProperties()).getXmlAsString(node);
@@ -148,16 +155,17 @@ final class WindowsSnapshotDownloadUtil {
 	 * for example, searching for both TS and NTS builds may return different releases (revision numbers)
 	 * 
 	 * @param build_type
+	 * @param cpu_arch
 	 * @param download_url
 	 * @return
 	 */
-	static FindBuildTestPackPair findNewestPair(EBuildType build_type, URL download_url) {
+	static FindBuildTestPackPair findNewestPair(EBuildType build_type, ECPUArch cpu_arch, URL download_url) {
 		FindBuildTestPackPair pair;
 		
 		// keep searching until specific build type is found. some build types might be missing from a release,
 		// while others are there. also, some releases may just be empty.
 		for ( URL snap_url : getSnapshotURLSNewestFirst(download_url) ) {
-			pair = findPair(build_type, snap_url)
+			pair = findPair(build_type, cpu_arch, snap_url)
 			if (pair != null)
 				return pair;
 		}
@@ -168,17 +176,18 @@ final class WindowsSnapshotDownloadUtil {
 	/** 
 	 * 
 	 * @param build_type
+	 * @param cpu_arch
 	 * @param download_url
 	 * @return
 	 */
-	static FindBuildTestPackPair findPreviousPair(EBuildType build_type, URL download_url) {
+	static FindBuildTestPackPair findPreviousPair(EBuildType build_type, ECPUArch cpu_arch, URL download_url) {
 		FindBuildTestPackPair pair;
 		
 		// keep searching until specific build type is found. some build types might be missing from a release,
 		// while others are there. also, some releases may just be empty.
 		boolean first = true;
 		for ( URL snap_url : getSnapshotURLSNewestFirst(download_url) ) {
-			pair = findPair(build_type, snap_url)
+			pair = findPair(build_type, cpu_arch, snap_url)
 			if (pair != null) {
 				if (first) {
 					first = false; // skip first pair

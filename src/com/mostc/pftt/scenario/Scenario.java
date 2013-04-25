@@ -11,6 +11,7 @@ import org.xmlpull.v1.XmlSerializer;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 
 /** Scenario to test PHP under.
@@ -42,13 +43,18 @@ public abstract class Scenario {
 	 * 
 	 * Ex: this is used to provide Apache debug symbols to WinDebug(on Windows).
 	 * 
+	 * @param cm
 	 * @param host
+	 * @param build
 	 * @param debug_path
 	 */
-	public void addToDebugPath(AHost host, Collection<String> debug_path) {
+	public void addToDebugPath(ConsoleManager cm, AHost host, PhpBuild build, Collection<String> debug_path) {
 		
 	}
 	
+	public boolean setupRequired() {
+		return !isPlaceholder();
+	}
 	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		return true;
 	}
@@ -57,8 +63,29 @@ public abstract class Scenario {
 		FAILED_TO_START,
 		SKIP
 	}
-	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	/** not called if #isPlaceholder is true
+	 * 
+	 * @param cm
+	 * @param host
+	 * @param build
+	 * @param scenario_set
+	 * @param _ini
+	 * @return
+	 */
+	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhpIni _ini) {
 		return EScenarioStartState.STARTED;
+	}
+	/** not called if #isPlaceholder is true
+	 * 
+	 * @param cm
+	 * @param host
+	 * @param build
+	 * @param scenario_set
+	 * @param _ini
+	 * @return
+	 */
+	public boolean stop(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhpIni _ini) {
+		return true;
 	}
 	public abstract String getName();
 	public abstract boolean isImplemented();

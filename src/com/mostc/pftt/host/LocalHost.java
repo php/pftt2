@@ -564,7 +564,7 @@ public class LocalHost extends AHost {
 		
 	} // end public class LocalExecHandle
 	
-	protected static void winKillProcess(String image_name, int process_id) {
+	protected void winKillProcess(String image_name, int process_id) {
 		// third:instead, run TASKKILL and provide it both the process id and image/program name
 		//
 		// image name: ex: `php.exe` 
@@ -573,7 +573,7 @@ public class LocalHost extends AHost {
 		//      process.destory might not do this, so thats why its CRITICAL that TASKKILL
 		//      be tried before process.destroy
 		try {
-			Runtime.getRuntime().exec("TASKKILL /FI \"IMAGENAME eq "+image_name+"\" /FI \"PID eq "+process_id+"\" /F /T");
+			execOut("TASKKILL /FI \"IMAGENAME eq "+image_name+"\" /FI \"PID eq "+process_id+"\" /F /T", AHost.ONE_MINUTE);
 		} catch (Throwable t3) {
 			t3.printStackTrace();
 		}

@@ -1,5 +1,8 @@
 package com.mostc.pftt.model.ui;
 
+import java.util.ArrayList;
+import java.util.Random;
+
 import javax.annotation.Nonnull;
 
 import org.openqa.selenium.By;
@@ -16,6 +19,17 @@ import org.openqa.selenium.support.ui.WebDriverWait;
  */
 
 public interface IUITestDriver {
+	public String randomSentence(int word_count);
+	public String randomSentence(int min_word_count, int max_word_count);
+	/** generates a string of randomly chosen words, primarily for providing unique text for tests
+	 * 
+	 * @param min_word_count - minimum number of words to return
+	 * @param max_word_count - maximum number of words to return
+	 * @param max_char_len - maximum number of characters (including whitespace)
+	 * @return
+	 */
+	public String randomSentence(int min_word_count, int max_word_count, int max_char_len);
+	
 	/** returns the name of the web browser being driven, the version and the OS platform string (Win7sp1x64, Gentoo-x86, etc...)
 	 * 
 	 * @return

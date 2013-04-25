@@ -6,6 +6,7 @@ import java.util.List;
 
 import javax.swing.JFrame;
 
+import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.TestCase;
@@ -121,7 +122,7 @@ public class LocalConsoleManager implements ConsoleManager {
 		case SKIP_OPERATION: 
 		case CANT_CONTINUE:
 		case OPERATION_FAILED_CONTINUING:
-			System.err.println(type+": "+ctx_str+": "+string);
+			doPrintMultiline(type+": "+ctx_str+": ", string);
 			break;
 		case WARNING:
 		case CLUE:
@@ -131,15 +132,19 @@ public class LocalConsoleManager implements ConsoleManager {
 				if (last_str!=null && last_str.equals(string))
 					break;
 			}
-			System.out.println(type+": "+ctx_str+": "+string);
+			doPrintMultiline(type+": "+ctx_str+": ", string);
 			last_clue_msg = new WeakReference<String>(string);
 			break;
 		case TIP:
-			System.out.println("PFTT: "+string);
+			doPrintMultiline("PFTT: ", string);
 			break;
 		default:
-			System.out.println("PFTT: "+ctx_str+": "+string);
+			doPrintMultiline("PFTT: "+ctx_str+": ", string);
 		}
+	}
+	protected void doPrintMultiline(String pre, String str) {
+		for ( String line : StringUtil.splitLines(str))
+			System.out.println(pre+line);
 	}
 	@Override
 	public void println(EPrintType type, Class<?> clazz, String string) {
@@ -190,6 +195,7 @@ public class LocalConsoleManager implements ConsoleManager {
 				w.global_exception_writer.println(ctx_str);
 				w.global_exception_writer.println(msg==null?"":msg);
 				w.global_exception_writer.print(ex_str);
+				w.global_exception_writer.flush(); // critical
 			}
 		}
 	}

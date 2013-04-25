@@ -1,18 +1,19 @@
 package com.mostc.pftt.model.ui;
 
-import java.awt.Graphics;
-import java.awt.Image;
+import groovy.lang.Closure;
+
 import java.awt.Toolkit;
-import java.awt.image.BufferedImage;
-import java.awt.image.RenderedImage;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStreamReader;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.annotation.Nonnull;
@@ -35,30 +36,51 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import com.github.mattficken.io.StringUtil;
 import com.google.common.base.Predicate;
 import com.mostc.pftt.host.AHost;
-import com.mostc.pftt.host.LocalHost;
-import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.main.PfttMain;
 import com.mostc.pftt.model.sapi.WebServerInstance;
-import com.mostc.pftt.results.LocalConsoleManager;
+import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.results.PhpResultPackWriter;
+import com.mostc.pftt.scenario.EnchantScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.ErrorUtil;
 import com.mostc.pftt.util.StringUtil2;
 
-/**
+/** Runs a UI test-pack
+ * 
+ * PFTT UI Testing Advantages:
+ * 1. dependency support
+ *        
+ * 2. atomic, specific tests
+ *        -instead of large 100 line tests that test lots of things
+ *        -we can easily communicate/know what functionality is broken
+ *        
+ * 3. cleanup support for tests 
+ *        so 1 failed test doesn't cause others to fail that would otherwise pass
+ *        
+ * 4. detects warning messages - often applications will print lots of these with new PHP versions
+ *        this is one of the main things we're interested in finding
+ *        
+ * 1,2,3,4 are essential to having reliable automated FULLY UNATTENDED testing of web applications
+ *     -selenium/webdriver based tests for the few apps that have them are typically just run by 1 or 2 guys manually/semi-automatically
+ *     -our experience has shown this is a REAL, BIG problem for fully unattended testing of web application UIs
+ *          -failures, failing to logout, not cleaning up, not deleting users, etc... in one test-set breaks other tests
+ *               -need to cleanup or at least skip
+ *               -need API to make it possible & convenient to actually do that        
+ * 
+ * 5. test application running on multiple OS/versions AND multiple ScenarioSets
+ *      -increases the value of running the tests
+ *      -web apps, when they are testd, are usually only tested on 1 linux distro, thats it
+ *      -we can assume that the app works under some or the most common ScenarioSets
+ *      -we want to find the ScenarioSets where it fails  
+ *    
+ * 6. record copy of web page(s) that don't pass a test - makes it easy to see why
+ * 7. user account support - run same tests under different user accounts (typically 
+ *    admin/privileged user, regular user and anonymous)
+ * 8. automatically waits for elements, etc... of web pages to become available
+ * 9. debug/devel support for test pack - develop large test-packs in less time (test more with less)
  * 
  * @author Matt Ficken
- * 
- * Advantages:
- * 1. detects warning messages - often applications will print lots of these with
- *    new PHP versions - its useful to quickly detect them
- * 2. record copy of web page(s) that don't pass a test - makes it easy to see why
- * 3. user account support - run same tests under different user accounts (typically 
- *    admin/privileged user, regular user and anonymous)
- * 4. dependency support for tests
- * 5. cleanup support for tests
- * 6. automatically waits for elements, etc... of web pages to become available
- * 7. debug/devel support for test pack - develop large test-packs in less time (test more with less)
- * 8. test application running on multiple OS/versions (hosts)
  *
  */
 
@@ -66,17 +88,21 @@ public class UITestRunner implements IUITestBranch {
 	protected WebDriver driver;
 	protected EasyUITestDriver sdriver;
 	protected UITestBranch root;
+	protected final ConsoleManager cm;
 	protected final AHost this_host;
 	protected final ScenarioSet this_scenario_set;
 	protected final PhpResultPackWriter tmgr;
 	protected final UITestPack test_pack;
 	protected final String base_url;
 	protected final WebServerInstance web_server;
+	protected Dimension screen_size;
 	protected @Nonnull final EUITestExecutionStyle exec_style;
 	protected boolean exit;
+	protected final boolean do_devel;
 	protected final List<String> completed_test_names, only_run_test_names;
 	
-	public UITestRunner(List<String> only_run_test_names, EUITestExecutionStyle exec_style, WebServerInstance web_server, String base_url, AHost this_host, ScenarioSet this_scenario_set, PhpResultPackWriter tmgr, UITestPack test_pack) {
+	public UITestRunner(ConsoleManager cm, List<String> only_run_test_names, EUITestExecutionStyle exec_style, WebServerInstance web_server, String base_url, AHost this_host, ScenarioSet this_scenario_set, PhpResultPackWriter tmgr, UITestPack test_pack) {
+		this.cm = cm;
 		this.exec_style = exec_style==null?EUITestExecutionStyle.NORMAL:exec_style;
 		this.web_server = web_server;
 		this.this_host = this_host;
@@ -84,51 +110,56 @@ public class UITestRunner implements IUITestBranch {
 		this.tmgr = tmgr;
 		this.test_pack = test_pack;
 		
+		do_devel = exec_style==EUITestExecutionStyle.INTERACTIVE||(exec_style!=EUITestExecutionStyle.UNATTENDED&&test_pack.isDevelopment());
+		
 		completed_test_names = new ArrayList<String>(400);
 		this.only_run_test_names = only_run_test_names;
 		
 		this.base_url = StringUtil2.ensureHttp(base_url);
 	}
 	
-	public static void main(String[] args) throws Exception {
-		new Thread() {
-			public void run() {
-				try {
-					WordpressTestPack test_pack = new WordpressTestPack();
-					
-					LocalConsoleManager cm = new LocalConsoleManager();
-					PhpBuild build = new PhpBuild("c:/php-sdk/php-5.5-ts-windows-vc11-x86-ree0df8c");
-					LocalHost host = new LocalHost();
-					build.open(cm, host);
-					PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, new File("c:/php-sdk"), build);
-					// TODO store UITestPack#getComments in result-pack
-				//UITestRunner test = new UITestRunner(null, EUITestExecutionStyle.FAIL_TO_NOT_IMPLEMENTED_UNATTENDED, null, "http://10.200.51.109//", host, ScenarioSet.getDefaultScenarioSets().get(0), tmgr, test_pack);
-					UITestRunner test = new UITestRunner(null, EUITestExecutionStyle.FAIL_TO_NOT_IMPLEMENTED_INTERACTIVE, null, "http://localhost/", host, ScenarioSet.getDefaultScenarioSets().get(0), tmgr, test_pack);
-				test.setUp();
-				// TODO new MediaWikiUITestPack().run(test);
-				test_pack.start(test);
-				test.tearDown();
-				
-				tmgr.close();
-				System.exit(0);
-				} catch ( Exception ex ) {
-					ex.printStackTrace();
-				}
-			}
-		}.start();
-		/*new Thread() {
-			public void run() {
-				try {
-				UITestRunner test = new UITestRunner();
-				test.setUp();
-				new MediaWikiUITestPack().run(test);
-				test.tearDown();
-				} catch ( Exception ex ) {
-					ex.printStackTrace();
-				}
-			}
-		}.start();*/
+	public String randomSentence(int word_count) {
+		return randomSentence(1, word_count);
 	}
+	
+	public String randomSentence(int min_word_count, int max_word_count) {
+		return randomSentence(min_word_count, max_word_count, max_word_count * 5);
+	}	
+	
+	private ArrayList<String> rand_words;
+	private Random rand = new Random();
+	public String randomSentence(int min_word_count, int max_word_count, int max_char_len) {
+		if (rand_words==null) {
+			rand_words = new ArrayList<String>(62120);
+			// use the MySpell dictionary already included for the EnchantScenario
+			try {
+				PfttMain.readStringListFromFile(rand_words, EnchantScenario.getDictionaryFile(this_host));
+			} catch ( Exception ex ) {
+				ex.printStackTrace();
+			}
+		} else if (rand_words.isEmpty()) {
+			return StringUtil.randomLettersStr(min_word_count, max_char_len);
+		}
+		
+		// choose number of words
+		int cap = rand.nextInt(max_word_count-min_word_count)+min_word_count;
+		StringBuilder words_str = new StringBuilder(max_char_len);
+		// pick words at random until full
+		String word; int j;
+		for ( int i=0 ; i < cap ; i++ ) {
+			if (i>0)
+				words_str.append(' ');
+			
+			// MySpell's format is <word>/<tag> for each line
+			word = rand_words.get(rand.nextInt(rand_words.size()));
+			j = word.indexOf('/');
+			if (j!=-1) // remove /<tag> to get the word
+				word = word.substring(0, j);
+			
+			words_str.append(word);
+		}
+		return StringUtil.max(words_str.toString(), max_char_len);
+	} // end public String randomSentence
 	
 	protected String createUniqueTestName(String test_name) {
 		if (completed_test_names.contains(test_name)) {
@@ -143,6 +174,12 @@ public class UITestRunner implements IUITestBranch {
 		}
 		completed_test_names.add(test_name);
 		return test_name;
+	}
+	
+	public void start() {
+		test_pack.test(this);
+		
+		test_pack.cleanup(this, exit);
 	}
 
 	public void setUp() throws Exception {
@@ -160,7 +197,7 @@ public class UITestRunner implements IUITestBranch {
 		
 		// make the window fill the screen (? what about multi-monitor screens?)
 		java.awt.Dimension screen_size = Toolkit.getDefaultToolkit().getScreenSize();
-		driver.manage().window().setSize(new Dimension(screen_size.width, screen_size.height));
+		driver.manage().window().setSize(this.screen_size = new Dimension(screen_size.width, screen_size.height));
 		
 		sdriver = new EasyUITestDriver(base_url, driver);
 		root = new UITestBranch(this, null, null);
@@ -171,8 +208,7 @@ public class UITestRunner implements IUITestBranch {
 		sdriver.driver().quit();
 	}
 
-	public void tearDown() throws Exception {
-		Thread.sleep(2000);
+	public void tearDown() {
 		driver.quit();
 	}
 	
@@ -205,32 +241,142 @@ public class UITestRunner implements IUITestBranch {
 			return user_account;
 		}
 		
-		protected IUITestBranch do_test(boolean xfail, UIAccount user_account, String comment, Class<UITest>[] clazzes, Class<UITest> cleanup_clazz) {
+		protected IUITestBranch doTest(boolean xfail, UIAccount account, String comment, Class<?> test, Object g, Object cleanup_test) {
+			IUITestBranch branch = doTest(xfail, account, comment, new Class<?>[]{test}, null);
+			((Closure<?>)g).call(branch);
+			if (cleanup_test!=null)
+				((Closure<?>)cleanup_test).call(branch);
+			return branch;
+		}
+		
+		protected IUITestBranch doTest(boolean xfail, UIAccount account, String comment, UITest test, Object g, Object cleanup_test) {
+			IUITestBranch branch = doTest(xfail, account, comment, new UITest[]{test}, null);
+			((Closure<?>)g).call(branch);
+			if (cleanup_test!=null)
+				((Closure<?>)cleanup_test).call(branch);
+			return branch;
+		}
+		
+		protected IUITestBranch doTest(boolean xfail, UIAccount user_account, String comment, Class<?>[] clazzes, Class<?> cleanup_clazz) {
 			if (skip_branch||runner.exit)
 				return new DummyUITestRunner(EUITestStatus.SKIP, user_account);
 			ArrayList<UITest> tests = new ArrayList<UITest>(clazzes.length);
-			UITest cleanup_test = null;
-			for ( Class<UITest> clazz : clazzes ) {
-				try {
-					tests.add(clazz.newInstance());
-				} catch ( Exception ex ) {
-					runner.tmgr.addResult(runner.this_host, runner.this_scenario_set, clazz.getSimpleName(), ErrorUtil.toString(ex), EUITestStatus.TEST_EXCEPTION, null, null, runner.test_pack, runner.sdriver.getWebBrowserNameAndVersion(), runner.web_server==null?null:runner.web_server.getSAPIOutput(), runner.web_server==null?null:runner.web_server.getSAPIConfig());
+			UITest cleanup_test = null, test;
+			for ( Class<?> clazz : clazzes ) {
+				test = createTestInstance(clazz);
+				if (test==null)
 					return new DummyUITestRunner(EUITestStatus.TEST_EXCEPTION, user_account);
-				}
+				else
+					tests.add(test);
 			}
 			if (cleanup_clazz!=null) {
-				try {
-					cleanup_test = cleanup_clazz.newInstance();
-				} catch ( Exception ex ) {
-					runner.tmgr.addResult(runner.this_host, runner.this_scenario_set, cleanup_clazz.getSimpleName(), ErrorUtil.toString(ex), EUITestStatus.TEST_EXCEPTION, null, null, runner.test_pack, runner.sdriver.getWebBrowserNameAndVersion(), runner.web_server==null?null:runner.web_server.getSAPIOutput(), runner.web_server==null?null:runner.web_server.getSAPIConfig());
+				cleanup_test = createTestInstance(cleanup_clazz);
+				if (cleanup_test==null)
 					return new DummyUITestRunner(EUITestStatus.TEST_EXCEPTION, user_account);
-				}
 			}
 			
-			return do_test(xfail, user_account, comment, (UITest[])tests.toArray(new UITest[tests.size()]), cleanup_test);
+			return doTest(xfail, user_account, comment, (UITest[])tests.toArray(new UITest[tests.size()]), cleanup_test);
 		} // end protected IUITestBranch do_test
 		
-		protected IUITestBranch do_test(boolean xfail, UIAccount user_account, final String all_comment, UITest[] tests, UITest cleanup_test) {
+		public static String getTestName(Class<?> clazz) {
+			return clazz.getSimpleName();
+		}
+		
+		protected UITest createTestInstance(Class<?> clazz) {
+			// is class not nested or is it a nested class (not inner class)
+			if (clazz.getDeclaringClass()==null||Modifier.isStatic(clazz.getModifiers())) {
+				try {
+					return (UITest) clazz.newInstance();
+				} catch ( Exception ex ) {
+					final String err_msg = "A UITest class must have a constructor that accepts 0 arguments\n" + ErrorUtil.toString(ex);
+					if (runner.do_devel)
+						System.err.println(err_msg);
+					runner.tmgr.addResult(
+							runner.this_host, 
+							runner.this_scenario_set, 
+							getTestName(clazz), 
+							err_msg, 
+							EUITestStatus.TEST_EXCEPTION,
+							null,
+							null,
+							runner.test_pack,
+							runner.sdriver.getWebBrowserNameAndVersion(),
+							runner.web_server==null?null:runner.web_server.getSAPIOutput(), 
+							runner.web_server==null?null:runner.web_server.getSAPIConfig()
+						);
+					return null;
+				}
+			}
+			// special case: inner-class (which are nested classes that aren't static)
+			Constructor<?> con;
+			try {
+				con = clazz.getDeclaredConstructor(new Class[]{clazz.getDeclaringClass()});
+			} catch ( Exception ex ) {
+				final String err_msg = "A UITest may not be contained in a class other than the test-pack class: "+clazz.getDeclaringClass().getSimpleName()+"\n" + ErrorUtil.toString(ex);
+				if (runner.do_devel)
+					System.err.println(err_msg);
+				runner.tmgr.addResult(
+						runner.this_host, 
+						runner.this_scenario_set, 
+						getTestName(clazz), 
+						err_msg,
+						EUITestStatus.TEST_EXCEPTION, 
+						null, null, runner.test_pack, 
+						runner.sdriver.getWebBrowserNameAndVersion(), 
+						runner.web_server==null?null:runner.web_server.getSAPIOutput(), 
+						runner.web_server==null?null:runner.web_server.getSAPIConfig()
+					);
+				return null;
+			}
+			try {
+				return (UITest) con.newInstance(new Object[]{runner.test_pack});
+			} catch ( Exception ex ) {
+				final String err_msg = "A UITest class must have a constructor that accepts 0 arguments\n" + ErrorUtil.toString(ex);
+				if (runner.do_devel)
+					System.err.println(err_msg);
+				runner.tmgr.addResult(
+						runner.this_host, 
+						runner.this_scenario_set, 
+						clazz.getSimpleName(), 
+						err_msg, 
+						EUITestStatus.TEST_EXCEPTION, 
+						null, null, runner.test_pack, 
+						runner.sdriver.getWebBrowserNameAndVersion(), 
+						runner.web_server==null?null:runner.web_server.getSAPIOutput(), 
+						runner.web_server==null?null:runner.web_server.getSAPIConfig()
+					);
+				return null;
+			}
+		} // end protected UITest createTestInstance
+		
+		protected IUITestBranch doTest(boolean xfail, UIAccount user_account, String comment, Object test, Object g, Object cleanup_test) {
+			if (user_account==null)
+				user_account = this.user_account;
+			if (skip_branch||runner.exit)
+				return new DummyUITestRunner(EUITestStatus.SKIP, user_account);
+			((Closure<?>)test).call(this);
+			if (g!=null)
+				((Closure<?>)g).call(this);
+			if (cleanup_test!=null)
+				((Closure<?>)cleanup_test).call(this);
+			return this;
+		}
+		
+		protected IUITestBranch doTest(boolean xfail, UIAccount user_account, String comment, Object test, Object g, UITest cleanup_test) {
+			if (user_account==null)
+				user_account = this.user_account;
+			if (skip_branch||runner.exit)
+				return new DummyUITestRunner(EUITestStatus.SKIP, user_account);
+			((Closure<?>)test).call(this);
+			if (g!=null)
+				((Closure<?>)g).call(this);
+			if (cleanup_test!=null) {
+				doTest(false, user_account, cleanup_test.getComment(), new UITest[]{cleanup_test}, null);
+			}
+			return this;
+		}
+		
+		protected IUITestBranch doTest(boolean xfail, UIAccount user_account, final String all_comment, UITest[] tests, UITest cleanup_test) {
 			if (user_account==null)
 				user_account = this.user_account;
 			if (skip_branch||runner.exit)
@@ -239,7 +385,7 @@ public class UITestRunner implements IUITestBranch {
 				// cleanup from previous test branch
 				final UITest c = this.cleanup_test;
 				this.cleanup_test = null;
-				do_test(false, user_account, c.getComment(), new UITest[]{c}, null);
+				doTest(false, user_account, c.getComment(), new UITest[]{c}, null);
 			}
 			// execute the test(s)
 			String comment;
@@ -247,7 +393,6 @@ public class UITestRunner implements IUITestBranch {
 				test.user_account = user_account;
 				comment = StringUtil.isEmpty(all_comment) ? test.getComment() : all_comment;
 				
-				final boolean do_devel = runner.exec_style==EUITestExecutionStyle.INTERACTIVE||(runner.exec_style!=EUITestExecutionStyle.UNATTENDED&&runner.test_pack.isDevelopment());
 				final String test_name = runner.createUniqueTestName(test.createUniqueTestName(user_account));
 				
 				if (runner.only_run_test_names!=null&&runner.only_run_test_names.contains(test_name)) {
@@ -257,14 +402,11 @@ public class UITestRunner implements IUITestBranch {
 				}
 				
 				//
-				if (test instanceof EasyUITest)
-					((EasyUITest)test).driver = runner.sdriver;
-				
-				if (do_devel) {
+				if (runner.do_devel) {
 					System.out.println("START "+test_name);
 				}
 				
-				EUITestStatus status = do_exec_single_test(do_devel, xfail, test_name, test);
+				EUITestStatus status = doExecSingleTest(xfail, test_name, test);
 				
 				//
 				if (runner.exec_style==EUITestExecutionStyle.UNATTENDED) {
@@ -273,7 +415,7 @@ public class UITestRunner implements IUITestBranch {
 					case FAIL:
 					case FAIL_WITH_WARNING:
 					case CRASH:
-						status = do_exec_single_test(do_devel, xfail, test_name, test);
+						status = doExecSingleTest(xfail, test_name, test);
 						break;
 					default:
 						break;
@@ -295,7 +437,7 @@ public class UITestRunner implements IUITestBranch {
 				
 				// done running test and evaluating status
 				
-				if (do_devel) {
+				if (runner.do_devel) {
 					switch (status) {
 					case FAIL:
 					case FAIL_WITH_WARNING:
@@ -315,13 +457,13 @@ public class UITestRunner implements IUITestBranch {
 						// continue
 					} else if (StringUtil.startsWithIC(line, "s")) {
 						skip_branch = true;
-						do_test(false, user_account, comment, new UITest[]{cleanup_test}, null);
+						doTest(false, user_account, comment, new UITest[]{cleanup_test}, null);
 						return new DummyUITestRunner(EUITestStatus.SKIP, user_account);
 					} else if (StringUtil.startsWithIC(line, "e")||StringUtil.startsWithIC(line, "x")) {
 						runner.exit = true;
 						return new DummyUITestRunner(EUITestStatus.SKIP, user_account);
 					} else if (StringUtil.startsWithIC(line, "r")||StringUtil.startsWithIC(line, "a")) {
-						return do_test(xfail, user_account, comment, tests, cleanup_test);
+						return doTest(xfail, user_account, comment, tests, cleanup_test);
 					}
 					break;
 					default:
@@ -331,43 +473,28 @@ public class UITestRunner implements IUITestBranch {
 				
 				//
 				byte[] screenshot_png = null;
-				if (status != EUITestStatus.NOT_IMPLEMENTED && runner.driver instanceof TakesScreenshot) {
+				if (
+						
+						(
+								// don't save screenshot if we're supposed to ignore pass, skip, xskip
+								// (when doing unattended testing of many ScenarioSets, this avoids generating a bunch of
+								//  extra screenshots we don't need (PASSing tests) making the result-pack needlessly huge)
+								!runner.cm.isNoResultFileForPassSkipXSkip() || 
+								status.isFail()|| 
+								status.isWarning())	&&
+						(
+								status != EUITestStatus.NOT_IMPLEMENTED && 
+								runner.driver instanceof TakesScreenshot
+						)) {
 					// save screenshot (probably PNG)
 					try {
 						TakesScreenshot ts = (TakesScreenshot) runner.driver;
 						screenshot_png = (byte[]) ts.getScreenshotAs(OutputType.BYTES);
 						
-						/* TODO y+height too large for #getScale 
-						 * 
-						 * if (screenshot_png!=null && screenshot_png.length > 20*1024) {
-							BufferedImage image = ImageIO.read(new ByteArrayInputStream(screenshot_png));
-							
-							// 
-							Image scaled_img;
-							Point p = runner.sdriver.getLastElementLocationOnPage();
-							if (p==null) {
-								if (image.getWidth() > 1600 || image.getHeight() > 2*1024 ) {
-									// don't let image get too big
-									image.getSubimage(0, 0, 1280, 1024);
-								}
-							} else {
-								// auto-focus on last element
-								image.getSubimage(p.x, p.y, image.getWidth()-p.x, image.getHeight()-p.y);
-							}
-							// scale image
-							scaled_img = image.getScaledInstance(
-									640, 
-									(int)( image.getHeight() * ( 640.0f / ((float)image.getWidth()) ) ),
-									BufferedImage.SCALE_SMOOTH
-								);
-							//
-							
-							ByteArrayOutputStream png_out = new ByteArrayOutputStream(100*1024);
-							
-							ImageIO.write(ensureRenderedImage(scaled_img), "PNG", png_out);
-							
-							screenshot_png = png_out.toByteArray();
-						}*/
+						if (screenshot_png!=null) {
+							// if there is an exception here, ignore it and use the full size screenshot (as fallback)
+							screenshot_png = test.getScaledScreenshotPNG(screenshot_png, runner.sdriver.getLastElementLocationOnPage(), runner.screen_size);
+						}
 					} catch ( Throwable t ) {
 						t.printStackTrace();
 					}
@@ -401,7 +528,7 @@ public class UITestRunner implements IUITestBranch {
 			}
 		} // end protected IUITestRunner do_test
 		
-		protected EUITestStatus do_exec_single_test(boolean do_devel, boolean xfail, String test_name, UITest test) {
+		protected EUITestStatus doExecSingleTest(boolean xfail, String test_name, UITest test) {
 			EUITestStatus status;
 			try {
 				if (test.start(runner.sdriver)) {
@@ -410,15 +537,15 @@ public class UITestRunner implements IUITestBranch {
 				} else {
 					status = EUITestStatus.TEST_EXCEPTION;
 					
-					if (do_devel)
+					if (runner.do_devel)
 						System.err.println("CANT_START "+test_name);
 				}
 			} catch ( org.openqa.selenium.TimeoutException ex ) {
-				if (do_devel)
+				if (runner.do_devel)
 					ex.printStackTrace();
 				status = EUITestStatus.FAIL;
 			} catch ( Throwable ex ) {
-				if (do_devel)
+				if (runner.do_devel)
 					ex.printStackTrace();
 				status = EUITestStatus.TEST_EXCEPTION;
 				runner.tmgr.addResult(runner.this_host, runner.this_scenario_set, test_name, ErrorUtil.toString(ex), EUITestStatus.TEST_EXCEPTION, null, null, runner.test_pack, runner.sdriver.getWebBrowserNameAndVersion(), runner.web_server==null?null:runner.web_server.getSAPIOutput(), runner.web_server==null?null:runner.web_server.getSAPIConfig());
@@ -432,12 +559,12 @@ public class UITestRunner implements IUITestBranch {
 			// check for warnings or errors
 			switch(status) {
 			case PASS:
-				if (runner.driver.getPageSource().contains("PHP Warning")||runner.driver.getPageSource().contains("PHP Error"))
+				if (hasPHPWarningOrError(runner.driver.getPageSource()))
 					status = EUITestStatus.PASS_WITH_WARNING;
 				break;
 			case FAIL:
 			case XFAIL:
-				if (runner.driver.getPageSource().contains("PHP Warning")||runner.driver.getPageSource().contains("PHP Error"))
+				if (hasPHPWarningOrError(runner.driver.getPageSource()))
 					status = EUITestStatus.FAIL_WITH_WARNING;
 				break;
 			default:
@@ -451,16 +578,6 @@ public class UITestRunner implements IUITestBranch {
 			return status;
 		} // end protected EUITestStatus do_exec_single_test
 		
-		protected static RenderedImage ensureRenderedImage(Image img) {
-			if (img instanceof RenderedImage)
-				return (RenderedImage) img;
-			BufferedImage rimg = new BufferedImage(img.getWidth(null), img.getHeight(null), BufferedImage.TYPE_3BYTE_BGR);
-			Graphics g = rimg.getGraphics();
-			g.drawImage(img, 0, 0, null);
-			g.dispose();
-			return rimg;
-		}
-		
 		/* -- begin IUITestBranch impl -- */
 		@Override
 		public IUITestBranch test(UITest... tests) {
@@ -468,32 +585,31 @@ public class UITestRunner implements IUITestBranch {
 		}
 		@Override
 		public IUITestBranch test(String comment, UITest... tests) {
-			return do_test(false, null, comment, tests, null);
+			return doTest(false, null, comment, tests, null);
 		}
 		@Override
 		public IUITestBranch test(UIAccount account, UITest test, UITest cleanup_test) {
-			return test(account, null, test, cleanup_test);
+			return test(account, (String)null, test, cleanup_test);
 		}
 		@Override
 		public IUITestBranch test(UIAccount account, String comment, UITest test, UITest cleanup_test) {
-			return do_test(false, account, comment, new UITest[]{test}, cleanup_test);
+			return doTest(false, account, comment, new UITest[]{test}, cleanup_test);
 		}
 		@Override
-		public IUITestBranch test(Class<UITest>... tests) {
+		public IUITestBranch test(Class<?>... tests) {
 			return test(null, tests);
 		}
 		@Override
-		public IUITestBranch test(String comment, Class<UITest>... tests) {
-			return do_test(false, null, comment, tests, null);
+		public IUITestBranch test(String comment, Class<?>... tests) {
+			return doTest(false, null, comment, tests, null);
 		}
 		@Override
-		public IUITestBranch test(UIAccount account, Class<UITest> test, Class<UITest> cleanup_test) {
-			return test(account, null, test, cleanup_test);
+		public IUITestBranch test(UIAccount account, Class<?> test, Class<?> cleanup_test) {
+			return test(account, (String)null, test, cleanup_test);
 		}
-		@SuppressWarnings("unchecked")
 		@Override
-		public IUITestBranch test(UIAccount account, String comment, Class<UITest> test, Class<UITest> cleanup_test) {
-			return do_test(false, account, comment, new Class[]{test}, cleanup_test);
+		public IUITestBranch test(UIAccount account, String comment, Class<?> test, Class<?> cleanup_test) {
+			return doTest(false, account, comment, new Class[]{test}, cleanup_test);
 		}
 		@Override
 		public IUITestBranch testXFail(UITest... tests) {
@@ -501,32 +617,31 @@ public class UITestRunner implements IUITestBranch {
 		}
 		@Override
 		public IUITestBranch testXFail(String comment, UITest... tests) {
-			return do_test(true, null, comment, tests, null);
+			return doTest(true, null, comment, tests, null);
 		}
 		@Override
 		public IUITestBranch testXFail(UIAccount account, UITest test, UITest cleanup_test) {
-			return testXFail(account, null, test, cleanup_test);
+			return testXFail(account, (String)null, test, cleanup_test);
 		}
 		@Override
 		public IUITestBranch testXFail(UIAccount account, String comment, UITest test, UITest cleanup_test) {
-			return do_test(true, account, comment, new UITest[]{test}, cleanup_test);
+			return doTest(true, account, comment, new UITest[]{test}, cleanup_test);
 		}
 		@Override
-		public IUITestBranch testXFail(Class<UITest>... tests) {
+		public IUITestBranch testXFail(Class<?>... tests) {
 			return testXFail(null, tests);
 		}
 		@Override
-		public IUITestBranch testXFail(String comment, Class<UITest>... tests) {
-			return do_test(true, null, comment, tests, null);
+		public IUITestBranch testXFail(String comment, Class<?>... tests) {
+			return doTest(true, null, comment, tests, null);
 		}
 		@Override
-		public IUITestBranch testXFail(UIAccount account, Class<UITest> test, Class<UITest> cleanup_test) {
-			return testXFail(account, null, test, cleanup_test);
+		public IUITestBranch testXFail(UIAccount account, Class<?> test, Class<?> cleanup_test) {
+			return testXFail(account, (String)null, test, cleanup_test);
 		}
-		@SuppressWarnings("unchecked")
 		@Override
-		public IUITestBranch testXFail(UIAccount account, String comment, Class<UITest> test, Class<UITest> cleanup_test) {
-			return do_test(true, account, comment, new Class[]{test}, cleanup_test);
+		public IUITestBranch testXFail(UIAccount account, String comment, Class<?> test, Class<?> cleanup_test) {
+			return doTest(true, account, comment, new Class[]{test}, cleanup_test);
 		}
 		@Override
 		public void testException(String test_name, String msg) {
@@ -534,6 +649,7 @@ public class UITestRunner implements IUITestBranch {
 		}
 		/* -- end IUITestBranch impl -- */
 		
+		protected static final String SKIP_TEST_MSG = "Test skipped";
 		protected class DummyUITestRunner implements IUITestBranch {
 			protected final EUITestStatus status;
 			protected final UIAccount user_account;
@@ -542,70 +658,100 @@ public class UITestRunner implements IUITestBranch {
 				this.status = status;
 				this.user_account = user_account;
 			}
+			
+			protected IUITestBranch skip(UIAccount account, String comment, UITest... tests) {
+				if (skip_branch||runner.exit)
+					return this;
+				String test_name;
+				for ( UITest test : tests ) {
+					test_name = test.createUniqueTestName(account);
+					
+					runner.tmgr.addResult(runner.this_host, runner.this_scenario_set, test_name, SKIP_TEST_MSG, EUITestStatus.SKIP, null, null, runner.test_pack, runner.sdriver.getWebBrowserNameAndVersion(), runner.web_server==null?null:runner.web_server.getSAPIOutput(), runner.web_server==null?null:runner.web_server.getSAPIConfig());
+				}
+				return this;
+			}
+			
+			protected IUITestBranch skip(UIAccount account, String comment, Class<?>... tests) {
+				if (skip_branch||runner.exit)
+					return this;
+				for ( Class<?> test : tests )
+					runner.tmgr.addResult(runner.this_host, runner.this_scenario_set, getTestName(test), SKIP_TEST_MSG, EUITestStatus.SKIP, null, null, runner.test_pack, runner.sdriver.getWebBrowserNameAndVersion(), runner.web_server==null?null:runner.web_server.getSAPIOutput(), runner.web_server==null?null:runner.web_server.getSAPIConfig());
+				return this;
+			}
+			
+			protected IUITestBranch skip(UIAccount account, String comment, Object test) {
+				if (skip_branch||runner.exit)
+					return this;
+				
+				// execute the Closure on this, so all the test calls will still be made, to this branch, so they'll be recorded (as SKIPs)
+				((Closure<?>)test).call(this);
+				
+				return this;
+			}
 
 			@Override
 			public IUITestBranch test(UITest... tests) {
-				return this;
+				return test(null, tests);
 			}
 			@Override
 			public IUITestBranch test(String comment, UITest... tests) {
-				return this;
+				return skip(null, comment, tests);
 			}
 			@Override
 			public IUITestBranch test(UIAccount account, UITest test, UITest cleanup_test) {
-				return this;
+				return test(account, (String)null, test, cleanup_test);
 			}
 			@Override
 			public IUITestBranch test(UIAccount account, String comment, UITest test, UITest cleanup_test) {
-				return this;
+				return skip(account, comment, test);
 			}
 			@Override
-			public IUITestBranch test(Class<UITest>... tests) {
-				return this;
+			public IUITestBranch test(Class<?>... tests) {
+				return test(null, tests);
 			}
 			@Override
-			public IUITestBranch test(String comment, Class<UITest>... tests) {
-				return this;
+			public IUITestBranch test(String comment, Class<?>... tests) {
+				return skip(null, comment, tests);
 			}
 			@Override
-			public IUITestBranch test(UIAccount account, Class<UITest> test, Class<UITest> cleanup_test) {
-				return this;
+			public IUITestBranch test(UIAccount account, Class<?> test, Class<?> cleanup_test) {
+				return test(account, (String)null, test, cleanup_test);
 			}
 			@Override
-			public IUITestBranch test(UIAccount account, String comment, Class<UITest> test, Class<UITest> cleanup_test) {
-				return this;
+			public IUITestBranch test(UIAccount account, String comment, Class<?> test, Class<?> cleanup_test) {
+				return skip(account, comment, test);
 			}
 			@Override
 			public IUITestBranch testXFail(UITest... tests) {
-				return this;
+				return testXFail(null, tests);
 			}
 			@Override
 			public IUITestBranch testXFail(String comment, UITest... tests) {
-				return this;
+				return skip(null, comment, tests);
 			}
 			@Override
 			public IUITestBranch testXFail(UIAccount account, UITest test, UITest cleanup_test) {
-				return this;
+				return testXFail(account, (String)null, test, cleanup_test);
 			}
 			@Override
 			public IUITestBranch testXFail(UIAccount account, String comment, UITest test, UITest cleanup_test) {
-				return this;
+				return skip(account, comment, test);
 			}
 			@Override
-			public IUITestBranch testXFail(Class<UITest>... tests) {
-				return this;
+			public IUITestBranch testXFail(Class<?>... tests) {
+				return testXFail(null, tests);
 			}
 			@Override
-			public IUITestBranch testXFail(String comment, Class<UITest>... tests) {
-				return this;
+			public IUITestBranch testXFail(String comment, Class<?>... tests) {
+				return skip(null, comment, tests);
 			}
 			@Override
-			public IUITestBranch testXFail(UIAccount account, Class<UITest> test, Class<UITest> cleanup_test) {
-				return this;
+			public IUITestBranch testXFail(UIAccount account, Class<?> test, Class<?> cleanup_test) {
+				return testXFail(account, (String)null, test, cleanup_test);
 			}
 			@Override
-			public IUITestBranch testXFail(UIAccount account, String comment, Class<UITest> test, Class<UITest> cleanup_test) {
-				return this;
+			public IUITestBranch testXFail(UIAccount account, String comment, Class<?> test, Class<?> cleanup_test) {
+				return skip(account, comment, test);
 			}
 			@Override
 			public EUITestStatus getStatus() {
@@ -624,56 +770,321 @@ public class UITestRunner implements IUITestBranch {
 			public void testException(String test_name, String msg) {
 				UITestBranch.this.testException(test_name, msg);
 			}
-
 			@Override
 			public IUITestBranch test() {
 				return this;
 			}
-
 			@Override
 			public IUITestBranch test(String comment) {
 				return this;
 			}
-
 			@Override
 			public IUITestBranch testXFail() {
 				return this;
 			}
-
 			@Override
 			public IUITestBranch testXFail(String comment) {
 				return this;
 			}
-
+			@Override
+			public IUITestBranch test(Object g) {
+				return test(null, g);
+			}
+			@Override
+			public IUITestBranch test(String comment, Object g) {
+				return test(null, comment, g, (Object)null, (Object)null);
+			}
+			@Override
+			public IUITestBranch test(UIAccount account, UITest test, Object g, Object cleanup_test) {
+				return test(account, null, test, g, cleanup_test);
+			}
+			@Override
+			public IUITestBranch test(UIAccount account, Object test, Object g, Object cleanup_test) {
+				return test(account, null, test, g, cleanup_test);
+			}
+			@Override
+			public IUITestBranch test(UIAccount account, Object test, Object g, UITest cleanup_test) {
+				return test(account, null, test, g, cleanup_test);
+			}
+			@Override
+			public IUITestBranch test(UIAccount account, UITest test, Object cleanup_test) {
+				return test(account, (String)null, test, cleanup_test);
+			}
+			@Override
+			public IUITestBranch test(UIAccount account, Object test, Object cleanup_test) {
+				return test(account, (String)null, test, cleanup_test);
+			}
+			@Override
+			public IUITestBranch test(UIAccount account, Object test, UITest cleanup_test) {
+				return test(account, (String)null, test, null, cleanup_test);
+			}
+			@Override
+			public IUITestBranch testXFail(UIAccount account, UITest test, Object g, Object cleanup_test) {
+				return testXFail(account, (String)null, test, g, cleanup_test);
+			}
+			@Override
+			public IUITestBranch testXFail(UIAccount account, Object test, Object g, Object cleanup_test) {
+				return testXFail(account, (String)null, test, g, cleanup_test);
+			}
+			@Override
+			public IUITestBranch testXFail(UIAccount account, Object test, Object g, UITest cleanup_test) {
+				return testXFail(account, (String)null, test, g, cleanup_test);
+			}
+			@Override
+			public IUITestBranch testXFail(UIAccount account, UITest test, Object cleanup_test) {
+				return testXFail(account, (String)null, test, cleanup_test);
+			}
+			@Override
+			public IUITestBranch testXFail(UIAccount account, Object test, Object cleanup_test) {
+				return testXFail(account, (String)null, test, cleanup_test);
+			}
+			@Override
+			public IUITestBranch testXFail(UIAccount account, Object test, UITest cleanup_test) {
+				return testXFail(account, (String)null, test, cleanup_test);
+			}
+			@Override
+			public IUITestBranch test(UIAccount account, String comment, UITest test, Object cleanup_test) {
+				return test(account, comment, test, null, cleanup_test);
+			}
+			@Override
+			public IUITestBranch test(UIAccount account, String comment, Object test, Object cleanup_test) {
+				return test(account, comment, test, null, cleanup_test);
+			}
+			@Override
+			public IUITestBranch test(UIAccount account, String comment, Object test, UITest cleanup_test) {
+				return test(account, comment, test, null, cleanup_test);
+			}
+			@Override
+			public IUITestBranch testXFail(UIAccount account, String comment, UITest test, Object cleanup_test) {
+				return testXFail(account, comment, test, null, cleanup_test);
+			}
+			@Override
+			public IUITestBranch testXFail(UIAccount account, String comment, Object test, Object cleanup_test) {
+				return testXFail(account, comment, test, null, cleanup_test);
+			}
+			@Override
+			public IUITestBranch testXFail(UIAccount account, String comment, Object test, UITest cleanup_test) {
+				return testXFail(account, comment, test, null, cleanup_test);
+			}
+			@Override
+			public IUITestBranch test(UIAccount account, String comment, UITest test, Object g, Object cleanup_test) {
+				return skip(account, comment, test);
+			}
+			@Override
+			public IUITestBranch test(UIAccount account, String comment, Object test, Object g, Object cleanup_test) {
+				return skip(account, comment, test);
+			}
+			@Override
+			public IUITestBranch test(UIAccount account, String comment, Object test, Object g, UITest cleanup_test) {
+				return skip(account, comment, test);
+			}
+			@Override
+			public IUITestBranch testXFail(UIAccount account, String comment, UITest test, Object g, Object cleanup_test) {
+				return skip(account, comment, test);
+			}
+			@Override
+			public IUITestBranch testXFail(UIAccount account, String comment, Object test, Object g, Object cleanup_test) {
+				return skip(account, comment, test);
+			}
+			@Override
+			public IUITestBranch testXFail(UIAccount account, String comment, Object test, Object g, UITest cleanup_test) {
+				return skip(account, comment, test);
+			}
+			@Override
+			public IUITestBranch test(UIAccount account, Class<?> test, Object g, Object cleanup_test) {
+				return test(account, null, test, g, cleanup_test);
+			}
+			@Override
+			public IUITestBranch test(UIAccount account, Class<?> test, Object cleanup_test) {
+				return test(account, (String)null, test, cleanup_test);
+			}
+			@Override
+			public IUITestBranch testXFail(UIAccount account, Class<?> test, Object g, Object cleanup_test) {
+				return testXFail(account, null, test, g, cleanup_test);
+			}
+			@Override
+			public IUITestBranch testXFail(UIAccount account, Class<?> test, Object cleanup_test) {
+				return testXFail(account, (String)null, test, cleanup_test);
+			}
+			@Override
+			public IUITestBranch test(UIAccount account, String comment, Class<?> test, Object g, Object cleanup_test) {
+				return skip(account, comment, test);	
+			}
+			@Override
+			public IUITestBranch test(UIAccount account, String comment, Class<?> test, Object cleanup_test) {
+				return skip(account, comment, test);
+			}
+			@Override
+			public IUITestBranch testXFail(UIAccount account, String comment, Class<?> test, Object g, Object cleanup_test) {
+				return skip(account, comment, test);
+			}
+			@Override
+			public IUITestBranch testXFail(UIAccount account, String comment, Class<?> test, Object cleanup_test) {
+				return skip(account, comment, test);
+			}
 			@Override
 			public EUITestExecutionStyle getExecutionStyle() {
-				return runner.exec_style;
+				return runner.getExecutionStyle();
 			}
+			
 		} // end protected class DummyUITestRunner
-
+		
+		@Override
+		public IUITestBranch test(Object g) {
+			return test(null, g);
+		}
+		@Override
+		public IUITestBranch test(String comment, Object g) {
+			return test(null, comment, g, (Object)null, (Object)null);
+		}
+		@Override
+		public IUITestBranch test(UIAccount account, UITest test, Object g, Object cleanup_test) {
+			return test(account, null, test, g, cleanup_test);
+		}
+		@Override
+		public IUITestBranch test(UIAccount account, Object test, Object g, Object cleanup_test) {
+			return test(account, null, test, g, cleanup_test);
+		}
+		@Override
+		public IUITestBranch test(UIAccount account, Object test, Object g, UITest cleanup_test) {
+			return test(account, null, test, g, cleanup_test);
+		}
+		@Override
+		public IUITestBranch test(UIAccount account, UITest test, Object cleanup_test) {
+			return test(account, (String)null, test, cleanup_test);
+		}
+		@Override
+		public IUITestBranch test(UIAccount account, Object test, Object cleanup_test) {
+			return test(account, (String)null, test, cleanup_test);
+		}
+		@Override
+		public IUITestBranch test(UIAccount account, Object test, UITest cleanup_test) {
+			return test(account, (String)null, test, null, cleanup_test);
+		}
+		@Override
+		public IUITestBranch testXFail(UIAccount account, UITest test, Object g, Object cleanup_test) {
+			return testXFail(account, (String)null, test, g, cleanup_test);
+		}
+		@Override
+		public IUITestBranch testXFail(UIAccount account, Object test, Object g, Object cleanup_test) {
+			return testXFail(account, (String)null, test, g, cleanup_test);
+		}
+		@Override
+		public IUITestBranch testXFail(UIAccount account, Object test, Object g, UITest cleanup_test) {
+			return testXFail(account, (String)null, test, g, cleanup_test);
+		}
+		@Override
+		public IUITestBranch testXFail(UIAccount account, UITest test, Object cleanup_test) {
+			return testXFail(account, (String)null, test, cleanup_test);
+		}
+		@Override
+		public IUITestBranch testXFail(UIAccount account, Object test, Object cleanup_test) {
+			return testXFail(account, (String)null, test, cleanup_test);
+		}
+		@Override
+		public IUITestBranch testXFail(UIAccount account, Object test, UITest cleanup_test) {
+			return testXFail(account, (String)null, test, cleanup_test);
+		}
+		@Override
+		public IUITestBranch test(UIAccount account, String comment, UITest test, Object g, Object cleanup_test) {
+			return doTest(false, account, comment, test, g, cleanup_test);
+		}
+		@Override
+		public IUITestBranch test(UIAccount account, String comment, Object test, Object g, Object cleanup_test) {
+			return doTest(false, account, comment, test, g, cleanup_test);
+		}
+		@Override
+		public IUITestBranch test(UIAccount account, String comment, Object test, Object g, UITest cleanup_test) {
+			return doTest(false, account, comment, test, g, cleanup_test);
+		}
+		@Override
+		public IUITestBranch test(UIAccount account, String comment, UITest test, Object cleanup_test) {
+			return test(account, comment, test, null, cleanup_test);
+		}
+		@Override
+		public IUITestBranch test(UIAccount account, String comment, Object test, Object cleanup_test) {
+			return test(account, comment, test, null, cleanup_test);
+		}
+		@Override
+		public IUITestBranch test(UIAccount account, String comment, Object test, UITest cleanup_test) {
+			return test(account, comment, test, null, cleanup_test);
+		}
+		@Override
+		public IUITestBranch testXFail(UIAccount account, String comment, UITest test, Object g, Object cleanup_test) {
+			return doTest(true, account, comment, test, g, cleanup_test);
+		}
+		@Override
+		public IUITestBranch testXFail(UIAccount account, String comment, Object test, Object g, Object cleanup_test) {
+			return doTest(true, account, comment, test, g, cleanup_test);
+		}
+		@Override
+		public IUITestBranch testXFail(UIAccount account, String comment, Object test, Object g, UITest cleanup_test) {
+			return doTest(true, account, comment, test, g, cleanup_test);
+		}
+		@Override
+		public IUITestBranch testXFail(UIAccount account, String comment, UITest test, Object cleanup_test) {
+			return testXFail(account, comment, test, null, cleanup_test);
+		}
+		@Override
+		public IUITestBranch testXFail(UIAccount account, String comment, Object test, Object cleanup_test) {
+			return testXFail(account, comment, test, null, cleanup_test);
+		}
+		@Override
+		public IUITestBranch testXFail(UIAccount account, String comment, Object test, UITest cleanup_test) {
+			return testXFail(account, comment, test, null, cleanup_test);
+		}
+		@Override
+		public IUITestBranch test(UIAccount account, Class<?> test, Object g, Object cleanup_test) {
+			return test(account, (String)null, test, g, cleanup_test);
+		}
+		@Override
+		public IUITestBranch test(UIAccount account, Class<?> test, Object cleanup_test) {
+			return test(account, test, null, cleanup_test);
+		}
+		@Override
+		public IUITestBranch testXFail(UIAccount account, Class<?> test, Object g, Object cleanup_test) {
+			return testXFail(account, (String)null, test, g, cleanup_test);
+		}
+		@Override
+		public IUITestBranch testXFail(UIAccount account, Class<?> test, Object cleanup_test) {
+			return testXFail(account, test, null, cleanup_test);
+		}
+		@Override
+		public IUITestBranch test(UIAccount account, String comment, Class<?> test, Object g, Object cleanup_test) {
+			return doTest(false, account, comment, test, g, cleanup_test);
+		}
+		@Override
+		public IUITestBranch test(UIAccount account, String comment, Class<?> test, Object cleanup_test) {
+			return test(account, comment, test, null, cleanup_test);
+		}
+		@Override
+		public IUITestBranch testXFail(UIAccount account, String comment, Class<?> test, Object g, Object cleanup_test) {
+			return doTest(true, account, comment, test, g, cleanup_test);
+		}
+		@Override
+		public IUITestBranch testXFail(UIAccount account, String comment, Class<?> test, Object cleanup_test) {
+			return testXFail(account, comment, test, null, cleanup_test);
+		}
 		@Override
 		public IUITestBranch test() {
 			return this;
 		}
-
 		@Override
 		public IUITestBranch test(String comment) {
 			return this;
 		}
-
 		@Override
 		public IUITestBranch testXFail() {
 			return this;
 		}
-
 		@Override
 		public IUITestBranch testXFail(String comment) {
-			return this;
+			return this;	
 		}
 
 		@Override
 		public EUITestExecutionStyle getExecutionStyle() {
-			return runner.exec_style;
+			return runner.getExecutionStyle();
 		}
 	
 	} // end protected static class UITestBranch
@@ -696,19 +1107,19 @@ public class UITestRunner implements IUITestBranch {
 		return root.test(account, comment, test, cleanup_test);
 	}
 	@Override
-	public IUITestBranch test(Class<UITest>... tests) {
+	public IUITestBranch test(Class<?>... tests) {
 		return root.test(tests);
 	}
 	@Override
-	public IUITestBranch test(String comment, Class<UITest>... tests) {
+	public IUITestBranch test(String comment, Class<?>... tests) {
 		return root.test(comment, tests);
 	}
 	@Override
-	public IUITestBranch test(UIAccount account, Class<UITest> test, Class<UITest> cleanup_test) {
+	public IUITestBranch test(UIAccount account, Class<?> test, Class<?> cleanup_test) {
 		return root.test(account, test, cleanup_test);
 	}
 	@Override
-	public IUITestBranch test(UIAccount account, String comment, Class<UITest> test, Class<UITest> cleanup_test) {
+	public IUITestBranch test(UIAccount account, String comment, Class<?> test, Class<?> cleanup_test) {
 		return root.test(account, comment, test, cleanup_test);
 	}
 	@Override
@@ -728,19 +1139,19 @@ public class UITestRunner implements IUITestBranch {
 		return root.testXFail(account, comment, test, cleanup_test);
 	}
 	@Override
-	public IUITestBranch testXFail(Class<UITest>... tests) {
+	public IUITestBranch testXFail(Class<?>... tests) {
 		return root.testXFail(tests);
 	}
 	@Override
-	public IUITestBranch testXFail(String comment, Class<UITest>... tests) {
+	public IUITestBranch testXFail(String comment, Class<?>... tests) {
 		return root.testXFail(comment, tests);
 	}
 	@Override
-	public IUITestBranch testXFail(UIAccount account, Class<UITest> test, Class<UITest> cleanup_test) {
+	public IUITestBranch testXFail(UIAccount account, Class<?> test, Class<?> cleanup_test) {
 		return root.testXFail(account, test, cleanup_test);
 	}
 	@Override
-	public IUITestBranch testXFail(UIAccount account, String comment, Class<UITest> test, Class<UITest> cleanup_test) {
+	public IUITestBranch testXFail(UIAccount account, String comment, Class<?> test, Class<?> cleanup_test) {
 		return root.testXFail(account, comment, test, cleanup_test);
 	}
 	@Override
@@ -794,8 +1205,8 @@ public class UITestRunner implements IUITestBranch {
 			this.driver = driver;
 			
 			// 60 second timeout, sleep 30 seconds
-			wait = new WebDriverWait(driver, //20, 10000); // TODO 
-					60, 30000);
+			wait = new WebDriverWait(driver, 20, 10000); // TODO 
+					//60, 30000);
 		}
 		@Override
 		public String getWebBrowserNameAndVersion() {
@@ -831,12 +1242,11 @@ public class UITestRunner implements IUITestBranch {
 		}
 		@Override
 		public boolean inputType(By by, String value) {
-			return inputType(getElement(by), value);
+			return doInputType(getElement(by), value, by);
 		}
-		protected boolean inputType(WebElement we, String value) {
-			System.out.println("inputType "+we+" "+value);
+		protected boolean doInputType(WebElement we, String value, Object selector) {
 			if (we==null) {
-				// TODO log CLUE if null
+				cm.println(EPrintType.CLUE, test_pack.getNameAndVersionInfo(), "inputType element not found: "+selector);
 				return false;
 			} else if (!we.isDisplayed()) {
 				focus(we);
@@ -863,7 +1273,7 @@ public class UITestRunner implements IUITestBranch {
 		}
 		@Override
 		public boolean inputType(WebElement parent, By by, String value) {
-			return inputType(getElement(parent, by), value);
+			return doInputType(getElement(parent, by), value, by);
 		}
 		@Override
 		public boolean fileBrowse(By by, String file_ext, String content) {
@@ -878,7 +1288,7 @@ public class UITestRunner implements IUITestBranch {
 				fos.write(content);
 				fos.close();
 			} catch ( Exception ex ) {
-				ex.printStackTrace(); // TODO log
+				ex.printStackTrace();
 				return false;
 			}
 			
@@ -890,7 +1300,7 @@ public class UITestRunner implements IUITestBranch {
 		}
 		@Override
 		public boolean selectByText(WebElement parent, By by, String text) {
-			return selectByText(getElement(parent, by), text);
+			return doSelectByText(getElement(parent, by), text);
 		}
 		@Override
 		public boolean selectByTextId(WebElement parent, String id, String text) {
@@ -906,7 +1316,7 @@ public class UITestRunner implements IUITestBranch {
 		}
 		@Override
 		public boolean selectByValue(WebElement parent, By by, String value) {
-			return selectByValue(getElement(parent, by), value);
+			return doSelectByValue(getElement(parent, by), value, by);
 		}
 		@Override
 		public boolean selectByValueName(String name, String value) {
@@ -918,11 +1328,11 @@ public class UITestRunner implements IUITestBranch {
 		}
 		@Override
 		public boolean selectByValue(By by, String value) {
-			return selectByValue(getElement(by), value);
+			return doSelectByValue(getElement(by), value, by);
 		}
-		protected boolean selectByValue(WebElement we, String value) {
+		protected boolean doSelectByValue(WebElement we, String value, Object selector) {
 			if (we==null) {
-				// TODO log CLUE if null
+				cm.println(EPrintType.CLUE, test_pack.getNameAndVersionInfo(), "selectByValue not found: "+selector);
 				return false;
 			}
 			new Select(we).selectByValue(value);
@@ -930,7 +1340,7 @@ public class UITestRunner implements IUITestBranch {
 		}
 		@Override
 		public boolean selectByText(By by, String text) {
-			return selectByText(getElement(by), text);
+			return doSelectByText(getElement(by), text);
 		}
 		@Override
 		public boolean selectByTextName(String name, String text) {
@@ -940,9 +1350,9 @@ public class UITestRunner implements IUITestBranch {
 		public boolean selectByTextId(String id, String text) {
 			return selectByText(By.id(id), text);
 		}
-		protected boolean selectByText(WebElement we, String text) {
+		protected boolean doSelectByText(WebElement we, String text) {
 			if (we==null) {
-				// TODO log CLUE if null
+				cm.println(EPrintType.CLUE, test_pack.getNameAndVersionInfo(), "selectByText "+text+" =null");
 				return false;
 			}
 			new Select(we).selectByVisibleText(text);
@@ -966,7 +1376,7 @@ public class UITestRunner implements IUITestBranch {
 		}
 		@Override
 		public boolean click(By by) {
-			return click(getElement(by));
+			return doClick(getElement(by), by);
 		}
 		@Override
 		public boolean clickLinkText(WebElement parent, String text) {
@@ -978,7 +1388,7 @@ public class UITestRunner implements IUITestBranch {
 		}
 		@Override
 		public boolean click(WebElement parent, By by) {
-			return click(getElement(parent, by));
+			return doClick(getElement(parent, by), by);
 		}
 		@Override
 		@Nonnull
@@ -1069,10 +1479,14 @@ public class UITestRunner implements IUITestBranch {
 		}
 		@Override
 		public boolean click(WebElement we) {
-			// TODO if (do_devel)
-			System.out.println("click "+we);
+			return doClick(we, null);
+		}
+		protected boolean doClick(WebElement we, Object selector) {
+			if (do_devel)
+				System.out.println("click "+we);
 			if (we==null) {
-				// TODO log CLUE if null
+				if (selector!=null)
+					cm.println(EPrintType.CLUE, test_pack.getNameAndVersionInfo(), "click element not found: "+selector);
 				return false;
 			}
 			try {
@@ -1109,7 +1523,7 @@ public class UITestRunner implements IUITestBranch {
 			try {
 				return handleWE(parent.findElement(by));
 			} catch ( NoSuchElementException ex ) {
-				// TODO log CLUE
+				cm.println(EPrintType.CLUE, test_pack.getNameAndVersionInfo(), "getElementNow not found: "+by);
 				return null;
 			}
 		}
@@ -1129,8 +1543,10 @@ public class UITestRunner implements IUITestBranch {
 						return true;// break
 					}
 				});
-			// TODO log CLUE if null
-			return handleWE(getElementNow(parent, by));// TODO shared.get();
+			we = handleWE(getElementNow(parent, by));// TODO shared.get();
+			if (we==null)
+				cm.println(EPrintType.CLUE, test_pack.getNameAndVersionInfo(), "getElement not found: "+by);
+			return we;
 		}
 		@Override
 		public boolean mouseOver(WebElement parent, By by) {
@@ -1142,7 +1558,8 @@ public class UITestRunner implements IUITestBranch {
 			try {
 				return handleWE(driver.findElement(by));
 			} catch ( NoSuchElementException ex ) {
-				return null; // TODO log CLUE
+				cm.println(EPrintType.CLUE, test_pack.getNameAndVersionInfo(), "getElementNow not found: "+by);
+				return null;
 			}
 		}
 		@Override
@@ -1165,8 +1582,10 @@ public class UITestRunner implements IUITestBranch {
 						return true;// break
 					}
 				});
-			// TODO log CLUE if null
-			return handleWE(getElementNow(by));// TODO shared.get();
+			we = handleWE(getElementNow(by));// TODO shared.get();
+			if (we==null)
+				cm.println(EPrintType.CLUE, test_pack.getNameAndVersionInfo(), "getElement not found "+by);
+			return we;
 		}
 		@Override
 		public boolean hasElementNowId(WebElement we, String id) {
@@ -1209,7 +1628,7 @@ public class UITestRunner implements IUITestBranch {
 			try {
 				return handleWE(driver.findElement(By.xpath("//*[contains(., '"+text+"')]"))) != null;
 			} catch ( NoSuchElementException ex ) {
-				// TODO log clue
+				cm.println(EPrintType.CLUE, test_pack.getNameAndVersionInfo(), "hasText not found: "+text);
 				return false;
 			}
 		}
@@ -1218,7 +1637,7 @@ public class UITestRunner implements IUITestBranch {
 			try {
 				return handleWE(we.findElement(By.xpath("//*[contains(., '"+text+"')]"))) != null;
 			} catch ( NoSuchElementException ex ) {
-				// TODO log clue
+				cm.println(EPrintType.CLUE, test_pack.getNameAndVersionInfo(), "hasText not found: "+text);
 				return false;
 			}
 		}
@@ -1481,11 +1900,169 @@ public class UITestRunner implements IUITestBranch {
 		public boolean isCheckedId(String id) {
 			return isChecked(By.id(id));
 		}
+		@Override
+		public String randomSentence(int word_count) {
+			return UITestRunner.this.randomSentence(word_count);
+		}
+		@Override
+		public String randomSentence(int min_word_count, int max_word_count) {
+			return UITestRunner.this.randomSentence(min_word_count, max_word_count);
+		}
+		@Override
+		public String randomSentence(int min_word_count, int max_word_count, int max_char_len) {
+			return UITestRunner.this.randomSentence(min_word_count, max_word_count, max_char_len);
+		}
 		
 	} // end protected class EasyUITestDriver
 
 	public String getWebBrowserNameAndVersion() {
 		return sdriver.getWebBrowserNameAndVersion();
+	}
+
+	@Override
+	public IUITestBranch test(Object g) {
+		return root.test(g);
+	}
+	@Override
+	public IUITestBranch test(String comment, Object g) {
+		return root.test(comment, g);
+	}
+	@Override
+	public IUITestBranch test(UIAccount account, UITest test, Object g, Object cleanup_test) {
+		return root.test(account, test, g, cleanup_test);
+	}
+	@Override
+	public IUITestBranch test(UIAccount account, Object test, Object g, Object cleanup_test) {
+		return root.test(account, test, g, cleanup_test);
+	}
+	@Override
+	public IUITestBranch test(UIAccount account, Object test, Object g, UITest cleanup_test) {
+		return root.test(account, test, g, cleanup_test);
+	}
+	@Override
+	public IUITestBranch test(UIAccount account, UITest test, Object cleanup_test) {
+		return root.test(account, test, cleanup_test);
+	}
+	@Override
+	public IUITestBranch test(UIAccount account, Object test, Object cleanup_test) {
+		return root.test(account, test, cleanup_test);
+	}
+	@Override
+	public IUITestBranch test(UIAccount account, Object test, UITest cleanup_test) {
+		return root.test(account, test, cleanup_test);
+	}
+	@Override
+	public IUITestBranch testXFail(UIAccount account, UITest test, Object g, Object cleanup_test) {
+		return root.testXFail(account, test, g, cleanup_test);
+	}
+	@Override
+	public IUITestBranch testXFail(UIAccount account, Object test, Object g, Object cleanup_test) {
+		return root.testXFail(account, test, g, cleanup_test);
+	}
+	@Override
+	public IUITestBranch testXFail(UIAccount account, Object test, Object g, UITest cleanup_test) {
+		return root.testXFail(account, test, g, cleanup_test);
+	}
+	@Override
+	public IUITestBranch testXFail(UIAccount account, UITest test, Object cleanup_test) {
+		return root.testXFail(account, test, cleanup_test);
+	}
+	@Override
+	public IUITestBranch testXFail(UIAccount account, Object test, Object cleanup_test) {
+		return root.testXFail(account, test, cleanup_test);
+	}
+	@Override
+	public IUITestBranch testXFail(UIAccount account, Object test, UITest cleanup_test) {
+		return root.testXFail(account, test, cleanup_test);
+	}
+	@Override
+	public IUITestBranch test(UIAccount account, String comment, UITest test, Object g, Object cleanup_test) {
+		return root.test(account, comment, test, g, cleanup_test);
+	}
+	@Override
+	public IUITestBranch test(UIAccount account, String comment, Object test, Object g, Object cleanup_test) {
+		return root.test(account, comment, test, g, cleanup_test);
+	}
+	@Override
+	public IUITestBranch test(UIAccount account, String comment, Object test, Object g, UITest cleanup_test) {
+		return root.test(account, comment, test, g, cleanup_test);
+	}
+	@Override
+	public IUITestBranch test(UIAccount account, String comment, UITest test, Object cleanup_test) {
+		return root.test(account, comment, test, cleanup_test);
+	}
+	@Override
+	public IUITestBranch test(UIAccount account, String comment, Object test, Object cleanup_test) {
+		return root.test(account, comment, test, cleanup_test);
+	}
+	@Override
+	public IUITestBranch test(UIAccount account, String comment, Object test, UITest cleanup_test) {
+		return root.test(account, comment, test, cleanup_test);
+	}
+	@Override
+	public IUITestBranch testXFail(UIAccount account, String comment, UITest test, Object g, Object cleanup_test) {
+		return root.testXFail(account, comment, test, g, cleanup_test);
+	}
+	@Override
+	public IUITestBranch testXFail(UIAccount account, String comment, Object test, Object g, Object cleanup_test) {
+		return root.testXFail(account, comment, test, g, cleanup_test);
+	}
+	@Override
+	public IUITestBranch testXFail(UIAccount account, String comment, Object test, Object g, UITest cleanup_test) {
+		return root.testXFail(account, comment, test, g, cleanup_test);
+	}
+	@Override
+	public IUITestBranch testXFail(UIAccount account, String comment, UITest test, Object cleanup_test) {
+		return root.testXFail(account, comment, test, cleanup_test);
+	}
+	@Override
+	public IUITestBranch testXFail(UIAccount account, String comment, Object test, Object cleanup_test) {
+		return root.testXFail(account, comment, test, cleanup_test);
+	}
+	@Override
+	public IUITestBranch testXFail(UIAccount account, String comment, Object test, UITest cleanup_test) {
+		return root.testXFail(account, comment, test, cleanup_test);
+	}
+	@Override
+	public IUITestBranch test(UIAccount account, Class<?> test, Object g, Object cleanup_test) {
+		return root.test(account, test, g, cleanup_test);
+	}
+	@Override
+	public IUITestBranch test(UIAccount account, Class<?> test, Object cleanup_test) {
+		return root.test(account, test, cleanup_test);
+	}
+	@Override
+	public IUITestBranch testXFail(UIAccount account, Class<?> test, Object g, Object cleanup_test) {
+		return root.test(account, test, g, cleanup_test);
+	}
+	@Override
+	public IUITestBranch testXFail(UIAccount account, Class<?> test, Object cleanup_test) {
+		return root.testXFail(account, test, cleanup_test);
+	}
+	@Override
+	public IUITestBranch test(UIAccount account, String comment, Class<?> test, Object g, Object cleanup_test) {
+		return root.test(account, comment, test, g, cleanup_test);
+	}
+	@Override
+	public IUITestBranch test(UIAccount account, String comment, Class<?> test, Object cleanup_test) {
+		return root.test(account, comment, test, cleanup_test);
+	}
+	@Override
+	public IUITestBranch testXFail(UIAccount account, String comment, Class<?> test, Object g, Object cleanup_test) {
+		return root.testXFail(account, comment, test, g, cleanup_test);
+	}
+	@Override
+	public IUITestBranch testXFail(UIAccount account, String comment, Class<?> test, Object cleanup_test) {
+		return root.testXFail(account, comment, test, cleanup_test);
+	}
+	
+	/** searches text/html for PHP Warning or PHP Error messages
+	 * 
+	 * @param html
+	 * @return
+	 */
+	public static boolean hasPHPWarningOrError(String html) {
+		return html.contains("PHP Warning") || html.contains("PHP Error");
 	}
 	
 } // end public class UITestRunner

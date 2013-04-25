@@ -46,8 +46,8 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	public HttpPhpUnitTestCaseRunner(ITestResultReceiver tmgr,
 			HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web,
 			Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build,
-			PhpUnitTestCase test_case, String my_temp_dir, Map<String, String> constants, String include_path, String[] include_files, PhpIni ini) {
-		super(tmgr, globals, env, cm, host, scenario_set, build, test_case, my_temp_dir, constants, include_path, include_files, ini);
+			PhpUnitTestCase test_case, String my_temp_dir, Map<String, String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
+		super(tmgr, globals, env, cm, host, scenario_set, build, test_case, my_temp_dir, constants, include_path, include_files, ini, reflection_only);
 		this.params = params;
 		this.httpproc = httpproc;
 		this.httpexecutor = httpexecutor;
@@ -62,7 +62,7 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	protected String execute(String template_file) throws IOException, Exception {
 		// Note: INI for test case provided in TestCaseGroupKey created in LocalPhpUnitTestPackRunner#createGroupKey
 		if (!host.exists(template_file)) {
-			for ( int i=0 ; i < 10 ; i++) {
+			for ( int i=0 ; i < 30 ; i++) {
 				Thread.sleep(1000); // wait a moment for file to exist
 				if (host.exists(template_file))
 					break;
@@ -272,6 +272,10 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 				Header lh = response.getFirstHeader("Location");
 				if (lh!=null) {
 					return do_http_get(lh.getValue(), i+1);
+				}
+				if (response.getStatusLine().getStatusCode()==404) {
+					// file not found, try a 2nd time (maybe not committed to filesystem)
+					return do_http_get(path, 100); // 100 => only try one more time
 				}
 			}
 			//

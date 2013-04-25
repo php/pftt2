@@ -1,23 +1,62 @@
 package com.mostc.pftt.model.ui;
 
+/**
+ * 
+ * @author Matt Ficken
+ *
+ */
 
 public interface IUITestBranch {
 	IUITestBranch test(UITest ...tests);
 	IUITestBranch test(String comment, UITest ...tests);
 	IUITestBranch test(UIAccount account, UITest test, UITest cleanup_test);
 	IUITestBranch test(UIAccount account, String comment, UITest test, UITest cleanup_test);
-	IUITestBranch test(Class<UITest> ...tests);
-	IUITestBranch test(String comment, Class<UITest> ...tests);
-	IUITestBranch test(UIAccount account, Class<UITest> test, Class<UITest> cleanup_test);
-	IUITestBranch test(UIAccount account, String comment, Class<UITest> test, Class<UITest> cleanup_test);
+	IUITestBranch test(Class<?> ...tests);
+	IUITestBranch test(String comment, Class<?> ...tests);
+	IUITestBranch test(UIAccount account, Class<?> test, Class<?> cleanup_test);
+	IUITestBranch test(UIAccount account, String comment, Class<?> test, Class<?> cleanup_test);
 	IUITestBranch testXFail(UITest ...tests);
 	IUITestBranch testXFail(String comment, UITest ...tests);
 	IUITestBranch testXFail(UIAccount account, UITest test, UITest cleanup_test);
 	IUITestBranch testXFail(UIAccount account, String comment, UITest test, UITest cleanup_test);
-	IUITestBranch testXFail(Class<UITest> ...tests);
-	IUITestBranch testXFail(String comment, Class<UITest> ...tests);
-	IUITestBranch testXFail(UIAccount account, Class<UITest> test, Class<UITest> cleanup_test);
-	IUITestBranch testXFail(UIAccount account, String comment, Class<UITest> test, Class<UITest> cleanup_test);
+	IUITestBranch testXFail(Class<?> ...tests);
+	IUITestBranch testXFail(String comment, Class<?> ...tests);
+	IUITestBranch testXFail(UIAccount account, Class<?> test, Class<?> cleanup_test);
+	IUITestBranch testXFail(UIAccount account, String comment, Class<?> test, Class<?> cleanup_test);
+	IUITestBranch test(Object g);
+	IUITestBranch test(String comment, Object g);
+	IUITestBranch test(UIAccount account, UITest test, Object g, Object cleanup_test);
+	IUITestBranch test(UIAccount account, Class<?> test, Object g, Object cleanup_test);
+	IUITestBranch test(UIAccount account, Object test, Object g, Object cleanup_test);
+	IUITestBranch test(UIAccount account, Object test, Object g, UITest cleanup_test);
+	IUITestBranch test(UIAccount account, UITest test, Object cleanup_test);
+	IUITestBranch test(UIAccount account, Class<?> test, Object cleanup_test);
+	IUITestBranch test(UIAccount account, Object test, Object cleanup_test);
+	IUITestBranch test(UIAccount account, Object test, UITest cleanup_test);
+	IUITestBranch testXFail(UIAccount account, UITest test, Object g, Object cleanup_test);
+	IUITestBranch testXFail(UIAccount account, Class<?> test, Object g, Object cleanup_test);
+	IUITestBranch testXFail(UIAccount account, Object test, Object g, Object cleanup_test);
+	IUITestBranch testXFail(UIAccount account, Object test, Object g, UITest cleanup_test);
+	IUITestBranch testXFail(UIAccount account, UITest test, Object cleanup_test);
+	IUITestBranch testXFail(UIAccount account, Class<?> test, Object cleanup_test);
+	IUITestBranch testXFail(UIAccount account, Object test, Object cleanup_test);
+	IUITestBranch testXFail(UIAccount account, Object test, UITest cleanup_test);
+	IUITestBranch test(UIAccount account, String comment, UITest test, Object g, Object cleanup_test);
+	IUITestBranch test(UIAccount account, String comment, Class<?> test, Object g, Object cleanup_test);
+	IUITestBranch test(UIAccount account, String comment, Object test, Object g, Object cleanup_test);
+	IUITestBranch test(UIAccount account, String comment, Object test, Object g, UITest cleanup_test);
+	IUITestBranch test(UIAccount account, String comment, UITest test, Object cleanup_test);
+	IUITestBranch test(UIAccount account, String comment, Class<?> test, Object cleanup_test);
+	IUITestBranch test(UIAccount account, String comment, Object test, Object cleanup_test);
+	IUITestBranch test(UIAccount account, String comment, Object test, UITest cleanup_test);
+	IUITestBranch testXFail(UIAccount account, String comment, UITest test, Object g, Object cleanup_test);
+	IUITestBranch testXFail(UIAccount account, String comment, Class<?> test, Object g, Object cleanup_test);
+	IUITestBranch testXFail(UIAccount account, String comment, Object test, Object g, Object cleanup_test);
+	IUITestBranch testXFail(UIAccount account, String comment, Object test, Object g, UITest cleanup_test);
+	IUITestBranch testXFail(UIAccount account, String comment, UITest test, Object cleanup_test);
+	IUITestBranch testXFail(UIAccount account, String comment, Class<?> test, Object cleanup_test);
+	IUITestBranch testXFail(UIAccount account, String comment, Object test, Object cleanup_test);
+	IUITestBranch testXFail(UIAccount account, String comment, Object test, UITest cleanup_test);
 	EUITestStatus getStatus();
 	EUITestExecutionStyle getExecutionStyle();
 	UIAccount getUserAccount();
@@ -48,4 +87,4 @@ public interface IUITestBranch {
 	 * @return
 	 */
 	IUITestBranch testXFail(String comment);
-}
+} // end public interface IUITestBranch

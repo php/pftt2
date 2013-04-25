@@ -37,6 +37,14 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner 
 	
 	protected abstract void stop(boolean force);
 	
+	@Override
+	public String getSAPIOutput() {
+		return "PFTT: during "+current_section+" PHPT test section\n"+doGetSAPIOutput();
+	}
+	protected EPhptSection current_section;
+	
+	protected abstract String doGetSAPIOutput();
+	
 	@Overridable
 	protected int getMaxTestRuntimeSeconds() {
 		return 60;
@@ -143,7 +151,22 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner 
 			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return true;
-		} else if (test_case.isExtension("soap")||test_case.isExtension("imap")||test_case.isExtension("pdo")||test_case.isExtension("pdo_mysql")) {
+		} else if (
+				test_case.isExtension("pdo")||
+				test_case.isExtension("pdo_dblib")||
+				test_case.isExtension("pdo_firebird")||
+				test_case.isExtension("pdo_mysql")||
+				test_case.isExtension("pdo_oci")||
+				test_case.isExtension("pdo_odbc")||
+				test_case.isExtension("pdo_pgsql")||
+				test_case.isExtension("pdo_sqlite")||
+				test_case.isExtension("pgsql")||
+				test_case.isExtension("mysql")||
+				test_case.isExtension("mysqli")||
+				test_case.isExtension("oci8")||
+				test_case.isExtension("odbc")||
+				test_case.isExtension("imap")||
+				test_case.isExtension("soap")) {
 			// TODO don't run these SKIPIFs without the scenario loaded
 			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.SKIP, test_case, "test would've been skipped", null, null, null, null, null, null, null, null, null, null, null));
 			

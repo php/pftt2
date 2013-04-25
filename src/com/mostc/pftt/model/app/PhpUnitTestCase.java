@@ -14,8 +14,9 @@ import com.mostc.pftt.model.TestCase;
 public class PhpUnitTestCase extends TestCase {
 	protected final PhpUnitDist php_unit_dist;
 	protected final String filename, className, methodName;
+	protected final int arg_count;
 	
-	protected PhpUnitTestCase(PhpUnitDist php_unit_dist, String filename, String className, String methodName) {
+	protected PhpUnitTestCase(PhpUnitDist php_unit_dist, String filename, String className, String methodName, int arg_count) {
 		this.php_unit_dist = php_unit_dist;
 		// don't need to call #normalizeFilename here usually. it's called in PhpUnitSourcetestPack#readDir...
 		// calling it (again )here would be a performance hit
@@ -24,6 +25,11 @@ public class PhpUnitTestCase extends TestCase {
 		// if it has \ thats ok b/c its legal PHP (namespaces) whereas it won't be / b/c that's illegal in PHP
 		this.className = className;
 		this.methodName = methodName;
+		this.arg_count = arg_count;
+	}
+	
+	public int getArgCount() {
+		return arg_count;
 	}
 	
 	public PhpUnitDist getPhpUnitDist() {
@@ -90,7 +96,7 @@ public class PhpUnitTestCase extends TestCase {
 
 	@Override
 	public String getName() {
-		return className + "#" + methodName + "(" + filename + ")";
+		return className + "::" + methodName + "(" + filename + ")";
 	}
 	
 	@Override

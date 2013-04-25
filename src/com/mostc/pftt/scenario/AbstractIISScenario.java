@@ -3,7 +3,9 @@ package com.mostc.pftt.scenario;
 import java.util.Collection;
 
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.sapi.IISManager;
+import com.mostc.pftt.results.ConsoleManager;
 
 /** Abstract scenario for managing and testing IIS
  * 
@@ -18,7 +20,7 @@ public abstract class AbstractIISScenario extends AbstractProductionWebServerSce
 	}
 	
 	@Override
-	public void addToDebugPath(AHost host, Collection<String> debug_path) {
+	public void addToDebugPath(ConsoleManager cm, AHost host, PhpBuild build, Collection<String> debug_path) {
 		
 	}
 

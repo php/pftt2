@@ -94,12 +94,12 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 	}
 
 	@Override
-	public boolean start(ConsoleManager cm, Host host, PhpBuild build) {
+	public boolean start(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
 		return false; // nothing to start
 	}
 
 	@Override
-	public boolean stop(ConsoleManager cm, Host host, PhpBuild build) {
+	public boolean stop(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
 		return false; // nothing to stop
 	}
 

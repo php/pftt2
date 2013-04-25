@@ -40,21 +40,20 @@ public abstract class AbstractUITestRW extends AbstractTestResultRW {
 		return results_by_name.containsKey(test_name);
 	}
 
-	public void addResult(String test_name, String comment, EUITestStatus status, String verified_html) {
-		UITestResult result = new UITestResult(test_name, comment, status, verified_html);
+	public void addResult(String test_name, String comment, EUITestStatus status) {
+		UITestResult result = new UITestResult(test_name, comment, status);
 		results_by_name.put(test_name, result);
 		results_by_status.get(status).add(result);
 	}
 	
 	protected static class UITestResult {
-		final String test_name, comment, verified_html;
+		final String test_name, comment;
 		final EUITestStatus status;
 		
-		public UITestResult(String test_name, String comment, EUITestStatus status, String verified_html) {
+		public UITestResult(String test_name, String comment, EUITestStatus status) {
 			this.test_name = test_name;
 			this.comment = comment;
 			this.status = status;
-			this.verified_html = verified_html;
 		}
 	}
 
@@ -63,7 +62,10 @@ public abstract class AbstractUITestRW extends AbstractTestResultRW {
 		return result == null ? null : result.status;
 	}
 
-	public abstract String getHTMLURL(String test_name);
+	public String getHTMLURL(String test_name) {
+		// @see UITestWriter#addResult
+		return dir+File.separator+test_name+".html";
+	}
 	
 	public String getScreenshotFilename(String test_name) {
 		return dir+File.separator+test_name+".png";

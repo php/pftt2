@@ -11,18 +11,18 @@ import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.HostGroup;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.core.PhptTestCase;
+import com.mostc.pftt.model.sapi.EApacheVersion.ApacheHttpdAndVersion;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.scenario.ScenarioSet;
-import com.mostc.pftt.util.DownloadUtil;
-import com.mostc.pftt.util.VisualStudioUtil;
 
 /** manages and monitors Apache HTTPD web server
  * 
@@ -37,11 +37,6 @@ import com.mostc.pftt.util.VisualStudioUtil;
 //        -copy ICU DLLs from PHP build to apache/bin
 @ThreadSafe
 public class ApacheManager extends AbstractManagedProcessesWebServerManager {
-	/** URL to ApacheLounge's Windows Builds (as a .ZIP file) */
-	// NOTE: use this apachelounge 2.4.3 build b/c it uses the same openssl version as PHP
-	public static final String APACHE_2_4_WINDOWS_ZIP_URL = "http://www.apachelounge.com/download/win32/binaries/httpd-2.4.3-win32-ssl_0.9.8.zip";
-	public static final String APACHE_2_2_WINDOWS_ZIP_URL = "http://www.apachelounge.com/download/win32/binaries/httpd-2.2.3-win32.zip";
-	//
 	protected final EApacheVersion _apache_version; 
 	
 	public ApacheManager(EApacheVersion _apache_version) {
@@ -81,44 +76,6 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		}
 	}
 	
-	protected String httpd(EApacheVersion apache_version, Host host) {
-		if (host.isWindows()) {
-			if (apache_version==EApacheVersion.APACHE_2_2) {
-				version = "ApacheLounge-2.2.4-VC10-x86";
-				return host.getSystemDrive() + "\\Apache2\\bin\\httpd.exe";
-			} else {
-				version = "ApacheLounge-2.4.4-VC11-x86";
-				return host.getSystemDrive() + "\\Apache24\\bin\\httpd.exe";
-			}
-		} else {
-			return "/usr/sbin/httpd";
-		}
-	}
-	
-	protected boolean installWindows(EApacheVersion apache_version, ConsoleManager cm, Host host, PhpBuild build) throws Exception {
-		// ApacheLounge build requires VC10 runtime
-		if (host.dirContainsFragment(host.getSystemRoot()+"\\WinSxS", "x86_microsoft.windows.common-controls_6595b64144ccf1df_6.0.7600.16385_none_421189da2b7fabfc")) {
-			// vc10rt doesn't seem to create an obvious folder here, like vc9, but SysInternals procmon found this folder
-			cm.println(EPrintType.COMPLETED_OPERATION, getClass(), "VC10 seems to be installed already");
-		} else {
-			if (host.execElevated(cm, getClass(), host.getPfttDir()+"/bin/vc10_vcredist_x86.exe /Q", AHost.ONE_MINUTE*5))
-				cm.println(EPrintType.COMPLETED_OPERATION, getClass(), "VC10 Installed");
-			else
-				cm.println(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "VC10 Install was not successful, trying to continue with Apache install anyway...");
-		}
-		
-		// download ApacheLoung build and unzip
-		DownloadUtil.downloadAndUnzip(
-				cm, 
-				host, 
-				apache_version==EApacheVersion.APACHE_2_4?APACHE_2_4_WINDOWS_ZIP_URL:APACHE_2_2_WINDOWS_ZIP_URL, 
-				apache_version==EApacheVersion.APACHE_2_4?host.getSystemDrive()+"/Apache24":host.getSystemDrive()+"/Apache2"
-			);
-		
-		// test exec'ng httpd.exe to see if its installed successfully/runnable
-		return host.exec(cm, getClass(), httpd(apache_version, host)+" -V", AHost.ONE_MINUTE);
-	}
-	
 	public static boolean isSupported(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptTestCase test_case) {
 		if (build.isNTS(host)) {
 			cm.println(EPrintType.SKIP_OPERATION, ApacheManager.class, "Error Apache requires TS Php Build. NTS Php Builds aren't supported with Apache mod_php.");
@@ -142,13 +99,16 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		}
 	}
 	
-	private Host cache_host;
-	private String cache_httpd;
-	@Override
-	protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String, String> env, final String docroot, String listen_address, int port) {
-		EApacheVersion apache_version = decideApacheVersion(cm, host, build, this._apache_version);
+	protected static class PreparedApache {
+		protected PhpIni ini;
+		protected String apache_conf_file, php_conf_file, error_log, httpd, conf_dir, conf_str;
+	}
 		
-		String httpd = httpd(apache_version, host);
+	protected PreparedApache prepareApache(String temp_file_ctx, PhpIni ini, ApacheHttpdAndVersion apache, ConsoleManager cm, EApacheVersion apache_version, AHost host, PhpBuild build, String listen_address, int port, String docroot) {
+		PreparedApache prep = new PreparedApache();
+		prep.ini = ini;
+		prep.httpd = apache.httpd;
+		this.version = apache.version;
 		
 		String dll;
 		if (host.isWindows()) {
@@ -173,7 +133,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			//            to run php+phpt so they pass on CLI, but too small for apache+php+phpt so they crash on apache)
 			// NOTE: this returns false (no exception) if visual studio not installed
 			// NOTE: this returns false (no exception) if apache binary can't be edited (already running, UAC privileges not elevated)
-			if (!host.equals(this.cache_host)||this.cache_httpd==null||!this.cache_httpd.equals(httpd)) {
+			if (!host.equals(this.cache_host)||this.cache_httpd==null||!this.cache_httpd.equals(prep.httpd)) {
 				// do this once
 				synchronized(this) {
 					// fix stack size bug for PCRE
@@ -187,11 +147,11 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 					// do it this way too -- it has been observed that method 1 does not work
 					// (YES, I verified the PATH env var was set correct/passed to Apache)
 					try {
-						host.deleteElevated(Host.dirname(httpd)+"/icu*.dll");
+						host.deleteElevated(Host.dirname(prep.httpd)+"/icu*.dll");
 						
-						host.copyElevated(build.getBuildPath()+"/icu*.dll", Host.dirname(httpd));
+						host.copyElevated(build.getBuildPath()+"/icu*.dll", Host.dirname(prep.httpd));
 					} catch ( Exception ex ) {
-						cm.addGlobalException(EPrintType.CLUE, getClass(), "createManagedProcessWebServerInstance", ex, "couldn't copy ICU DLLs to Apache - php INTL extension may not be usable with Apache :(");
+						cm.addGlobalException(EPrintType.CLUE, getClass(), "prepareApache", ex, "couldn't copy ICU DLLs to Apache - php INTL extension may not be usable with Apache :(");
 					}
 					
 					// check OpenSSL version
@@ -203,7 +163,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 					}
 					
 					this.cache_host = host;
-					this.cache_httpd = httpd;
+					this.cache_httpd = prep.httpd;
 				}
 			}
 		} else {
@@ -215,29 +175,56 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		//    -httpd.conf
 		//    -php.ini
 		//    -error.log
-		final String conf_dir = host.mktempname(getClass());
+		prep.conf_dir = host.mktempname(temp_file_ctx);
 		try {
-			host.mkdirs(conf_dir);
+			host.mkdirs(prep.conf_dir);
 		} catch ( Exception ex ) {
-			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "createManagedProcessWebServerInstance", ex, "Can't create temporary dir to run Apache", host, conf_dir);
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "prepareApache", ex, "Can't create temporary dir to run Apache", host, prep.conf_dir);
 			return null;
 		}
 		
 		// CRITICAL: must add extension dir (and fix path) AND it MUST end with \ (Windows) or / (Linux)
-		if (ini==null)
-			ini = new PhpIni();
-		else if (StringUtil.isEmpty(ini.getExtensionDir()))
-			ini.setExtensionDir(host.fixPath(build.getDefaultExtensionDir())+host.dirSeparator());
-		else if (!ini.getExtensionDir().endsWith(host.dirSeparator()))
+		if (prep.ini==null)
+			prep.ini = new PhpIni();
+		else if (StringUtil.isEmpty(prep.ini.getExtensionDir()))
+			prep.ini.setExtensionDir(host.fixPath(build.getDefaultExtensionDir())+host.dirSeparator());
+		else if (!prep.ini.getExtensionDir().endsWith(host.dirSeparator()))
 			// extension dir already set, but doesn't end with / or \
-			ini.setExtensionDir(host.fixPath(ini.getExtensionDir()+host.dirSeparator()));
+			prep.ini.setExtensionDir(host.fixPath(prep.ini.getExtensionDir()+host.dirSeparator()));
 		//
 		
-		final String php_conf_file = host.joinIntoOnePath(conf_dir, "php.ini");
-		final String apache_conf_file = host.joinIntoOnePath(conf_dir, "httpd.conf");
-		final String error_log = host.joinIntoOnePath(conf_dir, "error.log");
+		prep.php_conf_file = host.joinIntoOnePath(prep.conf_dir, "php.ini");
+		prep.apache_conf_file = host.joinIntoOnePath(prep.conf_dir, "httpd.conf");
+		prep.error_log = host.joinIntoOnePath(prep.conf_dir, "error.log");
 		
-		env = prepareENV(env, php_conf_file, build, scenario_set, httpd);
+		// apache configuration (also tells where to find php.ini. see PHPIniDir directive)
+		prep.conf_str = writeConfigurationFile(apache_version, host, dll, prep.conf_dir, prep.error_log, listen_address, port, docroot);
+		
+		try {
+			host.saveTextFile(prep.php_conf_file, prep.ini.toString());
+		} catch ( Exception ex ) {
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "prepareApache", ex, "Unable to save PhpIni: "+prep.php_conf_file, host, prep.php_conf_file);
+			return null;
+		}
+		try {
+			host.saveTextFile(prep.apache_conf_file, prep.conf_str);
+		} catch ( Exception ex ) {
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "prepareApache", ex, "Unable to save Apache configuration: "+prep.apache_conf_file, host, prep.apache_conf_file);
+			return null;
+		}
+		return prep;
+	} // end protected PreparedApache prepareApache
+	
+	private Host cache_host;
+	private String cache_httpd;
+	@Override
+	protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String, String> env, final String docroot, String listen_address, int port) {
+		EApacheVersion apache_version = decideApacheVersion(cm, host, build, this._apache_version);
+		ApacheHttpdAndVersion apache = apache_version.getHttpd(cm, host, build);
+		
+		PreparedApache prep = prepareApache("ApacheManager", ini, apache, cm, apache_version, host, build, listen_address, port, docroot);
+		
+		env = prepareENV(env, prep.php_conf_file, build, scenario_set, prep.httpd);
 		
 		//
 		if (host.isWindows()) {
@@ -249,36 +236,22 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		}
 		//
 		
-		// apache configuration (also tells where to find php.ini. see PHPIniDir directive)
-		String conf_str = writeConfigurationFile(apache_version, host, dll, conf_dir, error_log, listen_address, port, docroot);
-		
-		try {
-			host.saveTextFile(php_conf_file, ini.toString());
-		} catch ( Exception ex ) {
-			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "createManagedProcessWebServerInstance", ex, "Unable to save PhpIni: "+php_conf_file, host, php_conf_file);
-			return null;
-		}
-		try {
-			host.saveTextFile(apache_conf_file, conf_str);
-		} catch ( Exception ex ) {
-			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "createManagedProcessWebServerInstance", ex, "Unable to save Apache configuration: "+apache_conf_file, host, apache_conf_file);
-			return null;
-		}
-		
-		final String cmdline = httpd+" -X -f "+host.fixPath(apache_conf_file);
+		final String cmdline = prep.httpd+" -X -f "+host.fixPath(prep.apache_conf_file);
 		
 		// @see #createWebServerInstance for where command is executed to create httpd.exe process
-		return new ApacheWebServerInstance(apache_version, this, docroot, cmdline, ini, env, listen_address, port, host, conf_dir, apache_conf_file, error_log, conf_str);
+		return new ApacheWebServerInstance(apache_version, build, this, docroot, cmdline, ini, env, listen_address, port, host, prep.conf_dir, prep.apache_conf_file, prep.error_log, prep.conf_str);
 	} // end protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance
 	
 	public class ApacheWebServerInstance extends ManagedProcessWebServerInstance {
 		protected final String conf_dir, apache_conf_file, conf_str, error_log;
 		protected final AHost host;
+		protected final PhpBuild build;
 		protected final EApacheVersion apache_version;
 		protected WeakReference<String> log_ref;
 		
-		public ApacheWebServerInstance(EApacheVersion apache_version, ApacheManager ws_mgr, String docroot, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port, AHost host, String conf_dir, String apache_conf_file, String error_log, String conf_str) {
+		public ApacheWebServerInstance(EApacheVersion apache_version, PhpBuild build, ApacheManager ws_mgr, String docroot, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port, AHost host, String conf_dir, String apache_conf_file, String error_log, String conf_str) {
 			super(ws_mgr, docroot, cmd, ini, env, hostname, port);
+			this.build = build;
 			this.apache_version = apache_version;
 			this.host = host;
 			this.conf_dir = conf_dir;
@@ -317,7 +290,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		
 		@Override
 		protected void do_close() {
-			// do this several times to make sure it gets done
+			// do this several times to make sure it gets done successfully
 			final boolean c = process.isCrashedOrDebuggedAndClosed();
 			for ( int i=0; i <3;i++) {
 				super.do_close();
@@ -340,7 +313,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		@Override
 		public String getInstanceInfo(ConsoleManager cm) {
 			try {
-				return host.execOut(httpd(apache_version, host)+" -V", AHost.ONE_MINUTE).output;
+				return host.execOut(apache_version.getHttpdPath(cm, host, build)+" -V", AHost.ONE_MINUTE).output;
 			} catch ( Exception ex ) {
 				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "getInstanceInfo", ex, "");
 				return StringUtil.EMPTY;
@@ -361,30 +334,6 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		host.delete(host.getTempDir()+"/PFTT-ApacheManager-*");
 	}
 
-	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build) {
-		EApacheVersion apache_version = decideApacheVersion(cm, host, build, _apache_version);
-		
-		if (host.exists(httpd(apache_version, host)))
-			// already installed
-			return true;
-		
-		try {
-			if (host.isWindows() ? installWindows(apache_version, cm, host, build) : installLinux(cm, host)) {
-				cm.println(EPrintType.COMPLETED_OPERATION, getClass(), "");
-				
-				return true;
-			}
-		} catch ( Exception ex ) {
-			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "setup", ex, "");
-		}
-		return false;
-	}
-	
-	protected boolean installLinux(ConsoleManager cm, Host host) throws Exception {
-		return host.exec(cm, getClass(), "emerge www-servers/apache", Host.ONE_MINUTE * 30);
-	}
-	
 	@Override
 	public boolean allowConcurrentWebServerSAPIInstances() {
 		return true;
@@ -469,27 +418,78 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 	} // end public String writeConfigurationFile
 
 	@Override
-	public boolean start(ConsoleManager cm, Host host, PhpBuild build) {
+	public boolean setup(ConsoleManager cm, Host host, PhpBuild build) {
+		EApacheVersion apache_version = decideApacheVersion(cm, host, build, this._apache_version);
+		
+		String httpd = apache_version.getHttpdPath(cm, host, build);
+		if (!host.exists(httpd))
+			return false;
+		else if (!host.isWindows())
+			return true; // don't need to do `-k install` on Linux
+		
 		try {
-			EApacheVersion apache_version = decideApacheVersion(cm, host, build, _apache_version);
-			
-			if (host.isWindows())
-				return host.exec(cm, getClass(), httpd(apache_version, host)+" -k start", Host.ONE_MINUTE);
-			else
-				return host.exec(cm, getClass(), "/etc/init.d/apache start", Host.ONE_MINUTE);
+			// install Windows service
+			host.exec(httpd+" -k install", Host.ONE_MINUTE);
+			return true;
 		} catch ( Exception ex ) {
-			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "start", ex, "");
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "setup", ex, "Couldn't install Apache as a Windows service");
 		}
 		return false;
 	}
+	
+	@Override
+	public boolean start(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
+		if (!(host instanceof AHost)) {
+			HostGroup group = (HostGroup) host;
+			for ( Host ghost : group ) {
+				if (!start(cm, ghost, build, ini))
+					return false;
+			}
+			return !group.isEmpty();
+		}
+		EApacheVersion apache_version = decideApacheVersion(cm, host, build, this._apache_version);
+		final String listen_address = "0.0.0.0";
+		final int port = 80;
+		CouldConnect could = canConnect(listen_address, port); 
+		if (could.connect) {
+			cm.println(EPrintType.CLUE, "ApacheManager", "A web server is already running");
+			cm.println(EPrintType.TIP, "ApacheManager", "Try `stop -c apache "+build.getBuildPath()+"` to stop Apache");
+			return false; 
+		}
+		final String docroot = getDefaultDocroot(host, build);
+		
+		ApacheHttpdAndVersion apache = apache_version.getHttpd(cm, host, build);
+		// important: see #close - use different name for apache config directory so it won't be deleted
+		PreparedApache prep = prepareApache("Setup", ini, apache, cm, apache_version, (AHost)host, build, listen_address, port, docroot);
+		
+		// XXX will this work on Linux??
+		try {
+			// ensure Windows service is installed
+			host.exec(prep.httpd+" -f "+prep.apache_conf_file+" -k install", AHost.ONE_MINUTE);
+			// ensure configured (important to run `config` or `start` will fail or fail to get new configuration)
+			host.exec(prep.httpd+" -f "+prep.apache_conf_file+" -k config", AHost.ONE_MINUTE);
+			// start
+			host.exec(prep.httpd+" -f "+prep.apache_conf_file+" -k start", AHost.ONE_MINUTE);
+		} catch ( Exception ex ) {
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "start", ex, "Unable to Start Apache after setup", prep.httpd, prep.apache_conf_file);
+			return false;
+		}
+		if (canConnect(listen_address, port).connect) {
+			cm.println(EPrintType.CLUE, "ApacheManager", "Apache running\nDocument Root: "+docroot+"\nURL: http://"+listen_address+":"+port+"/");
+			return true;
+		} else {
+			cm.println(EPrintType.CLUE, "ApacheManager", "Apache process appeared to start, but not able to connect after many attempts. \nThis Apache build may be broken: "+prep.httpd);
+			return false;
+		}
+	}
 
 	@Override
-	public boolean stop(ConsoleManager cm, Host host, PhpBuild build) {
+	public boolean stop(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
 		try {
 			EApacheVersion apache_version = decideApacheVersion(cm, host, build, _apache_version);
 			
 			if (host.isWindows())
-				return host.exec(cm, getClass(), httpd(apache_version, host)+" -k stop", Host.ONE_MINUTE);
+				return host.exec(cm, getClass(), apache_version.getHttpdPath(cm, host, build)+" -k stop", Host.ONE_MINUTE);
 			else
 				return host.exec(cm, getClass(), "/etc/init.d/apache stop", Host.ONE_MINUTE);
 		} catch ( Exception ex ) {
@@ -502,7 +502,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 	public String getDefaultDocroot(Host host, PhpBuild build) {
 		EApacheVersion apache_version = decideApacheVersion(null, host, build, _apache_version);
 		
-		return host.isWindows() ? apache_version==EApacheVersion.APACHE_2_2 ? host.getSystemDrive() + "\\Apache2\\htdocs" : host.getSystemDrive() + "\\Apache24\\htdocs" : "/var/www/localhost/htdocs";
+		return host.isWindows() ? host.joinIntoOnePath(apache_version.getApacheRoot(null, host, build), "htdocs") : "/var/www/localhost/htdocs";
 	}
 
 	String version;
@@ -511,12 +511,16 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		return "Apache-ModPHP" + (version==null?"":"-"+version);
 	}
 
-	public void addToDebugPath(AHost host, Collection<String> debug_path) {
+	public void addToDebugPath(ConsoleManager cm, AHost host, PhpBuild build, Collection<String> debug_path) {
 		if (host.isWindows()) {
+			EApacheVersion apache_version = decideApacheVersion(cm, host, null, _apache_version);
+			
+			final String ar = apache_version.getApacheRoot(cm, host, build);
+			
 			// provide these symbols to WinDebug
-			debug_path.add(host.getSystemDrive()+"\\Apache24\\bin");
-			debug_path.add(host.getSystemDrive()+"\\Apache24\\lib");
-			debug_path.add(host.getSystemDrive()+"\\Apache24\\modules");
+			debug_path.add(ar+"\\bin");
+			debug_path.add(ar+"\\lib");
+			debug_path.add(ar+"\\modules");
 		}
 	}
 	

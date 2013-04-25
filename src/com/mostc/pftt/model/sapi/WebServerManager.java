@@ -41,9 +41,9 @@ public abstract class WebServerManager extends SAPIManager {
 	 */
 	public abstract boolean setup(ConsoleManager cm, Host host, PhpBuild build);
 	
-	public abstract boolean start(ConsoleManager cm, Host host, PhpBuild build);
+	public abstract boolean start(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini);
 	
-	public abstract boolean stop(ConsoleManager cm, Host host, PhpBuild build);
+	public abstract boolean stop(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini);
 	
 	public abstract String getName();
 	

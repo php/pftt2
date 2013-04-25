@@ -43,6 +43,11 @@ public class LocalFileSystemScenario extends AbstractFileSystemScenario {
 			}
 		};
 	
+	@Override
+	public boolean setupRequired() {
+		// not a placeholder, but no setup is needed
+		return false;
+	}
 	
 	@Override
 	public String getName() {

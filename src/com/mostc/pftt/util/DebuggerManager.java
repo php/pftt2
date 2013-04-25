@@ -62,13 +62,15 @@ public abstract class DebuggerManager {
 	 * 
 	 * for instance, this lets apache builds provide debug symbols to WinDebug
 	 * 
+	 * @param cm
 	 * @param host
+	 * @param build
 	 * @param scenario_set
 	 */
-	protected void addToDebugPathFromScenarios(AHost host, ScenarioSet scenario_set) {
+	protected void addToDebugPathFromScenarios(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set) {
 		ArrayList<String> paths = new ArrayList<String>(5);
 		for ( Scenario s : scenario_set ) {
-			s.addToDebugPath(host, paths);
+			s.addToDebugPath(cm, host, build, paths);
 		}
 		if (this.debug_path==null)
 			this.debug_path = "";
@@ -95,7 +97,7 @@ public abstract class DebuggerManager {
 			// only PHP on Windows has standard conventions for naming/locating source and debug packs
 			this.src_path = cm.getSourcePack();
 			this.debug_path = cm.getDebugPack().getPath();
-			addToDebugPathFromScenarios(host, scenario_set);
+			addToDebugPathFromScenarios(cm, host, build, scenario_set);
 			return;
 		}
 		
@@ -121,7 +123,7 @@ public abstract class DebuggerManager {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "ensureFindSourceAndDebugPack", ex, "");
 		}
 		
-		addToDebugPathFromScenarios(host, scenario_set);
+		addToDebugPathFromScenarios(cm, host, build, scenario_set);
 	} // end protected void ensureFindSourceAndDebugPack
 	
 	/** turns generic objects into server name to give to debugger.

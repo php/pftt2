@@ -191,6 +191,10 @@ public abstract class WebServerInstance extends SAPIInstance {
 	
 	public abstract String hostname();
 	public abstract int port();
+	
+	public String getRootURL() {
+		return "http://"+hostname()+":"+port()+"/";
+	}
 
 	/** PhpIni set for this web server
 	 * 

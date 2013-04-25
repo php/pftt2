@@ -4,6 +4,7 @@ import java.util.Map;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.runner.AbstractPhpUnitTestCaseRunner;
 
@@ -45,7 +46,7 @@ public class MSSQLODBCScenario extends AbstractODBCScenario {
 	}
 	
 	@Override
-	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhpIni _ini) {
 		return EScenarioStartState.SKIP;
 	}
 

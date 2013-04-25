@@ -58,7 +58,9 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			// test is SKIP BORK EXCEPTION etc...
 			return;
 		
+		current_section = EPhptSection.SKIPIF; // @see #getSAPIOutput
 		if (skipif_file == null || ( !evalSkipIf(executeSkipIf()) && not_crashed) ) {
+			current_section = EPhptSection.TEST; // @see #getSAPIOutput
 			// no SKIPIF section or executed SKIPIF says to execute the TEST section
 			prepareTest();
 			//
@@ -69,8 +71,10 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 				
 				// some tests create files/dirs which, which will cause the test to fail again
 				// if its run in-place from the same test-pack
-				if (!cm.isPhptNotInPlace()&&test_clean!=null)
+				if (!cm.isPhptNotInPlace()&&test_clean!=null) {
+					current_section = EPhptSection.CLEAN; // @see #getSAPIOutput
 					executeClean();
+				}
 			}
 		}
 	}
