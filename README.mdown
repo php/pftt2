@@ -23,8 +23,6 @@ test what will happen in production.
 
 ## USAGE
 
-Add PFTT to your Shell's PATH, so you can just run 'pftt'
-
 Windows:
 
 	Click on PFTT Shell in \php-sdk\PFTT\current\bin.
