@@ -127,6 +127,13 @@ function __phpunit_run_isolated_test()
 	//
 	if (reflection_only) {
 		// test method is only referenced in a string value. its not in the call-graph. opcache may optimize it out
+		//  (the purpose of requiring reflection_only is to test that behavior)
+		//
+		// theoretically, PhpUnit could call the method (since it generates php code from a template) without reflection, but it needs to
+		// know how many arguments to pass to the method. that will require reflection.
+		// PFTT, however, already parses the test case class to get a list of their test methods and count their arguments
+		// so PFTT doesn't need to use reflection for PhpUnit tests, but users may want it to.
+		//
 pw.println("""
 		\$test->run(\$result);
 		\$status = \$test->getStatus();

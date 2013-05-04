@@ -9,6 +9,7 @@ import java.util.List;
 import javax.annotation.Nullable;
 
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.model.core.ESAPIType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhptActiveTestPack;
 import com.mostc.pftt.model.core.PhptSourceTestPack;
@@ -17,6 +18,7 @@ import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.AbstractFileSystemScenario.ITestPackStorageDir;
 
@@ -92,6 +94,14 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 				return;
 			}
 			
+			for ( Scenario scenario : scenario_set ) {
+				if (!scenario.prepare(cm, runner_host, build, scenario_set, active_test_pack)) {
+					cm.println(EPrintType.CANT_CONTINUE, getClass(), "Scenario "+scenario.getNameWithVersionInfo()+" failed to prepare test-pack. See: "+scenario.getClass().getSimpleName());
+					close();
+					return;	
+				}
+			}
+			
 			cm.println(EPrintType.IN_PROGRESS, getClass(), "installed tests("+test_cases.size()+") from test-pack onto storage: local="+local_test_pack_dir+" remote="+remote_test_pack_dir);
 		}
 	} // end protected void setupStorageAndTestPack
@@ -113,11 +123,15 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 	
 	@Override
 	protected TestCaseGroupKey createGroupKey(PhptTestCase test_case, TestCaseGroupKey group_key) throws Exception {
-		if (sapi_scenario.willSkip(cm, twriter, runner_host, scenario_set, sapi_scenario.getSAPIType(), build, test_case)) {
-			// #willSkip will record the PhptTestResult explaining why it was skipped
-			//
-			// do some checking before making a PhpIni (part of group_key) below
-			return null;
+		final ESAPIType sapi_type = sapi_scenario.getSAPIType();
+		for ( Scenario scenario : scenario_set ) {
+			// usually just asking sapi_scenario, sometimes file system scenario
+			if (scenario.willSkip(cm, twriter, runner_host, scenario_set, sapi_type, build, test_case)) {
+				// #willSkip will record the PhptTestResult explaining why it was skipped
+				//
+				// do some checking before making a PhpIni (part of group_key) below
+				return null;
+			}
 		}
 		
 		//

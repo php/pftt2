@@ -6,6 +6,8 @@ import java.net.Socket;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
@@ -22,11 +24,9 @@ import org.apache.http.protocol.HttpRequestExecutor;
 
 import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.StringUtil;
-import com.github.mattficken.io.Trie;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.core.EPhptSection;
 import com.mostc.pftt.model.core.EPhptTestStatus;
-import com.mostc.pftt.model.core.ESAPIType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.core.PhptActiveTestPack;
@@ -82,132 +82,6 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		this.request_bytes = new ByteArrayOutputStream(256);
 		this.response_bytes = new ByteArrayOutputStream(4096);
 	}
-	
-	/** @see AbstractSAPIScenario#willSkip
-	 * 
-	 * @param twriter
-	 * @param host
-	 * @param scenario_set
-	 * @param type
-	 * @param build
-	 * @param test_case
-	 * @return
-	 * @throws Exception
-	 */
-	public static boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
-		if (AbstractPhptTestCaseRunner.willSkip(cm, twriter, host, scenario_set, type, build, test_case)) {
-			return true;
-		} else if (test_case.containsSection(EPhptSection.STDIN)) {
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "STDIN section not supported for testing against web servers", null, null, null, null, null, null, null, null, null, null, null));
-			
-			return true;
-		} else if (test_case.containsSection(EPhptSection.ARGS)) {
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "ARGS section not supported for testing against web servers", null, null, null, null, null, null, null, null, null, null, null));
-			
-			return true;
-		} else if (cm.isDisableDebugPrompt()&&test_case.isNamed(BLOCKING_WINPOPUP)) {
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test shows blocking winpopup msg", null, null, null, null, null, null, null, null, null, null, null));
-			
-			return true;
-		} else if (test_case.isNamed(NOT_VALID_ON_WEB_SERVERS)) {
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on web servers", null, null, null, null, null, null, null, null, null, null, null));
-			
-			return true;
-		} else if (host.isWindows() && test_case.isNamed(NOT_VALID_ON_WEB_SERVERS_WINDOWS)) {
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on web servers", null, null, null, null, null, null, null, null, null, null, null));
-			
-			return true;
-		} else {
-			return false;
-		}
-	} // end public static boolean willSkip
-	public static Trie BLOCKING_WINPOPUP = PhptTestCase.createNamed(
-				// causes a blocking winpopup msg about a few php_*.dll DLLs that couldn't be loaded
-				// (ignore these for automated testing, but still show them for manual testing)
-				"ext/zlib/tests/008.phpt",
-				"ext/zlib/tests/ob_gzhandler_legacy_002.phpt"
-			);
-	public static Trie NOT_VALID_ON_WEB_SERVERS_WINDOWS = PhptTestCase.createNamed(
-				// on Windows/Apache, already start with output buffering
-				// so the expected output is different (but is not a bug)
-				"tests/output/ob_get_level_basic_001.phpt",
-				"tests/output/ob_get_length_basic_001.phpt",
-				"tests/output/ob_clean_basic_001.phpt",
-				"tests/output/ob_get_status.phpt",
-				"tests/output/ob_010.phpt",
-				"tests/output/ob_011.phpt",
-				"tests/output/bug60321.phpt",
-				"ext/phar/tests/phar_create_in_cwd.phpt",
-				"ext/phar/tests/phar_commitwrite.phpt",
-				"tests/output/ob_start_error_005.phpt"
-			);
-	public static Trie NOT_VALID_ON_WEB_SERVERS = PhptTestCase.createNamed(
-				// XXX this test crashes on apache b/c the stack size is too small (see #setStackSize in ApacheManager)
-				"ext/pcre/tests/bug47662.phpt",
-				// fpassthru() system() and exec() doesn't run on Apache
-				"ext/standard/tests/popen_pclose_basic-win32.phpt", 
-				"sapi/cli/tests/bug61546.phpt",
-				"ext/standard/tests/file/bug41874.phpt",
-				"ext/standard/tests/file/bug41874_1.phpt",
-				"ext/standard/tests/file/bug41874_2.phpt",
-				"ext/standard/tests/file/bug41874_3.phpt",
-				"ext/standard/tests/file/popen_pclose_basic-win32.phpt",
-				// changing memory limit under mod_php after script started is N/A
-				"tests/lang/bug45392.phpt",
-				// this test will return different output on apache/iis
-				"ext/standard/tests/general_functions/get_cfg_var_variation8.phpt",
-				"tests/basic/bug54514.phpt",
-				"sapi/tests/test005.phpt",
-				//////////////////
-				"ext/standard/tests/strings/004.phpt",
-				"ext/mbstring/tests/bug63447_001.phpt",
-				"ext/mbstring/tests/bug63447_002.phpt",
-				"ext/iconv/tests/ob_iconv_handler.phpt",
-				"ext/mbstring/tests/mb_strcut.phpt",
-				"ext/mbstring/tests/mb_decode_numericentity.phpt",
-				//////////////////
-				"ext/standard/tests/file/parse_ini_file.phpt",
-				"tests/basic/rfc1867_missing_boundary.phpt",
-				"ext/xml/tests/xml006.phpt",
-				"zend/tests/bug48930.phpt",
-				"ext/json/tests/002.phpt",
-				"ext/zlib/tests/bug55544-win.phpt",
-				"tests/basic/025.phpt",
-				"ext/standard/tests/array/bug34066_1.phpt",
-				"tests/basic/rfc1867_invalid_boundary.phpt",
-				"zend/tests/bug54268.phpt",
-				"tests/basic/rfc1867_post_max_size.phpt",
-				"ext/dom/tests/bug37456.phpt",
-				"ext/libxml/tests/bug61367-read.phpt",
-				"zend/tests/multibyte/multibyte_encoding_003.phpt",
-				"ext/standard/tests/general_functions/002.phpt",
-				"zend/tests/multibyte/multibyte_encoding_002.phpt",
-				"tests/basic/rfc1867_garbled_mime_headers.phpt",
-				"ext/standard/tests/array/bug34066.phpt",
-				"ext/standard/tests/general_functions/006.phpt",
-				"ext/libxml/tests/bug61367-write.phpt",
-				"ext/session/tests/rfc1867_invalid_settings-win.phpt",
-				"ext/session/tests/rfc1867_invalid_settings_2-win.phpt",
-				"ext/standard/tests/versioning/php_sapi_name_variation001.phpt",
-				"ext/standard/tests/math/rad2deg_variation.phpt",
-				"ext/standard/tests/strings/strtoupper.phpt",
-				"ext/standard/tests/strings/sprintf_variation47.phpt",
-				"ext/standard/tests/general_functions/bug41445_1.phpt",
-				"ext/standard/tests/strings/htmlentities.phpt",
-				"ext/standard/tests/strings/fprintf_variation_001.phpt",
-				"ext/standard/tests/general_functions/var_dump.phpt",
-				"ext/session/tests/003.phpt",
-				"ext/session/tests/023.phpt",
-				"tests/basic/032.phpt",
-				"tests/basic/031.phpt",
-				"tests/basic/030.phpt",
-				/////////////////
-				// getopt returns false under web server (ok)
-				"ext/standard/tests/general_functions/bug43293_1.phpt",
-				"ext/standard/tests/general_functions/bug43293_2.phpt",
-				// fopen("stdout") not supported under apache
-				"tests/strings/002.phpt"
-			);
 	
 	@Override
 	protected void prepareTest() throws Exception {
@@ -403,17 +277,22 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	
 	@Override
 	protected void stop(boolean force) {
-		if (test_socket==null)
-			return;
 		if (force && is_replacement && web !=null && !web.isDebuggerAttached())
 			web.close();
-		try {
-			test_socket.close();
-		} catch ( Exception ex ) {
-		}
+		final Socket s = test_socket;
+		if (s==null)
+			return;
+		new Thread() {
+			public void run() {
+				try {
+				s.close();
+				} catch ( Exception ex ) {}
+			}
+		};
 		test_socket = null;
 	}
 	
+	static Timer timer = new Timer();
 	protected String do_http_get(String path, int i) throws Exception {
 		HttpContext context = new BasicHttpContext(null);
 		HttpHost http_host = new HttpHost(web.hostname(), web.port());
@@ -424,6 +303,29 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		}
 		conn = new DebuggingHttpClientConnection(request_bytes, response_bytes);
 		test_socket = null;
+		TimerTask task = new TimerTask() {
+			public void run() {
+				if (web!=null)
+					web.close();
+				new Thread() {
+					public void run() {
+				if (conn!=null) {
+					try {
+					conn.close();
+					} catch ( Exception ex ) {}
+					conn = null;
+				}
+				if (test_socket!=null) {
+					try {
+					test_socket.close();
+					} catch ( Exception ex ) {}
+					test_socket = null;
+				}
+					}
+				}.start();
+			}
+		};
+		timer.scheduleAtFixedRate(task, 60*1000, 10*1000);
 		try {
 			context.setAttribute(ExecutionContext.HTTP_CONNECTION, conn);
 			context.setAttribute(ExecutionContext.HTTP_TARGET_HOST, http_host);
@@ -431,6 +333,8 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			test_socket = new Socket(http_host.getHostName(), http_host.getPort());
 			conn.bind(test_socket, params);
 			conn.setSocketTimeout(60*1000);
+			
+			
 			
 			HttpGet request = new HttpGet(path);
 			if (cookie_str!=null)
@@ -463,9 +367,15 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			
 			return IOUtil.toString(response.getEntity().getContent(), IOUtil.HALF_MEGABYTE);
 		} finally {
+			task.cancel();
+			try {
 			if (test_socket!=null)
 				test_socket.close();
-			conn.close();
+			} catch ( Throwable t ) {}
+			try {
+			if (conn!=null)
+				conn.close();
+			} catch ( Throwable t ) {}
 		}
 	} // end protected String do_http_get
 	
@@ -482,6 +392,29 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			conn = null;
 		}
 		conn = new DebuggingHttpClientConnection(request_bytes, response_bytes);
+		TimerTask task = new TimerTask() {
+			public void run() {
+				if (web!=null)
+					web.close();
+				new Thread() {
+					public void run() {
+				if (conn!=null) {
+					try {
+					conn.close();
+					} catch ( Exception ex ) {}
+					conn = null;
+				}
+				if (test_socket!=null) {
+					try {
+					test_socket.close();
+					} catch ( Exception ex ) {}
+					test_socket = null;
+				}
+					}
+				}.start();
+			}
+		};
+		timer.scheduleAtFixedRate(task, 60*1000, 10*1000);
 		try {
 			context.setAttribute(ExecutionContext.HTTP_CONNECTION, conn);
 			context.setAttribute(ExecutionContext.HTTP_TARGET_HOST, http_host);
@@ -517,7 +450,15 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			
 			return IOUtil.toString(response.getEntity().getContent(), IOUtil.HALF_MEGABYTE);
 		} finally {
-			conn.close();
+			task.cancel();
+			try {
+			if (test_socket!=null)
+				test_socket.close();
+			} catch ( Throwable t ) {}
+			try {
+			if (conn!=null)
+				conn.close();
+			} catch ( Throwable t ) {}
 		}
 	} // end protected String do_http_post
 	

@@ -1,10 +1,12 @@
 package com.mostc.pftt.scenario;
 
 import com.github.mattficken.io.StringUtil;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.EAcceleratorType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
+import com.mostc.pftt.model.core.PhptActiveTestPack;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
@@ -88,6 +90,16 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 	@Override
 	public EAcceleratorType getAcceleratorType() {
 		return EAcceleratorType.OPCACHE;
+	}
+	
+	@Override
+	public boolean prepare(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack test_pack) {
+		if (host.isWindows()) {
+			// sometimes OpCache may put the memory mapped file here, be sure to delete it
+			host.deleteIfExistsElevated(test_pack.getRunningDirectory()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());	
+			host.deleteIfExistsElevated(test_pack.getStorageDirectory()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+		}
+		return true;
 	}
 
 	@Override

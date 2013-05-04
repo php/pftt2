@@ -94,6 +94,7 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		// network path is in both UNC and URL format (UNC for Windows, URL for Linux)
 		protected String share_name, remote_path, unc_path, url_path, local_path;
 		protected Thread shutdown_hook;
+		private boolean disposed;
 		
 		protected void addShutdownHook() {
 			shutdown_hook = new Thread() {
@@ -140,7 +141,10 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		
 		@Override
 		public boolean disposeForce(ConsoleManager cm, AHost local_host, ActiveTestPack active_test_pack) {
-			return disconnect(this, cm, local_host) && deleteShare(this, cm, local_host);
+			if (disposed)
+				return true;
+			
+			return disposed = ( disconnect(this, cm, local_host) && deleteShare(this, cm, local_host) );
 		}
 
 		@Override

@@ -43,7 +43,7 @@ public class CliPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 		
 		output_str = output_sb.toString();
 		
-		is_crashed = false;// TODO running_test_handle.isCrashed();
+		is_crashed = running_test_handle.isCrashed();
 		
 		if (is_crashed) {
 			int exit_code = running_test_handle.getExitCode();

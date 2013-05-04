@@ -108,6 +108,7 @@ public class SSHHost extends RemoteHost {
 	protected SshClient ssh;
 	@Nullable
 	protected SftpClient sftp;
+	protected final CommonCommandManager ccm;
 	
 	static {
 		if (DEV>0)
@@ -148,6 +149,8 @@ public class SSHHost extends RemoteHost {
 		this.username = username;
 		this.password = password;
 		this.verif = verif;
+		
+		ccm = new CommonCommandManager();
 	}
 	
 	protected String normalizePath(String path) {
@@ -249,42 +252,13 @@ public class SSHHost extends RemoteHost {
 
 	@Override
 	public boolean delete(String path) {
-		return do_delete(path, false);
+		return ccm.delete(this, path, false);
 	}
 	
 	@Override
 	public boolean deleteElevated(String path) {
-		return do_delete(path, true);
+		return ccm.delete(this, path, true);
 	}
-	
-	protected boolean do_delete(String path, boolean elevate) {
-		path = normalizePath(path);
-		if (!isSafePath(path))
-			return false;
-		
-		try {
-			if (isDirectory(path)) {
-				// ensure empty
-				if (isWindows()) {
-					path = toWindowsPath(path);
-					if (elevate)
-						cmdElevated("RMDIR /Q /S \""+path+"\"", FOUR_HOURS);
-					else
-						cmd("RMDIR /Q /S \""+path+"\"", FOUR_HOURS);
-				} else {
-					path = toUnixPath(path);
-					exec("rm -rf \""+path+"\"", FOUR_HOURS);
-				}
-			} else {
-				ensureSftpOpen();
-				sftp.rm(path);
-			}
-			return true;
-		} catch ( Exception ex ) {
-			ex.printStackTrace();
-		}
-		return false;
-	} // end protected boolean do_delete
 
 	@Override
 	public boolean exists(String path) {
@@ -301,74 +275,24 @@ public class SSHHost extends RemoteHost {
 	
 	@Override
 	public boolean copy(String src, String dst) throws Exception {
-		return do_copy(src, dst, false);
+		return ccm.copy(this, src, dst, false);
 	}
 	
 	@Override
 	public boolean copyElevated(String src, String dst) throws Exception {
-		return do_copy(src, dst, true);
-	}
-	
-	protected boolean do_copy(String src, String dst, boolean elevated) throws Exception {
-		if (!isSafePath(dst))
-			return false;
-		if (isWindows()) {
-			src = toWindowsPath(src);
-			dst = toWindowsPath(dst);
-			
-			if (elevated)
-				cmdElevated("move \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
-			else
-				cmd("move \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
-		} else {
-			src = toUnixPath(src);
-			dst = toUnixPath(dst);
-			exec("mv \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
-		}
-		return true;
+		return ccm.copy(this, src, dst, true);
 	}
 	
 	@Override
 	public boolean move(String src, String dst) throws Exception {
-		return do_move(src, dst, false);
+		return ccm.move(this, src, dst, false);
 	}
 	
 	@Override
 	public boolean moveElevated(String src, String dst) throws Exception {
-		return do_move(src, dst, true);
+		return ccm.move(this, src, dst, true);
 	}
 	
-	protected boolean do_move(String src, String dst, boolean elevated) throws Exception {
-		src = normalizePath(src);
-		dst = normalizePath(dst);
-		if (!isSafePath(dst))
-			return false;
-		if (isWindows()) {
-			src = toWindowsPath(src);
-			dst = toWindowsPath(dst);
-			if (isDirectory(src)) {
-				// ensure xcopy sees destination is supposed to be a directory, or xcopy will ask/block forever
-				if (!dst.endsWith("\\"))
-					dst += "\\";
-			
-				if (elevated)
-					execElevated("xcopy /Q /Y /C /I /E /G /R /H \""+src+"\" \""+dst+"\"", FOUR_HOURS);
-				else
-					exec("xcopy /Q /Y /C /I /E /G /R /H \""+src+"\" \""+dst+"\"", FOUR_HOURS);
-			} else {
-				if (elevated)
-					execElevated("xcopy /Q /Y /C /E /G /R /H \""+src+"\" \""+dst+"\"", FOUR_HOURS);
-				else
-					exec("xcopy /Q /Y /C /E /G /R /H \""+src+"\" \""+dst+"\"", FOUR_HOURS);
-			}
-		} else {
-			src = toUnixPath(src);
-			dst = toUnixPath(dst);
-			exec("cp \""+src+"\" \""+dst+"\"", FOUR_HOURS);
-		}
-		return true;
-	}
-
 	@Override
 	public String pathsSeparator() {
 		return isWindows() ? ";" : ":";
@@ -499,6 +423,9 @@ public class SSHHost extends RemoteHost {
 		
 		@Override
 		public void close(boolean force) {
+			/* TODO ccm.winCloseAllHandles(SSHHost.this, process_id);
+			ccm.winKillProcess(SSHHost.this, image_name, process_id);
+			ccm.ensureWERFaultIsNotRunning(SSHHost.this, process_id); */
 			try {
 				session.close();
 			} catch ( Exception ex ) {
@@ -900,6 +827,18 @@ public class SSHHost extends RemoteHost {
 		public int read() {
 			return bbuf.get();
 		}
+	}
+
+	@Override
+	protected boolean deleteSingleFile(String path) {
+		try {
+			ensureSftpOpen();
+			sftp.rm(path);
+			return true;
+		} catch ( Exception ex ) {
+			ex.printStackTrace();
+		}
+		return false;
 	}
 
 } // end public class SSHHost

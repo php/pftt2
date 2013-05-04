@@ -358,6 +358,7 @@ public abstract class AHost extends Host {
 		 *                then a WER Popup dialog will block the process from being killed. set force=true
 		 *                if the process needs to be killed even in this situation (normally process should be left running/crashed
 		 *                so user can debug it)
+		 *                if false, even on Windows will still KILL the process.
 		 */
 		public abstract void close(boolean force);
 		/** KILLs process.
@@ -447,6 +448,7 @@ public abstract class AHost extends Host {
 			case NTStatus.STATUS_SHUTDOWN_IN_PROGRESS:
 			case NTStatus.STATUS_SERVER_SHUTDOWN_IN_PROGRESS:
 			case NTStatus.STATUS_CONTEXT_MISMATCH:
+			case 255: // XXX why is 255 not a crash??
 				// special non-zero exit-codes that aren't considered crashes
 				return false;
 				
@@ -1070,5 +1072,7 @@ public abstract class AHost extends Host {
 	public boolean isWindowsServer() {
 		return getOSNameLong().contains("Server");
 	}
+
+	protected abstract boolean deleteSingleFile(String path);
 	
 } // end public abstract class AHost

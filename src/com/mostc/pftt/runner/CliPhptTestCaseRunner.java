@@ -9,14 +9,12 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 
 import com.github.mattficken.io.StringUtil;
-import com.github.mattficken.io.Trie;
 import com.mostc.pftt.host.AHost.ExecHandle;
 import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.core.EPhptSection;
 import com.mostc.pftt.model.core.EPhptTestStatus;
-import com.mostc.pftt.model.core.ESAPIType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.core.PhptActiveTestPack;
@@ -39,119 +37,6 @@ import com.mostc.pftt.scenario.ScenarioSet;
 public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected ExecOutput output;
 	protected String selected_php_exe, shell_script, test_cmd, skip_cmd, shell_file, ini_dir;
-	
-	public static Trie DISABLE_DEBUG_PROMPT = PhptTestCase.createNamed(
-				// these ext/session tests, on CLI sapi, cause a blocking winpopup msg about some mystery 'Syntax Error'
-				//  (ignore these for automated testing, but still show them for manual testing)
-				"sapi/cgi/tests/apache_request_headers.phpt",
-				"ext/xmlrpc/tests/bug45226.phpt",
-				"ext/xmlrpc/tests/bug18916.phpt",
-				"ext/standard/tests/mail/mail_basic2.phpt",
-				"ext/session/tests/016.phpt",
-				"ext/intl/tests/dateformat_parse_timestamp_parsepos.phpt",
-				"ext/intl/tests/dateformat_parse.phpt",
-				"ext/curl/tests/bug61948.phpt",
-				"ext/curl/tests/bug61948-win32.phpt",
-				"ext/session/tests/021.phpt",
-				"ext/session/tests/bug42596.phpt",
-				"ext/session/tests/020.phpt",
-				"ext/session/tests/bug41600.phpt",
-				"ext/standard/tests/mail/mail_basic5.phpt",
-				"ext/standard/tests/mail/mail_basic4.phpt",
-				"ext/standard/tests/mail/mail_basic3.phpt",
-				"sapi/cgi/tests/apache_request_headers.phpt",
-				"ext/xmlrpc/tests/bug45226.phpt",
-				"ext/xmlrpc/tests/bug18916.phpt",
-				"ext/standard/tests/mail/mail_basic2.phpt",
-				"ext/session/tests/016.phpt",
-				"ext/intl/tests/dateformat_parse_timestamp_parsepos.phpt",
-				"ext/intl/tests/dateformat_parse.phpt",
-				"ext/curl/tests/bug61948.phpt",
-				"ext/curl/tests/bug61948-win32.phpt",
-				"ext/session/tests/021.phpt",
-				"ext/session/tests/bug42596.phpt",
-				"ext/session/tests/020.phpt",
-				"ext/session/tests/bug41600.phpt",
-				"ext/standard/tests/mail/mail_basic5.phpt",
-				"ext/standard/tests/mail/mail_basic4.phpt",
-				"ext/standard/tests/mail/mail_basic3.phpt"
-			);
-	public static Trie RANDOMLY_FAIL = PhptTestCase.createNamed(
-				// uses both POST and GET
-				"tests/basic/003.phpt",
-				//
-				"tests/basic/022.phpt",
-				"tests/basic/023.phpt",
-				"ext/xml/tests/xml006.phpt",
-				"ext/standard/tests/strings/strtoupper.phpt",
-				"ext/filter/tests/035.phpt",
-				"ext/filter/tests/002.phpt",
-				"ext/standard/tests/network/gethostbyname_error003.phpt",
-				"ext/filter/tests/004.phpt",
-				"ext/filter/tests/003.phpt",
-				"ext/phar/tests/cache_list/frontcontroller16.phpt",
-				"ext/phar/tests/cache_list/frontcontroller17.phpt",
-				"ext/phar/tests/cache_list/frontcontroller15.phpt",
-				"ext/phar/tests/cache_list/frontcontroller14.phpt",
-				"ext/phar/tests/cache_list/frontcontroller31.phpt",
-				"ext/phar/tests/cache_list/frontcontroller9.phpt",
-				"ext/phar/tests/cache_list/frontcontroller34.phpt",
-				"ext/phar/tests/cache_list/frontcontroller8.phpt",
-				"ext/phar/tests/cache_list/frontcontroller28.phpt",
-				"ext/phar/tests/cache_list/frontcontroller10.phpt",
-				"tests/basic/028.phpt",
-				"ext/filter/tests/041.phpt",
-				"tests/basic/032.phpt",
-				"tests/basic/031.phpt",
-				"tests/basic/030.phpt",
-				"ext/session/tests/023.phpt",
-				"ext/phar/tests/phar_get_supportedcomp3.phpt",
-				"ext/phar/tests/phar_create_in_cwd.phpt",
-				"ext/phar/tests/phar_get_supported_signatures_002.phpt",
-				//
-				"zend/tests/errmsg_021.phpt",
-				"tests/lang/short_tags.002.phpt",
-				"tests/basic/bug29971.phpt",
-				"ext/standard/tests/file/bug41655_1.phpt",
-				"ext/session/tests/bug60860.phpt",
-				"ext/pcre/tests/backtrack_limit.phpt",
-				"ext/reflection/tests/015.phpt",
-				"ext/pcre/tests/recursion_limit.phpt",
-				"ext/standard/tests/strings/htmlentities05.phpt",
-				"ext/wddx/tests/004.phpt",
-				"ext/zlib/tests/bug55544-win.phpt",
-				"ext/wddx/tests/005.phpt",
-				"ext/phar/tests/bug45218_slowtest.phpt",
-				"ext/phar/tests/phar_buildfromdirectory6.phpt",
-				"tests/security/open_basedir_glob_variation.phpt",
-				//
-				"ext/standard/tests/streams/stream_get_meta_data_socket_variation2.phpt",
-				"ext/standard/tests/streams/stream_get_meta_data_socket_variation1.phpt",
-				"ext/standard/tests/network/gethostbyname_error002.phpt",
-				"ext/session/tests/003.phpt",
-				"ext/standard/tests/streams/stream_get_meta_data_socket_variation3.phpt",
-				"ext/phar/tests/phar_commitwrite.phpt",
-				"ext/standard/tests/file/fgets_socket_variation1.phpt",
-				"ext/standard/tests/network/shutdown.phpt",
-				"ext/standard/tests/file/fgets_socket_variation2.phpt",
-				"ext/standard/tests/network/tcp4loop.phpt",
-				"zend/tests/multibyte/multibyte_encoding_003.phpt",
-				"zend/tests/multibyte/multibyte_encoding_002.phpt"
-			);
-	public static boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
-		if (AbstractPhptTestCaseRunner2.willSkip(cm, twriter, host, scenario_set, type, build, test_case)) {
-			return true;
-		} else if (cm.isDisableDebugPrompt()&&test_case.isNamed(DISABLE_DEBUG_PROMPT)) {
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null, null));
-			
-			return true;
-		} else if (test_case.isNamed(RANDOMLY_FAIL)) {
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null, null));
-			
-			return true;
-		}
-		return false;
-	} // end public static boolean willSkip
 	
 	public CliPhptTestCaseRunner(PhpIni ini, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
 		super(ini, thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
@@ -336,11 +221,11 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		
 		String output_str = output_sb.toString();
 		
-		if (false) {// TODO running_test_handle.isCrashed()) {
+		if (running_test_handle.isCrashed()) {
 			not_crashed = false; // @see #runTest
 			
 			int exit_code = running_test_handle.getExitCode();
-			
+			System.out.println("exit_code "+exit_code);
 			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, "PFTT: exit_code="+exit_code+" status="+AHost.guessExitCodeStatus(host, exit_code)+"\n"+output_str, null, null, null, ini, env, null, stdin_post, null, null, null, null, output_str, null));
 		}
 		

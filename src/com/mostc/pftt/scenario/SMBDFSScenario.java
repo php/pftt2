@@ -109,9 +109,13 @@ public class SMBDFSScenario extends AbstractSMBScenario {
 		protected String unc_target;
 		// URL format
 		protected String url_namespace_path, url_target;
+		private boolean disposed;
 		
 		@Override
 		public boolean disposeForce(ConsoleManager cm, AHost local_host, ActiveTestPack active_test_pack) {
+			if (disposed)
+				return true;
+			
 			// its more graceful to disconnect first, then delete the DFS namespace/share/target
 			disconnect(this, cm, local_host);
 			
@@ -143,10 +147,13 @@ public class SMBDFSScenario extends AbstractSMBScenario {
 				if (deleteShare(this, cm, local_host)) {
 					cm.println(EPrintType.COMPLETED_OPERATION, getClass(), "Removed DFS share successfully.");
 					
-					return true;
+					return disposed = true;
 				}
 			} catch ( Exception ex ) {
-				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "delete", ex, "Unable to delete DFS Share");
+				if (cm==null)
+					ex.printStackTrace();
+				else
+					cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "delete", ex, "Unable to delete DFS Share");
 			}
 			disconnect(this, cm, local_host);
 			

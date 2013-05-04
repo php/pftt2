@@ -1,5 +1,6 @@
 @ECHO OFF
 CLS
+COLOR b0
 TITLE PFTT Shell
 CALL \php-sdk\PFTT\current\bin\set_env
 @ECHO.

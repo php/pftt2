@@ -23,6 +23,7 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
@@ -67,6 +68,11 @@ public class LocalHost extends AHost {
 				t.printStackTrace();
 			}
 		}
+	}
+	protected final CommonCommandManager ccm;
+	
+	public LocalHost() {
+		ccm = new CommonCommandManager();
 	}
 	
 	public static boolean isLocalhostWindows() {
@@ -116,55 +122,14 @@ public class LocalHost extends AHost {
 
 	@Override
 	public boolean delete(String path) {
-		return do_delete(path, false);
+		return ccm.delete(this, path, false);
 	}
 	
 	@Override
 	public boolean deleteElevated(String path) {
-		return do_delete(path, true);
+		return ccm.delete(this, path, true);
 	}
 	
-	protected boolean do_delete(String path, boolean elevated) {
-		if (!isSafePath(path)) {
-			return false;
-		} else if (isDirectory(path)) {
-			// ensure empty
-			try {
-				if (isWindows()) {
-					path = toWindowsPath(path);
-					if (elevated)
-						cmdElevated("RMDIR /Q /S \""+path+"\"", NO_TIMEOUT);
-					else
-						cmd("RMDIR /Q /S \""+path+"\"", NO_TIMEOUT);
-				} else {
-					path = toUnixPath(path);
-					exec("rm -rf \""+path+"\"", NO_TIMEOUT);
-				}
-			} catch ( Exception ex ) {
-				ex.printStackTrace();
-			}
-		} else if (isWindows() && path.contains("*")) {
-			// XXX wildcard support on linux
-			path = fixPath(path);
-			try {
-				if (elevated)
-					execElevated("CMD /C DEL /F /Q "+path+"", NO_TIMEOUT);
-				else
-					exec("CMD /C DEL /F /Q "+path+"", NO_TIMEOUT);
-				if (elevated)
-					execElevated("CMD /C CMD /C FOR /D %f IN ("+path+") DO RMDIR /S /Q %f", NO_TIMEOUT);
-				else
-					exec("CMD /C CMD /C FOR /D %f IN ("+path+") DO RMDIR /S /Q %f", NO_TIMEOUT);
-			} catch ( Exception ex ) {
-				ex.printStackTrace();
-				new File(path).delete();
-			}
-		} else {
-			new File(path).delete();
-		}
-		return true;
-	} // end protected boolean do_delete
-
 	@Override
 	public boolean exists(String path) {
 		return new File(path).exists();
@@ -262,83 +227,24 @@ public class LocalHost extends AHost {
 	
 	@Override
 	public boolean copy(String src, String dst) throws Exception {
-		return do_copy(src, dst, false);
+		return ccm.copy(this, src, dst, false);
 	}
 	
 	@Override
 	public boolean copyElevated(String src, String dst) throws Exception {
-		return do_copy(src, dst, true);
+		return ccm.copy(this, src, dst, true);
 	}
-	
-	protected boolean do_copy(String src, String dst, boolean elevated) throws Exception {
-		if (!isSafePath(dst))
-			return false;
-		if (isWindows()) {
-			src = toWindowsPath(src);
-			dst = toWindowsPath(dst);
-			
-			String cmd = null;
-			if (isDirectory(src)) {
-				// ensure xcopy sees destination is supposed to be a directory, or xcopy will ask/block forever
-				if (!dst.endsWith("\\"))
-					dst += "\\";
-				
-				// /I is only for directories
-				// TODO try /J => performance improvement?
-				cmd = "xcopy /Q /Y /C /I /E /G /R /H \""+src+"\" \""+dst+"\"";
-			} else {
-				mkdirs(dirname(dst));
-				if (basename(src).equals(basename(dst))) {
-					dst = dirname(dst);
-					
-					cmd = "xcopy /Q /Y /E /G /R /H /C \""+src+"\" \""+dst+"\"";
-				}
-			}
-			if (cmd==null)
-				// /B => binary file copy
-				cmd = "cmd /C copy /B /Y \""+src+"\" \""+dst+"\"";
-			
-			if (elevated)
-				execElevated(cmd, NO_TIMEOUT);
-			else
-				exec(cmd, NO_TIMEOUT);
-		} else {
-			src = toUnixPath(src);
-			dst = toUnixPath(dst);
-			exec("cp \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
-		}
-		return true;
-	} // end protected boolean do_copy
 	
 	@Override
 	public boolean move(String src, String dst) throws Exception {
-		return do_move(src, dst, false);
+		return ccm.move(this, src, dst, false);
 	}
 	
 	@Override
 	public boolean moveElevated(String src, String dst) throws Exception {
-		return do_move(src, dst, true);
+		return ccm.move(this, src, dst, true);
 	}
 	
-	protected boolean do_move(String src, String dst, boolean elevated) throws Exception {
-		if (!isSafePath(dst))
-			return false;
-		if (isWindows()) {
-			src = toWindowsPath(src);
-			dst = toWindowsPath(dst);
-			
-			if (elevated)
-				cmdElevated("move \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
-			else
-				cmd("move \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
-		} else {
-			src = toUnixPath(src);
-			dst = toUnixPath(dst);
-			exec("mv \""+src+"\" \""+dst+"\"", NO_TIMEOUT);
-		}
-		return true;
-	} // end protected boolean do_move
-
 	@Override
 	public String getUsername() {
 		return System.getProperty("user.name");
@@ -359,6 +265,12 @@ public class LocalHost extends AHost {
 			this.stdout = stdout;
 			this.stderr = stderr;
 			this.image_name = StringUtil.unquote(basename(cmd_array[0]));
+			if (isLocalhostWindows()) {
+				if (this.image_name.endsWith(".cmd"))
+					this.image_name = "cmd.exe"; // IMPORTANT: this is how its identified in the Windows process table
+				else
+					this.image_name = this.image_name.toLowerCase();
+			}
 		}
 		
 		@Override
@@ -385,76 +297,76 @@ public class LocalHost extends AHost {
 					break; 
 					// process terminated, stop trying (or may terminate new process reusing the same id)
 				} catch ( Throwable t ) {
-					// hasn't exited yet
-					if (tries==0) {
-						// try closing streams to encourage it to exit
-						try {
-							stdin.close();
-						} catch ( Throwable t2 ) {
-							t2.printStackTrace();
-						}
-						try {
-							stdout.close();
-						} catch ( Throwable t2 ) {
-							t2.printStackTrace();
-						}
-						try {
-							stderr.close();
-						} catch ( Throwable t2 ) {
-							t2.printStackTrace();
-						}
-					}
-				
 					// kill it
-					if (isLocalhostWindows()) {
-						// Windows BN: process trees on Windows won't get terminated correctly by calling Process#destroy
-						//
-						// have to do some ugly hacks on Windows to kill process trees
-						int process_id = 0;
-						
-						// first: find the process id
-						process_id = getWindowsProcessID(process);
-						
-						
-						// NOTE: on Windows, if WER is not disabled(enabled by default), if a process crashes,
-						//       WER popup will appear and process will block until popup closed
-						//       -this can be detected by looking for `C:\Windows\SysWOW64\WerFault.exe -u -p <process id> -s 1032`
-						if (force && (tries > 1 && tries < 5)) {
-							// need to kill this process (execution timeout or other critical)
-							// but have failed at least once to kill it
-							ensureWERFaultIsNotRunning(process_id);
-						}
-						//
-						
-						// second: make sure we found a process id (safety check: make sure its not our process id)
-						if (process_id != 0 && process_id!=self_process_id && (image_name.equals("cmd.exe")||image_name.equals("conhost.exe"))) {
-							// also, WinProcess#killRecursively only checks by process id (not image/program name)
-							// while that should be enough, experience on Windows has shown that it isn't and somehow gets PFTT killed eventually
-							//
-							//
-							// Process#destroy works for processes except for those that
-							// are launched using cmd.exe (the parent of those processes is conhost.exe)
-							//
-							// actually, if a bunch of httpd.exe processes are being
-							// killed at ~same time, we can have an explosion of taskkill.exe processes
-							// so its better to not use taskkill.exe for processes that don't need it
-							// (ie only use taskkill.exe for cmd.exe or conhost.exe)
-							// 
-							winKillProcess(image_name, process_id);
+					//
+					// Windows BN: process trees on Windows won't get terminated correctly by calling Process#destroy
+					// have to do some special stuff on Windows
+					if (isLocalhostWindows()&&!image_name.equals("taskkill")&&!image_name.equals("taskkill.exe")) {
+						try {
+							// @see https://github.com/kohsuke/winp
+							WinProcess wprocess = new WinProcess(process);
+							final int pid = getWindowsProcessIDReflection(process);// TODO wprocess.getPid();
+							
+							// make sure we found a process id (safety check: make sure its not our process id)
+							if (pid!=self_process_id) {
+								if (!image_name.equals("cmd.exe")&&!image_name.equals("conhost.exe")) {
+									// Process#destroy works for processes except for those that
+									// are launched using cmd.exe (the parent of those processes is conhost.exe)
+									if (tries==0) {
+										// may cause AV in JVM if you call both WinProcess#killRecursively and then WinProcess#kill (vice-versa)
+										//
+										// calls Win32 TerminateProcess()
+										wprocess.kill();
+										// also, WinProcess#killRecursively only checks by process id (not image/program name)
+										// while that should be enough, experience on Windows has shown that it isn't and somehow gets PFTT killed eventually
+										//
+										// Windows Note: Windows does NOT automatically terminate child processes when the parent gets killed
+										//               the only way that happens is if you search for the child processes FIRST yourself,
+										//               (and then their children, etc...) and then kill them.
+									} else if (tries==1) {
+										// NOTE: on Windows, if WER is not disabled(enabled by default), if a process crashes,
+										//       WER popup will appear and process will block until popup closed
+										//       -this can be detected by looking for `C:\Windows\SysWOW64\WerFault.exe -u -p <process id> -s 1032`
+										if (ccm.ensureWERFaultIsNotRunning(LocalHost.this, pid)) {
+											// WER just killed, try again
+											wprocess.kill();
+										}
+									}
+								}
+								if (force&&tries==1||tries>3) {
+									if(!image_name.equals("handle")&&!image_name.equals("handle.exe")) {
+										// may have left some handles open... particularly for \devices\AFD, which may be preventing it from closing
+										ccm.winCloseAllHandles(LocalHost.this, pid);
+									}
+								}
+								ccm.winKillProcess(LocalHost.this, image_name, pid);
+							}
+						} catch ( Throwable t2 ) {
+							final int pid = getWindowsProcessIDReflection(process);
+							
+							// make sure we found a process id (safety check: make sure its not our process id)
+							if (pid!=self_process_id) {
+								if (force&&tries==0||tries>3) {
+									if(!image_name.equals("handle")&&!image_name.equals("handle.exe")) {
+										// may have left some handles open... particularly for \devices\AFD, which may be preventing it from closing
+										ccm.winCloseAllHandles(LocalHost.this, pid);
+									}
+								}
+								ccm.ensureWERFaultIsNotRunning(LocalHost.this, pid);
+								ccm.winKillProcess(LocalHost.this, image_name, pid);
+							}
 						}
 					} // end if
-					//
-					
+					//				
 					
 					// terminate through java Process API
-					// this is works on Linux and is a fallback on Windows
+					// this works on Linux and is a fallback on Windows
 					try {
 						process.destroy();
 					} catch ( Throwable t2 ) {
 						t2.printStackTrace();
 					}
 					//
-					
 				} // end try
 			} // end for
 		} // end public void close
@@ -564,112 +476,43 @@ public class LocalHost extends AHost {
 		
 	} // end public class LocalExecHandle
 	
-	protected void winKillProcess(String image_name, int process_id) {
-		// third:instead, run TASKKILL and provide it both the process id and image/program name
-		//
-		// image name: ex: `php.exe` 
-		// /F => forcefully terminate ('kill')
-		// /T => terminate all child processes (process is cmd.exe and PHP is a child)
-		//      process.destory might not do this, so thats why its CRITICAL that TASKKILL
-		//      be tried before process.destroy
-		try {
-			execOut("TASKKILL /FI \"IMAGENAME eq "+image_name+"\" /FI \"PID eq "+process_id+"\" /F /T", AHost.ONE_MINUTE);
-		} catch (Throwable t3) {
-			t3.printStackTrace();
-		}
-	}
-	
-	private SoftReference<String[]> wer_fault_query;
-	private final ReentrantLock wer_fault_query_lock = new ReentrantLock();
-	/** finds and kills any WERFault.exe processes (WER popup message) created for given process.
-	 * 
-	 * this method will only launch one WMIC query process at a time per Localhost instance. this added complexity (complexity
-	 * entirely handled internally by this method) is needed to avoid a WMIC process-storm if this method is called many times (30+)
-	 * in quick succession.
-	 * 
-	 * @param process_id
-	 */
-	protected void ensureWERFaultIsNotRunning(int process_id) {
-		// lock if no other thread is waiting
-		final boolean no_other_thread_is_waiting = wer_fault_query_lock.tryLock();
-		
-		if (!no_other_thread_is_waiting)
-			// wait and lock until other thread is done
-			wer_fault_query_lock.lock();
-		
-		
-		String[] lines = null;
-		if (wer_fault_query!=null)
-			lines = wer_fault_query.get();
-		
-		if (lines==null||no_other_thread_is_waiting) {
-			// only query again if:
-			//    a. no query result cached
-			//    b. didn't have to wait for another thread
-			//          if did have to wait for another thread, use the cached query result if available
-			//          to limit the number of WMIC processes that are launched
-			try {
-				// run wmic to find all the werfault.exe processes
-				lines = execOut("WMIC path win32_process get Processid,Commandline", AHost.ONE_MINUTE).getLines();
-			} catch ( Exception ex ) {
-			}
-			
-			wer_fault_query = new SoftReference<String[]>(lines);
-		}
-		wer_fault_query_lock.unlock();
-		
-		if (lines==null)
-			return; // just in case
-		
-		String prev_line = "";
-		for ( String line : lines ) {
-			line = line.toLowerCase();
-			// search werfault.exe process list for a werfault.exe created for process_id
-			if (line.contains("werfault.exe") && line.contains("-p "+process_id)) {
-				//
-				// blocking werfault.exe (not actually the process parent, its a separate SVC service)
-				int blocking_process_id = Integer.parseInt(prev_line.trim());
-				
-				// kill werfault.exe so we can try killing the target process again
-				winKillProcess("werfault.exe", blocking_process_id);
-			}
-			prev_line = line;
-		}
-	} // end protected void ensureWERFaultIsNotRunning
-	
 	public static int getWindowsProcessID(Process process) {
 		try {
 			// clean way
 			WinProcess wproc = new WinProcess(process);
 			return wproc.getPid();
 		} catch ( Throwable wt ) {
-			// WinProcess native code couldn't be loaded
-			// (maybe it wasn't included or maybe somebody didn't compile it)
+			return getWindowsProcessIDReflection(process);
+		}
+	}
+	
+	protected static int getWindowsProcessIDReflection(Process process) {
+		// WinProcess native code couldn't be loaded
+		// (maybe it wasn't included or maybe somebody didn't compile it)
+		//
+		// fallback on some old code using reflection, etc...
+		try {
+			// process.getClass() != Process.class
 			//
-			// fallback on some old code using reflection, etc...
-			try {
-				// process.getClass() != Process.class
-				//
-				// kind of a hack to get the process id:
-				//      look through hidden fields to find a field like java.lang.ProcessImpl#handle (long)
-				for (java.lang.reflect.Field f : process.getClass().getDeclaredFields() ) {
-					if (f.getType()==long.class) { // ProcessImpl#handle
-						// this is a private field. without this, #getLong will throw an IllegalAccessException
-						f.setAccessible(true); 
-						
-						long handle = f.getLong(process);
-						
-						HANDLE h = new HANDLE();
-						h.setPointer(Pointer.createConstant(handle));
-						return Kernel32.INSTANCE.GetProcessId(h);
-					}
-				} // end for
-			} catch ( Throwable t2 ) {
-				t2.printStackTrace();
-			} // end try
+			// kind of a hack to get the process id:
+			//      look through hidden fields to find a field like java.lang.ProcessImpl#handle (long)
+			for (java.lang.reflect.Field f : process.getClass().getDeclaredFields() ) {
+				if (f.getType()==long.class) { // ProcessImpl#handle
+					// this is a private field. without this, #getLong will throw an IllegalAccessException
+					f.setAccessible(true); 
+					
+					long handle = f.getLong(process);
+					
+					HANDLE h = new HANDLE();
+					h.setPointer(Pointer.createConstant(handle));
+					return Kernel32.INSTANCE.GetProcessId(h);
+				}
+			} // end for
+		} catch ( Throwable t2 ) {
+			t2.printStackTrace();
 		} // end try
 		return 0;
-	} // end public static int getWindowsProcessID
+	} // end protected static int getWindowsProcessIDReflection
 	
 	private static final Pattern PAT_QUOTE = Pattern.compile("\\\"");
 	public static String[] splitCmdString(String command) {
@@ -979,6 +822,11 @@ public class LocalHost extends AHost {
 				file.delete();
 		}
 		
+	}
+
+	@Override
+	protected boolean deleteSingleFile(String path) {
+		return new File(path).delete();
 	}
 	
 } // end public class Host

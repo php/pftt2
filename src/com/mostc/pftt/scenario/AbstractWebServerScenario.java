@@ -4,6 +4,8 @@ import java.util.Map;
 
 import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.HttpVersion;
+import org.apache.http.params.CoreConnectionPNames;
+import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.params.HttpParams;
 import org.apache.http.params.HttpProtocolParams;
 import org.apache.http.params.SyncBasicHttpParams;
@@ -16,10 +18,12 @@ import org.apache.http.protocol.RequestExpectContinue;
 import org.apache.http.protocol.RequestTargetHost;
 import org.apache.http.protocol.RequestUserAgent;
 
+import com.github.mattficken.io.Trie;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.EPhptSection;
+import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.ESAPIType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
@@ -33,6 +37,7 @@ import com.mostc.pftt.model.sapi.WebServerManager;
 import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
+import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.AbstractPhpUnitTestCaseRunner;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
 import com.mostc.pftt.runner.HttpPhpUnitTestCaseRunner;
@@ -71,6 +76,13 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 		HttpProtocolParams.setContentCharset(params, "UTF-8");
 		HttpProtocolParams.setUserAgent(params, "Mozilla/5.0 (Windows NT 6.1; rv:12.0) Gecko/20120405 Firefox/14.0.1");
 		HttpProtocolParams.setUseExpectContinue(params, true);
+		params.setBooleanParameter(CoreConnectionPNames.SO_KEEPALIVE, false);
+		params.setIntParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, 60*1000);
+		params.setIntParameter(CoreConnectionPNames.SO_LINGER, 60*1000);
+		params.setIntParameter(CoreConnectionPNames.SO_TIMEOUT, 60*1000);
+		HttpConnectionParams.setConnectionTimeout(params, 60*1000);
+		HttpConnectionParams.setLinger(params, 60*1000);
+		HttpConnectionParams.setSoKeepalive(params, false);
 		
 		httpproc = new ImmutableHttpProcessor(new HttpRequestInterceptor[] {
 				// Required protocol interceptors
@@ -148,15 +160,127 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 	public void close(boolean debug) {
 		smgr.close(debug);
 	}
-	
-	@Override
-	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
-		return HttpPhptTestCaseRunner.willSkip(cm, twriter, host, scenario_set, type, build, test_case);
-	}
-	
+		
 	@Override
 	public AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(PhpUnitThread thread, TestCaseGroupKey group_key, ConsoleManager cm, ITestResultReceiver twriter, Map<String,String> globals, Map<String,String> env, AHost runner_host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
 		return new HttpPhpUnitTestCaseRunner(twriter, params, httpproc, httpexecutor, smgr, (WebServerInstance) ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance(), globals, env, cm, runner_host, scenario_set, build, test_case, my_temp_dir, constants, include_path, include_files, ini, reflection_only);
 	}
+	
+	@Override
+	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+		if (super.willSkip(cm, twriter, host, scenario_set, type, build, test_case)) {
+			return true;
+		} else if (test_case.containsSection(EPhptSection.STDIN)) {
+			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "STDIN section not supported for testing against web servers"));
+			
+			return true;
+		} else if (test_case.containsSection(EPhptSection.ARGS)) {
+			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "ARGS section not supported for testing against web servers"));
+			
+			return true;
+		} else if (cm.isDisableDebugPrompt()&&test_case.isNamed(BLOCKING_WINPOPUP)) {
+			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test shows blocking winpopup msg"));
+			
+			return true;
+		} else if (test_case.isNamed(NOT_VALID_ON_WEB_SERVERS)) {
+			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on web servers"));
+			
+			return true;
+		} else if (host.isWindows() && test_case.isNamed(NOT_VALID_ON_WEB_SERVERS_WINDOWS)) {
+			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on web servers"));
+			
+			return true;
+		} else {
+			return false;
+		}
+	} // end public boolean willSkip
+	
+	public static Trie BLOCKING_WINPOPUP = PhptTestCase.createNamed(
+			// causes a blocking winpopup msg about a few php_*.dll DLLs that couldn't be loaded
+			// (ignore these for automated testing, but still show them for manual testing)
+			"ext/zlib/tests/008.phpt",
+			"ext/zlib/tests/ob_gzhandler_legacy_002.phpt"
+		);
+	public static Trie NOT_VALID_ON_WEB_SERVERS_WINDOWS = PhptTestCase.createNamed(
+			// on Windows/Apache, already start with output buffering
+			// so the expected output is different (but is not a bug)
+			"tests/output/ob_get_level_basic_001.phpt",
+			"tests/output/ob_get_length_basic_001.phpt",
+			"tests/output/ob_clean_basic_001.phpt",
+			"tests/output/ob_get_status.phpt",
+			"tests/output/ob_010.phpt",
+			"tests/output/ob_011.phpt",
+			"tests/output/bug60321.phpt",
+			"ext/phar/tests/phar_create_in_cwd.phpt",
+			"ext/phar/tests/phar_commitwrite.phpt",
+			"tests/output/ob_start_error_005.phpt"
+		);
+	public static Trie NOT_VALID_ON_WEB_SERVERS = PhptTestCase.createNamed(
+			// XXX this test crashes on apache b/c the stack size is too small (see #setStackSize in ApacheManager)
+			"ext/pcre/tests/bug47662.phpt",
+			// fpassthru() system() and exec() doesn't run on Apache
+			"ext/standard/tests/popen_pclose_basic-win32.phpt", 
+			"sapi/cli/tests/bug61546.phpt",
+			"ext/standard/tests/file/bug41874.phpt",
+			"ext/standard/tests/file/bug41874_1.phpt",
+			"ext/standard/tests/file/bug41874_2.phpt",
+			"ext/standard/tests/file/bug41874_3.phpt",
+			"ext/standard/tests/file/popen_pclose_basic-win32.phpt",
+			// changing memory limit under mod_php after script started is N/A
+			"tests/lang/bug45392.phpt",
+			// this test will return different output on apache/iis
+			"ext/standard/tests/general_functions/get_cfg_var_variation8.phpt",
+			"tests/basic/bug54514.phpt",
+			"sapi/tests/test005.phpt",
+			//////////////////
+			"ext/standard/tests/strings/004.phpt",
+			"ext/mbstring/tests/bug63447_001.phpt",
+			"ext/mbstring/tests/bug63447_002.phpt",
+			"ext/iconv/tests/ob_iconv_handler.phpt",
+			"ext/mbstring/tests/mb_strcut.phpt",
+			"ext/mbstring/tests/mb_decode_numericentity.phpt",
+			//////////////////
+			"ext/standard/tests/file/parse_ini_file.phpt",
+			"tests/basic/rfc1867_missing_boundary.phpt",
+			"ext/xml/tests/xml006.phpt",
+			"zend/tests/bug48930.phpt",
+			"ext/json/tests/002.phpt",
+			"ext/zlib/tests/bug55544-win.phpt",
+			"tests/basic/025.phpt",
+			"ext/standard/tests/array/bug34066_1.phpt",
+			"tests/basic/rfc1867_invalid_boundary.phpt",
+			"zend/tests/bug54268.phpt",
+			"tests/basic/rfc1867_post_max_size.phpt",
+			"ext/dom/tests/bug37456.phpt",
+			"ext/libxml/tests/bug61367-read.phpt",
+			"zend/tests/multibyte/multibyte_encoding_003.phpt",
+			"ext/standard/tests/general_functions/002.phpt",
+			"zend/tests/multibyte/multibyte_encoding_002.phpt",
+			"tests/basic/rfc1867_garbled_mime_headers.phpt",
+			"ext/standard/tests/array/bug34066.phpt",
+			"ext/standard/tests/general_functions/006.phpt",
+			"ext/libxml/tests/bug61367-write.phpt",
+			"ext/session/tests/rfc1867_invalid_settings-win.phpt",
+			"ext/session/tests/rfc1867_invalid_settings_2-win.phpt",
+			"ext/standard/tests/versioning/php_sapi_name_variation001.phpt",
+			"ext/standard/tests/math/rad2deg_variation.phpt",
+			"ext/standard/tests/strings/strtoupper.phpt",
+			"ext/standard/tests/strings/sprintf_variation47.phpt",
+			"ext/standard/tests/general_functions/bug41445_1.phpt",
+			"ext/standard/tests/strings/htmlentities.phpt",
+			"ext/standard/tests/strings/fprintf_variation_001.phpt",
+			"ext/standard/tests/general_functions/var_dump.phpt",
+			"ext/session/tests/003.phpt",
+			"ext/session/tests/023.phpt",
+			"tests/basic/032.phpt",
+			"tests/basic/031.phpt",
+			"tests/basic/030.phpt",
+			/////////////////
+			// getopt returns false under web server (ok)
+			"ext/standard/tests/general_functions/bug43293_1.phpt",
+			"ext/standard/tests/general_functions/bug43293_2.phpt",
+			// fopen("stdout") not supported under apache
+			"tests/strings/002.phpt"
+		);
 	
 } // end public abstract class AbstractWebServerScenario

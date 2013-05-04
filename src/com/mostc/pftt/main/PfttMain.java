@@ -57,7 +57,6 @@ import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner;
 import com.mostc.pftt.scenario.AbstractINIScenario;
 import com.mostc.pftt.scenario.AbstractSAPIScenario;
-import com.mostc.pftt.scenario.AbstractWebServerScenario;
 import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
@@ -85,21 +84,16 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 // the php test tool that you'd actually want to use
 // doesn't resort to brittle shell scripts
 
-// COMMIT BUG24482 FIX and REQ60624
-// Commit: PhpUnit uses only reflection to reference test methods so sometimes OpCache will optimize them out
-//         It occurred to me that PFTT could reference those methods inline in PHP code so this won't happen (tests are still executed through PhpUnit_Framework_TestCase::run)
-//         PhpUnit-Reflection-Only scenario
-//         this allows us to run PhpUnit tests with Opcache on Apache.
-
-
-
-
-// Monday
+// CLOSE BUG https://bugs.php.net/patch-display.php?bug_id=64396&patch=req60524.patch&revision=latest and https://bugs.php.net/bug.php?id=64714
+//     if they work
+// GOT PHPUNIT+OPCACHE+APACHE to work
+//
+//
 // TODO UI testing
 //        no Anon-Logout
 //
 //
-// commit: UI testing support and x64 support
+// commit: UI testing support
 //
 //
 // TODO need way to enter development versions of application tests and UI tests
@@ -114,16 +108,8 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //          -store example in conf/internal_examples
 //              -so rctest will just use that unless/until user creates one in conf/internal
 // TODO bug with remote file systems (at least DFS) and application unit testing: about halfway through some test packs, it gets blocked forever
+//    -builtin_web?
 // commit:
-//
-// TODO pftt already gets list of test methods
-//      what about putting those method names directly in the PHP template code
-//       then reflection would not be used (so it would work w/ opcache)
-//      -method in code cache scenario and phpunit test-pack would ask if reflection is required
-//         -otherwise phpunit testcase runner would not use reflection
-//      -can have separate config file to require using reflection
-//         -to test if apache+opcache+symfony issue exists/returns
-//         -but in mean time, would be able to test symfony+opcache+apache
 //
 // TODO joomla unit testing
 //   -need dependency note on symfony
@@ -138,6 +124,7 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //          https://github.com/joomla/joomla-cms/tree/master/tests/system
 //          -as big as wordpress +INTERNATIONALIZATION
 //          -note: ui tests from joomla may be BRITTLE (maybe thats why they're just run by 1 guy on his laptop once in a while)
+//               not suited to our purposes => compatibility
 //                 not atomic/small -a few really big tests that test lots of options
 //
 // TODO installation ... single .zip file to download with install wizard/script
@@ -233,7 +220,7 @@ public class PfttMain {
 		System.out.println("ui_list <build[,build2]> <file> - runs UI tests listed in file against application");
 		System.out.println("ui_named <build[,build2]> <test name> - runs named UI tests against application");
 		// TODO fs test
-		System.out.println("run-test <build> <test-pack> <full test name,test name 2> - runs named tests using run-test.php from test-pack");
+		System.out.println("run-test <build> <test-pack> <full test name,test name 2> - runs named tests using run-tests.php from test-pack");
 		System.out.println("help");
 		System.out.println("perf <build> - performance test of build");
 		System.out.println("smoke <build> - smoke test a build");
@@ -524,7 +511,7 @@ public class PfttMain {
 	public void releaseGetPrevious(final boolean overwrite, final boolean confirm_prompt, final EBuildBranch branch, final ECPUArch cpu_arch, final EBuildType build_type) {
 		System.out.println("PFTT: release_get: finding previous "+build_type+" ("+cpu_arch+") build of "+branch+"...");
 		final FindBuildTestPackPair find_pair = WindowsSnapshotDownloadUtil.findPreviousPair(build_type, cpu_arch, WindowsSnapshotDownloadUtil.getDownloadURL(branch));
-		if (find_pair==null) {
+		if (find_pair==null||find_pair.getBuild()==null) {
 			System.err.println("PFTT: release_get: unable to find previous build of "+branch+" of type "+build_type);
 			return;
 		}
@@ -563,7 +550,7 @@ public class PfttMain {
 	public BuildTestDebugPack releaseGetNewest(final boolean overwrite, final boolean confirm_prompt, final EBuildBranch branch, final ECPUArch cpu_arch, final EBuildType build_type) {
 		System.out.println("PFTT: release_get: finding newest "+build_type+" ("+cpu_arch+") build of "+branch+"...");
 		final FindBuildTestPackPair find_pair = WindowsSnapshotDownloadUtil.findNewestPair(build_type, cpu_arch, WindowsSnapshotDownloadUtil.getDownloadURL(branch));
-		if (find_pair==null) {
+		if (find_pair==null||find_pair.getBuild()==null) {
 			System.err.println("PFTT: release_get: unable to find newest build of "+branch+" of type "+build_type);
 			return null;
 		}
@@ -600,7 +587,7 @@ public class PfttMain {
 	public void releaseGetRevision(final boolean overwrite, final boolean confirm_prompt, final EBuildBranch branch, final ECPUArch cpu_arch, final EBuildType build_type, final String revision) {
 		System.out.println("PFTT: release_get: finding "+build_type+" ("+cpu_arch+") build in "+revision+" of "+branch+"...");
 		final FindBuildTestPackPair find_pair = WindowsSnapshotDownloadUtil.getDownloadURL(branch, build_type, cpu_arch, revision);
-		if (find_pair==null) {
+		if (find_pair==null||find_pair.getBuild()==null) {
 			System.err.println("PFTT: release_get: no build of type "+build_type+" or test-pack found for revision "+revision+" of "+branch);
 			return;
 		}
@@ -1244,7 +1231,7 @@ public class PfttMain {
 					for ( PhpBuild build : builds )
 						p.coreAll(build, test_pack, config, p.getWriter(build, test_pack));
 				} else if (command.equals("run-test")) {
-					cm.println(EPrintType.TIP, "PfttMain", "run-test is meant only for testing PHPT test patches to make sure they work with run-test.php.\nFor serious testing of PHPTs, use `core_all` or `core_list` or `core_named`");
+					cm.println(EPrintType.TIP, "PfttMain", "run-test is meant only for testing PHPT test patches to make sure they work with run-tests.php.\nFor serious testing of PHPTs, use `core_all` or `core_list` or `core_named`");
 					if (!(args.length > args_i+3)) {
 						System.err.println("User Error: must specify build, test-pack and test name(s)");
 						System.out.println("usage: pftt run-test <path to PHP build> <path to PHPT test-pack> <test case names(separated by spaces)>");
@@ -1276,7 +1263,7 @@ public class PfttMain {
 					}
 					for ( ScenarioSet set : getScenarioSets(config, EScenarioSetPermutationLayer.PHP_CORE) ) {
 						if (!set.getName().equalsIgnoreCase("Local-FileSystem_CLI")) {
-							cm.println(EPrintType.CANT_CONTINUE, "PfttMain", "run-test.php only supports the Local-FileSystem_CLI ScenarioSet, not: "+set);
+							cm.println(EPrintType.CANT_CONTINUE, "PfttMain", "run-tests.php only supports the Local-FileSystem_CLI ScenarioSet, not: "+set);
 							cm.println(EPrintType.TIP, "PfttMain", "remove -c console option (so PFTT only tests Local-FileSystem_CLI) and try again");
 							return;
 						}
@@ -1285,7 +1272,15 @@ public class PfttMain {
 					final String test_list_file = p.host.mktempname(PfttMain.class, "Run-Test");
 					p.host.saveTextFile(test_list_file, StringUtil.join(names, "\n"));
 					
-					final String run_test = p.host.joinIntoOnePath(test_pack.getSourceDirectory(), "run-test.php");
+					String run_test = p.host.joinIntoOnePath(test_pack.getSourceDirectory(), "run-tests.php");
+					if (!p.host.exists(run_test)) {
+						run_test = p.host.joinIntoOnePath(test_pack.getSourceDirectory(), "run-test.php");
+						if (!p.host.exists(run_test)) {
+							cm.println(EPrintType.CLUE, "PfttMain", "could not find run-test.php or run-tests.php in PHPT test-pack!");
+							cm.println(EPrintType.TIP, "PfttMain", "try replacing the PHPT test-pack with a new one (maybe some files were deleted from the test-pack you specified)");
+							return;
+						}
+					}
 					HashMap<String,String> env;
 					ExecOutput out;
 					for ( PhpBuild build : builds ) {
@@ -1509,20 +1504,22 @@ public class PfttMain {
 					
 					help();
 				} else if (command.equals("cmp-report")) {
-					//PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-5.3.24RC1-nTS-X86-VC9"));
-					//PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-5.3.24-nTS-X86-VC9"));
-					//PhpResultPack base_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-r0802961-nTS-X86-VC9"));
-					//PhpResultPack test_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-r0802961-nTS-X86-VC9"));
-					//PhpResultPack base_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-5.4.14RC1-TS-X86-VC9"));
-					//PhpResultPack test_pack = PhpResultPackReader.open(cm, rt.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-5.4.14-TS-X86-VC9"));
+					//PhpResultPack base_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-5.3.24-TS-X86-VC9"));
+					//PhpResultPack test_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-5.3.25RC1-TS-X86-VC9"));
+					//PhpResultPack base_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-r0802961-TS-X86-VC9"));
+					//PhpResultPack test_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-r15b554c-TS-X86-VC9"));
+					//PhpResultPack base_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-5.4.14-nTS-X86-VC9"));
+					//PhpResultPack test_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-5.4.15RC1-nTS-X86-VC9"));
 					//PhpResultPack base_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-recf76e2-nTS-X86-VC9"));
-					//PhpResultPack test_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-rb02241b-nTS-X86-VC9"));
-					PhpResultPack base_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-r758b666-nTS-X86-VC11"));
-					PhpResultPack test_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-r26bd2cb-nTS-X86-VC11"));
-					//PhpResultPack base_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-rb79e65f-NTS-X64-VC11"));
-					//PhpResultPack test_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-r26bd2cb-NTS-X64-VC11"));
-					//PhpResultPack base_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-5.5.0beta2-nTS-X86-VC11"));
-					//PhpResultPack test_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-5.5.0beta3-nTS-X86-VC11"));
+					//PhpResultPack test_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-r3f2f534-nTS-X86-VC9"));
+					PhpResultPack base_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-r865cc3a-nTS-X86-VC11"));
+					PhpResultPack test_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-re3aeb6c-nTS-X86-VC11"));
+					//PhpResultPack base_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-r865cc3a-nTS-X64-VC11"));
+					//PhpResultPack test_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-re3aeb6c-nTS-X64-VC11"));
+					//PhpResultPack base_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-5.5.0beta3-nTS-X86-VC11"));
+					//PhpResultPack test_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-5.5.0beta4-nTS-X86-VC11"));
+					//PhpResultPack base_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-5.5.0beta4-nTS-X64-VC11"));
+					//PhpResultPack test_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-5.5.0beta4-nTS-X64-VC11"));
 					
 					for ( AbstractPhpUnitRW base : base_pack.getPhpUnit() ) {
 						for ( AbstractPhpUnitRW test : test_pack.getPhpUnit() ) {
@@ -1532,12 +1529,12 @@ public class PfttMain {
 											test.getScenarioSetNameWithVersionInfo().toLowerCase().contains("cli")||
 											test.getScenarioSetNameWithVersionInfo().toLowerCase().contains("builtin")||
 											test.getScenarioSetNameWithVersionInfo().toLowerCase().contains("apache")
-											)
+											) 
 									&&base.getScenarioSetNameWithVersionInfo().toLowerCase().contains("cli")==test.getScenarioSetNameWithVersionInfo().toLowerCase().contains("cli")
 									&&base.getScenarioSetNameWithVersionInfo().toLowerCase().contains("builtin")==test.getScenarioSetNameWithVersionInfo().toLowerCase().contains("builtin")
 									&&base.getScenarioSetNameWithVersionInfo().toLowerCase().contains("apache")==test.getScenarioSetNameWithVersionInfo().toLowerCase().contains("apache")))
 								continue;
-							
+							 
 							PhpUnitReportGen php_unit_report = new PhpUnitReportGen(base, test);
 							String html_str = php_unit_report.getHTMLString(cm, false);
 	

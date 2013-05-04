@@ -108,6 +108,17 @@ public class PhptTestResult {
 			this.diff_str = null;
 	}
 	
+	/** usually just used for XSKIP or SKIP tests that are skipped before even running the SKIPIF section
+	 * 
+	 * @param host
+	 * @param status
+	 * @param test_case
+	 * @param actual
+	 */
+	public PhptTestResult(AHost host, EPhptTestStatus status, PhptTestCase test_case, String actual) {
+		this(host, status, test_case, actual, null, null, null, null, null, null, null, null, null, null, null);
+	}
+
 	public String getSAPIOutput() {
 		return sapi_output;
 	}

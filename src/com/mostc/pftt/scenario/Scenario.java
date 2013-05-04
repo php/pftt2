@@ -8,11 +8,16 @@ import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlSerializer;
 
+import com.github.mattficken.Overridable;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.model.core.ESAPIType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
+import com.mostc.pftt.model.core.PhptActiveTestPack;
+import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ITestResultReceiver;
 
 /** Scenario to test PHP under.
  * 
@@ -34,6 +39,11 @@ import com.mostc.pftt.results.ConsoleManager;
  */
 
 public abstract class Scenario {
+
+	@Overridable
+	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+		return false;
+	}
 	
 	public Class<?> getSerialKey(EScenarioSetPermutationLayer layer) {
 		return getClass();
@@ -50,6 +60,10 @@ public abstract class Scenario {
 	 */
 	public void addToDebugPath(ConsoleManager cm, AHost host, PhpBuild build, Collection<String> debug_path) {
 		
+	}
+	
+	public boolean prepare(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack test_pack) {
+		return true;
 	}
 	
 	public boolean setupRequired() {

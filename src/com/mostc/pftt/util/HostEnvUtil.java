@@ -47,18 +47,23 @@ public final class HostEnvUtil {
 		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "preparing Windows host to run PHP...");
 		// have to fix Windows Error Reporting from popping up and blocking execution:
 		
-		String value;
+		String wer_value, em_value;
 		if (enable_debug_prompt) {
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "enabling Windows Error Reporting...");
-			value = "0x0";
+			wer_value = "0x0";
+			em_value = "0x0";
 		} else {
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "disabling Windows Error Reporting...");
-			value = "0x1";
+			wer_value = "0x1";
+			em_value = "0x2";
 		}
 		
-		boolean a = regQueryAdd(cm, host, "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting", "DontShowUI", value, REG_DWORD);
-		boolean b = regQueryAdd(cm, host, "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting", "Disable", value, REG_DWORD);
-		if ( a || b ) {			
+		// these 2 disable the Windows Error Reporting popup msg
+		boolean a = regQueryAdd(cm, host, "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting", "DontShowUI", wer_value, REG_DWORD);
+		boolean b = regQueryAdd(cm, host, "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting", "Disable", wer_value, REG_DWORD);
+		// this 1 disables the 'Instruction 0xNN referenced memory address that could not be read' popup msg (happens on a few PHPTs with remote FS for x64 builds)
+		boolean c = regQueryAdd(cm, host, "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Windows", "ErrorMode", em_value, REG_DWORD);
+		if ( a || b || c ) {			
 			// assume if registry had to be edited, the rest of this has to be done, otherwise assume this is all already done
 			// (avoid doing this if possible because it requires user to approve elevation)
 			
