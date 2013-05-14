@@ -133,7 +133,10 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 			"ext/mbstring/tests/ini_language.phpt",
 			"ext/mbstring/tests/mb_parse_str02.phpt",
 			"ext/mbstring/tests/overload02.phpt",
-			"ext/mbstring/tests/php_gr_jp_16242.phpt"
+			"ext/mbstring/tests/php_gr_jp_16242.phpt",
+			"tests/basic/req60524-win.phpt",
+			"tests/func/011.phpt",
+			"zend/tests/unset_cv10.phpt"
 		);
 	public static Trie NON_WINDOWS_EXTS = PhptTestCase.createExtensions("sysvmsg", "sysvshm", "gettext", "exif", "readline", "posix");
 	public static Trie SCENARIO_EXTS = PhptTestCase.createExtensions("dba", "sybase", "snmp", "interbase", "ldap", "imap", "ftp", "curl", "sql", "oci", "pcntl", "soap", "xmlrpc", "pdo", "odbc");
@@ -187,9 +190,8 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.SKIP, test_case, "test would've been skipped", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return true;
-		} else {
-			return false;
 		}
+		return false;
 	} // end public boolean willSkip
 	
 	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpIni ini, PhpBuild build, PhptTestCase test_case) throws Exception {

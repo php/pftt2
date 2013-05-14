@@ -241,7 +241,8 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 			
 			// show on console
 			// TODO
-			System.out.println(this_result.status+" "+this_result.test_case);
+			w.count++;
+			System.out.println(w.count+" "+this_result.status+" "+this_result.test_case);
 			
 			if (cm!=null) {
 				// show in tui/gui (if open)
@@ -359,8 +360,8 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 			ex_str += " a="+a;
 		if (b!=null)
 			ex_str += " b="+b;
-		
 		if (!cm.isResultsOnly()) {
+			ex.printStackTrace();
 			System.err.println(ex_str);
 		}
 		
@@ -403,10 +404,35 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	
 	@Override
 	public void close() {
-		if (run_writer_thread)
+		close(false);
+	}
+	
+	public void close(boolean block) {
+		if (run_writer_thread) {
 			results.add(new CloseQueueEntry());
-		else
+			if (block) {
+				while (!results.isEmpty()) {
+					try {
+						Thread.sleep(100);
+					} catch ( InterruptedException ex ) {
+						break;
+					}
+				}
+			}
+		} else {
 			doClose();
+		}
+	}
+	
+	public void wait(AHost host, ScenarioSet scenario_set) {
+		// TODO
+		while (!results.isEmpty()) {
+			try {
+				Thread.sleep(100);
+			} catch ( InterruptedException ex ) {
+				break;
+			}
+		}
 	}
 	
 	protected void doClose() {
@@ -424,71 +450,6 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		} catch ( Exception ex ) {
 			ex.printStackTrace();
 		}
-		
-		for ( HashMap<String,HashMap<String,HashMap<ScenarioSet,UITestWriter>>> a : ui_test_writer_map.values() ) {
-			for ( HashMap<String,HashMap<ScenarioSet,UITestWriter>> b : a.values() ) {
-				for ( HashMap<ScenarioSet,UITestWriter> c : b.values() ) {
-					for (UITestWriter w : c.values() ) {
-						try {
-							w.close();
-						} catch ( Exception ex ) {
-							ex.printStackTrace();
-						}
-						
-						try {
-							UITestReportGen report = new UITestReportGen(w, w);
-							FileWriter fw = new FileWriter(new File(w.dir+"/ui_test_report.html"));
-							fw.write(report.getHTMLString(cm, false));
-							fw.close();
-						} catch ( Exception ex ) {
-							ex.printStackTrace();
-						}
-					}
-				}
-			}
-		} // end for
-		
-		for ( HashMap<String,HashMap<ScenarioSet,PhpUnitResultWriter>> a : phpunit_writer_map.values() ) {
-			for ( HashMap<ScenarioSet,PhpUnitResultWriter> b : a.values() ) {
-				for ( PhpUnitResultWriter w : b.values() ) {
-					try {
-						w.close();
-					} catch ( Exception ex ) {
-						ex.printStackTrace();
-					}
-					
-					try {
-						PhpUnitReportGen report = new PhpUnitReportGen(w, w);
-						FileWriter fw = new FileWriter(new File(w.dir+"/php_unit_report.html"));
-						fw.write(report.getHTMLString(cm, true));
-						fw.close();
-					} catch ( Exception ex ) {
-						ex.printStackTrace();
-					}
-				} // end for
-			}
-		}
-		
-		for ( HashMap<ScenarioSet,PhptResultWriter> map : phpt_writer_map.values() ) {
-			for ( PhptResultWriter w : map.values() ) {
-				try {
-					w.close();
-				} catch ( Exception ex ) {
-					ex.printStackTrace();
-				}
-				
-				try {
-					PHPTReportGen report = new PHPTReportGen(w, w);
-					FileWriter fw = new FileWriter(new File(w.dir+"/phpt_report.html"));
-					fw.write(report.getHTMLString(cm, true));
-					fw.close();
-				} catch ( Exception ex ) {
-					ex.printStackTrace();
-				}
-			} // end for
-		}
-		
-		
 	} // end protected void doClose
 
 	@Override

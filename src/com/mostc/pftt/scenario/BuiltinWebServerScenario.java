@@ -14,7 +14,7 @@ import com.mostc.pftt.model.core.PhptActiveTestPack;
 import com.mostc.pftt.model.core.PhptSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.model.sapi.BuiltinWebServerManager;
-import com.mostc.pftt.model.sapi.SharedSAPIInstanceTestCaseGroupKey;
+import com.mostc.pftt.model.sapi.SharedSAPIInstancesTestCaseGroupKey;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.model.sapi.WebServerInstance;
 import com.mostc.pftt.results.ConsoleManager;
@@ -64,7 +64,7 @@ public class BuiltinWebServerScenario extends AbstractWebServerScenario {
 	@Override
 	public int getTestThreadCount(AHost host) {
 		// XXX update this calculation from time to time as this web server's performance improves (probably decrease number)
-		return 20 * host.getCPUCount();
+		return 16 * host.getCPUCount();
 	}
 
 	@Override
@@ -74,13 +74,13 @@ public class BuiltinWebServerScenario extends AbstractWebServerScenario {
 	
 	@Override
 	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
-		return new BuiltinWebHttpPhptTestCaseRunner(group_key.getPhpIni(), group_key.getEnv(), params, httpproc, httpexecutor, smgr, (WebServerInstance) ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance(), thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
+		return new BuiltinWebHttpPhptTestCaseRunner(group_key.getPhpIni(), group_key.getEnv(), params, httpproc, httpexecutor, smgr, (WebServerInstance) ((SharedSAPIInstancesTestCaseGroupKey)group_key).getSAPIInstance(), thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 	}
 	
 	
 	@Override
 	public AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(PhpUnitThread thread, TestCaseGroupKey group_key, ConsoleManager cm, ITestResultReceiver twriter, Map<String,String> globals, Map<String,String> env, AHost runner_host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
-		return new BuiltinWebHttpPhpUnitTestCaseRunner(twriter, params, httpproc, httpexecutor, smgr, (WebServerInstance) ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance(), globals, env, cm, runner_host, scenario_set, build, test_case, my_temp_dir, constants, include_path, include_files, ini, reflection_only);
+		return new BuiltinWebHttpPhpUnitTestCaseRunner(twriter, params, httpproc, httpexecutor, smgr, (WebServerInstance) ((SharedSAPIInstancesTestCaseGroupKey)group_key).getSAPIInstance(), globals, env, cm, runner_host, scenario_set, build, test_case, my_temp_dir, constants, include_path, include_files, ini, reflection_only);
 	}
 	
 	@Override

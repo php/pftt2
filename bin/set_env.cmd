@@ -28,5 +28,6 @@ SET PFTT_DEP=%PFTT_CACHE_DEP%
 SET PFTT_WORKING=%PFTT_CACHE_WORKING%
 
 REM add PFTT to path. and GIT and Notepad++ if present
-SET PATH=%PFTT_BIN%;%PFTT_BIN_INTERNAL%;%PATH%;"%ProgramFiles(x86)%\Git\Bin";"%ProgramFiles(x86)%\Git\Notepad++";"%ProgramFiles%\Git\Bin";"%ProgramFiles%\Git\Notepad++"
+SET PATH=%PFTT_BIN%;%PFTT_BIN_INTERNAL%;%PATH%;"%ProgramFiles(x86)%\Git\Bin";"%ProgramFiles%\Git\Bin"
+
 

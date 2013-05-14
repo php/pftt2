@@ -203,7 +203,10 @@ public class PhptTestCase extends TestCase {
 			
 			// Add to the section text.
 			if (!secdone) {
-				test_case.section_text.put(section, test_case.get(section_str)+line+"\n");
+				String a = test_case.get(section_str);
+				if (a==null)
+					a = "";
+				test_case.section_text.put(section, a+line+"\n");
 			}
 	
 			// End of actual test?

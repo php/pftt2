@@ -13,14 +13,15 @@ import com.mostc.pftt.model.TestCase;
 
 public class PhpUnitTestCase extends TestCase {
 	protected final PhpUnitDist php_unit_dist;
-	protected final String filename, className, methodName;
+	protected final String abs_filename, rel_filename, className, methodName;
 	protected final int arg_count;
 	
-	protected PhpUnitTestCase(PhpUnitDist php_unit_dist, String filename, String className, String methodName, int arg_count) {
+	protected PhpUnitTestCase(PhpUnitDist php_unit_dist, String abs_filename, String rel_filename, String className, String methodName, int arg_count) {
 		this.php_unit_dist = php_unit_dist;
 		// don't need to call #normalizeFilename here usually. it's called in PhpUnitSourcetestPack#readDir...
 		// calling it (again )here would be a performance hit
-		this.filename = filename;
+		this.abs_filename = abs_filename;
+		this.rel_filename = rel_filename;
 		// don't need to normalize classname:
 		// if it has \ thats ok b/c its legal PHP (namespaces) whereas it won't be / b/c that's illegal in PHP
 		this.className = className;
@@ -47,7 +48,11 @@ public class PhpUnitTestCase extends TestCase {
 	 * @return
 	 */
 	public String getFileName() {
-		return filename;
+		return rel_filename;
+	}
+	
+	public String getAbsoluteFileName() {
+		return abs_filename;
 	}
 	
 	public boolean fileNameStartsWithAny(String[] ext_names) {
@@ -75,7 +80,8 @@ public class PhpUnitTestCase extends TestCase {
 	}
 	
 	public boolean isFileName(String file_name) {
-		return this.filename.toLowerCase().equals(file_name.toLowerCase());
+		return this.rel_filename.toLowerCase().equals(file_name.toLowerCase()) 
+				|| this.abs_filename.toLowerCase().equals(file_name.toLowerCase());
 	}
 	
 	public boolean isFileName(String... file_names) {
@@ -96,7 +102,7 @@ public class PhpUnitTestCase extends TestCase {
 
 	@Override
 	public String getName() {
-		return className + "::" + methodName + "(" + filename + ")";
+		return className + "::" + methodName + "(" + rel_filename + ")";
 	}
 	
 	@Override

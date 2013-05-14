@@ -51,5 +51,8 @@ public class TestCaseGroupKey {
 	public PhpIni getPhpIni() {
 		return ini;
 	}
+
+	public void prepare() throws Exception {
+	}
 	
 } // end public class TestCaseGroupKey

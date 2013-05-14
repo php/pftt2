@@ -6,7 +6,11 @@ import com.mostc.pftt.host.RemoteHost;
  * 
  * 
  * Typically, you'll create 1 instance of this for each remote file server, and each instance can create manage multiple shares at the same time.
+ *
+ * SMB based scenarios produce a lot of additional IO requests. This can cause problems on Windows, which are successfully handled by a lot of
+ * special code in LocalHost.
  * 
+ * @see LocalHost
  * @author Matt Ficken
  *
  */

@@ -51,7 +51,7 @@ also should test setting WP_LANG to other languages (multi-byte?) and FORCE_SSL 
 	UIAccount author_user_new_passwd = new UIAccount(author_user, "wrong_password");
 	UIAccount editor_user_new_passwd = new UIAccount(editor_user, "wrong_password");
 	UIAccount admin_user_wrong_passwd = new UIAccount(admin_user, "wrong_password");
-	
+	 
 	public static enum EWordpressUserRole implements IUserType {
 		ANONYMOUS {
 				@Override
@@ -290,12 +290,12 @@ also should test setting WP_LANG to other languages (multi-byte?) and FORCE_SSL 
 					RecentDraftsDashboardWidget,
 					ScreenOptions,
 					MySiteMenu,
-					WordpressMenu,
-					PlusNewPost,
-					PlusNewMedia,
-					PlusNewLink,
-					PlusNewPage,
-					PlusNewUser,
+					AdminbarMenu,
+					AdminbarNewPost,
+					AdminbarNewMedia,
+					AdminbarNewLink,
+					AdminbarNewPage,
+					AdminbarNewUser,
 					EditProfile,
 					LinkAddNew,
 					LinkAll,
@@ -570,7 +570,7 @@ also should test setting WP_LANG to other languages (multi-byte?) and FORCE_SSL 
 			return EUITestStatus.NOT_IMPLEMENTED;
 		}
 	}
-	class WordpressMenu extends DashboardTest {
+	class AdminbarMenu extends DashboardTest {
 		@Override
 		public boolean start() throws Exception {
 			// overriding super#start just for performance
@@ -582,7 +582,7 @@ also should test setting WP_LANG to other languages (multi-byte?) and FORCE_SSL 
 			return EUITestStatus.NOT_IMPLEMENTED;
 		}
 	}
-	class PlusNewPost extends DashboardTest {
+	class AdminbarNewPost extends DashboardTest {
 		@Override
 		public boolean start() throws Exception {
 			// overriding super#start just for performance
@@ -594,7 +594,7 @@ also should test setting WP_LANG to other languages (multi-byte?) and FORCE_SSL 
 			return EUITestStatus.NOT_IMPLEMENTED;
 		}
 	}
-	class PlusNewLink extends DashboardTest {
+	class AdminbarNewLink extends DashboardTest {
 		@Override
 		public boolean start() throws Exception {
 			// overriding super#start just for performance
@@ -606,7 +606,7 @@ also should test setting WP_LANG to other languages (multi-byte?) and FORCE_SSL 
 			return EUITestStatus.NOT_IMPLEMENTED;
 		}
 	}
-	class PlusNewPage extends DashboardTest {
+	class AdminbarNewPage extends DashboardTest {
 		@Override
 		public boolean start() throws Exception {
 			// overriding super#start just for performance
@@ -618,7 +618,7 @@ also should test setting WP_LANG to other languages (multi-byte?) and FORCE_SSL 
 			return EUITestStatus.NOT_IMPLEMENTED;
 		}
 	}
-	class PlusNewMedia extends DashboardTest {
+	class AdminbarNewMedia extends DashboardTest {
 		@Override
 		public boolean start() throws Exception {
 			// overriding super#start just for performance
@@ -630,7 +630,7 @@ also should test setting WP_LANG to other languages (multi-byte?) and FORCE_SSL 
 			return EUITestStatus.NOT_IMPLEMENTED;
 		}
 	}
-	class PlusNewUser extends DashboardTest {
+	class AdminbarNewUser extends DashboardTest {
 		@Override
 		public boolean start() throws Exception {
 			// overriding super#start just for performance

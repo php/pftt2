@@ -13,7 +13,9 @@ import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.core.PhptActiveTestPack;
 import com.mostc.pftt.model.core.PhptSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
+import com.mostc.pftt.model.sapi.CliSAPIInstance;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
+import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
@@ -47,12 +49,12 @@ public class CliScenario extends AbstractSAPIScenario {
 			PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case,
 			ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set,
 			PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
-		return new CliPhptTestCaseRunner(group_key.getPhpIni(), thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
+		return new CliPhptTestCaseRunner(((CliTestCaseGroupKey)group_key).getCliSAPIInstance(), group_key.getPhpIni(), thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 	}
 	
 	@Override
 	public int getTestThreadCount(AHost host) {
-		return 3 * host.getCPUCount();
+		return 6 * host.getCPUCount();
 	}
 
 	@Override
@@ -65,7 +67,7 @@ public class CliScenario extends AbstractSAPIScenario {
 		// default PhpIni will be given to php.exe using a file... @see CliPhptTestCaseRunner#prepare
 		//
 		// this is needed only to collect any custom directives that a test case provides
-		PhpIni ini = new PhpIni();
+		PhpIni ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, host, build); // TODO temp 5/13
 		AbstractINIScenario.setupScenarios(cm, host, scenario_set, build, ini);
 		return ini;
 	}
@@ -76,20 +78,45 @@ public class CliScenario extends AbstractSAPIScenario {
 			PhpIni ini = createIniForTest(cm, host, build, active_test_pack, scenario_set);
 			ini.replaceAll(test_case.getINI(active_test_pack, host));
 			
-			// note: don't bother comparing test case's INI with existing group_key's INI, PhptTestPackRunner
+			// note: don't bother comparing test case's INI with existing group_key's INI, LocalPhptTestPackRunner
 			//       already does comparison of this new group_key and discards any duplicates
 			// note: for CliScenario, CliPhptTestCaseRunner will set the ENV for each test_case individually, don't need to do it here
 			//      -for CLI, set ENV vars on each php.exe instance
 			//      -for WEB SERVERS, have to set ENV vars on each web server instance
 			// @see CliPhptTestCaseRunner#prepare
 			//
-			return new TestCaseGroupKey(ini, null);
+			CliSAPIInstance sapi = new CliSAPIInstance(host, build, ini);
+			
+			return new CliTestCaseGroupKey(sapi, ini, null);
 		} else if (group_key!=null && group_key.getPhpIni().isDefault()) {
 			return group_key;
 		} else {
-			return new TestCaseGroupKey(createIniForTest(cm, host, build, active_test_pack, scenario_set), null);
+			PhpIni ini = createIniForTest(cm, host, build, active_test_pack, scenario_set);
+			
+			CliSAPIInstance sapi = new CliSAPIInstance(host, build, ini);
+			
+			return new CliTestCaseGroupKey(sapi, ini, null);
 		}
 	} // end public TestCaseGroupKey createTestGroupKey
+	
+	public static class CliTestCaseGroupKey extends TestCaseGroupKey {
+		protected final CliSAPIInstance sapi;
+		
+		public CliTestCaseGroupKey(CliSAPIInstance sapi, PhpIni ini, Map<String, String> env) {
+			super(ini, env);
+			this.sapi = sapi;
+		}
+		
+		public CliSAPIInstance getCliSAPIInstance() {
+			return sapi;
+		}
+		
+		@Override
+		public void prepare() throws Exception {
+			sapi.prepare();
+		}
+		
+	}
 	
 	@Override
 	public AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(PhpUnitThread thread, TestCaseGroupKey group_key, ConsoleManager cm, ITestResultReceiver twriter, Map<String, String> globals, Map<String, String> env, AHost runner_host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String, String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {

@@ -54,8 +54,8 @@ public class PhpBuild extends SAPIManager {
 	 * @param str
 	 * @return
 	 */
-	public boolean checkOpenSSLVersion(String str) {
-		return str.contains("0.9.8");
+	public boolean checkOpenSSLVersion(ConsoleManager cm, Host host, String str) {
+		return is53(cm, host)||is54(cm, host)?str.contains("0.9.8"):str.contains("1.0.1");
 	}
 	
 	@Override

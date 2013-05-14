@@ -4,6 +4,7 @@ import java.util.Map;
 
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.scenario.ScenarioSet;
 
 /** Groovy implementation of PHPUnit's Process\TestCaseMethod template
  * 
@@ -31,11 +32,11 @@ public class PhpUnitTemplate {
 	 * @param reflection_only - if true, the only reference to the test method will be made in reflection. Opcache may optimize the test method out (so test will appear to PASS - check by running test that should be a FAILURE or ERROR)
 	 * @return
 	 */
-	public static String renderTemplate(AHost host, PhpUnitTestCase test_case, String preamble_code, String bootstrap_file, String cwd, String include_path, String[] included_files, Map<String, String> globals, Map<String, String> constants, HashMap<String, String> env, String my_temp_dir, boolean reflection_only) {
-		return renderTemplate(host, test_case, preamble_code, bootstrap_file, cwd, include_path, included_files, globals, constants, env, my_temp_dir, reflection_only, false);
+	public static String renderTemplate(AHost host, ScenarioSet scenario_set, PhpUnitTestCase test_case, String preamble_code, String bootstrap_file, String cwd, String include_path, String[] included_files, Map<String, String> globals, Map<String, String> constants, HashMap<String, String> env, String my_temp_dir, boolean reflection_only) {
+		return renderTemplate(host, scenario_set, test_case, preamble_code, bootstrap_file, cwd, include_path, included_files, globals, constants, env, my_temp_dir, reflection_only, false);
 	}
 	
-	public static String renderTemplate(AHost host, PhpUnitTestCase test_case, String preamble_code, String bootstrap_file, String cwd, String include_path, String[] included_files, Map<String, String> globals, Map<String, String> constants, HashMap<String, String> env, String my_temp_dir, boolean reflection_only, boolean strict) {
+	public static String renderTemplate(AHost host, ScenarioSet scenario_set, PhpUnitTestCase test_case, String preamble_code, String bootstrap_file, String cwd, String include_path, String[] included_files, Map<String, String> globals, Map<String, String> constants, HashMap<String, String> env, String my_temp_dir, boolean reflection_only, boolean strict) {
 		// XXX will need to get these values from PHP code 
 		// data source: PhpUnit_Framework_TestCase constructor (default value)
 		String data = "a:0:{}";
@@ -56,6 +57,7 @@ public class PhpUnitTemplate {
 		//           also set ENV vars in PHP for the temproary dir... for CLI or Apache, sometimes setting the
 		//           temporary dir ENV vars passed to AHost#exec doesn't always work
 		//           @see PHP sys_get_temp_dir() - many Symfony filesystem tests use this
+		def pftt_scenario_set = scenario_set.getNameWithVersionInfo();
 		pw.print(
 """<?php
 set_include_path('$include_path');
@@ -65,6 +67,8 @@ require 'PHPUnit/Autoload.php';
 putenv('TMP=$my_temp_dir');
 putenv('TEMP=$my_temp_dir');
 putenv('TMPDIR=$my_temp_dir');
+putenv('PFTT_IS=true');
+putenv('PFTT_SCENARIO_SET=$pftt_scenario_set');
 
 """)
 		if (StringUtil.isNotEmpty(bootstrap_file)) {
@@ -84,6 +88,19 @@ putenv('TMPDIR=$my_temp_dir');
 
 \$ignore_exit = FALSE;
 
+function dump_info() {
+	echo "Loaded Extensions:";echo PHP_EOL;
+	var_dump(get_loaded_extensions());
+	if (array_key_exists('PATH', \$_ENV)) {
+		echo "ENV:";echo PHP_EOL;
+		var_dump(\$_ENV['PATH']);
+	}
+	echo "Include Path:";echo PHP_EOL;
+	var_dump(get_include_path());
+	echo "File name:";echo PHP_EOL;
+	echo "$test_case.abs_filename";echo PHP_EOL;
+}
+
 function tryReportFatal() {
 	if (\$GLOBALS['ignore_exit']) {
 		return;
@@ -93,14 +110,13 @@ function tryReportFatal() {
 	echo 'ERROR'; echo PHP_EOL;
 	echo '$test_case.className'; echo PHP_EOL;
 	echo \$e->getTraceAsString(); echo PHP_EOL;
+	echo \$e->getMessage(); echo PHP_EOL;
+	dump_info();
+	ob_flush();
 }
 
 function __phpunit_run_isolated_test()
 {
-	if (!class_exists('$test_case.className')) {
-		require_once '$test_case.filename';
-	}
-
 	\$result = new PHPUnit_Framework_TestResult;
 """)
 	/*if ({collectCodeCoverageInformation}) {
@@ -115,7 +131,12 @@ function __phpunit_run_isolated_test()
 	\$test = NULL;
 	\$status = PHPUnit_Runner_BaseTestRunner::STATUS_SKIPPED;
 	\$status_msg = NULL;
+	\$output = NULL;
 	try {
+		if (!class_exists('$test_case.className')) {
+			require_once '$test_case.abs_filename';
+		}
+
 		\$test = new $test_case.className('$test_case.methodName', unserialize('$data'), '$dataName');
 		\$test->setDependencyInput(unserialize('$dependencyInput'));
 		\$test->setInIsolation(TRUE);
@@ -142,6 +163,8 @@ pw.println("""
 		// @see PhpUnit_Framework_TestCase::runBare
 		//
 		// this calls the method with inline reference. opcache will see this in the call-graph so it shouldn't optimize it out
+		//
+		// if no exception is thrown => it passed
 pw.println("""clearstatcache();
 		\$test->pftt_step1();
         \$test->$test_case.methodName();
@@ -150,19 +173,23 @@ pw.println("""clearstatcache();
 			\$test->pftt_step3();
 		} catch ( Exception \$e2 ) {}
 		\$output = ob_get_clean();
+		\$status = PHPUnit_Runner_BaseTestRunner::STATUS_PASSED;
 	} catch (PHPUnit_Framework_IncompleteTest \$e) {
 		\$status     = PHPUnit_Runner_BaseTestRunner::STATUS_INCOMPLETE;
-		\$status_msg = \$e->getMessage();
+		\$status_msg = \$e->getTraceAsString();
 	} catch (PHPUnit_Framework_SkippedTest \$e) {
 		\$status     = PHPUnit_Runner_BaseTestRunner::STATUS_SKIPPED;
-		\$status_msg = \$e->getMessage();
+		\$status_msg = \$e->getTraceAsString();
 	} catch (PHPUnit_Framework_AssertionFailedError \$e) {
 		\$status     = PHPUnit_Runner_BaseTestRunner::STATUS_FAILURE;
-		\$status_msg = \$e->getMessage();
+		\$status_msg = \$e->getTraceAsString();
 	} catch (Exception \$e) {
 		\$status     = PHPUnit_Runner_BaseTestRunner::STATUS_ERROR;
-		\$status_msg = \$e->getMessage();""");
+		\$status_msg = \$e->getTraceAsString();""");
 	} // end if (reflection_only)
+	// PFTT Extension: use Exception#getTraceAsString to get the message instead of
+	//                 Exception#getMessage. this provides a stack trace to
+	//                 the exact part of the test that throws the exception
 	//
 pw.println("""	} catch ( Exception \$e ) {
 		\$output = ob_get_clean();
@@ -170,13 +197,14 @@ pw.println("""	} catch ( Exception \$e ) {
 		echo '$test_case.className'; echo PHP_EOL;
 		echo \$e->getTraceAsString(); echo PHP_EOL;
 		echo \$output;
+		dump_info();
 
 		\$GLOBALS['ignore_exit'] = TRUE;
 		return;
 	}
 
 	// PFTT
-	switch(\$test->getStatus()) {
+	switch(\$status) {
 	case PHPUnit_Runner_BaseTestRunner::STATUS_PASSED:
 		echo "PASS";
 		echo PHP_EOL;
@@ -187,10 +215,7 @@ pw.println("""	} catch ( Exception \$e ) {
 		echo \$status_msg;
 		echo PHP_EOL;
 		echo \$output;
-		var_dump(get_loaded_extensions());
-		if (array_key_exists('PATH', \$_ENV)) {
-			var_dump(\$_ENV['PATH']);
-		}
+		dump_info();
 		break;
 	case PHPUnit_Runner_BaseTestRunner::STATUS_INCOMPLETE:
 		echo 'NOT_IMPLEMENTED';
@@ -205,6 +230,7 @@ pw.println("""	} catch ( Exception \$e ) {
 		echo \$status_msg;
 		echo PHP_EOL;
 		echo \$output;
+		dump_info();
 		break;
 	case PHPUnit_Runner_BaseTestRunner::STATUS_ERROR:
 		\$status = 'ERROR';
@@ -225,6 +251,7 @@ pw.println("""	} catch ( Exception \$e ) {
 		echo \$status_msg;
 		echo PHP_EOL;
 		echo \$output;
+		dump_info();
 		break;
 	}
 

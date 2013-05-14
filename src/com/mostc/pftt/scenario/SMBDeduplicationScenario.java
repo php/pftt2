@@ -19,6 +19,11 @@ import com.mostc.pftt.results.ConsoleManager.EPrintType;
  * You can check if a file is deduplicated (on Windows) by running
  * `fsutil reparsepoint query [file]`
  * 
+ * 
+ * SMB based scenarios produce a lot of additional IO requests. This can cause problems on Windows, which are successfully handled by a lot of
+ * special code in LocalHost.
+ * 
+ * @see LocalHost
  * @author Matt Ficken
  *
  */

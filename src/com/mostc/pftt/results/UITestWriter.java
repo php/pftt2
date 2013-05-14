@@ -141,7 +141,7 @@ public class UITestWriter extends AbstractUITestRW {
 		serial.attribute(null, "test_exception", Integer.toString(count.get(EUITestStatus.TEST_EXCEPTION)));
 		serial.attribute(null, "not_implemented", Integer.toString(count.get(EUITestStatus.NOT_IMPLEMENTED)));
 		serial.endTag(null, "tally");	
-		out.close(); 
+		out.close();
 	}
 
 	@Override

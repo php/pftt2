@@ -39,6 +39,8 @@ final class PhptTestResultStylesheetWriter {
 <pre><xsl:value-of select="//phptResult/preoverrideActual" /></pre>
 <h2>INI</h2>
 <pre><xsl:value-of select="//phptResult/ini" /></pre>
+<h2>Actual INI</h2>
+<pre><xsl:value-of select="//phptResult/actualINI" /></pre>
 <h2>EXPECTF Output</h2>
 <pre><xsl:value-of select="//phptResult/expectFOutput" /></pre>
 <h2>Shell Script</h2>

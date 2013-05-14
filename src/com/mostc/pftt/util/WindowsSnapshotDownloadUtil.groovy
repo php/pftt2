@@ -108,7 +108,7 @@ final class WindowsSnapshotDownloadUtil {
 					}
 				}
 			} // end findAll
-		if (build_url==null&&test_pack_url==null)
+		if (build_url==null||test_pack_url==null)
 			return null;
 		FindBuildTestPackPair pair = new FindBuildTestPackPair();
 		pair.cpu_arch = cpu_arch;

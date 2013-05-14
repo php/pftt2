@@ -27,10 +27,7 @@ public class CliPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 		running_test_handle.close(force);
 	}
 	
-	@Override
-	protected String execute(String template_file) throws IOException, Exception {
-		final String ini_dir = build.prepare(cm, host); // XXX store PhpIni in my_temp_dir ?
-		
+	private void doExecute(String template_file, String ini_dir) throws Exception {
 		running_test_handle = host.execThread(
 				build.getPhpExe()+" -c "+ini_dir+" "+template_file,
 				env,
@@ -44,6 +41,19 @@ public class CliPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 		output_str = output_sb.toString();
 		
 		is_crashed = running_test_handle.isCrashed();
+	}
+	
+	@Override
+	protected String execute(String template_file) throws IOException, Exception {
+		final String ini_dir = build.prepare(cm, host); // XXX store PhpIni in my_temp_dir ?
+		
+		doExecute(template_file, ini_dir);
+		if (is_crashed) {
+			// try a second time to be sure
+			is_crashed = false;
+			
+			doExecute(template_file, ini_dir);
+		}
 		
 		if (is_crashed) {
 			int exit_code = running_test_handle.getExitCode();

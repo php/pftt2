@@ -13,6 +13,7 @@ import com.mostc.pftt.host.AHost.ExecHandle;
 import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
+import com.mostc.pftt.model.core.EExecutableType;
 import com.mostc.pftt.model.core.EPhptSection;
 import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.PhpBuild;
@@ -20,6 +21,7 @@ import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.core.PhptActiveTestPack;
 import com.mostc.pftt.model.core.PhptSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
+import com.mostc.pftt.model.sapi.CliSAPIInstance;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
@@ -35,25 +37,23 @@ import com.mostc.pftt.scenario.ScenarioSet;
  */
 
 public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
+	protected final CliSAPIInstance sapi;
+	protected EExecutableType exe_type = EExecutableType.CLI;
 	protected ExecOutput output;
-	protected String selected_php_exe, shell_script, test_cmd, skip_cmd, shell_file, ini_dir;
+	protected String query_string, shell_script, test_cmd, shell_file;
 	
-	public CliPhptTestCaseRunner(PhpIni ini, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+	public CliPhptTestCaseRunner(CliSAPIInstance sapi, PhpIni ini, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
 		super(ini, thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
+		this.sapi = sapi;
 	}
 	
 	@Override
 	protected boolean prepare() throws IOException, Exception {
 		if (super.prepare()) {
-			ini_dir = build.prepare(cm, host);
-			
-			selected_php_exe = build.getPhpExe();
-			
 			/* For GET/POST tests, check if cgi sapi is available and if it is, use it. */
 			if (test_case.containsAnySection(EPhptSection.GET, EPhptSection.POST, EPhptSection.PUT, EPhptSection.POST_RAW, EPhptSection.COOKIE, EPhptSection.EXPECTHEADERS)) {
 				if (build.hasPhpCgiExe()) {
-					// -C => important: don't chdir
-					selected_php_exe = build.getPhpCgiExe() + " -C ";
+					exe_type = EExecutableType.CGI;
 				} else {
 					twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "CGI not available", null, null, null, null, null, null, null, null, null, null, null));
 					
@@ -67,6 +67,15 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		}
 		return false;
 	}
+		
+	@Override
+	public String getIniActual() throws Exception {
+		// @see #prepareTest
+		
+		String ini_get_all_path = get_ini_get_all_path();
+		
+		return sapi.execute(exe_type, ini_get_all_path, null, env, AHost.ONE_MINUTE).output;
+	}
 	
 	@Override
 	protected void prepareTest() throws Exception {
@@ -74,31 +83,22 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		
 		// generate cmd string to run test_file with php.exe
 		//
-		String query_string = "";
 		{
-			StringBuilder sb = new StringBuilder(64);
-			sb.append(selected_php_exe);
-			// -c => provide default PhpIni file
-			sb.append(" -c ");
-			sb.append(ini_dir);
-			sb.append(" -f \"");sb.append(host.fixPath(test_file));sb.append("\" ");
 			if (test_case.containsSection(EPhptSection.ARGS)) {
 				// copy CLI args to pass
-				sb.append(" -- ");
-				sb.append(StringUtil.removeLineEnding(test_case.getTrim(EPhptSection.ARGS)));
+				query_string = " -- " +
+						StringUtil.removeLineEnding(test_case.getTrim(EPhptSection.ARGS));
 			} else if (test_case.containsSection(EPhptSection.GET)) {
 				query_string = test_case.getTrim(EPhptSection.GET);
-				sb.append(" -- ");
 				
 				String[] query_pairs = query_string.split("\\&");
 				
 				// include query string in php command too
+				query_string = " -- "; // TODO
 				for ( String kv_pair : query_pairs ) {
-					sb.append(' ');
-					sb.append(kv_pair);
+					query_string += " "+kv_pair;
 				}
 			}	
-			test_cmd = sb.toString();
 		}
 		//
 		
@@ -116,7 +116,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		
 		// critical to avoid security warning: see http://php.net/security.cgi-bin
 		env.put(ENV_REDIRECT_STATUS, "1");
-		if (!env.containsKey(ENV_QUERY_STRING))
+		if (query_string != null && !env.containsKey(ENV_QUERY_STRING))
 			// NOTE: some tests use both --GET-- and --POST--
 			env.put(ENV_QUERY_STRING, query_string);
 		
@@ -143,6 +143,8 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		env.put(ENV_PFTT_SCENARIO_SET, scenario_set.getNameWithVersionInfo());
 		env.put(AbstractPhptTestCaseRunner.ENV_PFTT_IS, "1");
 		
+		// generate it now so it can be used in the shell script
+		test_cmd = sapi.createPhpCommand(exe_type, test_file, query_string);
 		
 		prepareSTDIN();
 		createShellScript();
@@ -180,16 +182,13 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		if (skipif_file != null) {
 			env.put(ENV_USE_ZEND_ALLOC, "1");
 				
-			// -c => critical, pass php.ini
-			skip_cmd = selected_php_exe+" -c "+ini_dir+" -f \""+skipif_file+"\"";
-
 			if (!env.containsKey(ENV_PATH_TRANSLATED))
 				env.put(ENV_PATH_TRANSLATED, skipif_file);
 			if (!env.containsKey(ENV_SCRIPT_FILENAME))
 				env.put(ENV_SCRIPT_FILENAME, skipif_file);
 			
 			// execute SKIPIF (60 second timeout)
-			output = host.execOut(skip_cmd, AHost.ONE_MINUTE, env, null, active_test_pack.getStorageDirectory());
+			output = sapi.execute(exe_type, skipif_file, null, AHost.ONE_MINUTE, env, active_test_pack.getStorageDirectory());
 						
 			return output.output;
 		}
@@ -204,29 +203,40 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		
 		running_test_handle.close(force);
 	}
-
-	@Override
-	protected String executeTest() throws Exception { 
+	
+	private String doExecuteTest() throws Exception {
 		// execute PHP to execute the TEST code ... allow up to 60 seconds for execution
 		//      if test is taking longer than 40 seconds to run, spin up an additional thread to compensate (so other non-slow tests can be executed)
-		running_test_handle = host.execThread(
-					shell_file, 
-					env,
+		running_test_handle = sapi.execThread(
+					test_cmd, 
 					active_test_pack.getStorageDirectory(),
+					env,
 					stdin_post
 				);
 		StringBuilder output_sb = new StringBuilder(1024);
 		
 		running_test_handle.run(output_sb, test_case.isNon8BitCharset()?test_case.getCommonCharset():null, 60, thread, 40);
 		
-		String output_str = output_sb.toString();
+		return output_sb.toString();
+	}
+
+	@Override
+	protected String executeTest() throws Exception { 
+		String output_str = doExecuteTest();
+		
+		if (running_test_handle.isCrashed()) {
+			// try again to be sure
+			running_test_handle = null;
+			
+			output_str = doExecuteTest();
+		}
 		
 		if (running_test_handle.isCrashed()) {
 			not_crashed = false; // @see #runTest
 			
 			int exit_code = running_test_handle.getExitCode();
-			System.out.println("exit_code "+exit_code);
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, "PFTT: exit_code="+exit_code+" status="+AHost.guessExitCodeStatus(host, exit_code)+"\n"+output_str, null, null, null, ini, env, null, stdin_post, null, null, null, null, output_str, null));
+			
+			twriter.addResult(host, scenario_set, notifyNotPass(new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, "PFTT: exit_code="+exit_code+" status="+AHost.guessExitCodeStatus(host, exit_code)+"\n"+output_str, null, null, null, ini, env, null, stdin_post, null, null, null, null, output_str, null)));
 		}
 		
 		running_test_handle = null;
@@ -237,7 +247,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	@Override
 	protected void executeClean() throws Exception {
 		// execute cleanup script
-		host.exec(cm, getClass(), selected_php_exe+" "+test_clean, AHost.ONE_MINUTE, env, null, active_test_pack.getStorageDirectory());
+		sapi.execute(exe_type, test_clean, query_string, AHost.ONE_MINUTE, env, active_test_pack.getStorageDirectory());
 		
 	} // end void executeClean
 

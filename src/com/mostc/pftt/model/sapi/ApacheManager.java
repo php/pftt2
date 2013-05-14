@@ -23,6 +23,7 @@ import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.util.VisualStudioUtil;
 
 /** manages and monitors Apache HTTPD web server
  * 
@@ -69,7 +70,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		
 			ExecOutput eo = host.execOut("\""+openssl_exe+"\" version", Host.ONE_MINUTE);
 			
-			return build.checkOpenSSLVersion(eo.output);
+			return build.checkOpenSSLVersion(cm, host, eo.output);
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, ApacheManager.class, "checkOpenSSLVersion", ex, "Error determining OpenSSL version");
 			return true;
@@ -133,13 +134,14 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			//            to run php+phpt so they pass on CLI, but too small for apache+php+phpt so they crash on apache)
 			// NOTE: this returns false (no exception) if visual studio not installed
 			// NOTE: this returns false (no exception) if apache binary can't be edited (already running, UAC privileges not elevated)
-			if (!host.equals(this.cache_host)||this.cache_httpd==null||!this.cache_httpd.equals(prep.httpd)) {
-				// do this once
-				synchronized(this) {
+			synchronized(this) {
+				if (!host.equals(this.cache_host)||this.cache_httpd==null||!this.cache_httpd.equals(prep.httpd)) {
+					// do this once
+					
 					// fix stack size bug for PCRE
-					/* TODO if (!VisualStudioUtil.setExeStackSize(cm, host, httpd, VisualStudioUtil.SIXTEEN_MEGABYTES)) {
+					if (!VisualStudioUtil.setExeStackSize(cm, host, prep.httpd, VisualStudioUtil.SIXTEEN_MEGABYTES)) {
 						cm.println(EPrintType.WARNING, getClass(), "Unable to set Apache stack size... large stack operations will fail");
-					}*/
+					}
 					
 					//
 					// method 1: copy icu*.dll to Apache\Bin
@@ -156,10 +158,10 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 					
 					// check OpenSSL version
 					if (!cm.isSkipSmokeTests()) {
-						/* TODO if (!checkOpenSSLVersion(cm, host, build, apache_version, Host.dirname(Host.dirname(httpd)))) {
+						if (!checkOpenSSLVersion(cm, host, build, apache_version, Host.dirname(Host.dirname(prep.httpd)))) {
 							cm.println(EPrintType.SKIP_OPERATION, getClass(), "Apache built with different version of OpenSSL than the version PHP is built with. Can't use this Apache build!");
 							return null;
-						} */
+						} 
 					}
 					
 					this.cache_host = host;

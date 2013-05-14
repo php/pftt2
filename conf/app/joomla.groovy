@@ -13,6 +13,7 @@ def getUITestPack() {
  * @see https://github.com/joomla/joomla-platform
  * 
  */
+// TODO is symfony actually still needed (yaml now included with PFTT)
 abstract class SymfonyPhpUnitTestPack extends PhpUnitSourceTestPack {
 	
 	@Override

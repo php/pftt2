@@ -30,6 +30,8 @@ import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.ErrorUtil;
+import com.mostc.pftt.util.TimerUtil;
+import com.mostc.pftt.util.TimerUtil.TimerThread;
 
 public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	protected final WebServerManager smgr;
@@ -244,6 +246,32 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 		}
 		conn = new DebuggingHttpClientConnection(null, response_bytes);
 		test_socket = null;
+		final TimerThread timeout_task = TimerUtil.waitSeconds(
+				60, 
+				new Runnable() {
+					public void run() {
+						System.out.println("Http 319");
+						if (web!=null)
+							web.close();
+					}
+				},
+				new Runnable() {
+					public void run() {
+						if (conn!=null) {
+							try {
+							conn.close();
+							} catch ( Exception ex ) {}
+							conn = null;
+						}
+						if (test_socket!=null) {
+							try {
+							test_socket.close();
+							} catch ( Exception ex ) {}
+							test_socket = null;
+						}
+					}
+				}
+			);
 		try {
 			context.setAttribute(ExecutionContext.HTTP_CONNECTION, conn);
 			context.setAttribute(ExecutionContext.HTTP_TARGET_HOST, http_host);
@@ -279,6 +307,8 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 				}
 			}
 			//
+			
+			timeout_task.cancel();
 			
 			return IOUtil.toString(response.getEntity().getContent(), IOUtil.HALF_MEGABYTE);
 		} finally {

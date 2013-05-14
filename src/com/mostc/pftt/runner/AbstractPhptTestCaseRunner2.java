@@ -28,6 +28,7 @@ import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.util.ErrorUtil;
 import com.mostc.pftt.util.GZIPOutputStreamLevel;
 import com.mostc.pftt.util.StringUtil2.LengthLimitStringWriter;
 
@@ -47,13 +48,25 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	protected PhpIni ini;
 	protected boolean not_crashed = true; // @see HttpTestCaseRunner
 	
+	public abstract String getIniActual() throws Exception;
+	
+	protected String get_ini_get_all_path() throws IllegalStateException, IOException {
+		// ensure ini_get_all.php exists
+		String ini_get_all_path = host.joinIntoOnePath(active_test_pack.getStorageDirectory(), "ini_get_all.php");
+		if (!host.exists(ini_get_all_path)) {
+			// TODO locking?
+			host.saveTextFile(ini_get_all_path, "<?php var_dump($argv);\nvar_dump(ini_get_all()); ?>");
+		}
+		return ini_get_all_path;
+	}
+	
 	/** runs the test case and reports the results to the PhptTelemetryManager
 	 * 
 	 * @see #willSkip - called by PhptTestPackRunner before #runTest is called
 	 * 
 	 */
 	@Override
-	public void runTest() throws IOException, Exception, Throwable {
+	public void runTest(ConsoleManager cm) throws IOException, Exception, Throwable {
 		if (!prepare())
 			// test is SKIP BORK EXCEPTION etc...
 			return;
@@ -76,6 +89,28 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 					executeClean();
 				}
 			}
+		}
+		doRunTestClean(cm);
+	}
+	
+	protected void doRunTestClean(ConsoleManager cm) throws IllegalStateException, IOException {
+		if (cm.isPhptNotInPlace() && host.isWindows() && !host.isRemote()) {
+			// CRITICAL on Windows(remote file systems): PHP opens a file handle for these files. When running large
+			//      amounts of test, this produces many IO requests. If a PHP process needs to be killed, there
+			//      may still be pending IO requests or at least the local Windows client thinks there is
+			//      (server may have dropped them). These pending IO requests prevent the PHP process from being killed.
+			//     
+			//      Even if all the FILE handles of the process are closed (which LocalHost will do), there may
+			//      still be pending IO requests.
+			//
+			//      by having the Windows DFS client send a delete request (rather than deleting these files through
+			//      SSHHost, etc...), it may cancel those pending IO operations in its scheduler.
+			//
+			//      This behavior will cause PHP processes to randomly hang even when the DFS activity is
+			//      less than 1% of a 1000Mbit network. This is part of fixing it (the other part is LocalHost's #close)
+			host.delete(test_file);
+			host.deleteIfExists(test_file+".tmp");
+			// (if DFS or SMB, #isPhptNotInPlace()==true)
 		}
 	}
 	
@@ -489,9 +524,9 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 
 		PhptTestResult result;
 		if (test_case.isXFail()) {
-			result = new PhptTestResult(host, EPhptTestStatus.XFAIL_WORKS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual);
+			result = notifyNotPass(new PhptTestResult(host, EPhptTestStatus.XFAIL_WORKS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual));
 		} else {
-			result = notifyFail(new PhptTestResult(host, EPhptTestStatus.FAIL, test_case, output, actual_lines, expected_lines, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), diff, expectf, preoverride_actual, getSAPIOutput(), getSAPIConfig()));
+			result = notifyNotPass(notifyFail(new PhptTestResult(host, EPhptTestStatus.FAIL, test_case, output, actual_lines, expected_lines, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), diff, expectf, preoverride_actual, getSAPIOutput(), getSAPIConfig())));
 		}
 		
 		//
@@ -517,6 +552,16 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		
 		twriter.addResult(host, scenario_set, result);
 	} // end protected void evalTest
+	
+	protected PhptTestResult notifyNotPass(PhptTestResult result) {
+		try {
+			result.actual_ini = getIniActual();
+		} catch ( Throwable ex ) {
+			result.actual_ini = ErrorUtil.toString(ex);
+		}
+		
+		return result;
+	}
 	
 	protected PhptTestResult notifyFail(PhptTestResult result) {
 		return result;

@@ -55,7 +55,7 @@ public class PhptResultWriter extends AbstractPhptRW {
 	protected class StatusListEntry {
 		protected final EPhptTestStatus status;
 		protected final File journal_file;
-		protected final PrintWriter journal_writer;
+		protected PrintWriter journal_writer;
 		protected final LinkedList<String> test_names;
 		
 		public StatusListEntry(EPhptTestStatus status) throws IOException {
@@ -69,11 +69,15 @@ public class PhptResultWriter extends AbstractPhptRW {
 		public void write(PhptTestResult result) {
 			final String test_name = result.test_case.getName();
 			
-			journal_writer.println(test_name);
+			if (journal_writer!=null)
+				journal_writer.println(test_name);
 			
 			test_names.add(test_name);
 		}
 		public void close() throws IOException {
+			if (journal_writer==null)
+				return;
+			
 			journal_writer.close();
 			
 			// sort alphabetically
@@ -99,6 +103,8 @@ public class PhptResultWriter extends AbstractPhptRW {
 			// if here, collecting the results and writing them in sorted-order has worked ... 
 			//   don't need journal anymore (pftt didn't crash, fail, etc...)
 			journal_file.delete();
+			
+			journal_writer = null;
 		}
 	} // end protected class StatusListEntry
 
@@ -135,10 +141,9 @@ public class PhptResultWriter extends AbstractPhptRW {
 			e.close();
 	} // end public void close
 	
+	int count; // TODO temp 5/13
 	public void writeResult(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhptTestResult result) {
-		if (closed)
-			throw new IllegalStateException("can't write result to this PhptResultWriter. it is closed");
-			
+		
 		status_list_map.get(result.status).write(result);
 	
 		

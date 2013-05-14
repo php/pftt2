@@ -66,7 +66,11 @@ public class PhptTestResult {
 	@Nullable
 	public String diff_str;
 	protected String sapi_output, sapi_config;
+	/** the configuration INI that was supposed to be used */
 	public PhpIni ini;
+	/** the INI that was used (only set if error, otherwise its the same as ini (@see PhpIni#toString)). Note: this is not in the same format as an INI, so PhpIni will NOT be able to parse this. @see http://php.net/ini_get_all */
+	@Nullable
+	public String actual_ini;
 	/** the whole http request, headers and body (utf-8 encoded) */
 	public String http_request;
 	/** the whole http response, headers and body (utf-8 encoded) */
@@ -296,6 +300,12 @@ public class PhptTestResult {
 				serial.endTag(null, "ini");
 			}
 			
+			if (actual_ini!=null) {
+				serial.startTag(null, "actualINI");
+				serial.text(actual_ini);
+				serial.endTag(null, "actualINI");
+			}
+			 
 			if (StringUtil.isNotEmpty(expectf_output)) {
 				serial.startTag(null, "expectFOutput");
 				serial.text(expectf_output);

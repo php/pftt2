@@ -27,7 +27,7 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner 
 	public static final String ENV_CONTENT_LENGTH = "CONTENT_LENGTH";
 	public static final String ENV_HTTP_CONTENT_ENCODING = "HTTP_CONTENT_ENCODING";
 	
-	public abstract void runTest() throws IOException, Exception, Throwable;
+	public abstract void runTest(ConsoleManager cm) throws IOException, Exception, Throwable;
 	
 	protected abstract void stop(boolean force);
 	

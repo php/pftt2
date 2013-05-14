@@ -114,6 +114,6 @@ public class MySQLScenario extends AbstractDatabaseScenario {
 	}
 	@Override
 	public String getNameWithVersionInfo() {
-		return "MySQL"; // XXX -[server implementation and server version]
+		return "MySQL-5.6"; // XXX -[server implementation and server version]
 	}	
 } // end class MySQLScenario

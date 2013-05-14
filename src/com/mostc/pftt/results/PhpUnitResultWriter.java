@@ -87,7 +87,7 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 	protected class StatusListEntry {
 		protected final EPhpUnitTestStatus status;
 		protected final File journal_file;
-		protected final PrintWriter journal_writer;
+		protected PrintWriter journal_writer;
 		protected final LinkedList<String> test_names;
 		
 		public StatusListEntry(EPhpUnitTestStatus status) throws IOException {
@@ -104,6 +104,9 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 			test_names.add(test_name);
 		}
 		public void close() throws IOException {
+			if (journal_writer==null)
+				return;
+			
 			journal_writer.close();
 			
 			// sort alphabetically
@@ -117,6 +120,8 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 			// if here, collecting the results and writing them in sorted-order has worked ... 
 			//   don't need journal anymore (pftt didn't crash, fail, etc...)
 			journal_file.delete();
+			
+			journal_writer = null;
 		}
 	} // end protected class StatusListEntry
 	
@@ -126,9 +131,7 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 
 	// @see PHPUnit/Util/Log/JUnit.php#startTestSuite
 	public void writeResult(PhpUnitTestResult result) throws IllegalArgumentException, IllegalStateException, IOException {
-		if (closed)
-			throw new IllegalStateException("can't write result to this PhpUnitResultWriter. it is closed.");
-		else if (result.ini!=null && (this.ini==null||!this.ini.equals(result.ini)))
+		if (result.ini!=null && (this.ini==null||!this.ini.equals(result.ini)))
 			this.ini = result.ini;
 		test_count++;
 		

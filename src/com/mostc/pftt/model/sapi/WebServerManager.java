@@ -68,6 +68,16 @@ public abstract class WebServerManager extends SAPIManager {
 		close(false);
 	}
 	
+	private static boolean eq(WebServerInstance c, boolean debugger_attached, PhpIni ini, Map<String,String> env) {
+		if (c.isRunning() && (!debugger_attached||c.isDebuggerAttached())) {
+			if (c.getPhpIni()!=null&&ini!=null&&c.getPhpIni().equals(ini))
+				return true;
+			if (c.getEnv()!=null&&env!=null&&c.getEnv().equals(env))
+				return true;
+		}
+		return false;
+	}
+	
 	/** gets a running WebServerInstance
 	 * 
 	 * if given an existing assigned WebServerInstance that hasn't crashed and is running,
@@ -95,13 +105,13 @@ public abstract class WebServerManager extends SAPIManager {
 	public WebServerInstance getWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String,String> env, final String docroot, WebServerInstance assigned, boolean debugger_attached, Object server_name) {
 		WebServerInstance sapi;
 		if (assigned!=null) {
-			if (assigned.isRunning() && (!debugger_attached||assigned.isDebuggerAttached()))
+			if (eq(assigned, debugger_attached, ini, env))
 				return assigned;
 			
 			synchronized(assigned) {
 				for (WebServerInstance c=assigned.replacement ; c != null ; c = c.replacement) {
 					synchronized(c) {
-						if (c.isRunning() && (!debugger_attached||c.isDebuggerAttached()))
+						if (eq(c, debugger_attached, ini, env))
 							return c;
 					}
 				}

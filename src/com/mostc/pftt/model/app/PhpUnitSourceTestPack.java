@@ -21,6 +21,7 @@ import com.caucho.quercus.program.QuercusProgram;
 import com.caucho.vfs.FilePath;
 import com.caucho.vfs.FileReadStream;
 import com.caucho.vfs.ReadStream;
+import com.github.mattficken.Overridable;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.LocalHost;
@@ -48,7 +49,10 @@ import com.mostc.pftt.scenario.ScenarioSet;
  *    
  *    To speed test running, making testing more convenient and thus done more frequently and thoroughly,
  *    test running is threaded, so multiple tests are run at the same time except for NTS tests.
- * 6. you may provide some additional info to PhpUnitSourceTestPack (optional; mainly, its just doing steps 3 and 4) 
+ * 6. you may provide some additional info to PhpUnitSourceTestPack (optional; mainly, its just doing steps 3 and 4)
+ * 
+ *  While your test-pack is in development, you should override #isDevelopment and have it return true. You'll get more stack traces and other
+ *  information to help during the develop-test cycle you'll be in developing your test-pack.
  * 
  * @author Matt Ficken
  *
@@ -76,6 +80,17 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 		addIncludeDirectory(".");
 		// TODO PFTT_DIR for path
 		addIncludeDirectory("C:\\php-sdk\\PFTT\\current\\cache\\util\\PEAR\\pear");
+	}
+	
+	/** TRUE if test-pack is 'under development'. FALSE if its stable.
+	 * 
+	 * test runner will include extra info(stack traces, etc...) for test-packs that are under development
+	 * 
+	 * @return
+	 */
+	@Overridable
+	public boolean isDevelopment() {
+		return false;
 	}
 	
 	@Override
@@ -107,9 +122,9 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	
 	/** add a PhpUnitDist... can base this off a PhpUnit.xml.dist
 	 * 
-	 * @param path
-	 * @param bootstrap_file
-	 * @param include_files
+	 * @param path - directory where tests are stored
+	 * @param bootstrap_file - php file to load with each test
+	 * @param include_files - (optional) php files to include
 	 * @return
 	 */
 	public PhpUnitDist addPhpUnitDist(String path, String bootstrap_file, String[] include_files) {
@@ -206,6 +221,11 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 		_test_cases.addAll(test_cases);
 	}
 	
+	@Overridable
+	protected boolean isFileNameATest(String file_name) {
+		return file_name.endsWith("Test.php");
+	}
+	
 	/** scans for *Test.php files and reads PhpUnitTestCase(s) from them
 	 * 
 	 * @param max_read_count - max number of test cases to read (0=unlimited)
@@ -229,19 +249,19 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 				readDir(max_read_count, test_cases, php_unit_dist, file);
 				if (max_read_count > 0 && test_cases.size() >= max_read_count)
 					return;
-			} else if (file.getName().endsWith("Test.php")) {
-				String file_name = Host.pathFrom(php_unit_dist.path.getAbsolutePath(), file.getAbsolutePath());
+			} else if (isFileNameATest(file.getName())) {
+				String rel_file_name = PhpUnitTestCase.normalizeFileName(Host.pathFrom(php_unit_dist.path.getAbsolutePath(), file.getAbsolutePath()));
 				
-				String test_file_name = PhpUnitTestCase.normalizeFileName(file_name);
+				String abs_file_name = PhpUnitTestCase.normalizeFileName(file.getAbsolutePath());
 				
-				String lc_test_file_name = test_file_name.toLowerCase();
+				String lc_test_file_name = rel_file_name.toLowerCase();
 				if (blacklist_test_names.contains(lc_test_file_name))
 					continue;
 				else if (!whitelist_test_names.isEmpty() && !whitelist_test_names.contains(lc_test_file_name))
 					continue;
 				
 				try {
-					readTestFile(max_read_count, test_file_name, php_unit_dist, test_cases, file);
+					readTestFile(max_read_count, rel_file_name, abs_file_name, php_unit_dist, test_cases, file);
 				} catch ( QuercusParseException ex ) {
 					ex.printStackTrace();
 				}
@@ -256,13 +276,14 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	/** reads PhpUnitTestCase(s) from given PHP file
 	 * 
 	 * @param max_read_count
-	 * @param test_file_name
+	 * @param rel_test_file_name
+	 * @param abs_test_file_name
 	 * @param php_unit_dist
 	 * @param test_cases
 	 * @param file
 	 * @throws IOException
 	 */
-	protected void readTestFile(final int max_read_count, String test_file_name, PhpUnitDist php_unit_dist, List<PhpUnitTestCase> test_cases, File file) throws IOException {
+	protected void readTestFile(final int max_read_count, String rel_test_file_name, String abs_test_file_name, PhpUnitDist php_unit_dist, List<PhpUnitTestCase> test_cases, File file) throws IOException {
 		FileInputStream fin = new FileInputStream(file);
 		//
 		// with all the `non-technical` obstacles around developing PFTT, there isn't time to develop a simple
@@ -287,7 +308,8 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 					// this is a test case
 					test_cases.add(new PhpUnitTestCase(
 							php_unit_dist,
-							test_file_name,
+							abs_test_file_name,
+							rel_test_file_name,
 							// some PhpUnits use the namespace keyword and/or \\ in the class name (namespaces)
 							// InterpretedclassDef#getName will provide the absolute class name (including namespace)
 							// in such cases, so nothing special needs to be done here for them

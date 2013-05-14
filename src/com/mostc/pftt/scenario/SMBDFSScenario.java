@@ -25,6 +25,10 @@ import com.mostc.pftt.results.ConsoleManager.EPrintType;
  *       `fsutil reparsepoint query` when run locally on the DFS server will return a reparse tag for the link, but not over the network.
  *       The DFS and DFSR reparsepoints are not anywhere on a DFS share (they are only used internally on the DFS server's filesystem).
  * 
+ * SMB based scenarios produce a lot of additional IO requests. This can cause problems on Windows, which are successfully handled by a lot of
+ * special code in LocalHost.
+ * 
+ * @see LocalHost
  * @see `dfsutil`, `dfscmd` and `dfsdiag`
  * @see http://msdn.microsoft.com/en-us/library/windows/desktop/aa365511%28v=vs.85%29.aspx
  * @author Matt Ficken

@@ -8,6 +8,7 @@ test what will happen in production.
 
 1. Download binary from [http://131.107.220.66/PFTT-Results/PFTT/current/](http://131.107.220.66/PFTT-Results/PFTT/current/) and run it.
 2. The Install Wizard will install PFTT to your local system.
+	a. If you have installed PFTT before, you MUST delete c:\php-sdk\PFTT\current so that it does NOT exist before running the installer
 3. If you want to test with Apache, currently you’ll need to manually decompress/copy it
 	a. Look in c:\php-sdk\PFTT\current\cache\dep\Apache (Windows)
 	b. Each of the .7z files is a different Apache build
@@ -115,12 +116,13 @@ run tests 100 times each, 32 threads, no thread safety = so multiple instances o
 
 These options may be useful with core_list or core_all or core_named. -run_group_times_all, -run_test_times and -debug_list especially. 
 
+-no_restart_all - will not restart any web server. this allows the web server to be stressed more and for longer amounts of time (this will invalidate any functional testing results!).
 -run_test_times_all <N> - runs each test N times in a row/consecutively
 -run_test_times_list <N> <list file> - runs tests in that list N times. if used with -run_test_times_all, tests not in list can be run different number of times from tests in list (ex: run listed tests 5 times, run all other tests 2 times).
 -debug_list <list files> - runs tests in list in Debugger
 -run_group_times_all <N> - runs all groups of tests N times (in same order every time, unless -randomize used)
 -run_group_times_list <N> <list file> - like grun_group_times_All and run_test_times_list (but for groups of tests) 
--no_nts - runs tests in any thread, regardless of thread-safety. This can increase load/stress, but may lead to false FAILS/ERRORs, especially in file or database tests.
+-no_thread_safety - runs tests in any thread, regardless of thread-safety. This can increase load/stress, but may lead to false FAILS/ERRORs, especially in file or database tests.
 
 ### Crash Reporting
 

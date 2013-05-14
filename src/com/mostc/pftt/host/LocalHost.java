@@ -19,12 +19,12 @@ import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CharsetEncoder;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 
@@ -43,19 +43,26 @@ import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
+import com.mostc.pftt.util.TimerUtil;
+import com.mostc.pftt.util.TimerUtil.TimerThread;
 import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.Kernel32;
 import com.sun.jna.platform.win32.WinNT.HANDLE;
 
 /** Represents the local Host that the program is currently running on.
  * 
+ * LocalHost is fairly straightforward for Linux.
+ * 
+ * Windows has issues running large numbers of processes or large numbers of filesystem operations. LocalHost
+ * has several special internal mechanisms to try to contain and manage those issues so the rest of PFTT doesn't have to deal with them.
+ *
+ * @see SSHHost
  * @author Matt Ficken
  *
  */
 
 @SuppressWarnings("unused")
 public class LocalHost extends AHost {
-	private static final Timer timer = new Timer();
 	private static final boolean is_windows = System.getProperty("os.name").toLowerCase().contains("windows");
 	private static int self_process_id;
 	static {
@@ -65,13 +72,14 @@ public class LocalHost extends AHost {
 				// this works only on Windows
 				self_process_id = Kernel32.INSTANCE.GetCurrentProcessId();
 			} catch ( Throwable t ) {
-				t.printStackTrace();
 			}
 		}
 	}
-	protected final CommonCommandManager ccm;
+	protected final CommonCommandManager ccm; // share some 'shelling out' code with SSHHost
+	protected final HashMap<Thread,Object> close_thread_set; // for LocalExecHandle#close
 	
 	public LocalHost() {
+		close_thread_set = new HashMap<Thread,Object>();
 		ccm = new CommonCommandManager();
 	}
 	
@@ -195,7 +203,7 @@ public class LocalHost extends AHost {
 		return out;	
 	}
 	
-	protected static class ThreadSlowTask extends TimerTask {
+	protected static class ThreadSlowTask implements Runnable {
 		protected final TestPackRunnerThread thread;
 		
 		protected ThreadSlowTask(TestPackRunnerThread thread) {
@@ -252,15 +260,14 @@ public class LocalHost extends AHost {
 	
 	public class LocalExecHandle extends ExecHandle {
 		protected int exit_code = 0;
-		protected Process process;
+		protected final AtomicReference<Process> process;
 		protected OutputStream stdin;
 		protected InputStream stdout, stderr;
-		protected ExitMonitorTask task;
 		protected String image_name;
 		protected Charset charset;
 		
 		public LocalExecHandle(Process process, OutputStream stdin, InputStream stdout, InputStream stderr, String[] cmd_array) {
-			this.process = process;
+			this.process = new AtomicReference<Process>(process);
 			this.stdin = stdin;
 			this.stdout = stdout;
 			this.stderr = stderr;
@@ -275,134 +282,201 @@ public class LocalHost extends AHost {
 		
 		@Override
 		public boolean isRunning() {
+			final Process p = this.process.get();
+			if (p==null)
+				return false;
 			try {
-				process.exitValue();
+				p.exitValue();
 				return false;
 			} catch ( IllegalThreadStateException ex ) {
 				return true;
 			}
 		}
 
-		boolean run = true;
+		AtomicBoolean run = new AtomicBoolean(true), wait = new AtomicBoolean(true);
 		@Override
-		public synchronized void close(boolean force) {
-			run = false;
+		public synchronized void close(final boolean force) {
+			if (!run.get())
+				return; // already trying|tried to close
+			final Process p = this.process.get();
+			if (p==null)
+				return;
+			run.set(false);
 			
-			// may take multiple tries to make it exit (lots of processes, certain OSes, etc...)
-			for ( int tries = 0 ; tries < 10 ; tries++ ) {
-				// 
-				//
-				try {
-					process.exitValue();
-					break; 
-					// process terminated, stop trying (or may terminate new process reusing the same id)
-				} catch ( Throwable t ) {
-					// kill it
-					//
-					// Windows BN: process trees on Windows won't get terminated correctly by calling Process#destroy
-					// have to do some special stuff on Windows
-					if (isLocalhostWindows()&&!image_name.equals("taskkill")&&!image_name.equals("taskkill.exe")) {
-						try {
-							// @see https://github.com/kohsuke/winp
-							WinProcess wprocess = new WinProcess(process);
-							final int pid = getWindowsProcessIDReflection(process);// TODO wprocess.getPid();
-							
-							// make sure we found a process id (safety check: make sure its not our process id)
-							if (pid!=self_process_id) {
-								if (!image_name.equals("cmd.exe")&&!image_name.equals("conhost.exe")) {
-									// Process#destroy works for processes except for those that
-									// are launched using cmd.exe (the parent of those processes is conhost.exe)
-									if (tries==0) {
-										// may cause AV in JVM if you call both WinProcess#killRecursively and then WinProcess#kill (vice-versa)
-										//
-										// calls Win32 TerminateProcess()
-										wprocess.kill();
-										// also, WinProcess#killRecursively only checks by process id (not image/program name)
-										// while that should be enough, experience on Windows has shown that it isn't and somehow gets PFTT killed eventually
-										//
-										// Windows Note: Windows does NOT automatically terminate child processes when the parent gets killed
-										//               the only way that happens is if you search for the child processes FIRST yourself,
-										//               (and then their children, etc...) and then kill them.
-									} else if (tries==1) {
-										// NOTE: on Windows, if WER is not disabled(enabled by default), if a process crashes,
-										//       WER popup will appear and process will block until popup closed
-										//       -this can be detected by looking for `C:\Windows\SysWOW64\WerFault.exe -u -p <process id> -s 1032`
-										if (ccm.ensureWERFaultIsNotRunning(LocalHost.this, pid)) {
-											// WER just killed, try again
-											wprocess.kill();
+			// sometimes it can take a while to #close a process(especially on Windows)... do it in a thread
+			// to avoid blocking for too long. however, we don't want to have too many threads
+			//
+			// don't let any calling thread have more than 1 close thread 
+			final Thread calling_thread = Thread.currentThread();
+			final Object tlock;
+			Object lock;
+			synchronized(close_thread_set) {
+				lock = close_thread_set.get(calling_thread);
+				if (lock==null) {
+					tlock = new Object();
+					close_thread_set.put(calling_thread, tlock);
+				} else {
+					tlock = lock;
+				}
+			}
+			if (lock!=null) {
+				synchronized(tlock) {
+					try {
+						lock.wait(30000);
+					} catch (InterruptedException e) {}
+				}
+			}
+			
+			final Thread close_thread = new Thread() {
+					@Override
+					public void run() {
+						// may take multiple tries to make it exit (lots of processes, certain OSes, etc...)
+						for ( int tries = 0 ; tries < 10 ; tries++ ) {
+							// 
+							//
+							try {
+								p.exitValue();
+								break; 
+								// process terminated, stop trying (or may terminate new process reusing the same id)
+							} catch ( Throwable t ) {
+								// kill it
+								//
+								// Windows BN: process trees on Windows won't get terminated correctly by calling Process#destroy
+								// have to do some special stuff on Windows
+								if (isLocalhostWindows()&&!image_name.equals("pskill")&&!image_name.equals("pskill.exe")) {
+									try {
+										// @see https://github.com/kohsuke/winp
+										WinProcess wprocess = new WinProcess(p);
+										final int pid = getWindowsProcessIDReflection(p);// NOT? wprocess.getPid();
+										// make sure we found a process id (safety check: make sure its not our process id)
+										if (pid!=self_process_id) {
+											if (!image_name.equals("cmd.exe")&&!image_name.equals("conhost.exe")) {
+												// Process#destroy works for processes except for those that
+												// are launched using cmd.exe (the parent of those processes is conhost.exe)
+												if (tries==0) {
+													// may cause AV in JVM if you call both WinProcess#killRecursively and then WinProcess#kill (vice-versa)
+													//
+													// calls Win32 TerminateProcess()
+													wprocess.kill();
+													// also, WinProcess#killRecursively only checks by process id (not image/program name)
+													// while that should be enough, experience on Windows has shown that it isn't and somehow gets PFTT killed eventually
+													//
+													// Windows Note: Windows does NOT automatically terminate child processes when the parent gets killed
+													//               the only way that happens is if you search for the child processes FIRST yourself,
+													//               (and then their children, etc...) and then kill them.
+												} else if (tries==1) {
+													// NOTE: on Windows, if WER is not disabled(enabled by default), if a process crashes,
+													//       WER popup will appear and process will block until popup closed
+													//       -this can be detected by looking for `C:\Windows\SysWOW64\WerFault.exe -u -p <process id> -s 1032`
+													if (ccm.ensureWERFaultIsNotRunning(LocalHost.this, pid)) {
+														// WER just killed, try again
+														wprocess.kill();
+													}
+												}
+											}
+											if (force&&tries==1||tries>3) {
+												if(!image_name.equals("handle")&&!image_name.equals("handle.exe")) {
+													// may have left some handles open... particularly for \devices\AFD, which may be preventing it from closing
+													ccm.winCloseAllHandles(LocalHost.this, pid);
+												}
+											}
+											ccm.winKillProcess(LocalHost.this, image_name, pid);
+											continue;
+										}
+									} catch ( Throwable t2 ) {
+										final int pid = getWindowsProcessIDReflection(p);
+										// make sure we found a process id (safety check: make sure its not our process id)
+										if (pid!=self_process_id) {
+											if (force&&tries==0||tries>3) {
+												if(!image_name.equals("handle")&&!image_name.equals("handle.exe")) {
+													// may have left some handles open... particularly for \devices\AFD, which may be preventing it from closing
+													//
+													// Note: Windows is designed to not let processes be terminated if there are pending IO requests for the process
+													//    there can be pending IO requests even if file handles are closed.
+													//    this is particularly more complex if DFS/SMB is used, since the pending IO request in Windows
+													//    will normally remain pending unless and until it gets a response from the File server
+													//    (only then can the process be terminated or exit normally).
+													//    to help with this, delete files using the DFS client so it may realize the IO request is not pending any more
+													//    @see AbstractPhptTestCaseRunner2#doRunTestClean
+													ccm.winCloseAllHandles(LocalHost.this, pid);
+												}
+											}
+											ccm.ensureWERFaultIsNotRunning(LocalHost.this, pid);
+											ccm.winKillProcess(LocalHost.this, image_name, pid);
+											
+											continue;
 										}
 									}
+								} // end if
+								//	
+								//
+								// terminate through java Process API
+								// on Linux, this is all we need to do in #close
+								// on Windows, this should only be used if all the above failed. 
+								//         Windows: #destroy calls Win32 TerminateProcess
+								//                  you should not call TerminateProcess if the above succeeded in killing the
+								//                  process because TerminateProcess may block (forever) in such cases
+								//
+								// JVM should realize process was destroyed without Process#destory call when Process#exitValue called
+								try {
+									p.destroy();
+								} catch ( Throwable t2 ) {
+									t2.printStackTrace();
 								}
-								if (force&&tries==1||tries>3) {
-									if(!image_name.equals("handle")&&!image_name.equals("handle.exe")) {
-										// may have left some handles open... particularly for \devices\AFD, which may be preventing it from closing
-										ccm.winCloseAllHandles(LocalHost.this, pid);
-									}
-								}
-								ccm.winKillProcess(LocalHost.this, image_name, pid);
-							}
-						} catch ( Throwable t2 ) {
-							final int pid = getWindowsProcessIDReflection(process);
-							
-							// make sure we found a process id (safety check: make sure its not our process id)
-							if (pid!=self_process_id) {
-								if (force&&tries==0||tries>3) {
-									if(!image_name.equals("handle")&&!image_name.equals("handle.exe")) {
-										// may have left some handles open... particularly for \devices\AFD, which may be preventing it from closing
-										ccm.winCloseAllHandles(LocalHost.this, pid);
-									}
-								}
-								ccm.ensureWERFaultIsNotRunning(LocalHost.this, pid);
-								ccm.winKillProcess(LocalHost.this, image_name, pid);
-							}
+								//
+							} // end try
+						} // end for
+						// by now process should be dead/should have stopped writing
+						// so #exec_copy_lines should stop (which will stop blocking whatever called #exec_impl or #exec or #execOut)
+						wait.set(false);
+						
+						synchronized(close_thread_set) {
+							if (close_thread_set.get(calling_thread)==tlock)
+								close_thread_set.remove(calling_thread);
 						}
-					} // end if
-					//				
-					
-					// terminate through java Process API
-					// this works on Linux and is a fallback on Windows
-					try {
-						process.destroy();
-					} catch ( Throwable t2 ) {
-						t2.printStackTrace();
-					}
-					//
-				} // end try
-			} // end for
+						synchronized(tlock) {
+						tlock.notifyAll();
+						}
+						
+						// encourage JVM to free up the Windows process handle (may have problems if too many are left open too long)
+						process.set(null);
+						System.gc();
+					} // end public void run
+				};
+			close_thread.setName("Close"+close_thread.getName()); // label this thread so it stands out in profiler
+			close_thread.start();
 		} // end public void close
 		
 		protected void run(StringBuilder output_sb, Charset charset) throws IOException, InterruptedException {
+			final Process p = process.get();
+			if (p==null)
+				return;
 			exec_copy_lines(output_sb, stdout, charset);
 			// ignores STDERR
 			
 			//
-			if (isWindows()) {
-				// BN: sometimes crashing processes can cause an infinite loop in Process#waitFor
-				//       it is unclear what makes those crashing processes different... may be the order they occur in.
-				for (int time = 50;;) {
-					try {
-						exit_code = process.exitValue();
-						break;
-					} catch ( IllegalThreadStateException ex ) {}
-					try {
-						Thread.sleep(time);
-					} catch ( InterruptedException ex ) {
-						break;
-					}
-					time *= 2;
-					if (time>=400)
-						time = 50; // 50 100 200 400
+			for (int time = 50;wait.get();) {
+				try {
+					exit_code = p.exitValue();
+					break;
+				} catch ( IllegalThreadStateException ex ) {}
+				try {
+					Thread.sleep(time);
+				} catch ( InterruptedException ex ) {
+					break;
 				}
-			} else {
-				exit_code = process.waitFor();
+				time *= 2;
+				if (time>=400)
+					time = 50; // 50 100 200 400
 			}
 			//
 			
 			try {
-				process.destroy();
+				p.destroy();
 			} catch ( Exception ex ) {}
-			if (task!=null)
-				task.cancel();
+			// encourage JVM to free up the Windows process handle (may have problems if too many are left open too long)
+			process.set(null);
+			System.gc();
 		} // end protected void run
 				
 		protected void exec_copy_lines(StringBuilder sb, InputStream in, Charset charset) throws IOException {
@@ -410,7 +484,7 @@ public class LocalHost extends AHost {
 			ByLineReader reader = charset == null ? new NoCharsetByLineReader(in) : new MultiCharsetByLineReader(in, d);
 			String line;
 			try {
-				while (reader.hasMoreLines()&&run) {
+				while (reader.hasMoreLines()&&run.get()) {
 					line = reader.readLine();
 					if (line==null)
 						break;
@@ -438,31 +512,31 @@ public class LocalHost extends AHost {
 		}
 
 		public int getProcessID() {
-			return isLocalhostWindows() ? getWindowsProcessID(process) : 0;
+			final Process p = process.get();
+			return p!=null && isLocalhostWindows() ? getWindowsProcessID(p) : 0;
 		}
 
 		@Override
 		public InputStream getSTDOUT() {
-			return process.getInputStream();
+			final Process p = process.get();
+			return p==null?null:p.getInputStream();
 		}
 
 		@Override
 		public OutputStream getSTDIN() {
-			return process.getOutputStream();
+			final Process p = process.get();
+			return p==null?null:p.getOutputStream();
 		}
 
 		@Override
 		public void run(StringBuilder output_sb, Charset charset, int timeout_sec, TestPackRunnerThread thread, int thread_slow_sec) throws IOException, InterruptedException {
-			ExitMonitorTask a = null;
-			ThreadSlowTask b = null;
+			TimerThread a = null, b = null;
 			if (thread!=null && thread_slow_sec>NO_TIMEOUT) {
-				b = new ThreadSlowTask(thread);
-				timer.schedule(b, thread_slow_sec * 1000);
+				b = TimerUtil.waitSeconds(thread_slow_sec, new ThreadSlowTask(thread));
 			}
 			
 			if (timeout_sec>NO_TIMEOUT) {
-				a = new ExitMonitorTask(this);
-				timer.schedule(a, timeout_sec*1000);
+				a = TimerUtil.waitSeconds(timeout_sec, new ExitMonitorTask(this));
 			}
 			
 			
@@ -568,7 +642,8 @@ public class LocalHost extends AHost {
 			}
 			//
 			
-			builder.environment().putAll(env);
+			if (env!=null)
+				builder.environment().putAll(env);
 		}
 		if (StringUtil.isNotEmpty(chdir))
 			builder.directory(new File(chdir));
@@ -580,32 +655,31 @@ public class LocalHost extends AHost {
 			process = builder.start();
 		} catch ( IOException ex ) {
 			if (ex.getMessage().contains("file busy")) {
-				// randomly sometimes on Linux, get this problem ... wait and try again
+				// randomly sometimes on Linux, get this problem (CLI scenario's shell scripts) ... wait and try again
 				Thread.sleep(100);
 				process = builder.start();
 			} else {
 				throw ex;
 			}
 		}
+		builder = null;
 			      
 		OutputStream stdin = process.getOutputStream();
 		
 		if (stdin_data!=null && stdin_data.length>0) {
 			stdin.write(stdin_data);
-			stdin.flush();
+			try {
+				stdin.flush();
+			} catch ( Exception ex ) {}
 		}
 		
 		InputStream stdout = process.getInputStream();
 		InputStream stderr = process.getErrorStream();
 
-		LocalExecHandle h = new LocalExecHandle(process, stdin, stdout, stderr, cmd_array);
-		
-		
-		
-		return h;
+		return new LocalExecHandle(process, stdin, stdout, stderr, cmd_array);
 	} // end protected LocalExecHandle exec_impl
 		
-	protected static class ExitMonitorTask extends TimerTask {
+	protected static class ExitMonitorTask implements Runnable {
 		protected final LocalExecHandle h;
 		
 		protected ExitMonitorTask(LocalExecHandle h) {
@@ -650,10 +724,25 @@ public class LocalHost extends AHost {
 	public boolean mkdirs(String path) throws IllegalStateException, IOException {
 		if (!isSafePath(path))
 			return false;
-		
-		new File(path).mkdirs();
+		if (isWindows()) {
+			File f = new File(path);
+			for ( int i=0 ; i < 3 ; i++ ) {
+				f.mkdirs();
+				if (f.exists())
+					break;
+				// Windows BN: sometimes it takes a while for the directory to be created (most often a problem with remote file systems).
+				//             make sure it gets created before returning.
+				try {
+					Thread.sleep(50);
+				} catch ( InterruptedException ex ) {
+					break;
+				}
+			}
+		} else {
+			new File(path).mkdirs();
+		}
 		return true;
-	}
+	} // end public boolean mkdirs
 
 	@Override
 	public void downloadCompressWith7Zip(ConsoleManager cm, String ctx_str, String src, AHost src_host, String dst) throws IllegalStateException, IOException, Exception {

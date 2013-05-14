@@ -13,7 +13,7 @@ import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
 import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
-import com.mostc.pftt.model.sapi.SharedSAPIInstanceTestCaseGroupKey;
+import com.mostc.pftt.model.sapi.SharedSAPIInstancesTestCaseGroupKey;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.results.ConsoleManager;
@@ -57,7 +57,9 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 		
 		// Code Caches (ex: opcache) may cause problems with reflection when used on web server (or any other process that runs
 		//     multiple tests during its lifetime)
-		reflection_only = 
+		reflection_only =
+				// if test-pack is under development, don't use PhpUnit/reflection so exceptions will be traceable (@see PhpUnitTemplate)
+				!src_test_pack.isDevelopment() &&
 				!(scenario_set.contains(AbstractWebServerScenario.class) &&
 				scenario_set.contains(AbstractCodeCacheScenario.class) &&
 				!scenario_set.contains(PhpUnitReflectionOnlyScenario.class));
@@ -119,7 +121,7 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 		PhpIni ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, runner_host, build);
 		AbstractINIScenario.setupScenarios(cm, runner_host, scenario_set, build, ini);
 		src_test_pack.prepareINI(cm, runner_host, scenario_set, build, ini);
-		return new SharedSAPIInstanceTestCaseGroupKey(ini, null);
+		return new SharedSAPIInstancesTestCaseGroupKey(ini, null);
 	}
 
 	@Override

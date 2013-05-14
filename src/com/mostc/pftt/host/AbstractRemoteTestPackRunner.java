@@ -36,7 +36,7 @@ public abstract class AbstractRemoteTestPackRunner<A extends ActiveTestPack, S e
 	protected final KXmlSerializer serial;
 	
 	public AbstractRemoteTestPackRunner(PhpResultPackWriter tmgr, ScenarioSet scenario_set, PhpBuild build, LocalHost host, AHost remote_host) {
-		super(scenario_set, build, null, host);
+		super(scenario_set, build, host, host);
 		this.tmgr = tmgr;
 		this.remote_host = remote_host;
 		
@@ -60,12 +60,12 @@ public abstract class AbstractRemoteTestPackRunner<A extends ActiveTestPack, S e
 	}
 	
 	protected void commonRunStart() throws Exception {
-		AHost.ExecHandle eh = remote_host.execThread(remote_host.isWindows()?remote_host.getPfttDir()+"/bin/pftt_agent.cmd":remote_host.getPfttDir()+"/bin/pftt_agent");
+		/* TODO AHost.ExecHandle eh = remote_host.execThread(remote_host.isWindows()?remote_host.getPfttDir()+"/bin/pftt_agent.cmd":remote_host.getPfttDir()+"/bin/pftt_agent");
 		
 		stdin = eh.getSTDIN();
 		stdout = eh.getSTDOUT();
 		
-		parser.setInput(stdout, "utf-8");
+		parser.setInput(stdout, "utf-8");*/
 		
 		sendPhpBuild(build);
 		sendScenarioSet(scenario_set);

@@ -13,10 +13,10 @@ import com.mostc.pftt.results.ConsoleManager;
  *
  */
 
-public class SharedSAPIInstanceTestCaseGroupKey extends TestCaseGroupKey {
+public class SharedSAPIInstancesTestCaseGroupKey extends TestCaseGroupKey {
 	protected HashMap<Thread,SAPIInstance> sapi_instances;
 	
-	public SharedSAPIInstanceTestCaseGroupKey(PhpIni ini, Map<String, String> env) {
+	public SharedSAPIInstancesTestCaseGroupKey(PhpIni ini, Map<String, String> env) {
 		super(ini, env);
 		
 		sapi_instances = new HashMap<Thread,SAPIInstance>();

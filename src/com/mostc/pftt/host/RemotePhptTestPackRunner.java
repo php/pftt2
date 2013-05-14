@@ -51,19 +51,21 @@ public class RemotePhptTestPackRunner extends AbstractRemoteTestPackRunner<PhptA
 	}
 	
 	public static void main(String[] args) throws Exception {
-		PhpBuild build = new PhpBuild("C:\\php-sdk\\php-5.5-ts-windows-vc9-x86-re6bde1f");
-		
-		ScenarioSet scenario_set = ScenarioSet.getDefaultScenarioSets().get(0);
-		
 		LocalHost host = new LocalHost();
 		
-		LocalConsoleManager cm = new LocalConsoleManager(null, null, false, false, false, false, true, false, true, false, false, false, 1, true, 1, 1, 1, null, null, null, null, false, 0, 0, false, 0);
+		LocalConsoleManager cm = new LocalConsoleManager(null, null, false, false, false, false, true, false, true, false, false, false, 1, true, 1, 1, 1, null, null, null, null, false, 0, 0, false, false, 0);
 		
-		PhptSourceTestPack test_pack = new PhptSourceTestPack("C:\\php-sdk\\php-test-pack-5.5-nts-windows-vc9-x86-re6bde1f");
+		PhpBuild build = new PhpBuild("C:\\php-sdk\\php-5.5-ts-windows-vc11-x64-re3aeb6c");
+		build.open(cm, host);
+		
+		PhptSourceTestPack test_pack = new PhptSourceTestPack("C:\\php-sdk\\php-test-pack-5.5-ts-windows-vc11-x86-r0704e4b");
 		test_pack.open(cm, host);
 		
-		PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, new File(host.getPhpSdkDir()), build, null);
-				
+		PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, new File(host.getPhpSdkDir()), build, test_pack);
+		
+		// TODO
+		ScenarioSet scenario_set = ScenarioSet.getDefaultScenarioSets().get(0);
+		
 		RemotePhptTestPackRunner runner = new RemotePhptTestPackRunner(tmgr, scenario_set, build, host, host);
 		if (args.length>0) {
 			if (args[0].equals("simulate")) {
@@ -73,6 +75,8 @@ public class RemotePhptTestPackRunner extends AbstractRemoteTestPackRunner<PhptA
 				//
 				runner.generateSimulation(test_pack);
 			}
+		} else {
+			runner.runAllTests(test_pack);
 		}
 	} // end public static void main
 	

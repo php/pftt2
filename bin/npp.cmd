@@ -1,2 +1,2 @@
-@ECHO OFF
-REM TODO find and run notepad++
+@echo OFF
+"%ProgramFiles(x86)%\notepad++\notepad++.exe" %*

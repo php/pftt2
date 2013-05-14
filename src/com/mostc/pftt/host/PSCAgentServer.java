@@ -271,6 +271,11 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 	public int getRunTestTimesAll() {
 		return run_test_times_all;
 	}
+	
+	@Override
+	public boolean isNoRestartAll() {
+		return false;
+	}
 
 	@Override
 	public boolean isRandomizeTestOrder() {

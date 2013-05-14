@@ -70,7 +70,8 @@ public class CommonCommandManager {
 					win_kill_process_lock.tryLock(5, TimeUnit.SECONDS);
 				} catch ( InterruptedException ex ) {}
 				try {
-					host.exec("TASKKILL /FI \"IMAGENAME eq "+image_name+"\" /FI \"PID eq "+process_id+"\" /F /T", 20);
+					host.exec("pskill -t -p "+process_id, 20);
+					//host.exec("TASKKILL /FI \"IMAGENAME eq "+image_name+"\" /FI \"PID eq "+process_id+"\" /F /T", 20);
 				} finally {
 					try {
 					win_kill_process_lock.unlock();
@@ -80,8 +81,9 @@ public class CommonCommandManager {
 				try {
 					win_kill_process_lock.tryLock(5, TimeUnit.SECONDS);
 				} catch ( InterruptedException ex ) {}
-				try {
-					host.exec("TASKKILL /FI \"IMAGENAME eq "+image_name+"\" /FI \"PID eq "+process_id+"\" /F /T", 20);
+				try {					
+					host.exec("pskill -t -p "+process_id, 20);
+					//host.exec("TASKKILL /FI \"IMAGENAME eq "+image_name+"\" /FI \"PID eq "+process_id+"\" /F /T", 20);
 				} finally {
 					try {
 					win_kill_process_lock.unlock();

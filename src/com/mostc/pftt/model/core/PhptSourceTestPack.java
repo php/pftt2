@@ -154,11 +154,19 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		twriter.setTotalCount(test_cases.size());
 	} // end public void read
 
+	ArrayList<PhptTestCase> a; // TODO 
 	@Override
 	public void read(List<PhptTestCase> test_files, ConsoleManager cm, ITestResultReceiver twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {
+		/* TODO temp 5/6/2013  if (a!=null) {
+			test_files.addAll(a);
+			return;
+		}
+		a = new ArrayList<PhptTestCase>(13000); */
+		
 		test_pack_file = new File(test_pack);
 		test_pack = test_pack_file.getAbsolutePath(); // normalize path
 		add_test_files(test_pack_file.listFiles(), test_files, null, cm, twriter, build, null, new LinkedList<PhptTestCase>());
+		// TODO temp 5/6/2013 add_test_files(test_pack_file.listFiles(), a, null, cm, twriter, build, null, new LinkedList<PhptTestCase>());
 		twriter.setTotalCount(test_files.size());
 	}
 	

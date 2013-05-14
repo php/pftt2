@@ -303,7 +303,6 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 				// process didn't crash, close debugger
 				debug_handle.close();
 			}
-			
 			process.close(true);
 		}
 

@@ -3,12 +3,10 @@ package com.mostc.pftt.main;
 import groovy.lang.Binding;
 import groovy.ui.Console;
 
-import java.awt.Desktop;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
@@ -47,11 +45,7 @@ import com.mostc.pftt.results.AbstractPhpUnitRW;
 import com.mostc.pftt.results.AbstractPhptRW;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.LocalConsoleManager;
-import com.mostc.pftt.results.PHPTReportGen;
-import com.mostc.pftt.results.PhpResultPack;
-import com.mostc.pftt.results.PhpResultPackReader;
 import com.mostc.pftt.results.PhpResultPackWriter;
-import com.mostc.pftt.results.PhpUnitReportGen;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner;
@@ -84,11 +78,29 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 // the php test tool that you'd actually want to use
 // doesn't resort to brittle shell scripts
 
-// CLOSE BUG https://bugs.php.net/patch-display.php?bug_id=64396&patch=req60524.patch&revision=latest and https://bugs.php.net/bug.php?id=64714
-//     if they work
-// GOT PHPUNIT+OPCACHE+APACHE to work
+// TODO cleanup LocalHost#close
+
+// TODO timing support for phpunit tests
+//    `aa -thread_count cpu -c symfony,apache,opcache,no_code_cache php-5.5`
+//    create BY_TIME.csv (one entry per test regardless of how many times it was run)
+//      'test_name','status','average time','test file'
+//    can stat analyze with LO-Calc
+//    
+//    -support using `-run_test_times_all 3` to run test 3 times and report the averaged time
 //
+//    this will help trace slow code paths in symfony
+//      -symfony has propper unit tests that test different parts of code paths used just by a demo app/the 1 page used for performance tests
+//      -wordpress has more all-up tests, so only ~1 will test the code paths used by the 1 main page used for performance tests
 //
+//    verify `-thread_count cpu` works for this by comparing it with a run with `-thread_count 1`
+//
+// TODO -thread_count cpu sets thread count == number of CPUs
+//       -thread_count cpu2 == *2
+// TODO debug output when adding phpunit tests 
+
+
+// TODO progress indicator during test run
+//     0933/12000 PASS ext/xxx/tests/yyy.phpt 
 // TODO UI testing
 //        no Anon-Logout
 //
@@ -107,10 +119,6 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //       rctest should have an rc_hosts config file
 //          -store example in conf/internal_examples
 //              -so rctest will just use that unless/until user creates one in conf/internal
-// TODO bug with remote file systems (at least DFS) and application unit testing: about halfway through some test packs, it gets blocked forever
-//    -builtin_web?
-// commit:
-//
 // TODO joomla unit testing
 //   -need dependency note on symfony
 // commit:
@@ -127,13 +135,6 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //               not suited to our purposes => compatibility
 //                 not atomic/small -a few really big tests that test lots of options
 //
-// TODO installation ... single .zip file to download with install wizard/script
-//         http://izpack.org/   include Java JDK
-//         install4j   - izpack makes the installer(a .jar), install4j makes the installer a .exe
-//         might not need/be able to use izpack/too much trouble
-//           -could just have a simple java program decompress a .zip file into c:\php-sdk
-//            and then distribute that program and a JDK using Install4J
-// 
 // TODO iis and iis-express
 // TODO mysql* postgresql curl ftp - including symfony, joomla, phpt
 //       pdo odbc (to mssql??)
@@ -154,6 +155,8 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //           -if you need it for debug, use it from explain
 //                -ie force people to do it at least partially the efficient PFTT way
 //           -if you need it to setup, use setup cmd
+// TODO filesystem tests w/ non-english locales
+//        see bug #64699
 // 
 // improve documentation
 //     -including HOW TO run Php on Windows - on windows.php.net or wiki.php.net?
@@ -162,6 +165,47 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 // test UI of other applications
 // run phpunit tests of other applications
 // firebird mssql via odbc and pdo_odbc
+//
+// Better-PFTT
+//    get actual version of apache, wordpress, symfony, etc... instead of assuming hardcoded value
+//    regular ongoing project/side-project w/ stable, testing branches
+//      -unit tests of PFTT
+//       mostly in PHASE 2/3
+//    console option to remove scenarios from permutations
+//    use MXQuery.jar to query each result pack
+//        -pftt open result-pack1, result-pack2, result-pack3
+//          -get console for xqueries (simplified groovy shell)
+//        -@see http://code.google.com/p/sqlite4java/
+//
+//    PUBLISH reports to PHP Web App on windows.php.net
+//           -make it look good (marketing) => use same theme as rest of windows.php.net (can have link there to QA/Testing)
+//                 -should store HTML CMP-reports so we don't have to have a PHP copy of the report generator
+//                which would allow for browsing all the reports (100s) for a revision
+//              -only email the priority scenariosets to ostc-php@
+//        PSB => Pftt Statistics Browser
+//        PRB (probe?) => Pftt Report Browser?? => `got a question? probe it.`
+//
+//    install wizard form to add multiple hosts??
+//    docs - update, cover most operations
+//    make sure it works on linux
+//         -install wizard??
+//    improve windebug integration
+//       -register debug-pack symbols properly
+//         -be able to do that without running windebug for all tests
+//    simplify reproing crashing test cases, especially intermittent crashes/failures... how??
+//    incremental improvements over time
+//        -primarily ui/ux/workflow
+//        -as people other than me use it, get their feedback and make it better
+//       do mostly in PHASE 1
+//           -so major code changes are done early to avoid destablizing changes later
+//    multi-scenario performance testing support
+//       ex: test DFS, DFS+Builtin web server
+//           DFS may have problems closing handles (blocking process exit) under load
+//
+// could test azure-sdk-for-php
+//     it has phpunit tests
+//     see http://github.com/WindowsAzure
+//
 // PECL extensions to consider testing:
 //       geoip haru(pdf) http
 //       uploadprogress? xdiff? yaml? pthreads? dio?
@@ -209,7 +253,7 @@ public class PfttMain {
 	protected static void help() {
 		System.out.println("Usage: pftt [options] <command[,command2]>");
 		System.out.println();
-		System.out.println("Commands:");
+		System.out.println(" == Commands ==");
 		System.out.println("core_all <build[,build2]> <test-pack> - runs all tests in given test pack");
 		System.out.println("core_named <build[,build2]> <test-pack> <test1> <test2> <test name fragment> - runs named tests or tests matching name pattern");
 		System.out.println("core_list <build[,build2]> <test-pack> <file> - runs list of tests stored in file");
@@ -227,45 +271,60 @@ public class PfttMain {
 		System.out.println("release_get <branch> <build-type> <revision> - download a build and test-pack snapshot release");
 		System.out.println("release_get <build|test-pack URL> - download a build or test-pack from any URL");
 		System.out.println("release_list <optional branch> <optional build-type> - list snapshot build and test-pack releases");
-		System.out.println("telemetry-pkg - package telemetry into single archive file");
 		System.out.println("shell - interactive execution of custom instructions");
 		System.out.println("shell-ui - gui shell");
 		System.out.println("exec <file> - executes shell script (see shell)");
-		System.out.println("list - list all scenarios, default builtin and from configuration file(s)");
-		System.out.println("upgrade - upgrades PFTT to the latest version");
 		System.out.println("stop <build> - cleans up after setup, stops web server and other services");
 		System.out.println("setup <build> - sets up scenarios from -config -- installs IIS or Apache to run PHP, etc...");
 		System.out.println();
-		System.out.println("Options:");
-		System.out.println("-gui - show gui for certain commands");
+		System.out.println(" == Options ==");
 		System.out.println("-config <file1,file2> - load 1+ configuration file(s)");
-		System.out.println("-overwrite - overwrites files without prompting (confirmation prompt by default)");
-		System.out.println("-src_pack <path> - folder with the source code");
-		System.out.println("-debug_pack <path> - folder with debugger symbols (usually folder with .pdb files)");
+		System.out.println("-skip_smoke_tests - skips smoke tests and runs tests anyway (BE CAREFUL. RESULTS MAY BE INVALID or INACCURATE)");
+		System.out.println();
+		System.out.println("   === UI Options ===");
+		System.out.println("-gui - show gui for certain commands");
 		System.out.println("-pause - after everything is done, PFTT will wait for user to press any key");
-		System.out.println("-randomize_order - randomizes test case run order");
 		System.out.println("-results_only - displays only test results and no other information (for automation).");
 		System.out.println("-pftt_debug - shows additional information to help debug problems with PFTT itself");
+		System.out.println();
+		System.out.println("   === Test Enumeration ===");
+		System.out.println("-randomize_order - randomizes test case run order");
+		System.out.println("-skip_list <list files> - skip tests in list (exact name)");
+		System.out.println("-max_test_read_count <N> - maximum number of tests to read (without other options, this will be the number of tests run also... tests are normally only run once)");
+		System.out.println();
+		System.out.println("   === Test Times ===");
+		System.out.println("-run_group_times_all <N> - runs all groups of tests N times (in same order every time, unless -randomize used)");
+		System.out.println("-run_group_times_list <N> <list file> - just like run_group_times_all and run_test_times_list (but for groups of tests)");
+		System.out.println("-run_test_times_all <N> - runs each test N times in a row/consecutively");
+		System.out.println("-run_test_times_list <N> <list file> - runs tests in that list N times. if used with -run_test_times_all, tests not in list can be run different number of times from tests in list (ex: run listed tests 5 times, run all other tests 2 times).");
+		System.out.println();
+		System.out.println("   === Unattended Options ===");
+		System.out.println("-no_result_file_for_pass_xskip_skip - doesn't store all result data for PASS, SKIP or XSKIP tests");
 		System.out.println("-disable_debug_prompt - disables asking you if you want to debug PHP crashes (for automation. default=enabled) (alias: -debug_none)");
-		System.out.println("-phpt_not_in_place - copies PHPTs to a temporary dir and runs PHPTs from there (default=disabled, test in-place)");
-		System.out.println("-restart_each_test_all - restart web server between each test (slow, default=no)");
-		System.out.println("-dont_cleanup_test_pack - doesn't delete temp dir created by -phpt_not_in_place or SMB scenario (default=delete)");
 		System.out.println("-auto - changes default options for automated testing (-uac -disable_debug_prompt -phpt_not_in_place)");
 		if (LocalHost.isLocalhostWindows()) {
 			System.out.println("-uac - runs PFTT in Elevated Privileges so you only get 1 UAC popup dialog (when PFTT is started)");
 		}
-		System.out.println("-run_test_times_all <N> - runs each test N times in a row/consecutively");
-		System.out.println("-run_test_times_list <N> <list file> - runs tests in that list N times. if used with -run_test_times_all, tests not in list can be run different number of times from tests in list (ex: run listed tests 5 times, run all other tests 2 times).");
+		System.out.println();
+		System.out.println("   === Temporary Files ===");
+		System.out.println("-phpt_not_in_place - copies PHPTs to a temporary dir and runs PHPTs from there (default=disabled, test in-place)");
+		System.out.println("-dont_cleanup_test_pack - doesn't delete temp dir created by -phpt_not_in_place or SMB scenario (default=delete)");
+		System.out.println("-overwrite - overwrites files without prompting (confirmation prompt by default)");
+		System.out.println();
+		System.out.println("   === SAPI Restarting ===");
+		System.out.println("-restart_each_test_all - restart web server between each test (slow, default=no)");
+		System.out.println("-no_restart_all - will not restart any web server unless it crashes (be careful, this will INVALIDATE FUNCTIONAL TESTING results because configuration won't be changed for tests)");
+		System.out.println();
+		System.out.println("   === Crash Debugging ===");
 		System.out.println("-debug_all - runs all tests in Debugger");
 		System.out.println("-debug_list <list files> - runs tests in list in Debugger (exact name)");
-		System.out.println("-skip_list <list files> - skip tests in list (exact name)");
-		System.out.println("-run_group_times_all <N> - runs all groups of tests N times (in same order every time, unless -randomize used)");
-		System.out.println("-run_group_times_list <N> <list file> - just like run_group_times_all and run_test_times_list (but for groups of tests)");
-		System.out.println("-thread_count <N> - sets number of threads to run tests in. running in multiple threads is usually a performance boost. by default, will run with multiple threads and automatically decide the best number of threads to use");
-		System.out.println("-max_test_read_count <N> - maximum number of tests to read (without other options, this will be the number of tests run also... tests are normally only run once)");
-		System.out.println("-skip_smoke_tests - skips smoke tests and runs tests anyway (BE CAREFUL. RESULTS MAY BE INVALID or INACCURATE)");
-		System.out.println("-no_result_file_for_pass_xskip_skip - doesn't store all result data for PASS, SKIP or XSKIP tests");
+		System.out.println("-src_pack <path> - folder with the source code");
+		System.out.println("-debug_pack <path> - folder with debugger symbols (usually folder with .pdb files)");
+		System.out.println();
+		System.out.println("   === Threading Options ===");
 		System.out.println("-no_thread_safety - runs tests in any thread, regardless of thread-safety. This can increase load/stress, but may lead to false FAILS/ERRORs, especially in file or database tests.");
+		System.out.println("-thread_count <N> - sets number of threads to run tests in. running in multiple threads is usually a performance boost. by default, will run with multiple threads and automatically decide the best number of threads to use");
+		System.out.println();
 		System.out.println();
 	} // end protected static void cmd_help
 	
@@ -938,7 +997,7 @@ public class PfttMain {
 		int args_i = 0;
 		
 		Config config = null;
-		boolean is_uac = false, debug = false, randomize_order = false, no_result_file_for_pass_xskip_skip = false, pftt_debug = false, show_gui = false, overwrite = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false, thread_safety = true, skip_smoke_tests = false, pause = false, restart_each_test_all = false, ignore_unknown_option = false;
+		boolean is_uac = false, debug = false, randomize_order = false, no_result_file_for_pass_xskip_skip = false, pftt_debug = false, show_gui = false, overwrite = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false, thread_safety = true, skip_smoke_tests = false, pause = false, restart_each_test_all = false, no_restart_all = false, ignore_unknown_option = false;
 		int run_test_times_all = 1, delay_between_ms = 0, run_test_times_list_times = 1, run_group_times_all = 1, run_group_times_list_times = 1, max_test_read_count = 0, thread_count = 0;
 		LinkedList<String> debug_list = new LinkedList<String>();
 		LinkedList<String> run_test_times_list = new LinkedList<String>();
@@ -977,6 +1036,7 @@ public class PfttMain {
 				is_uac = true;
 				pause = false;
 				restart_each_test_all = false;
+				no_restart_all = false;
 				overwrite = true; // for rgn rl rgp rg
 				no_result_file_for_pass_xskip_skip = true;
 			} else if (args[args_i].equals("-no_result_file_for_pass_xskip_skip")) {
@@ -988,6 +1048,8 @@ public class PfttMain {
 				run_test_times_all = Integer.parseInt(args[args_i]);
 			} else if (args[args_i].equals("-restart_each_test_all")) {
 				restart_each_test_all = true;
+			} else if (args[args_i].equals("-no_restart_all")) {
+				no_restart_all = true;
 			} else if (args[args_i].equals("-delay_between_ms")) {
 				args_i++;
 				delay_between_ms = Integer.parseInt(args[args_i]);
@@ -1028,10 +1090,12 @@ public class PfttMain {
 				disable_debug_prompt = true; 
 			} else if (args[args_i].equals("-results_only")) {
 				results_only = true;
-			} else if (args[args_i].startsWith("-uac")) {
+			} else if (args[args_i].equals("-uac")) {
 				// ignore: intercepted and handled by bin/pftt.cmd batch script
 				is_uac = true;
-			} else if (args[args_i].startsWith("-pftt_debug")) {
+			} else if (args[args_i].equals("-pftt-profile")) {
+				// ignore: intercepted and handled by bin/pftt.cmd batch script
+			} else if (args[args_i].equals("-pftt_debug")) {
 				pftt_debug = true;
 			} else if (args[args_i].equals("-src_pack")) {
 				source_pack = args[args_i++];
@@ -1052,7 +1116,7 @@ public class PfttMain {
 					System.err.println("User Error: unknown option \""+args[args_i]+"\"");
 					System.exit(-255);
 					return;
-				} else if (args[args_i].contains("_")) {
+				} else if (StringUtil.containsAnyCS(args[args_i], new String[]{"core_all", "core_named", "core_list", "app_all", "app_named", "app_list", "ui_all", "ui_list", "ui_named", "release_get", "release_list", "list_config"})) {
 					if (args[args_i].endsWith("_"))
 						// for setup, lc
 						args[args_i] = args[args_i].substring(0, args[args_i].length()-1);
@@ -1082,7 +1146,7 @@ public class PfttMain {
 		
 		LocalConsoleManager cm = new LocalConsoleManager(source_pack, debug_pack, overwrite, debug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug, no_result_file_for_pass_xskip_skip, randomize_order, run_test_times_all, 
 				thread_safety, run_test_times_list_times, run_group_times_all, run_group_times_list_times, debug_list, run_test_times_list, run_group_times_list, skip_list,
-				skip_smoke_tests, max_test_read_count, thread_count, restart_each_test_all, delay_between_ms);
+				skip_smoke_tests, max_test_read_count, thread_count, restart_each_test_all, no_restart_all, delay_between_ms);
 		p.cm = cm;
 		
 		if (config_files.size()>0) {
@@ -1503,78 +1567,7 @@ public class PfttMain {
 					no_show_gui(show_gui, command);
 					
 					help();
-				} else if (command.equals("cmp-report")) {
-					//PhpResultPack base_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-5.3.24-TS-X86-VC9"));
-					//PhpResultPack test_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-5.3.25RC1-TS-X86-VC9"));
-					//PhpResultPack base_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-r0802961-TS-X86-VC9"));
-					//PhpResultPack test_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-r15b554c-TS-X86-VC9"));
-					//PhpResultPack base_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-5.4.14-nTS-X86-VC9"));
-					//PhpResultPack test_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-5.4.15RC1-nTS-X86-VC9"));
-					//PhpResultPack base_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-recf76e2-nTS-X86-VC9"));
-					//PhpResultPack test_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-r3f2f534-nTS-X86-VC9"));
-					PhpResultPack base_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-r865cc3a-nTS-X86-VC11"));
-					PhpResultPack test_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-re3aeb6c-nTS-X86-VC11"));
-					//PhpResultPack base_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-r865cc3a-nTS-X64-VC11"));
-					//PhpResultPack test_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-re3aeb6c-nTS-X64-VC11"));
-					//PhpResultPack base_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-5.5.0beta3-nTS-X86-VC11"));
-					//PhpResultPack test_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-5.5.0beta4-nTS-X86-VC11"));
-					//PhpResultPack base_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-5.5.0beta4-nTS-X64-VC11"));
-					//PhpResultPack test_pack = PhpResultPackReader.open(cm, p.host, new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-5.5.0beta4-nTS-X64-VC11"));
-					
-					for ( AbstractPhpUnitRW base : base_pack.getPhpUnit() ) {
-						for ( AbstractPhpUnitRW test : test_pack.getPhpUnit() ) {
-							System.err.println("PhpUnit "+base.getScenarioSetNameWithVersionInfo()+" "+test.getScenarioSetNameWithVersionInfo());
-							if (!(base.getScenarioSetNameWithVersionInfo().toLowerCase().contains("opcache")==test.getScenarioSetNameWithVersionInfo().toLowerCase().contains("opcache")
-									&&(
-											test.getScenarioSetNameWithVersionInfo().toLowerCase().contains("cli")||
-											test.getScenarioSetNameWithVersionInfo().toLowerCase().contains("builtin")||
-											test.getScenarioSetNameWithVersionInfo().toLowerCase().contains("apache")
-											) 
-									&&base.getScenarioSetNameWithVersionInfo().toLowerCase().contains("cli")==test.getScenarioSetNameWithVersionInfo().toLowerCase().contains("cli")
-									&&base.getScenarioSetNameWithVersionInfo().toLowerCase().contains("builtin")==test.getScenarioSetNameWithVersionInfo().toLowerCase().contains("builtin")
-									&&base.getScenarioSetNameWithVersionInfo().toLowerCase().contains("apache")==test.getScenarioSetNameWithVersionInfo().toLowerCase().contains("apache")))
-								continue;
-							 
-							PhpUnitReportGen php_unit_report = new PhpUnitReportGen(base, test);
-							String html_str = php_unit_report.getHTMLString(cm, false);
-	
-							String file_name = "PhpUnit_CMP_"+test.getTestPackNameAndVersionString()+"_"
-									+base.getBuildInfo().getBuildBranch()+"-"+base.getBuildInfo().getVersionRevision()+"-"+base.getBuildInfo().getBuildType()+"-"+base.getBuildInfo().getCPUArch()+"-"+base.getBuildInfo().getCompiler()+"_"+base.getScenarioSetNameWithVersionInfo()+
-									"_v_"
-									+test.getBuildInfo().getBuildBranch()+"-"+test.getBuildInfo().getVersionRevision()+"-"+test.getBuildInfo().getBuildType()+"-"+test.getBuildInfo().getCPUArch()+"-"+test.getBuildInfo().getCompiler()+"_"+test.getScenarioSetNameWithVersionInfo();
-							file_name = StringUtil.max(file_name, 80);
-							File html_file = new File("c:\\php-sdk\\"+file_name+".html");
-							FileWriter fw = new FileWriter(html_file);
-							fw.write(html_str);
-							fw.close();
-							Desktop.getDesktop().browse(html_file.toURI());
-						}
-					}
-					
-					for ( AbstractPhptRW base : base_pack.getPHPT() ) {
-						for ( AbstractPhptRW test : test_pack.getPHPT() ) {
-							System.err.println("PHPT "+base.getScenarioSetNameWithVersionInfo()+" "+test.getScenarioSetNameWithVersionInfo());
-							if (!(base.getScenarioSetNameWithVersionInfo().contains("Opcache")==test.getScenarioSetNameWithVersionInfo().contains("Opcache")
-									&&base.getScenarioSetNameWithVersionInfo().contains("CLI")==test.getScenarioSetNameWithVersionInfo().contains("CLI")
-									&&base.getScenarioSetNameWithVersionInfo().contains("Apache")==test.getScenarioSetNameWithVersionInfo().contains("Apache")))
-								continue;
-							
-							PHPTReportGen phpt_report = new PHPTReportGen(base, test);
-							String html_str = phpt_report.getHTMLString(cm, false);
-	
-							String file_name = "PHPT_CMP_"
-									+base.getBuildInfo().getBuildBranch()+"-"+base.getBuildInfo().getVersionRevision()+"-"+base.getBuildInfo().getBuildType()+"-"+base.getBuildInfo().getCPUArch()+"-"+base.getBuildInfo().getCompiler()+"_"+base.getScenarioSetNameWithVersionInfo()+
-									"_v_"
-									+test.getBuildInfo().getBuildBranch()+"-"+test.getBuildInfo().getVersionRevision()+"-"+test.getBuildInfo().getBuildType()+"-"+test.getBuildInfo().getCPUArch()+"-"+test.getBuildInfo().getCompiler()+"_"+test.getScenarioSetNameWithVersionInfo();
-							file_name = StringUtil.max(file_name, 80);
-							File html_file = new File("c:\\php-sdk\\"+file_name+".html");
-							FileWriter fw = new FileWriter(html_file);
-							fw.write(html_str);
-							fw.close();
-							Desktop.getDesktop().browse(html_file.toURI());
-						}
-					}
-	
+				
 				} else if (command.equals("ui_all")||command.equals("ui_list")||command.equals("uinamed")||command.equals("uiall")||command.equals("uilist")||command.equals("uinamed")||command.equals("uia")||command.equals("uil")||command.equals("uin")||
 						command.equals("u_all")||command.equals("u_list")||command.equals("unamed")||command.equals("uall")||command.equals("ulist")||command.equals("unamed")||command.equals("ua")||command.equals("ul")||command.equals("un")) {
 					PhpBuild[] builds = newBuilds(cm, p.host, args[args_i+1]); 
@@ -1654,18 +1647,28 @@ public class PfttMain {
 			
 			// close all the result-packs
 			for ( PhpResultPackWriter w : p.writer_map.values() )
-				w.close();
+				w.close(true);
 		} else {		
 			help();
 		}
 		if (pause) {
 			if (!cm.isResultsOnly())
 				System.out.println("PFTT: Press enter to exit...");
+			// wait for byte on STDIN
 			System.in.read();
 		}
-		if (!show_gui)
+		if (!show_gui) {
 			// ensure all threads end
+			System.out.println("PFTT: finished.");
+			//
+			// should exit with this
 			System.exit(0);
+			//
+			// if not:
+			// wait 30 seconds for shutdown hooks, etc... then halt for sure
+			Thread.sleep(30000);
+			Runtime.getRuntime().halt(0);
+		}
 	} // end public static void main
 	
 } // end class RunTests

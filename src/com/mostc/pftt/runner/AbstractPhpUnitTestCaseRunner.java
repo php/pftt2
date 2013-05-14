@@ -94,12 +94,17 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 		// these ENV vars are also set again in PHP code @see phpUnitTemplate to make sure that they're used
 		// @see PHP sys_get_temp_dir() - many Symfony filesystem tests use this
 		
+		// PhpUnit test can detect if its running under PFTT just like PHPT test @see PhptTestCase
+		env.put("PFTT_IS", "true");
+		// provide this info too, just like for PHPT tests
+		env.put("PFTT_SCENARIO_SET", scenario_set.getNameWithVersionInfo());
 		
 		
 		//////// prepared, generate PHP code
 		
 		return PhpUnitTemplate.renderTemplate(
 				host, 
+				scenario_set, 
 				test_case, 
 				test_case.getPhpUnitDist().getSourceTestPack().getPreambleCode(),
 				test_case.getPhpUnitDist().getBootstrapFile() == null ? 
@@ -126,7 +131,7 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 		final String php_script = generatePhpScript();
 		
 		host.saveTextFile(template_file, php_script);
-				
+		
 		final String output = execute(template_file);
 		
 		// show output from all on console for debugging
@@ -185,7 +190,8 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 			if (status_str.length() > 0) {
 				status = null;
 				for ( EPhpUnitTestStatus s : EPhpUnitTestStatus.values()) { 
-					if (status_str.equals(s.toString())) {
+					//if (status_str.equals(s.toString())) {
+					if (output.contains(s.toString())) { // TODO temp 5/7/2013
 						status = s;
 						break;
 					}

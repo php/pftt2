@@ -6,8 +6,6 @@ import java.net.Socket;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
 
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
@@ -40,6 +38,8 @@ import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.ErrorUtil;
+import com.mostc.pftt.util.TimerUtil;
+import com.mostc.pftt.util.TimerUtil.TimerThread;
 
 /** Runs PHPT Test Cases against PHP while its running under a Web Server (builtin, IIS or Apache)
  * 
@@ -90,14 +90,14 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		cookie_str = test_case.get(EPhptSection.COOKIE);
 	}
 	
-	protected void markTestAsCrash() {
+	protected void markTestAsCrash() throws Exception {
 		if (!not_crashed)
 			// may have been called 2nd time from finally block in #do_http_execute
 			// (want to make sure this gets called)
 			return;
 		not_crashed = false; // @see #runTest
 		
-		twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, null, null, null, null, ini, env, null, stdin_post, null, null, null, null, web==null?null:web.getSAPIOutput(), web==null?null:web.getSAPIConfig()));
+		twriter.addResult(host, scenario_set, notifyNotPass(new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, null, null, null, null, ini, env, null, stdin_post, null, null, null, null, web==null?null:web.getSAPIOutput(), web==null?null:web.getSAPIConfig())));
 	}
 	
 	/** executes SKIPIF, TEST or CLEAN over http.
@@ -276,6 +276,14 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	}
 	
 	@Override
+	public String getIniActual() throws Exception {
+		// ensure ini_get_all.php has been created
+		get_ini_get_all_path();
+		
+		return do_http_get("/ini_get_all.php", 0);
+	}
+	
+	@Override
 	protected void stop(boolean force) {
 		if (force && is_replacement && web !=null && !web.isDebuggerAttached())
 			web.close();
@@ -292,7 +300,6 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		test_socket = null;
 	}
 	
-	static Timer timer = new Timer();
 	protected String do_http_get(String path, int i) throws Exception {
 		HttpContext context = new BasicHttpContext(null);
 		HttpHost http_host = new HttpHost(web.hostname(), web.port());
@@ -303,29 +310,31 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		}
 		conn = new DebuggingHttpClientConnection(request_bytes, response_bytes);
 		test_socket = null;
-		TimerTask task = new TimerTask() {
-			public void run() {
-				if (web!=null)
-					web.close();
-				new Thread() {
-					public void run() {
-				if (conn!=null) {
-					try {
-					conn.close();
-					} catch ( Exception ex ) {}
-					conn = null;
-				}
-				if (test_socket!=null) {
-					try {
-					test_socket.close();
-					} catch ( Exception ex ) {}
-					test_socket = null;
-				}
+		final TimerThread timeout_task = TimerUtil.waitSeconds(
+				60, 
+				new Runnable() {
+						public void run() {
+							if (web!=null)
+								web.close();
+						}
+					},
+				new Runnable() {
+						public void run() {
+							if (conn!=null) {
+								try {
+								conn.close();
+								} catch ( Exception ex ) {}
+								conn = null;
+							}
+							if (test_socket!=null) {
+								try {
+								test_socket.close();
+								} catch ( Exception ex ) {}
+								test_socket = null;
+							}
+						}
 					}
-				}.start();
-			}
-		};
-		timer.scheduleAtFixedRate(task, 60*1000, 10*1000);
+			);
 		try {
 			context.setAttribute(ExecutionContext.HTTP_CONNECTION, conn);
 			context.setAttribute(ExecutionContext.HTTP_TARGET_HOST, http_host);
@@ -365,9 +374,10 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			}
 			//
 			
+			timeout_task.cancel();
+			
 			return IOUtil.toString(response.getEntity().getContent(), IOUtil.HALF_MEGABYTE);
 		} finally {
-			task.cancel();
 			try {
 			if (test_socket!=null)
 				test_socket.close();
@@ -392,29 +402,31 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			conn = null;
 		}
 		conn = new DebuggingHttpClientConnection(request_bytes, response_bytes);
-		TimerTask task = new TimerTask() {
-			public void run() {
-				if (web!=null)
-					web.close();
-				new Thread() {
+		final TimerThread timeout_task = TimerUtil.waitSeconds(
+				60, 
+				new Runnable() {
 					public void run() {
-				if (conn!=null) {
-					try {
-					conn.close();
-					} catch ( Exception ex ) {}
-					conn = null;
-				}
-				if (test_socket!=null) {
-					try {
-					test_socket.close();
-					} catch ( Exception ex ) {}
-					test_socket = null;
-				}
+						if (web!=null)
+							web.close();
 					}
-				}.start();
-			}
-		};
-		timer.scheduleAtFixedRate(task, 60*1000, 10*1000);
+				},
+				new Runnable() {
+					public void run() {
+						if (conn!=null) {
+							try {
+							conn.close();
+							} catch ( Exception ex ) {}
+							conn = null;
+						}
+						if (test_socket!=null) {
+							try {
+							test_socket.close();
+							} catch ( Exception ex ) {}
+							test_socket = null;
+						}
+					}
+				}
+			);
 		try {
 			context.setAttribute(ExecutionContext.HTTP_CONNECTION, conn);
 			context.setAttribute(ExecutionContext.HTTP_TARGET_HOST, http_host);
@@ -448,9 +460,10 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			}
 			//
 			
+			timeout_task.cancel();
+			
 			return IOUtil.toString(response.getEntity().getContent(), IOUtil.HALF_MEGABYTE);
 		} finally {
-			task.cancel();
 			try {
 			if (test_socket!=null)
 				test_socket.close();

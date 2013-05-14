@@ -106,4 +106,10 @@ IF [%JAVA_EXE%] == [] (
 	DEL /Q pftt_cmd.tmp
 )
 REM finally execute PFTT
-%ELEVATOR% %JAVA_EXE% -classpath %CLASSPATH% com.mostc.pftt.main.PfttMain %ELEVATOR_OPTS%%*
+SET pftt_args="str %*"
+SET pftt_temp=%pftt_args:pftt-profile=%
+IF NOT %pftt_args% EQU %pftt_temp% ( 
+	%ELEVATOR% %JAVA_EXE% -agentpath:"C:\Program Files (x86)\YourKit Java Profiler 12.0.5\bin\win64\yjpagent.dll" -classpath %CLASSPATH% com.mostc.pftt.main.PfttMain %ELEVATOR_OPTS%%*
+) ELSE (
+	%ELEVATOR% %JAVA_EXE% -classpath %CLASSPATH% com.mostc.pftt.main.PfttMain %ELEVATOR_OPTS%%*
+)
