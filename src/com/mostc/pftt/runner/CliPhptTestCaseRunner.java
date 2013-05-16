@@ -74,7 +74,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		
 		String ini_get_all_path = get_ini_get_all_path();
 		
-		return sapi.execute(exe_type, ini_get_all_path, null, env, AHost.ONE_MINUTE).output;
+		return ini_get_all_path+sapi.execute(exe_type, ini_get_all_path, null, env, AHost.ONE_MINUTE).output;
 	}
 	
 	@Override
@@ -215,7 +215,8 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				);
 		StringBuilder output_sb = new StringBuilder(1024);
 		
-		running_test_handle.run(output_sb, test_case.isNon8BitCharset()?test_case.getCommonCharset():null, 60, thread, 40);
+		// TODO 5/14 false => suspend
+		running_test_handle.run(output_sb, test_case.isNon8BitCharset()?test_case.getCommonCharset():null, 60, thread, 40, false);
 		
 		return output_sb.toString();
 	}

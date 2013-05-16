@@ -356,6 +356,11 @@ public class PhptTestResult {
 				serial.endTag(null, "regexOutput");
 			}
 			
+		} else if (actual_ini!=null) {
+			// even if not supposed to store info (@see shouldStoreAll), if #actual_ini set, must need to store it
+			serial.startTag(null, "actualINI");
+			serial.text(actual_ini);
+			serial.endTag(null, "actualINI");
 		} // end if (status==FAIL, etc...)
 		
 		// include the exact test case that was run

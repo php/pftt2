@@ -9,6 +9,7 @@ import java.util.List;
 import javax.annotation.Nullable;
 
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.ESAPIType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhptActiveTestPack;
@@ -17,6 +18,7 @@ import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
+import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
@@ -196,6 +198,11 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 		@Override
 		protected int getMaxTestRuntimeSeconds() {
 			return r == null ? 60 : r.getMaxTestRuntimeSeconds();
+		}
+
+		@Override
+		protected void recordSkipped(PhptTestCase test_case) {
+			twriter.addResult(runner_host, scenario_set, new PhptTestResult(runner_host, EPhptTestStatus.SKIP, test_case, "test timed out", null, null, null, null, null, null, null, null, null, null, null));
 		}
 		
 	} // end public class PhptThread

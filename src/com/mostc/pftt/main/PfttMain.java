@@ -78,7 +78,9 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 // the php test tool that you'd actually want to use
 // doesn't resort to brittle shell scripts
 
-// TODO cleanup LocalHost#close
+// TODO -suspend_seconds
+// TODO -ini_all
+// TODO have config file specify custom INI options
 
 // TODO timing support for phpunit tests
 //    `aa -thread_count cpu -c symfony,apache,opcache,no_code_cache php-5.5`
@@ -169,13 +171,14 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 // Better-PFTT
 //    get actual version of apache, wordpress, symfony, etc... instead of assuming hardcoded value
 //    regular ongoing project/side-project w/ stable, testing branches
+//      -recognition that the SIMPLEST WAY is not the fastest way
+//          -PFTT is complicated, but there is value in that complexity (since it actually works)
 //      -unit tests of PFTT
 //       mostly in PHASE 2/3
 //    console option to remove scenarios from permutations
 //    use MXQuery.jar to query each result pack
 //        -pftt open result-pack1, result-pack2, result-pack3
 //          -get console for xqueries (simplified groovy shell)
-//        -@see http://code.google.com/p/sqlite4java/
 //
 //    PUBLISH reports to PHP Web App on windows.php.net
 //           -make it look good (marketing) => use same theme as rest of windows.php.net (can have link there to QA/Testing)
@@ -205,6 +208,8 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 // could test azure-sdk-for-php
 //     it has phpunit tests
 //     see http://github.com/WindowsAzure
+//
+// NGINX-FastCGI - as/more popular than IIS
 //
 // PECL extensions to consider testing:
 //       geoip haru(pdf) http
@@ -320,6 +325,10 @@ public class PfttMain {
 		System.out.println("-debug_list <list files> - runs tests in list in Debugger (exact name)");
 		System.out.println("-src_pack <path> - folder with the source code");
 		System.out.println("-debug_pack <path> - folder with debugger symbols (usually folder with .pdb files)");
+		System.out.println();
+		System.out.println("   === Debugging ===");
+		System.out.println("-ini_all - includes INI for all tests (default=only for failures)... SLOW but helps verify"); // TODO
+		System.out.println("-suspend <seconds> - suspends test process for <seconds> before running test so you can check the process first (1 minute timeout starts after resume)"); // TODO
 		System.out.println();
 		System.out.println("   === Threading Options ===");
 		System.out.println("-no_thread_safety - runs tests in any thread, regardless of thread-safety. This can increase load/stress, but may lead to false FAILS/ERRORs, especially in file or database tests.");

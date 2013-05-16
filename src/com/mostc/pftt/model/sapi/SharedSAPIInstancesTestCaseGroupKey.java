@@ -39,9 +39,13 @@ public class SharedSAPIInstancesTestCaseGroupKey extends TestCaseGroupKey {
 	}
 	
 	public SAPIInstance getSAPIInstance() {
+		return getSAPIInstance(Thread.currentThread());
+	}
+	
+	public SAPIInstance getSAPIInstance(Thread t) {
 		SAPIInstance this_sapi_instance;
 		synchronized(sapi_instances) {
-			this_sapi_instance = sapi_instances.get(Thread.currentThread());
+			this_sapi_instance = sapi_instances.get(t);
 		}
 		return this_sapi_instance;
 	}

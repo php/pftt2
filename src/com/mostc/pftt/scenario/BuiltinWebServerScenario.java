@@ -89,7 +89,7 @@ public class BuiltinWebServerScenario extends AbstractWebServerScenario {
 			return true;
 		} else if (test_case.isNamed(NOT_ON_BUILTIN_WEB_SERVER)) {
 
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on web servers", null, null, null, null, null, null, null, null, null, null, null));
+			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on builtin web server", null, null, null, null, null, null, null, null, null, null, null));
 			return true;
 		} else {
 			return false;

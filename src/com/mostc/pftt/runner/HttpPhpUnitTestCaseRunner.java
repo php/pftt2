@@ -250,7 +250,6 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 				60, 
 				new Runnable() {
 					public void run() {
-						System.out.println("Http 319");
 						if (web!=null)
 							web.close();
 					}

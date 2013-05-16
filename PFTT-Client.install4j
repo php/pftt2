@@ -24,12 +24,8 @@
     <entries>
       <dirEntry mountPoint="22" file="C:/php-sdk/PFTT/current" overwriteMode="4" shared="false" fileMode="644" uninstallMode="0" overrideFileMode="false" overrideOverwriteMode="false" overrideUninstallMode="false" entryMode="direct" subDirectory="current" excludeSuffixes="*.install4j" dirMode="755" overrideDirMode="false">
         <exclude>
-          <entry location=".classpath" fileType="regular" />
-          <entry location=".directory" fileType="regular" />
           <entry location=".git" fileType="regular" />
           <entry location=".gitignore" fileType="regular" />
-          <entry location=".project" fileType="regular" />
-          <entry location=".settings" fileType="regular" />
           <entry location="cache/working" fileType="regular" />
           <entry location="hostkeys.txt" fileType="regular" />
           <entry location="javadoc.xml" fileType="regular" />

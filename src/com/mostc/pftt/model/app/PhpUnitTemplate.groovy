@@ -132,6 +132,7 @@ function __phpunit_run_isolated_test()
 	\$status = PHPUnit_Runner_BaseTestRunner::STATUS_SKIPPED;
 	\$status_msg = NULL;
 	\$output = NULL;
+	\$run_time = 0;
 	try {
 		if (!class_exists('$test_case.className')) {
 			require_once '$test_case.abs_filename';
@@ -156,7 +157,9 @@ function __phpunit_run_isolated_test()
 		// so PFTT doesn't need to use reflection for PhpUnit tests, but users may want it to.
 		//
 pw.println("""
+		\$start_time = microtime(TRUE);
 		\$test->run(\$result);
+		\$run_time = microtime(TRUE) - \$start_time;
 		\$status = \$test->getStatus();
 		\$status_msg = \$test->getStatusMessage();""");
 	} else {
@@ -167,7 +170,9 @@ pw.println("""
 		// if no exception is thrown => it passed
 pw.println("""clearstatcache();
 		\$test->pftt_step1();
+		\$start_time = microtime(TRUE);
         \$test->$test_case.methodName();
+		\$run_time = microtime(TRUE) - \$start_time;
         \$test->pftt_step2();
 		try {
 			\$test->pftt_step3();
@@ -208,6 +213,7 @@ pw.println("""	} catch ( Exception \$e ) {
 	case PHPUnit_Runner_BaseTestRunner::STATUS_PASSED:
 		echo "PASS";
 		echo PHP_EOL;
+		echo "run time \$run_time micros";echo PHP_EOL;
 		break;
 	case PHPUnit_Runner_BaseTestRunner::STATUS_SKIPPED:
 		echo 'SKIP';

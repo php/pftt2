@@ -36,7 +36,7 @@ public class CliPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 		
 		StringBuilder output_sb = new StringBuilder(128);
 		
-		running_test_handle.run(output_sb, null, 60, null, 0);
+		running_test_handle.run(output_sb, null, 60, null, 0, false);
 		
 		output_str = output_sb.toString();
 		

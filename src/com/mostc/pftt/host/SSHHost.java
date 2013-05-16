@@ -162,10 +162,12 @@ public class SSHHost extends RemoteHost {
 	public boolean ensureConnected(ConsoleManager cm) {
 		try {
 			ensureSshOpen();
-			return true;
+			return isWindows() || exists("/");
 		} catch ( Exception ex ) {
 			if (cm!=null)
-				cm.addGlobalException(EPrintType.WARNING, getClass(), "ensureConnected", ex, "can't connect to remote ssh host"); 
+				cm.addGlobalException(EPrintType.WARNING, getClass(), "ensureConnected", ex, "can't connect to remote ssh host");
+			else
+				ex.printStackTrace();
 			return false;
 		}
 	}
@@ -460,7 +462,7 @@ public class SSHHost extends RemoteHost {
 		}
 
 		@Override
-		public void run(StringBuilder output_sb, Charset charset, int timeout_sec, final TestPackRunnerThread thread, int slow_sec) throws IOException, InterruptedException {
+		public void run(StringBuilder output_sb, Charset charset, int timeout_sec, final TestPackRunnerThread thread, int slow_sec, boolean suspend) throws IOException, InterruptedException {
 			do_run(session, charset, timeout_sec, thread, slow_sec);
 			output_sb.append(out.toString());
 		}
@@ -586,9 +588,7 @@ public class SSHHost extends RemoteHost {
 	public boolean mkdirs(String path) throws IllegalStateException, IOException {
 		ensureSftpOpen();
 		path = normalizePath(path);
-		if (!isSafePath(path))
-			return false;
-		
+		// dont check #isSafePath here!
 		if (isWindows()) {
 			try {
 				sftp.stat(path);

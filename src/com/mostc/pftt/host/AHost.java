@@ -263,12 +263,16 @@ public abstract class AHost extends Host {
 	}
 	@Override
 	public String getSystemDrive() {
-		if (system_drive!=null)
+		if (system_drive!=null) {
 			return system_drive;
-		else if (isWindows())
-			return system_drive = getEnvValue("SYSTEMDRIVE");
-		else
+		} else if (isWindows()) {
+			system_drive = getEnvValue("SYSTEMDRIVE");
+			if (StringUtil.isEmpty(system_drive))
+				system_drive = "C:"; // CRITICAL, default
+			return system_drive;
+		} else {
 			return system_drive = "/";
+		}
 	}
 	@SuppressWarnings("unused")
 	@Override
@@ -281,9 +285,12 @@ public abstract class AHost extends Host {
 	}
 	@Override
 	public String getPhpSdkDir() {
-		if (php_sdk_dir!=null)
+		if (StringUtil.isNotEmpty(php_sdk_dir))
 			return php_sdk_dir;
-		else if(isWindows())
+		php_sdk_dir = System.getenv("PHP_SDK");
+		if (StringUtil.isNotEmpty(php_sdk_dir))
+			return php_sdk_dir;
+		if(isWindows())
 			return php_sdk_dir = getSystemDrive() + "\\php-sdk\\";
 		else
 			return php_sdk_dir = getHomeDir() + "/php-sdk/";
@@ -421,7 +428,7 @@ public abstract class AHost extends Host {
 		
 		
 		// TODO
-		public abstract void run(StringBuilder output_sb, Charset charset, int timeout_sec, TestPackRunnerThread thread, int slow_sec) throws IOException, InterruptedException;
+		public abstract void run(StringBuilder output_sb, Charset charset, int timeout_sec, TestPackRunnerThread thread, int slow_sec, boolean suspend) throws IOException, InterruptedException;
 	} // end public abstract class ExecHandle
 	
 	/** checks exit code to see if it means process crashed
@@ -675,7 +682,9 @@ public abstract class AHost extends Host {
 			dst_host.reported_7zip_already_installed = true;
 			return;
 		}
-		
+
+		System.out.println("src_7z_path "+src_7z_path);
+		System.out.println("dst_7z_path "+dst_7z_path);
 		try {
 			dst_host.upload(src_7z_path, dst_7z_path);
 			

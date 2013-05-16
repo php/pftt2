@@ -190,7 +190,7 @@ public class LocalHost extends AHost {
 			
 		StringBuilder output_sb = new StringBuilder(1024);
 		
-		eh.run(output_sb, charset, timeout, thread, thread_slow_sec);
+		eh.run(output_sb, charset, timeout, thread, thread_slow_sec, false);
 		
 		
 		
@@ -447,10 +447,17 @@ public class LocalHost extends AHost {
 			close_thread.start();
 		} // end public void close
 		
-		protected void run(StringBuilder output_sb, Charset charset) throws IOException, InterruptedException {
+		protected void run(StringBuilder output_sb, Charset charset, boolean suspend) throws IOException, InterruptedException {
 			final Process p = process.get();
 			if (p==null)
 				return;
+			if (suspend) {
+				final int pid = getWindowsProcessID(p);
+				
+				try {
+					execOut("pssuspend "+pid, 10);
+				} catch ( Exception ex ) {}
+			}
 			exec_copy_lines(output_sb, stdout, charset);
 			// ignores STDERR
 			
@@ -529,7 +536,7 @@ public class LocalHost extends AHost {
 		}
 
 		@Override
-		public void run(StringBuilder output_sb, Charset charset, int timeout_sec, TestPackRunnerThread thread, int thread_slow_sec) throws IOException, InterruptedException {
+		public void run(StringBuilder output_sb, Charset charset, int timeout_sec, TestPackRunnerThread thread, int thread_slow_sec, boolean suspend) throws IOException, InterruptedException {
 			TimerThread a = null, b = null;
 			if (thread!=null && thread_slow_sec>NO_TIMEOUT) {
 				b = TimerUtil.waitSeconds(thread_slow_sec, new ThreadSlowTask(thread));
@@ -538,9 +545,8 @@ public class LocalHost extends AHost {
 			if (timeout_sec>NO_TIMEOUT) {
 				a = TimerUtil.waitSeconds(timeout_sec, new ExitMonitorTask(this));
 			}
-			
-			
-			this.run(output_sb, charset);
+						
+			this.run(output_sb, charset, suspend&&isWindows());
 			
 			if (a!=null)
 				a.cancel();
@@ -726,6 +732,8 @@ public class LocalHost extends AHost {
 			return false;
 		if (isWindows()) {
 			File f = new File(path);
+			if (f.isDirectory())
+				return true;
 			for ( int i=0 ; i < 3 ; i++ ) {
 				f.mkdirs();
 				if (f.exists())
@@ -734,9 +742,7 @@ public class LocalHost extends AHost {
 				//             make sure it gets created before returning.
 				try {
 					Thread.sleep(50);
-				} catch ( InterruptedException ex ) {
-					break;
-				}
+				} catch ( InterruptedException ex ) {}
 			}
 		} else {
 			new File(path).mkdirs();
@@ -867,13 +873,17 @@ public class LocalHost extends AHost {
 	
 	public static String getLocalPfttDir() {
 		if (isLocalhostWindows()) {
-			String sd = System.getenv("SYSTEMDRIVE");
-			if (StringUtil.isEmpty(sd))
-				sd = "C:";
+			String php_sdk_dir = System.getenv("PHP_SDK");
+			if (null == php_sdk_dir) {
+				String sd = System.getenv("SYSTEMDRIVE");
+				if (StringUtil.isEmpty(sd))
+					sd = "C:";
+				php_sdk_dir = sd + "\\php-sdk";
+			}
 			if (DEV>0)
-				return sd+"\\php-sdk\\PFTT\\Dev-"+DEV+"\\";
+				return php_sdk_dir+"\\PFTT\\Dev-"+DEV+"\\";
 			else
-				return sd+"\\php-sdk\\PFTT\\Current\\";
+				return php_sdk_dir+"\\PFTT\\Current\\";
 		} else if (DEV>0) {
 			return System.getenv("HOME")+"/php-sdk/PFTT/dev-"+DEV+"/";
 		} else {

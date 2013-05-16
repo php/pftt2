@@ -47,7 +47,6 @@ public abstract class AbstractTestPackRunner<S extends SourceTestPack, T extends
 		
 		protected abstract boolean slowCreateNewThread();
 		protected abstract void createNewThread();
-		protected abstract void stopThisThread();
 		
 		@Override
 		public void notifySlowTest() {

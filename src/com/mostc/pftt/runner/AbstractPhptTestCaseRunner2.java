@@ -52,7 +52,8 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	
 	protected String get_ini_get_all_path() throws IllegalStateException, IOException {
 		// ensure ini_get_all.php exists
-		String ini_get_all_path = host.joinIntoOnePath(active_test_pack.getStorageDirectory(), "ini_get_all.php");
+		// TODO temp 5/15 - should store this once only and delete it later
+		String ini_get_all_path = host.mktempname(getClass(), "ini_get_all.php");
 		if (!host.exists(ini_get_all_path)) {
 			// TODO locking?
 			host.saveTextFile(ini_get_all_path, "<?php var_dump($argv);\nvar_dump(ini_get_all()); ?>");
@@ -440,7 +441,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			}
 			if (expected_re_match) {
 
-				twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
+				twriter.addResult(host, scenario_set, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null)));
 						
 				return;
 			} 
@@ -462,7 +463,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 				}
 				if (expected_re_match) {
 
-					twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
+					twriter.addResult(host, scenario_set, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null)));
 							
 					return;
 				}
@@ -474,7 +475,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			
 			if (equalsNoWS(output, expected)||(output.contains("<html>")&&!output.contains("404"))||(test_case.isNamed("ext/phar/tests/zip/phar_commitwrite.phpt")&&expected.contains(output.substring(50, 60)))||(test_case.isNamed("ext/phar/tests/tar/phar_commitwrite.phpt")&&expected.contains(output.substring(60, 70)))) {
 				
-				twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
+				twriter.addResult(host, scenario_set, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null)));
 						
 				return;
 			}
@@ -491,7 +492,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 				// compare again
 				if (equalsNoWS(output, expected)) {
 					
-					twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
+					twriter.addResult(host, scenario_set, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null)));
 					
 					return;
 				} // end if
@@ -501,7 +502,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			String output_trim = output.trim();
 			
 			if (StringUtil.isEmpty(output_trim)||(output.contains("<html>")&&!output.contains("404"))) {
-				twriter.addResult(host, scenario_set, new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null));
+				twriter.addResult(host, scenario_set, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null)));
 				
 				return;
 			}
@@ -553,12 +554,22 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		twriter.addResult(host, scenario_set, result);
 	} // end protected void evalTest
 	
-	protected PhptTestResult notifyNotPass(PhptTestResult result) {
+	protected PhptTestResult notifyPassOrXFail(PhptTestResult result) {
+		//handleActualIni(result); // TODO temp 5/15
+		
+		return result;
+	}
+	
+	protected void handleActualIni(PhptTestResult result) {
 		try {
 			result.actual_ini = getIniActual();
 		} catch ( Throwable ex ) {
 			result.actual_ini = ErrorUtil.toString(ex);
 		}
+	}
+	
+	protected PhptTestResult notifyNotPass(PhptTestResult result) {
+		handleActualIni(result);
 		
 		return result;
 	}

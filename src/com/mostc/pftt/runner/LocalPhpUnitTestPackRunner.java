@@ -8,6 +8,7 @@ import java.util.Map;
 import javax.annotation.Nullable;
 
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.model.app.EPhpUnitTestStatus;
 import com.mostc.pftt.model.app.PhpUnitActiveTestPack;
 import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
 import com.mostc.pftt.model.app.PhpUnitTestCase;
@@ -18,6 +19,7 @@ import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
+import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.scenario.AbstractCodeCacheScenario;
 import com.mostc.pftt.scenario.AbstractFileSystemScenario.ITestPackStorageDir;
@@ -193,6 +195,11 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 		@Override
 		protected int getMaxTestRuntimeSeconds() {
 			return r == null ? 60 : r.getMaxTestRuntimeSeconds();
+		}
+
+		@Override
+		protected void recordSkipped(PhpUnitTestCase test_case) {
+			twriter.addResult(runner_host, scenario_set, new PhpUnitTestResult(test_case, EPhpUnitTestStatus.SKIP, scenario_set, runner_host, null, null, "PFTT: Test Timed Out", null));
 		}
 		
 	} // end public class PhpUnitThread

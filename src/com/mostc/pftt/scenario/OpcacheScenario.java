@@ -95,9 +95,12 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 	@Override
 	public boolean prepare(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack test_pack) {
 		if (host.isWindows()) {
-			// sometimes OpCache may put the memory mapped file here, be sure to delete it
+			// sometimes OpCache may put the memory mapped file here(CWD or TMP), be sure to delete it
 			host.deleteIfExistsElevated(test_pack.getRunningDirectory()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());	
 			host.deleteIfExistsElevated(test_pack.getStorageDirectory()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+			host.deleteIfExistsElevated(build.getBuildPath()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());	
+			host.deleteIfExistsElevated(host.getPhpSdkDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+			host.deleteIfExistsElevated(host.getPfttDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
 		}
 		return true;
 	}

@@ -13,6 +13,7 @@ import java.util.Timer;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.annotation.Nullable;
@@ -41,8 +42,7 @@ import com.mostc.pftt.scenario.AbstractWebServerScenario;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.AbstractFileSystemScenario.ITestPackStorageDir;
-import com.mostc.pftt.util.TimerUtil;
-import com.mostc.pftt.util.TimerUtil.TimerThread;
+import com.mostc.pftt.util.ErrorUtil;
 
 public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S extends SourceTestPack<A,T>, T extends TestCase> extends AbstractTestPackRunner<S, T> {
 	protected static final int MAX_THREAD_COUNT = 256;
@@ -245,6 +245,8 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		
 		try {
 			groupTestCases(test_cases);
+			System.out.println("248 "+this.non_thread_safe_tests.size());
+			System.out.println("249 "+this.thread_safe_tests.size());
 			
 			cm.println(EPrintType.IN_PROGRESS, getClass(), "ready to go!    scenario_set="+scenario_set+" runner_host="+runner_host+" storage_dir="+storage_dir.getClass()+" local_path="+storage_dir.getLocalPath(runner_host)+" remote_path="+storage_dir.getRemotePath(runner_host));
 			
@@ -483,38 +485,68 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		}
 		
 		// block until done
-		boolean not_running;
-		for (;;) {
-			not_running = true;
-			for ( TestPackThread<?> t : threads ) {
-				if (t.jobs!=null&&t.jobs.isEmpty()) {
-					// thread has no more jobs to execute
-					if (t.isDebuggerAttached()) {
-						// don't stop because of this thread, its being debugged
-						//
-						//
+		{
+			boolean not_running;
+			Iterator<TestPackThread<T>> thread_it;
+			TestPackThread<T> thread;
+			long test_run_start_time;
+			for (;;) {
+				not_running = threads.isEmpty();
+				thread_it = threads.iterator();
+				while(thread_it.hasNext()) {
+					thread = thread_it.next();
+					test_run_start_time = thread.test_run_start_time.get();
+					// TODO 120 seconds => don't hard code it here
+					//
+					// sometimes, some tests can get stuck - this is really bad. it totally blocks everything up
+					// this is another safety mechanism to prevent that:
+					//
+					// run a timer task while the test is running to kill the test if it takes too long
+					//
+					// wait a while before killing it (double the max runtime for the test)
+					if ((test_run_start_time>0&&Math.abs(System.currentTimeMillis()-test_run_start_time)>120000)) {
+						// thread running too long
+						if (thread.isDebuggerAttached()) {
+							not_running = false; // keep running
+							break;
+						} else if (thread.jobs!=null&&!thread.jobs.isEmpty()||(thread.ext!=null&&!thread.ext.test_groups.isEmpty())) {
+							thread.replaceThisThread();
+							threads.remove(thread);
+						} else {
+							// thread not doing anything... kill it
+							thread.stopThisThread();
+							threads.remove(thread);
+						}
+						continue;
+					} 
+					
+					if ((thread.jobs!=null&&!thread.jobs.isEmpty())||(thread.ext!=null&&!thread.ext.test_groups.isEmpty())||thread.isDebuggerAttached()) {
+						// keep running if a thread
+						// 1. is running a test
+						// 2. has jobs(tests) to still execute
+						// 3. has a test that is being debugged (windbg, gdb, etc...)
 						not_running = false;
 						break;
 					} else {
-						// kill thread
-						t.stopThisThread();
+						// thread has nothing to do, kill it
+						thread.stopThisThread();
+						threads.remove(thread);
 					}
-				} else if (t.isRunningTest()) {
-					not_running = false;
+				}
+				if (not_running) {
+					// no threads have jobs left to do, stop waiting
 					break;
+				} else {
+					// wait a while before checking again
+					Thread.sleep(threads.size()>3?1000:50);
 				}
 			}
-			if (not_running) {
-				// no threads have jobs left to do, stop waiting
-				break;
-			} else {
-				// wait a while before checking again
-				Thread.sleep(threads.size()>3?1000:50);
-			}
+			// wait for queued results to be written before returning
+			// (this is important as PFTT may close the result-pack after returning and we want to 
+			//  make sure all the results get written first!)
+			if (twriter instanceof PhpResultPackWriter)
+				((PhpResultPackWriter)twriter).wait(runner_host, scenario_set);
 		}
-		// wait for queued results to be written before returning
-		if (twriter instanceof PhpResultPackWriter)
-			((PhpResultPackWriter)twriter).wait(runner_host, scenario_set);
 	} // end protected void executeTestCases
 		
 	protected void start_thread(boolean parallel) throws IllegalStateException, IOException {
@@ -531,11 +563,18 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		protected final AtomicBoolean run_thread;
 		protected final boolean parallel;
 		protected final int run_test_times_all;
+		protected final AtomicLong test_run_start_time;
 		protected TestCaseGroupKey group_key;
+		protected NonThreadSafeExt<T> ext;
+		protected TestCaseGroup<T> group;
+		protected LinkedBlockingQueue<T> jobs;
+		protected WebServerInstance thread_wsi;
+		protected T test_case;
 		
 		protected TestPackThread(boolean parallel) {
 			this.run_thread = new AtomicBoolean(true);
 			this.parallel = parallel;
+			this.test_run_start_time = new AtomicLong(0L);
 			
 			this.setUncaughtExceptionHandler(this);
 			
@@ -547,11 +586,13 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		@Override
 		public void uncaughtException(java.lang.Thread arg0, java.lang.Throwable arg1) {
 			arg1.printStackTrace();
+			// wait for #executeTestCases to remove this thread from group
 			System.out.println("END_THREAD " +arg1+" "+Thread.currentThread());
-			threads.remove(Thread.currentThread());
+			try {
+				twriter.addGlobalException(runner_host, ErrorUtil.toString(arg1));
+			} catch ( Throwable t ) {}
 		}
-		
-				
+						
 		@Override
 		public void run() {
 			// pick a non-thread-safe(NTS) extension that isn't already running then run it
@@ -577,26 +618,59 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			}
 		} // end public void run
 		
+		public void replaceThisThread() {
+			stopThisThread();
+			
+			// create new thread to run this thread's jobs
+			if (ext!=null)
+				non_thread_safe_exts.add(ext);
+			createNewThread();
+			
+			// don't run test again, it will likely just cause another timeout
+			//
+			// record that the current test is skipped
+			recordSkipped(test_case);
+		}
+		
+		public void stopThisThread() {
+			// don't run any more tests in this thread
+			run_thread.set(false);
+			
+			stopRunningCurrentTest();
+			
+			// kill any web server, etc... used only by this thread
+			if (group_key instanceof SharedSAPIInstancesTestCaseGroupKey) {
+				SAPIInstance sapi = ((SharedSAPIInstancesTestCaseGroupKey)group_key).getSAPIInstance(TestPackThread.this);
+				if (sapi!=null)
+					sapi.close();
+			}
+			// interrupt thread to make it stop
+			try {
+				TestPackThread.this.stop(new TestTimeoutException());
+			} catch ( ThreadDeath ex ) {}
+			TestPackThread.this.interrupt();
+		}
+		
 		protected void runNonThreadSafe() {
-			NonThreadSafeExt<T> ext;
-			TestCaseGroup<T> group;
 			while(shouldRun()) {
 				ext = non_thread_safe_exts.poll();
 				if (ext==null)
 					break;
 				
 				while (shouldRun()) {
-					group = ext.test_groups.poll();
+					// #peek not #poll to leave group in ext.test_groups in case thread gets replaced (@see #stopThisThread)
+					group = ext.test_groups.peek();
 					if (group==null)
 						break;
 					
 					exec_jobs(group.group_key, group.test_cases, test_count);
+					ext.test_groups.remove();
 				}
 			}
+			ext = null;
 		} // end protected void runNonThreadSafe
 		
 		protected void runThreadSafe() {
-			TestCaseGroup<T> group;
 			while (shouldRun()) {
 				// thread-safe can share groups between threads
 				// (this allows larger groups to be distributed  between threads)
@@ -619,11 +693,9 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		protected boolean shouldRun() {
 			return run_thread.get() && runner_state.get()==ETestPackRunnerState.RUNNING;
 		}
-		LinkedBlockingQueue<T> jobs;
-		WebServerInstance thread_wsi;
+		
 		protected void exec_jobs(TestCaseGroupKey group_key, LinkedBlockingQueue<T> jobs, AtomicInteger test_count) {
 			this.group_key = group_key;
-			T test_case;
 			SAPIInstance sa = null;
 			LinkedList<T> completed_tests = new LinkedList<T>();
 			this.jobs = jobs;
@@ -631,7 +703,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			try {
 				while ( (test_case = jobs.poll()) != null && shouldRun() ) {
 					completed_tests.add(test_case);
-					running_test = true;
+					test_run_start_time.set(System.currentTimeMillis());
 					
 					int a = run_test_times_all;
 					
@@ -643,7 +715,6 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 					for ( int i=0 ; i < a ; i++ ) {
 						
 						// CRITICAL: catch exception to record with test
-						TimerThread task = null;
 						try {
 							group_key.prepare();
 							
@@ -652,6 +723,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 								final boolean debugger_attached = (cm.isDebugAll() || cm.isInDebugList(test_case));
 								
 								
+								// TODO create better mechanism to send `sa` to each test case runner
 								// @see HttpTestCaseRunner#http_execute which calls #notifyCrash
 								// make sure a WebServerInstance is still running here, so it will be shared with each
 								// test runner instance (otherwise each test runner will create its own instance, which is slow)
@@ -680,28 +752,8 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 								}
 							} // end if
 							
-							//
-							// sometimes, some tests can get stuck - this is really bad. it totally blocks everything up
-							// this is another safety mechanism to prevent that:
-							//
-							// run a timer task while the test is running to kill the test if it takes too long
-							//
-							// wait a while before killing it (double the max runtime for the test)
-							// TODO what if/when 3 attempts are made to run the test?? (ex: builtin web server)
-							task = TimerUtil.waitSeconds(getMaxTestRuntimeSeconds() * 2, new Runnable() {
-									@Override
-									public void run() {
-										new Thread() {
-												@Override
-												public void run() {
-													stopRunningCurrentTest();
-													
-													createNewThread();
-													stopThisThread();
-												}
-											}.start();
-									}
-								});
+							
+							
 						
 							// finally: create the test case runner and run the actual test
 							runTest(group_key, test_case);
@@ -714,14 +766,11 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 							twriter.addTestException(storage_host, scenario_set, test_case, ex, sa);
 						}
 						
-						// test was run
-						
-						// don't need to stop the test if/once here
-						if (task!=null)
-							task.cancel();
-						
 						try {
 							// -delay_between_ms console option
+							//
+							// TODO take this time into account when checking max execution time
+							// TODO also count number of times test is supposed to be run
 							if (cm.getDelayBetweenMS()>0) {
 								Thread.sleep(cm.getDelayBetweenMS());
 							}
@@ -733,7 +782,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 						}
 					} // end for
 					
-					running_test = false;
+					test_run_start_time.set(0);
 					test_count.incrementAndGet();
 					Thread.yield();
 				} // end while
@@ -761,39 +810,15 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		@Override
 		protected void createNewThread() {
 			try {
-			start_thread(parallel);
-			} catch ( Exception ex ) {
-				ex.printStackTrace();
+				start_thread(parallel);
+			} catch ( Throwable t ) {
+				twriter.addGlobalException(runner_host, ErrorUtil.toString(t));
 			}
-		}
-		
-		private boolean running_test;
-		public boolean isRunningTest() {
-			return running_test;
-		}
-
-		@Override
-		protected void stopThisThread() {
-			stopRunningCurrentTest();
-			
-			// continue running current CliTestCaseRunner, but don't start any more of them
-			run_thread.set(false);
-			
-			// kill any web server, etc... used only by this thread
-			if (group_key instanceof SharedSAPIInstancesTestCaseGroupKey) {
-				SAPIInstance sapi = ((SharedSAPIInstancesTestCaseGroupKey)group_key).getSAPIInstance();
-				if (sapi!=null)
-					sapi.close();
-			}
-			threads.remove(TestPackThread.this);
-			try {
-				TestPackThread.this.stop(new TestTimeoutException());
-			} catch ( ThreadDeath ex ) {}
-			TestPackThread.this.interrupt();
 		}
 		
 		protected abstract void stopRunningCurrentTest();
 		protected abstract int getMaxTestRuntimeSeconds();
+		protected abstract void recordSkipped(T test_case);
 		
 		public boolean isDebuggerAttached() {
 			if (group_key instanceof SharedSAPIInstancesTestCaseGroupKey) {

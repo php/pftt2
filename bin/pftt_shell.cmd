@@ -26,7 +26,7 @@ ECHO tka_apache    tka_php     tka_windbg     `net use`    stop
 @ECHO.
 ECHO Useful:
 ECHO ls            `start .`   windbg   npp   clear
-ECHO php_sdk       sleep       pftt
+ECHO php_sdk       sleep       pftt     cat
 @ECHO.
 @ECHO.
 @prompt $t %COMPUTERNAME% $M$p$g

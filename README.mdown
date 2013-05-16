@@ -9,17 +9,20 @@ test what will happen in production.
 1. Download binary from [http://131.107.220.66/PFTT-Results/PFTT/current/](http://131.107.220.66/PFTT-Results/PFTT/current/) and run it.
 2. The Install Wizard will install PFTT to your local system.
 	a. If you have installed PFTT before, you MUST delete c:\php-sdk\PFTT\current so that it does NOT exist before running the installer
+	b. If you set the environment variable PHP_SDK, PFTT will use that place of C:\php-sdk (including for c:\php-sdk\PFTT\current)
+		i. You can create a batch script named \PFTT\current\bin\internal\set_php_sdk.cmd where you can SET PHP_SDK, which will be used whenever you run PFTT instead of the default PHP_SDK value
 3. If you want to test with Apache, currently you’ll need to manually decompress/copy it
 	a. Look in c:\php-sdk\PFTT\current\cache\dep\Apache (Windows)
-	b. Each of the .7z files is a different Apache build
+	b. Each of the .7z files is a different Apache build (built by apachelounge.com)
 	c. You’ll need to decompress them to c:\<Apache Build> so you’ll have
 		i. C:\Apache244-VC11-OpenSSL1.0.1e-x64\bin\httpd.exe
 		ii. C:\Apache244-VC11-OpenSSL1.0.1e-x86\bin\httpd.exe
 		iii. C:\Apache244-VC9-OpenSSL0.9.8y-x86\bin\httpd.exe
 		iv. C:\ Apache224-VC9-OpenSSL0.9.8y-x86\bin\httpd.exe
 	d. PFTT will assume they’re there and fail if they aren’t
-	e. If the system doesn’t have the VC runtimes (ex: VC11 x64) installed, see: C:\php-sdk\PFTT\current\cache\dep (Windows)
+	e. If the system doesn’t have the VC runtimes (ex: VC11 x64) installed, see: C:\php-sdk\PFTT\current\cache\dep\VCRedist (Windows)
 		i. Currently, these also must be manually installed.
+		ii. Note: for Apache-VC11, you must install BOTH the VC10-x64 and VC11-x64 runtimes
 
 
 ## USAGE

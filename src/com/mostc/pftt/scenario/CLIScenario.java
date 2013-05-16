@@ -68,6 +68,7 @@ public class CliScenario extends AbstractSAPIScenario {
 		//
 		// this is needed only to collect any custom directives that a test case provides
 		PhpIni ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, host, build); // TODO temp 5/13
+		//ini.putSingle("sys_temp_dir", "c:\\users\\matt\\appdata\\local\\temp");
 		AbstractINIScenario.setupScenarios(cm, host, scenario_set, build, ini);
 		return ini;
 	}

@@ -6,6 +6,8 @@ import java.io.StringWriter;
 
 import javax.swing.JOptionPane;
 
+import com.github.mattficken.io.StringUtil;
+
 public final class ErrorUtil {
 	
 	public static void display_error(Component c, String msg) {
@@ -23,7 +25,11 @@ public final class ErrorUtil {
 		PrintWriter pw = new PrintWriter(sw);
 		ex.printStackTrace(pw);		
 		pw.close();
-		return sw.toString();
+		String str = sw.toString();
+		if (StringUtil.isEmpty(str))
+			// be sure something useful gets returned
+			str = ex.getClass().toString();
+		return str;
 	}
 
 	private ErrorUtil() {}
