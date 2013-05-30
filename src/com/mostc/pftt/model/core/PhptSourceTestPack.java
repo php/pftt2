@@ -3,6 +3,7 @@ package com.mostc.pftt.model.core;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -34,7 +35,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 	protected AHost host;
 	protected final LinkedList<File> non_phpt_files;
 	protected final HashMap<String,PhptTestCase> test_cases_by_name;
-	protected final ArrayList<PhptTestCase> test_cases;
+	protected WeakReference<ArrayList<PhptTestCase>> _ref_test_cases;
 	
 	public PhptSourceTestPack(String test_pack) {
 		this.test_pack_file = new File(test_pack);
@@ -42,7 +43,6 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		
 		test_cases_by_name = new HashMap<String,PhptTestCase>();
 		non_phpt_files = new LinkedList<File>();
-		test_cases = new ArrayList<PhptTestCase>();
 	}
 	
 	@Override
@@ -100,12 +100,21 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		read(test_cases, names, cm, twriter, build, false);
 	}
 	
-	public void read(List<PhptTestCase> _test_cases, List<String> names, ConsoleManager cm, PhpResultPackWriter twriter, PhpBuild build, boolean ignore_missing) throws FileNotFoundException, IOException, Exception {
-		if (test_cases.size()>0) {
-			_test_cases.addAll(test_cases);
-			return;
+	
+	public void read(List<PhptTestCase> test_cases, List<String> names, ConsoleManager cm, PhpResultPackWriter twriter, PhpBuild build, boolean ignore_missing) throws FileNotFoundException, IOException, Exception {
+		//
+		ArrayList<PhptTestCase> _test_cases;
+		if (_ref_test_cases!=null) {
+			_test_cases = _ref_test_cases.get();
+			if (_test_cases!=null) {
+				test_cases.addAll(_test_cases);
+				return;
+			}
 		}
+		//
 		
+		// TODO should only return test cases matching names, but load and cache all of them
+		//     (if no names, return all test cases)
 		LinkedList<PhptTestCase> redirect_targets = new LinkedList<PhptTestCase>();
 		
 		// (some) names may be exact names of tests, check for those first
@@ -150,24 +159,40 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 				}
 			});
 		
+		//
+		// cache for use next time
+		_test_cases = new ArrayList<PhptTestCase>(test_cases.size());
 		_test_cases.addAll(test_cases);
+		_ref_test_cases = new WeakReference<ArrayList<PhptTestCase>>(_test_cases);
+		//
 		twriter.setTotalCount(test_cases.size());
 	} // end public void read
 
-	ArrayList<PhptTestCase> a; // TODO 
 	@Override
-	public void read(List<PhptTestCase> test_files, ConsoleManager cm, ITestResultReceiver twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {
-		/* TODO temp 5/6/2013  if (a!=null) {
-			test_files.addAll(a);
-			return;
+	public void read(List<PhptTestCase> test_cases, ConsoleManager cm, ITestResultReceiver twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {
+		//
+		ArrayList<PhptTestCase> _test_cases;
+		if (_ref_test_cases!=null) {
+			_test_cases = _ref_test_cases.get();
+			if (_test_cases!=null) {
+				test_cases.addAll(_test_cases);
+				return;
+			}
 		}
-		a = new ArrayList<PhptTestCase>(13000); */
+		//
 		
 		test_pack_file = new File(test_pack);
 		test_pack = test_pack_file.getAbsolutePath(); // normalize path
-		add_test_files(test_pack_file.listFiles(), test_files, null, cm, twriter, build, null, new LinkedList<PhptTestCase>());
-		// TODO temp 5/6/2013 add_test_files(test_pack_file.listFiles(), a, null, cm, twriter, build, null, new LinkedList<PhptTestCase>());
-		twriter.setTotalCount(test_files.size());
+		add_test_files(test_pack_file.listFiles(), test_cases, null, cm, twriter, build, null, new LinkedList<PhptTestCase>());
+		twriter.setTotalCount(test_cases.size());
+		
+		//
+		// cache for use next time
+		_test_cases = new ArrayList<PhptTestCase>(test_cases.size());
+		_test_cases.addAll(test_cases);
+		_ref_test_cases = new WeakReference<ArrayList<PhptTestCase>>(_test_cases);
+		//
+		twriter.setTotalCount(test_cases.size());
 	}
 	
 	private void add_test_files(File[] files, List<PhptTestCase> test_files, List<String> names, ConsoleManager cm, ITestResultReceiver twriter, PhpBuild build, PhptTestCase redirect_parent, List<PhptTestCase> redirect_targets) throws FileNotFoundException, IOException, Exception {

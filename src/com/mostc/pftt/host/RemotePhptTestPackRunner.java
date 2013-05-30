@@ -53,7 +53,7 @@ public class RemotePhptTestPackRunner extends AbstractRemoteTestPackRunner<PhptA
 	public static void main(String[] args) throws Exception {
 		LocalHost host = new LocalHost();
 		
-		LocalConsoleManager cm = new LocalConsoleManager(null, null, false, false, false, false, true, false, true, false, false, false, 1, true, 1, 1, 1, null, null, null, null, false, 0, 0, false, false, 0);
+		LocalConsoleManager cm = new LocalConsoleManager(null, null, false, false, false, false, true, false, true, false, false, false, 1, true, 1, 1, 1, null, null, null, null, false, 0, 0, false, false, 0, 0, 0, false);
 		
 		PhpBuild build = new PhpBuild("C:\\php-sdk\\php-5.5-ts-windows-vc11-x64-re3aeb6c");
 		build.open(cm, host);

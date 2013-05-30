@@ -20,11 +20,12 @@ import com.mostc.pftt.model.sapi.WebServerManager;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
+import com.mostc.pftt.scenario.BuiltinWebServerScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 public class BuiltinWebHttpPhptTestCaseRunner extends HttpPhptTestCaseRunner {
 	
-	public BuiltinWebHttpPhptTestCaseRunner(PhpIni ini,
+	public BuiltinWebHttpPhptTestCaseRunner(BuiltinWebServerScenario sapi_scenario, PhpIni ini,
 			Map<String, String> env, HttpParams params, HttpProcessor httpproc,
 			HttpRequestExecutor httpexecutor, WebServerManager smgr,
 			WebServerInstance web, PhptThread thread, PhptTestCase test_case,
@@ -32,7 +33,7 @@ public class BuiltinWebHttpPhptTestCaseRunner extends HttpPhptTestCaseRunner {
 			ScenarioSet scenario_set, PhpBuild build,
 			PhptSourceTestPack src_test_pack,
 			PhptActiveTestPack active_test_pack) {
-		super(ini, env, params, httpproc, httpexecutor, smgr, web, thread, test_case,
+		super(sapi_scenario, ini, env, params, httpproc, httpexecutor, smgr, web, thread, test_case,
 				cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 	}
 	

@@ -379,7 +379,7 @@ also should test setting WP_LANG to other languages (multi-byte?) and FORCE_SSL 
 		return text.replace(" ", "_");
 	}
 	
-	abstract class WPTest extends EasyUITest {
+	abstract class WPTest extends EasyUITestCase {
 		@Override
 		public boolean start() throws Exception {
 			get("/");

@@ -30,7 +30,7 @@ public class CliSAPIInstance extends SAPIInstance {
 		host.mkdirs(ini_dir);
 		
 		// now store the entire INI php should be using
-		host.saveTextFile(ini_dir+"/php.ini", ini.toString());
+		host.saveTextFile(host.joinIntoOnePath(ini_dir, "php.ini"), ini.toString());
 	}
 	
 	public ExecOutput execute(EExecutableType exe_type, String php_filename, String extra_args, Map<String,String> env, int timeout_sec) throws Exception {

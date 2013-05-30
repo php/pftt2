@@ -26,7 +26,9 @@ import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
+import com.mostc.pftt.scenario.CliScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.util.NTStatus;
 
 /** one of the core classes. runs a PhptTestCase.
  * 
@@ -42,8 +44,8 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected ExecOutput output;
 	protected String query_string, shell_script, test_cmd, shell_file;
 	
-	public CliPhptTestCaseRunner(CliSAPIInstance sapi, PhpIni ini, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
-		super(ini, thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
+	public CliPhptTestCaseRunner(CliScenario sapi_scenario, CliSAPIInstance sapi, PhpIni ini, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+		super(sapi_scenario, ini, thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 		this.sapi = sapi;
 	}
 	
@@ -133,6 +135,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		
 		// 0 => for memory debugging
 		env.put(ENV_USE_ZEND_ALLOC, "1");
+		// TODO ZEND_DONT_UNLOAD_MODULES
 		// important: some tests need these to work
 		env.put(ENV_TEST_PHP_EXECUTABLE, build.getPhpExe());
 		env.put(ENV_PHP_PATH, build.getPhpExe());
@@ -179,20 +182,17 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	@Override
 	protected String executeSkipIf() throws Exception {
 		// Check if test should be skipped.
-		if (skipif_file != null) {
-			env.put(ENV_USE_ZEND_ALLOC, "1");
+		env.put(ENV_USE_ZEND_ALLOC, "1");
 				
-			if (!env.containsKey(ENV_PATH_TRANSLATED))
-				env.put(ENV_PATH_TRANSLATED, skipif_file);
-			if (!env.containsKey(ENV_SCRIPT_FILENAME))
-				env.put(ENV_SCRIPT_FILENAME, skipif_file);
-			
-			// execute SKIPIF (60 second timeout)
-			output = sapi.execute(exe_type, skipif_file, null, AHost.ONE_MINUTE, env, active_test_pack.getStorageDirectory());
-						
-			return output.output;
-		}
-		return null;
+		if (!env.containsKey(ENV_PATH_TRANSLATED))
+			env.put(ENV_PATH_TRANSLATED, skipif_file);
+		if (!env.containsKey(ENV_SCRIPT_FILENAME))
+			env.put(ENV_SCRIPT_FILENAME, skipif_file);
+		
+		// execute SKIPIF (60 second timeout)
+		output = sapi.execute(exe_type, skipif_file, null, AHost.ONE_MINUTE, env, active_test_pack.getStorageDirectory());
+					
+		return "";//output.output;
 	} // end String executeSkipIf
 	
 	protected ExecHandle running_test_handle;
@@ -206,7 +206,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	
 	private String doExecuteTest() throws Exception {
 		// execute PHP to execute the TEST code ... allow up to 60 seconds for execution
-		//      if test is taking longer than 40 seconds to run, spin up an additional thread to compensate (so other non-slow tests can be executed)
+		//      if test is taking longer than 30 seconds to run, spin up an additional thread to compensate (so other non-slow tests can be executed)
 		running_test_handle = sapi.execThread(
 					test_cmd, 
 					active_test_pack.getStorageDirectory(),
@@ -215,8 +215,14 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				);
 		StringBuilder output_sb = new StringBuilder(1024);
 		
-		// TODO 5/14 false => suspend
-		running_test_handle.run(output_sb, test_case.isNon8BitCharset()?test_case.getCommonCharset():null, 60, thread, 40, false);
+		running_test_handle.run(
+				output_sb, 
+				test_case.isNon8BitCharset()?test_case.getCommonCharset():null,
+				PhptTestCase.MAX_TEST_TIME_SECONDS,
+				thread,
+				sapi_scenario.getSlowTestTimeSeconds(),
+				cm.getSuspendSeconds()
+			);
 		
 		return output_sb.toString();
 	}
@@ -225,7 +231,10 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected String executeTest() throws Exception { 
 		String output_str = doExecuteTest();
 		
-		if (running_test_handle.isCrashed()) {
+		if (running_test_handle.isCrashed()
+				&& running_test_handle.getExitCode() != -2
+				&& running_test_handle.getExitCode() != NTStatus.STATUS_ACCESS_VIOLATION
+				) {
 			// try again to be sure
 			running_test_handle = null;
 			

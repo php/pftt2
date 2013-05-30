@@ -1,6 +1,5 @@
 package com.mostc.pftt.runner;
 
-import java.io.IOException;
 import java.util.Map;
 
 import com.github.mattficken.Overridable;
@@ -11,7 +10,7 @@ import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.scenario.ScenarioSet;
 
-public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner {
+public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner<LocalPhptTestPackRunner.PhptThread,LocalPhptTestPackRunner> {
 	public static final String ENV_PHPRC = "PHPRC";
 	public static final String ENV_SCRIPT_FILENAME = "SCRIPT_FILENAME";
 	public static final String ENV_PATH_TRANSLATED = "PATH_TRANSLATED";
@@ -26,8 +25,6 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner 
 	public static final String ENV_CONTENT_TYPE = "CONTENT_TYPE";
 	public static final String ENV_CONTENT_LENGTH = "CONTENT_LENGTH";
 	public static final String ENV_HTTP_CONTENT_ENCODING = "HTTP_CONTENT_ENCODING";
-	
-	public abstract void runTest(ConsoleManager cm) throws IOException, Exception, Throwable;
 	
 	protected abstract void stop(boolean force);
 	

@@ -15,7 +15,9 @@ import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.TestCase;
+import com.mostc.pftt.model.app.EPhpUnitTestStatus;
 import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
+import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.PhpBuild;
@@ -138,37 +140,90 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		
 	}
 	
-	protected class UIResultQueueEntry extends HSResultQueueEntry {
-		protected final String test_name, comment, verified_html, sapi_output, sapi_config, web_browser_name_and_version;
+	protected abstract class UIQueueEntry extends HSResultQueueEntry {
+		protected final String web_browser_name_and_version;
+		protected final UITestPack test_pack;
+		
+		public UIQueueEntry(AHost this_host, ScenarioSet this_scenario_set, UITestPack test_pack, String web_browser_name_and_version) {
+			super(this_host, this_scenario_set);
+			this.test_pack = test_pack;
+			this.web_browser_name_and_version = web_browser_name_and_version;
+		}
+	}
+	
+	protected class UIResultQueueEntry extends UIQueueEntry {
+		protected final String test_name, comment, verified_html, sapi_output, sapi_config;
 		protected final EUITestStatus status;
 		protected final byte[] screenshot_png;
-		protected final UITestPack test_pack;
-
+		
 		protected UIResultQueueEntry(AHost this_host, ScenarioSet this_scenario_set, String test_name, String comment, EUITestStatus status, String verified_html, byte[] screenshot_png, UITestPack test_pack, String web_browser_name_and_version, String sapi_output, String sapi_config) {
-			super(this_host, this_scenario_set);
+			super(this_host, this_scenario_set, test_pack, web_browser_name_and_version);
 			this.test_name = test_name;
 			this.comment = comment;
 			this.status = status;
 			this.verified_html = verified_html;
 			this.screenshot_png = screenshot_png;
-			this.web_browser_name_and_version= web_browser_name_and_version;
-			this.test_pack = test_pack;
 			this.sapi_output = sapi_output;
 			this.sapi_config = sapi_config;
 		}
 
 		@Override
 		public void handle() throws IllegalArgumentException, IllegalStateException, IOException {
-			UITestWriter w = getWriter(this_host, this_scenario_set, test_pack, web_browser_name_and_version);
+			UITestWriter w = getCreateUITestWriter(this_host, this_scenario_set, test_pack, web_browser_name_and_version);
 			
 			w.addResult(test_name, comment, status, verified_html, screenshot_png, sapi_output, sapi_config);
 			
-			System.out.println(status+" "+test_name); // TODO
+			System.out.println(_toString(status)+" "+test_name); // TODO
 		}
 		
 	} // end protected class UIResultQueueEntry
 	
-	protected UITestWriter getWriter(AHost this_host, ScenarioSet this_scenario_set, UITestPack test_pack, String web_browser_name_and_version) throws IllegalArgumentException, IllegalStateException, FileNotFoundException, IOException {
+	protected static String _toString(EUITestStatus status) {
+		switch(status) {
+		case PASS:
+			return "pass";
+		case XFAIL:
+			return "xfail";
+		case SKIP:
+			return "skip";
+		case NOT_IMPLEMENTED:
+			return "not_implemented";
+		default:
+			return status.toString();
+		}
+	}
+	
+	protected static String _toString(EPhpUnitTestStatus status) {
+		switch(status) {
+		case PASS:
+			return "pass";
+		case NOT_IMPLEMENTED:
+			return "not_implemented";
+		case SKIP:
+			return "skip";
+		case XSKIP:
+			return "xskip";
+		default:
+			return status.toString();
+		}
+	}
+	
+	protected static String _toString(EPhptTestStatus status) {
+		switch(status) {
+		case PASS:
+			return "pass";
+		case XFAIL:
+			return "xfail";
+		case SKIP:
+			return "skip";
+		case XSKIP:
+			return "xskip";
+		default:
+			return status.toString();
+		}
+	}
+	
+	protected UITestWriter getCreateUITestWriter(AHost this_host, ScenarioSet this_scenario_set, UITestPack test_pack, String web_browser_name_and_version) throws IllegalArgumentException, IllegalStateException, FileNotFoundException, IOException {
 		String test_pack_name_and_version = test_pack.getNameAndVersionInfo().intern();
 		
 		HashMap<String,HashMap<String,HashMap<ScenarioSet,UITestWriter>>> a = ui_test_writer_map.get(this_host);
@@ -222,27 +277,14 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 
 		@Override
 		public void handle() throws IOException {
-			HashMap<ScenarioSet,PhptResultWriter> smap = phpt_writer_map.get(this_host);
-			PhptResultWriter w;
-			if (smap==null) {
-				smap = new HashMap<ScenarioSet,PhptResultWriter>();
-				w = new PhptResultWriter(phpt_telem_dir(this_host, this_scenario_set), this_host, this_scenario_set, build_info, test_pack_branch, test_pack_version);
-				phpt_writer_map.put(this_host, smap);
-				smap.put(this_scenario_set, w);
-			} else {
-				w = smap.get(this_scenario_set);
-				if (w==null) {
-					w = new PhptResultWriter(phpt_telem_dir(this_host, this_scenario_set), this_host, this_scenario_set, build_info, test_pack_branch, test_pack_version);
-					smap.put(this_scenario_set, w);
-				}
-			}
+			PhptResultWriter w = getCreatePhptResultWriter(this_host, this_scenario_set);
 			
 			w.writeResult(cm, this_host, this_scenario_set, this_result);
 			
 			// show on console
 			// TODO
 			w.count++;
-			System.out.println(w.count+" "+this_result.status+" "+this_result.test_case);
+			System.out.println(w.count+" "+_toString(this_result.status)+" "+this_result.test_case);
 			
 			if (cm!=null) {
 				// show in tui/gui (if open)
@@ -252,6 +294,24 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		}
 		
 	} // end protected class PhptResultQueueEntry
+	
+	protected PhptResultWriter getCreatePhptResultWriter(AHost this_host, ScenarioSet this_scenario_set) throws IOException {
+		HashMap<ScenarioSet,PhptResultWriter> smap = phpt_writer_map.get(this_host);
+		PhptResultWriter w;
+		if (smap==null) {
+			smap = new HashMap<ScenarioSet,PhptResultWriter>();
+			w = new PhptResultWriter(phpt_telem_dir(this_host, this_scenario_set), this_host, this_scenario_set, build_info, test_pack_branch, test_pack_version);
+			phpt_writer_map.put(this_host, smap);
+			smap.put(this_scenario_set, w);
+		} else {
+			w = smap.get(this_scenario_set);
+			if (w==null) {
+				w = new PhptResultWriter(phpt_telem_dir(this_host, this_scenario_set), this_host, this_scenario_set, build_info, test_pack_branch, test_pack_version);
+				smap.put(this_scenario_set, w);
+			}
+		}
+		return w;
+	} // end protected PhptResultWriter getCreatePhptResultWriter
 	
 	protected class PhpUnitResultQueueEntry extends HSResultQueueEntry {
 		protected final PhpUnitTestResult this_result;
@@ -263,72 +323,145 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 
 		@Override
 		public void handle() throws IllegalArgumentException, IllegalStateException, IOException {
-			final String test_pack_name_and_version = this_result.test_case.getPhpUnitDist().getSourceTestPack().getNameAndVersionString().intern();
-			
-			HashMap<String,HashMap<ScenarioSet,PhpUnitResultWriter>> a = phpunit_writer_map.get(this_host);
-			HashMap<ScenarioSet,PhpUnitResultWriter> b;
-			PhpUnitResultWriter w;
-			if (a==null) {
-				w = new PhpUnitResultWriter(
-						phpunit_telem_dir(this_host, this_scenario_set, this_result.test_case.getPhpUnitDist().getSourceTestPack()),
-						build_info,
-						this_host, 
-						this_scenario_set,
-						this_result.test_case.getPhpUnitDist().getSourceTestPack()
-					);
-				
-				a = new HashMap<String,HashMap<ScenarioSet,PhpUnitResultWriter>>();
-				b = new HashMap<ScenarioSet,PhpUnitResultWriter>();
-				phpunit_writer_map.put(this_host, a);
-				a.put(test_pack_name_and_version, b);
-				b.put(this_result.scenario_set, w);
-			} else {
-				b = a.get(test_pack_name_and_version);
-				if (b==null) {
-					w = new PhpUnitResultWriter(
-							phpunit_telem_dir(this_host, this_scenario_set, this_result.test_case.getPhpUnitDist().getSourceTestPack()),
-							build_info,
-							this_host, 
-							this_scenario_set,
-							this_result.test_case.getPhpUnitDist().getSourceTestPack()
-						);
-					
-					b = new HashMap<ScenarioSet,PhpUnitResultWriter>();
-					phpunit_writer_map.put(this_host, a);
-					a.put(test_pack_name_and_version, b);
-					b.put(this_result.scenario_set, w);
-				} else {
-					w = b.get(this_result.scenario_set);
-					if (w==null) {
-						w = new PhpUnitResultWriter(
-								phpunit_telem_dir(this_host, this_scenario_set, this_result.test_case.getPhpUnitDist().getSourceTestPack()),
-								build_info,
-								this_host, 
-								this_scenario_set,
-								this_result.test_case.getPhpUnitDist().getSourceTestPack()
-							);
-						
-						b.put(this_result.scenario_set, w);
-					}
-				}
-			} // end if
+			PhpUnitResultWriter w = getCreatePhpUnitResultWriter(
+					this_host,
+					this_scenario_set,
+					this_result.test_case.getPhpUnitDist().getSourceTestPack()
+				);
 			
 			w.writeResult(this_result);
 			
 			// show on console
 			// TODO
-			System.out.println(this_result.status+" "+this_result.test_case);
+			w.count++;
+			System.out.println(w.count+" "+_toString(this_result.status)+" "+this_result.test_case);
 		}
 		
 	} // end protected class PhpUnitResultQueueEntry
 	
-	protected class CloseQueueEntry extends ResultQueueEntry {
+	protected PhpUnitResultWriter getCreatePhpUnitResultWriter(AHost this_host, ScenarioSet this_scenario_set, PhpUnitSourceTestPack src_test_pack) throws FileNotFoundException, IOException {
+		String test_pack_name_and_version = src_test_pack.getNameAndVersionString().intern();
+		
+		HashMap<String,HashMap<ScenarioSet,PhpUnitResultWriter>> a = phpunit_writer_map.get(this_host);
+		HashMap<ScenarioSet,PhpUnitResultWriter> b;
+		PhpUnitResultWriter w;
+		if (a==null) {
+			w = new PhpUnitResultWriter(
+					phpunit_telem_dir(this_host, this_scenario_set, src_test_pack),
+					build_info,
+					this_host, 
+					this_scenario_set,
+					src_test_pack
+				);
+			
+			a = new HashMap<String,HashMap<ScenarioSet,PhpUnitResultWriter>>();
+			b = new HashMap<ScenarioSet,PhpUnitResultWriter>();
+			phpunit_writer_map.put(this_host, a);
+			a.put(test_pack_name_and_version, b);
+			b.put(this_scenario_set, w);
+		} else {
+			b = a.get(test_pack_name_and_version);
+			if (b==null) {
+				w = new PhpUnitResultWriter(
+						phpunit_telem_dir(this_host, this_scenario_set, src_test_pack),
+						build_info,
+						this_host, 
+						this_scenario_set,
+						src_test_pack
+					);
+				
+				b = new HashMap<ScenarioSet,PhpUnitResultWriter>();
+				phpunit_writer_map.put(this_host, a);
+				a.put(test_pack_name_and_version, b);
+				b.put(this_scenario_set, w);
+			} else {
+				w = b.get(this_scenario_set);
+				if (w==null) {
+					w = new PhpUnitResultWriter(
+							phpunit_telem_dir(this_host, this_scenario_set, src_test_pack),
+							build_info,
+							this_host, 
+							this_scenario_set,
+							src_test_pack
+						);
+					
+					b.put(this_scenario_set, w);
+				}
+			}
+		} // end if
+		return w;
+	} // end protected PhpUnitResultWriter getCreatePhpUnitResultWriter
+	
+	protected class PhptTestStartQueueEntry extends HSResultQueueEntry {
+		protected final String test_name;
+		
+		public PhptTestStartQueueEntry(AHost host, ScenarioSet scenario_set, String test_name) {
+			super(host, scenario_set);
+			this.test_name = test_name;
+		}
+		
+		@Override
+		public void handle() throws IllegalArgumentException, IllegalStateException, IOException {
+			getCreatePhptResultWriter(this_host, this_scenario_set).notifyStart(test_name);
+		}
+		
+	} // end protected class PhptTestStartQueueEntry
+	
+	protected abstract class PhpUnitQueueEntry extends HSResultQueueEntry {
+		protected final PhpUnitSourceTestPack src_test_pack;
+		
+		protected PhpUnitQueueEntry(AHost this_host, ScenarioSet this_scenario_set, PhpUnitSourceTestPack src_test_pack) {
+			super(this_host, this_scenario_set);
+			this.src_test_pack = src_test_pack;
+		}
+		
+	}
+	
+	protected class PhpUnitTestStartQueueEntry extends PhpUnitQueueEntry {
+		protected final String test_name;
+		
+		public PhpUnitTestStartQueueEntry(AHost host, ScenarioSet scenario_set, PhpUnitSourceTestPack src_test_pack, String test_name) {
+			super(host, scenario_set, src_test_pack);
+			this.test_name = test_name;
+		}
 
 		@Override
 		public void handle() throws IllegalArgumentException, IllegalStateException, IOException {
-			doClose();
+			getCreatePhpUnitResultWriter(this_host, this_scenario_set, src_test_pack).notifyStart(test_name);
 		}
 		
+	} // end protected class PhpUnitTestStartQueueEntry
+	
+	protected class UITestStartQueueEntry extends UIQueueEntry {
+		protected final String test_name;
+		
+		public UITestStartQueueEntry(AHost host, ScenarioSet scenario_set, UITestPack test_pack, String web_browser_name_and_version, String test_name) {
+			super(host, scenario_set, test_pack, web_browser_name_and_version);
+			this.test_name = test_name;
+		}
+		
+		@Override
+		public void handle() throws IllegalArgumentException, IllegalStateException, IOException {
+			UITestWriter w = getCreateUITestWriter(this_host, this_scenario_set, test_pack, web_browser_name_and_version);
+			
+			w.notifyStart(test_name);
+		}
+		
+	} // end protected class UITestStartQueueEntry
+	
+	@Override
+	public void notifyStart(AHost host, ScenarioSet scenario_set, PhptTestCase test_case) {
+		results.add(new PhptTestStartQueueEntry(host, scenario_set, test_case.getName()));
+	}
+	
+	@Override
+	public void notifyStart(AHost host, ScenarioSet scenario_set, PhpUnitSourceTestPack src_test_pack, PhpUnitTestCase test_case) {
+		results.add(new PhpUnitTestStartQueueEntry(host, scenario_set, src_test_pack, test_case.getName()));
+	}
+	
+	@Override
+	public void notifyStart(AHost host, ScenarioSet scenario_set, UITestPack test_pack, String web_browser_name_and_version, String test_name) {
+		results.add(new UITestStartQueueEntry(host, scenario_set, test_pack, web_browser_name_and_version, test_name));
 	}
 	
 	public File getResultPackPath() {
@@ -396,10 +529,70 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 			global_exception_writer.flush();
 		}
 	}
-
+	
 	@Override
 	public void addResult(AHost host, ScenarioSet scenario_set, PhpUnitTestResult result) {
 		results.add(new PhpUnitResultQueueEntry(host, scenario_set, result));
+	}
+	
+	protected class NotifyPhptFinishedEntry extends HSResultQueueEntry {
+
+		protected NotifyPhptFinishedEntry(AHost this_host, ScenarioSet this_scenario_set) {
+			super(this_host, this_scenario_set);
+		}
+
+		@Override
+		public void handle() throws IllegalArgumentException, IllegalStateException, IOException {
+			getCreatePhptResultWriter(this_host, this_scenario_set).close();
+		}
+		
+	}
+	
+	public void notifyPhptFinished(AHost host, ScenarioSet scenario_set) {
+		results.add(new NotifyPhptFinishedEntry(host, scenario_set));
+	}
+	
+	protected class NotifyPhpUnitFinishedEntry extends PhpUnitQueueEntry {
+		
+		protected NotifyPhpUnitFinishedEntry(AHost this_host, ScenarioSet this_scenario_set, PhpUnitSourceTestPack src_test_pack) {
+			super(this_host, this_scenario_set, src_test_pack);
+		}
+
+		@Override
+		public void handle() throws IllegalArgumentException, IllegalStateException, IOException {
+			getCreatePhpUnitResultWriter(this_host, this_scenario_set, src_test_pack).close();
+		}
+		
+	}
+	
+	public void notifyPhpUnitFinished(AHost host, ScenarioSet scenario_set, PhpUnitSourceTestPack src_test_pack) {
+		results.add(new NotifyPhpUnitFinishedEntry(host, scenario_set, src_test_pack));
+	}
+	
+	protected class NotifyUITestFinishedEntry extends UIQueueEntry {
+		
+		protected NotifyUITestFinishedEntry(AHost this_host, ScenarioSet this_scenario_set, UITestPack test_pack, String web_browser_name_and_version) {
+			super(this_host, this_scenario_set, test_pack, web_browser_name_and_version);
+		}
+
+		@Override
+		public void handle() throws IllegalArgumentException, IllegalStateException, IOException {
+			getCreateUITestWriter(this_host, this_scenario_set, test_pack, web_browser_name_and_version).close();
+		}
+		
+	}
+	
+	public void notifyUITestFinished(AHost host, ScenarioSet scenario_set, UITestPack test_pack, String web_browser_name_and_version) {
+		results.add(new NotifyUITestFinishedEntry(host, scenario_set, test_pack, web_browser_name_and_version));
+	}
+	
+	protected class CloseQueueEntry extends ResultQueueEntry {
+
+		@Override
+		public void handle() throws IllegalArgumentException, IllegalStateException, IOException {
+			doClose();
+		}
+		
 	}
 	
 	@Override
@@ -660,7 +853,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 
 	public void addNotes(AHost host, UITestPack test_pack, ScenarioSet scenario_set, String web_browser, String notes) {
 		try {
-			getWriter(host, scenario_set, test_pack, web_browser).addNotes(notes);
+			getCreateUITestWriter(host, scenario_set, test_pack, web_browser).addNotes(notes);
 		} catch ( Exception ex ) {
 			ex.printStackTrace();
 		}

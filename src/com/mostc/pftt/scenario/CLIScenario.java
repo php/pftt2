@@ -4,6 +4,7 @@ import java.util.Map;
 
 import com.github.mattficken.io.Trie;
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.main.IENVINIFilter;
 import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.EPhptSection;
 import com.mostc.pftt.model.core.EPhptTestStatus;
@@ -49,7 +50,7 @@ public class CliScenario extends AbstractSAPIScenario {
 			PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case,
 			ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set,
 			PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
-		return new CliPhptTestCaseRunner(((CliTestCaseGroupKey)group_key).getCliSAPIInstance(), group_key.getPhpIni(), thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
+		return new CliPhptTestCaseRunner(this, ((CliTestCaseGroupKey)group_key).getCliSAPIInstance(), group_key.getPhpIni(), thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 	}
 	
 	@Override
@@ -67,17 +68,18 @@ public class CliScenario extends AbstractSAPIScenario {
 		// default PhpIni will be given to php.exe using a file... @see CliPhptTestCaseRunner#prepare
 		//
 		// this is needed only to collect any custom directives that a test case provides
-		PhpIni ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, host, build); // TODO temp 5/13
-		//ini.putSingle("sys_temp_dir", "c:\\users\\matt\\appdata\\local\\temp");
+		PhpIni ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, host, build);
 		AbstractINIScenario.setupScenarios(cm, host, scenario_set, build, ini);
+		ini.is_default = true;
 		return ini;
 	}
 
 	@Override
-	public TestCaseGroupKey createTestGroupKey(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack active_test_pack, PhptTestCase test_case, TestCaseGroupKey group_key) {
+	public TestCaseGroupKey createTestGroupKey(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack active_test_pack, PhptTestCase test_case, IENVINIFilter filter, TestCaseGroupKey group_key) {
 		if (test_case.containsSection(EPhptSection.INI)) {
 			PhpIni ini = createIniForTest(cm, host, build, active_test_pack, scenario_set);
 			ini.replaceAll(test_case.getINI(active_test_pack, host));
+			filter.prepareIni(cm, ini);
 			
 			// note: don't bother comparing test case's INI with existing group_key's INI, LocalPhptTestPackRunner
 			//       already does comparison of this new group_key and discards any duplicates
@@ -93,6 +95,8 @@ public class CliScenario extends AbstractSAPIScenario {
 			return group_key;
 		} else {
 			PhpIni ini = createIniForTest(cm, host, build, active_test_pack, scenario_set);
+			
+			filter.prepareIni(cm, ini);
 			
 			CliSAPIInstance sapi = new CliSAPIInstance(host, build, ini);
 			
@@ -122,6 +126,8 @@ public class CliScenario extends AbstractSAPIScenario {
 	@Override
 	public AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(PhpUnitThread thread, TestCaseGroupKey group_key, ConsoleManager cm, ITestResultReceiver twriter, Map<String, String> globals, Map<String, String> env, AHost runner_host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String, String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
 		return new CliPhpUnitTestCaseRunner(
+				this,
+				thread,
 				twriter,
 				globals,
 				env,
@@ -252,5 +258,15 @@ public static Trie RANDOMLY_FAIL = PhptTestCase.createNamed(
 		}
 		return false;
 	} // end public boolean willSkip
+
+	@Override
+	public int getSlowTestTimeSeconds() {
+		return 15;
+	}
+
+	@Override
+	public long getFastTestTimeSeconds() {
+		return 7;
+	}
 
 } // end public class CliScenario

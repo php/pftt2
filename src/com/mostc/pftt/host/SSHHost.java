@@ -349,7 +349,7 @@ public class SSHHost extends RemoteHost {
 	}
 	
 	private String _path;
-	protected SessionChannelClient do_exec(String cmd, Map<String, String> env, String chdir, byte[] stdin_post, OutputStream out) throws IOException, IllegalStateException {
+	public SessionChannelClient createSessionChannelClient(String cmd, Map<String, String> env, String chdir, byte[] stdin_post, OutputStream out) throws IOException, IllegalStateException {
 		ensureSshOpen();
 		SessionChannelClient session = ssh.openSessionChannel();
 		
@@ -398,18 +398,20 @@ public class SSHHost extends RemoteHost {
 		}
 		//
 		if (session.executeCommand(cmd)) {
-			IOStreamConnector output = new IOStreamConnector();
-			output.connect(session.getInputStream(), out);
+			if (out!=null) {
+				IOStreamConnector output = new IOStreamConnector();
+				output.connect(session.getInputStream(), out);
+			}
 			return session;
 		} else {
 			throw new IllegalStateException("command not executed: "+cmd);
 		}
-	} // end protected SessionChannelClient do_exec
+	} // end public SessionChannelClient createSessionChannelClient
 	
 	@Override
 	public ExecHandle execThread(String cmd, Map<String, String> env, String chdir, byte[] stdin_post) throws Exception {
 		ByteArrayOutputStream out = new ByteArrayOutputStream(1024);
-		SessionChannelClient session = do_exec(cmd, env, chdir, stdin_post, out);
+		SessionChannelClient session = createSessionChannelClient(cmd, env, chdir, stdin_post, out);
 		
 		return new SSHExecHandle(session, out);
 	}
@@ -462,7 +464,7 @@ public class SSHHost extends RemoteHost {
 		}
 
 		@Override
-		public void run(StringBuilder output_sb, Charset charset, int timeout_sec, final TestPackRunnerThread thread, int slow_sec, boolean suspend) throws IOException, InterruptedException {
+		public void run(StringBuilder output_sb, Charset charset, int timeout_sec, final TestPackRunnerThread thread, int slow_sec, int suspend_seconds) throws IOException, InterruptedException {
 			do_run(session, charset, timeout_sec, thread, slow_sec);
 			output_sb.append(out.toString());
 		}
@@ -476,7 +478,7 @@ public class SSHHost extends RemoteHost {
 		final ExecOutput eo = new ExecOutput();
 		
 		//
-		final SessionChannelClient session = do_exec(cmd, env, chdir, stdin_post, out);
+		final SessionChannelClient session = createSessionChannelClient(cmd, env, chdir, stdin_post, out);
 		
 		do_run(session, charset, timeout_sec, thread, slow_sec);
 		

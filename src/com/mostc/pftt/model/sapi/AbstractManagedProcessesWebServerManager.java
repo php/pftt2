@@ -17,7 +17,9 @@ import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.DebuggerManager;
 import com.mostc.pftt.util.DebuggerManager.Debugger;
+import com.mostc.pftt.util.TimerUtil.RepeatingThread;
 import com.mostc.pftt.util.ErrorUtil;
+import com.mostc.pftt.util.TimerUtil;
 import com.mostc.pftt.util.WinDebugManager;
 
 public abstract class AbstractManagedProcessesWebServerManager extends WebServerManager {
@@ -102,13 +104,13 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 			//            instead, just use an AtomicInteger to coordinate port allocation
 			while (port_attempts < 3) {
 				port = last_port.incrementAndGet();
-				if (!isLocalhostTCPPortUsed(port)) {
-					found_port = true;
-					break;
-				} else if (port > PORT_RANGE_STOP) {
+				if (port > PORT_RANGE_STOP) {
 					// start over and hope ports at start of range are free
 					last_port.set(PORT_RANGE_START);
 					port_attempts++;
+				} else if (!isLocalhostTCPPortUsed(port)) {
+					found_port = true;
+					break;
 				}
 			}
 			
@@ -151,10 +153,10 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 				
 				web.setProcess(handle);
 				
-				// check web server periodically to see if it has crashed
-				timer.scheduleAtFixedRate(new TimerTask() {
+				// check web server every 1 second to see if it has crashed
+				TimerUtil.repeatEverySeconds(1, new TimerUtil.RepeatingRunnable() {
 						@Override
-						public void run() {
+						public void run(RepeatingThread thread) {
 							if (!handlef.isRunning()) {
 								try {
 									if (handlef.isCrashed()) {
@@ -171,26 +173,15 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 									}
 								} finally {
 									// don't need to check any more
-									cancel();
+									thread.cancel();
 								}
 							}
 						} // end public void run
-					}, 0, 500);
+					});
 				//
 				
 				return web;
 			} catch ( Exception ex ) {
-				if (host.isWindows() && total_attempts + 1 < MAX_TOTAL_ATTEMPTS && ex instanceof IOException && ex.getMessage().contains("Not enough storage")) {
-					// host is low/out of memory
-					//
-					// wait longer before trying again (hopefully will have more memory)
-					//
-					//
-					try {
-						Thread.sleep(30000 * (MAX_TOTAL_ATTEMPTS-total_attempts));
-					} catch ( InterruptedException ex2 ) {}
-				}
-				
 				if (handle!=null && !handle.isCrashed())
 					// make sure process is killed in this case (don't kill crashed process)
 					handle.close();

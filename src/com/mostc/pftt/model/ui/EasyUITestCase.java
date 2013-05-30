@@ -15,7 +15,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
  *
  */
 
-public abstract class EasyUITest extends UITest implements IUITestDriver {
+public abstract class EasyUITestCase extends UITestCase implements IUITestDriver {
 	protected IUITestDriver driver;
 	
 	public abstract EUITestStatus test() throws Exception;

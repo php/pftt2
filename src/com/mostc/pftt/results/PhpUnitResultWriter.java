@@ -45,8 +45,9 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 	protected final KXmlSerializer serial;
 	protected final File dir;
 	protected final OutputStream out;
+	protected final PrintWriter all_csv_pw, started_pw;
 	protected final HashMap<EPhpUnitTestStatus,StatusListEntry> status_list_map;
-	protected final HashMap<String,String> fail_output_by_name;
+	protected HashMap<String,String> fail_output_by_name;
 	protected final ScenarioSet scenario_set;
 	protected final AHost host;
 	protected final PhpBuildInfo build_info;
@@ -64,6 +65,9 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 		
 		this.dir = dir;
 		dir.mkdirs();
+		
+		all_csv_pw = new PrintWriter(new FileWriter(new File(dir, "ALL.csv")));
+		started_pw = new PrintWriter(new FileWriter(new File(dir, "STARTED.txt")));
 		
 		fail_output_by_name = new HashMap<String,String>(800);
 		
@@ -88,7 +92,7 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 		protected final EPhpUnitTestStatus status;
 		protected final File journal_file;
 		protected PrintWriter journal_writer;
-		protected final LinkedList<String> test_names;
+		protected LinkedList<String> test_names;
 		
 		public StatusListEntry(EPhpUnitTestStatus status) throws IOException {
 			this.status = status;
@@ -108,7 +112,7 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 				return;
 			
 			journal_writer.close();
-			
+						
 			// sort alphabetically
 			Collections.sort(test_names);
 			
@@ -122,15 +126,19 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 			journal_file.delete();
 			
 			journal_writer = null;
+			test_names = null;
 		}
 	} // end protected class StatusListEntry
 	
 	public String getFailureOutput(String test_name) {
-		return fail_output_by_name.get(test_name);
+		return fail_output_by_name == null ? null : fail_output_by_name.get(test_name);
 	}
 
 	// @see PHPUnit/Util/Log/JUnit.php#startTestSuite
 	public void writeResult(PhpUnitTestResult result) throws IllegalArgumentException, IllegalStateException, IOException {
+		if (closed)
+			throw new IllegalStateException("can not write to closed PhpUnitResultWriter. it is closed.");
+		
 		if (result.ini!=null && (this.ini==null||!this.ini.equals(result.ini)))
 			this.ini = result.ini;
 		test_count++;
@@ -163,7 +171,20 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 		
 		// write result itself
 		result.serial(serial);
+		
+		// store name, status and run-time in CSV format
+		all_csv_pw.print("'");
+		all_csv_pw.print(test_name);
+		all_csv_pw.print("','");
+		all_csv_pw.print(result.status);
+		all_csv_pw.print("',");
+		all_csv_pw.print(result.run_time_micros);
+		all_csv_pw.println();
 	} // end public void writeResult
+	
+	public void notifyStart(String test_name) {
+		started_pw.println(test_name);
+	}
 	
 	private void writeTestSuiteStart(String test_suite_name) throws IllegalArgumentException, IllegalStateException, IOException {
 		serial.startTag(null, "testsuite");
@@ -176,10 +197,15 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 	}
 	
 	private boolean closed = false;
+	protected int count; // TODO
 	public void close() throws IllegalArgumentException, IllegalStateException, IOException {
 		if (closed)
 			return;
 		closed = true;
+		
+		started_pw.close();
+		all_csv_pw.close();
+		
 		writeTestSuiteEnd();
 		writeTally();
 		serial.endTag(null, "testsuites");
@@ -201,6 +227,8 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 		// do this after finishing phpunit.xml since that's more important than alphabetizing text file lists
 		for ( StatusListEntry e : status_list_map.values() )
 			e.close();
+		
+		fail_output_by_name = null;
 	} // end public void close
 	
 	private void writeTally() throws IllegalArgumentException, IllegalStateException, IOException {

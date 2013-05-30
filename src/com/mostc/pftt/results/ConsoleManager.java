@@ -107,5 +107,8 @@ public interface ConsoleManager {
 	public int getThreadCount();
 	public boolean isRestartEachTestAll();
 	public int getDelayBetweenMS();
+	public int getRunCount();
+	public int getSuspendSeconds();
+	public boolean isGetActualIniAll();
 	
 } // end public class ConsoleManager

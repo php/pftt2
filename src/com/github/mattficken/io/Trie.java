@@ -1,5 +1,7 @@
 package com.github.mattficken.io;
 
+import java.util.LinkedList;
+
 public class Trie {
 	private final Trie[]  myLinks;
     private boolean myIsWord;
@@ -15,7 +17,12 @@ public class Trie {
     	return c;//( c - start ) + 2;
     }
     
+    LinkedList<String> list;
     public void addString(String s) {
+    	if (list==null)
+    		list = new LinkedList<String>();
+    	list.add(s);
+    	
     	Trie t = this;
     	final int limit = s.length();
     	int index;
@@ -30,6 +37,8 @@ public class Trie {
     }
 
     public boolean equals(String s) {
+    	if (list!=null)
+    		return list.contains(s); // TODO temp
     	Trie t = this;
     	final int limit = s.length();
     	int index, k;
@@ -43,6 +52,8 @@ public class Trie {
     }
     
     public boolean startsWith(String s) {
+    	if (list!=null)
+    		return list.contains(s); // TODO temp
     	Trie t = this;
     	final int limit = s.length();
     	int index;

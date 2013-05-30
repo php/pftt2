@@ -5,10 +5,12 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Random;
 
 import javax.annotation.Nullable;
 
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.main.IENVINIFilter;
 import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.ESAPIType;
 import com.mostc.pftt.model.core.PhpBuild;
@@ -33,9 +35,11 @@ import com.mostc.pftt.scenario.AbstractFileSystemScenario.ITestPackStorageDir;
  */
 
 public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptActiveTestPack, PhptSourceTestPack, PhptTestCase> {
-
-	public LocalPhptTestPackRunner(ConsoleManager cm, ITestResultReceiver twriter, ScenarioSet scenario_set, PhpBuild build, AHost storage_host, AHost runner_host) {
+	protected final IENVINIFilter filter;
+	
+	public LocalPhptTestPackRunner(ConsoleManager cm, ITestResultReceiver twriter, ScenarioSet scenario_set, PhpBuild build, AHost storage_host, AHost runner_host, IENVINIFilter filter) {
 		super(cm, twriter, scenario_set, build, storage_host, runner_host);
+		this.filter = filter;
 	}
 	
 	@Override
@@ -110,12 +114,17 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 
 	@Override
 	protected void preGroup(List<PhptTestCase> test_cases) {
-		// resort test cases so that the slow tests are run first, then all will finish faster
+		// evenly/randomly distribute SLOOOooow test cases throughout the list
+		// will get faster usage with the dynamic thread pool
+		//    -rather than having slow tests all clustered together
 		try {
+			final Random r = new Random();
+			final int test_count = test_cases.size();
+			final int half_test_count = test_count / 2;
 			Collections.sort(test_cases, new Comparator<PhptTestCase>() {
 					@Override
 					public int compare(PhptTestCase a, PhptTestCase b) {
-						return b.isSlowTest() ? -1 : a.isSlowTest() ? -1 : +1;
+						return r.nextInt(test_count)-half_test_count;//return b.isSlowTest() ? -1 : a.isSlowTest() ? -1 : +1;
 					}
 					
 				});
@@ -125,6 +134,13 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 	
 	@Override
 	protected TestCaseGroupKey createGroupKey(PhptTestCase test_case, TestCaseGroupKey group_key) throws Exception {
+		String name = test_case.getName();
+		if (name.contains("posix")||name.contains("sql")||name.contains("curl")||name.contains("ftp")||name.contains("dba")||name.contains("sybase")||name.contains("interbase")||name.contains("ldap")||name.contains("imap")||name.contains("oci")||name.contains("soap")||name.contains("xmlrpc")||name.contains("pcntl")||name.contains("odbc")||name.contains("snmp")||name.contains("pdo")) {
+			// TODO temp 5/29
+			twriter.addResult(runner_host, scenario_set, new PhptTestResult(runner_host, EPhptTestStatus.SKIP, test_case, "Skip", null, null, null, null, null, null, null, null, null, null, null));
+			return null;
+		}
+		
 		final ESAPIType sapi_type = sapi_scenario.getSAPIType();
 		for ( Scenario scenario : scenario_set ) {
 			// usually just asking sapi_scenario, sometimes file system scenario
@@ -136,10 +152,14 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 			}
 		}
 		
-		//
-		group_key = sapi_scenario.createTestGroupKey(cm, runner_host, build, scenario_set, active_test_pack, test_case, group_key);
+		
 		
 		//
+		group_key = sapi_scenario.createTestGroupKey(cm, runner_host, build, scenario_set, active_test_pack, test_case, filter, group_key);
+		
+		//
+		// now that PhpIni is generated, we know which extensions will be loaded
+		//  so we can now skip tests of extensions that aren't loaded (faster than running every test's SKIPIF section)
 		if (sapi_scenario.willSkip(cm, twriter, runner_host, scenario_set, sapi_scenario.getSAPIType(), group_key.getPhpIni(), build, test_case)) {
 			// #willSkip will record the PhptTestResult explaining why it was skipped
 			return null;
@@ -186,7 +206,8 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 		@Override
 		protected void runTest(TestCaseGroupKey group_key, PhptTestCase test_case) throws IOException, Exception, Throwable {
 			r = sapi_scenario.createPhptTestCaseRunner(this, group_key, test_case, cm, twriter, runner_host, scenario_set, build, src_test_pack, active_test_pack);
-			r.runTest(cm);
+			twriter.notifyStart(runner_host, scenario_set, test_case);
+			r.runTest(cm, this, LocalPhptTestPackRunner.this);
 		}
 
 		@Override

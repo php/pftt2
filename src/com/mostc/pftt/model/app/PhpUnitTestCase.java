@@ -12,6 +12,7 @@ import com.mostc.pftt.model.TestCase;
  */
 
 public class PhpUnitTestCase extends TestCase {
+	public static final int MAX_TEST_TIME_SECONDS = 60;
 	protected final PhpUnitDist php_unit_dist;
 	protected final String abs_filename, rel_filename, className, methodName;
 	protected final int arg_count;

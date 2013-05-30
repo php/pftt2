@@ -16,7 +16,17 @@ public abstract class AbstractProductionWebServerScenario extends AbstractWebSer
 	
 	@Override
 	public int getTestThreadCount(AHost host) {
-		return 8 * host.getCPUCount();
+		return 4 * host.getCPUCount();
+	}
+	
+	@Override
+	public int getSlowTestTimeSeconds() {
+		return 10;
+	}
+	
+	@Override
+	public long getFastTestTimeSeconds() {
+		return 5;
 	}
 	
 } // end public abstract class AbstractProductionWebServerScenario

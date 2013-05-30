@@ -180,15 +180,19 @@ pw.println("""clearstatcache();
 		\$output = ob_get_clean();
 		\$status = PHPUnit_Runner_BaseTestRunner::STATUS_PASSED;
 	} catch (PHPUnit_Framework_IncompleteTest \$e) {
+		\$run_time = microtime(TRUE) - \$start_time;
 		\$status     = PHPUnit_Runner_BaseTestRunner::STATUS_INCOMPLETE;
 		\$status_msg = \$e->getTraceAsString();
 	} catch (PHPUnit_Framework_SkippedTest \$e) {
+		\$run_time = microtime(TRUE) - \$start_time;
 		\$status     = PHPUnit_Runner_BaseTestRunner::STATUS_SKIPPED;
 		\$status_msg = \$e->getTraceAsString();
 	} catch (PHPUnit_Framework_AssertionFailedError \$e) {
+		\$run_time = microtime(TRUE) - \$start_time;
 		\$status     = PHPUnit_Runner_BaseTestRunner::STATUS_FAILURE;
 		\$status_msg = \$e->getTraceAsString();
 	} catch (Exception \$e) {
+		\$run_time = microtime(TRUE) - \$start_time;
 		\$status     = PHPUnit_Runner_BaseTestRunner::STATUS_ERROR;
 		\$status_msg = \$e->getTraceAsString();""");
 	} // end if (reflection_only)
@@ -221,6 +225,7 @@ pw.println("""	} catch ( Exception \$e ) {
 		echo \$status_msg;
 		echo PHP_EOL;
 		echo \$output;
+		echo "run time \$run_time micros";echo PHP_EOL;
 		dump_info();
 		break;
 	case PHPUnit_Runner_BaseTestRunner::STATUS_INCOMPLETE:
@@ -229,6 +234,7 @@ pw.println("""	} catch ( Exception \$e ) {
 		echo \$status_msg;
 		echo PHP_EOL;
 		echo \$output;
+		echo "run time \$run_time micros";echo PHP_EOL;
 		break;
 	case PHPUnit_Runner_BaseTestRunner::STATUS_FAILURE:
 		echo 'FAILURE';
@@ -237,6 +243,7 @@ pw.println("""	} catch ( Exception \$e ) {
 		echo PHP_EOL;
 		echo \$output;
 		dump_info();
+		echo "run time \$run_time micros";echo PHP_EOL;
 		break;
 	case PHPUnit_Runner_BaseTestRunner::STATUS_ERROR:
 		\$status = 'ERROR';
@@ -258,6 +265,7 @@ pw.println("""	} catch ( Exception \$e ) {
 		echo PHP_EOL;
 		echo \$output;
 		dump_info();
+		echo "run time \$run_time micros";echo PHP_EOL;
 		break;
 	}
 

@@ -16,10 +16,14 @@ import org.xmlpull.v1.XmlPullParserException;
 
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.model.TestCase;
+import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
+import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpDebugPack;
 import com.mostc.pftt.model.core.PhptActiveTestPack;
+import com.mostc.pftt.model.core.PhptTestCase;
+import com.mostc.pftt.model.ui.UITestPack;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhpUnitTestResult;
@@ -170,6 +174,21 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 		try {
 			serial.flush();
 		} catch ( Exception ex ) {}
+	}
+	
+	@Override
+	public void notifyStart(AHost this_host, ScenarioSet this_scenario_set, PhptTestCase test_case) {
+		// TODO Auto-generated method stub
+	}
+
+	@Override
+	public void notifyStart(AHost host, ScenarioSet scenario_set, PhpUnitSourceTestPack src_test_pack, PhpUnitTestCase test_case) {
+		// TODO Auto-generated method stub
+	}
+
+	@Override
+	public void notifyStart(AHost host, ScenarioSet scenario_set, UITestPack test_pack, String web_browser_name_and_version, String test_name) {
+		// TODO Auto-generated method stub
 	}
 	
 	@Override
@@ -346,6 +365,21 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 	@Override
 	public boolean isRunGroupTimesList() {
 		return run_group_times_list.size() > 0;
+	}
+	
+	@Override
+	public int getRunCount() {
+		return 0;
+	}
+
+	@Override
+	public int getSuspendSeconds() {
+		return 0;
+	}
+
+	@Override
+	public boolean isGetActualIniAll() {
+		return false;
 	}
 
 	@Override

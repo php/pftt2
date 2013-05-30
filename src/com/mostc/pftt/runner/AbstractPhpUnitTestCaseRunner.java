@@ -18,6 +18,8 @@ import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhpUnitTestResult;
+import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
+import com.mostc.pftt.scenario.AbstractSAPIScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 /** runs a single PhpUnitTestCase
@@ -36,11 +38,13 @@ import com.mostc.pftt.scenario.ScenarioSet;
 //   -counting additional statuses (ex: xskip)
 //   -accurate crash detection
 //
-public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunner {
+public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunner<LocalPhpUnitTestPackRunner.PhpUnitThread,LocalPhpUnitTestPackRunner> {
 	public static final String DB_DSN = "DB_DSN";
 	public static final String DB_USER = "DB_USER";
 	public static final String DB_PASSWD = "DB_PASSWD";
 	public static final String DB_DBNAME = "DB_DBNAME";
+	protected final AbstractSAPIScenario sapi_scenario;
+	protected final PhpUnitThread thread;
 	protected final ITestResultReceiver tmgr;
 	protected final Map<String, String> globals;
 	protected final Map<String, String> env;
@@ -57,7 +61,9 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 	protected boolean is_crashed;
 	protected final boolean reflection_only;
 
-	public AbstractPhpUnitTestCaseRunner(ITestResultReceiver tmgr, Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
+	public AbstractPhpUnitTestCaseRunner(AbstractSAPIScenario sapi_scenario, PhpUnitThread thread, ITestResultReceiver tmgr, Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
+		this.sapi_scenario = sapi_scenario;
+		this.thread = thread;
 		this.tmgr = tmgr;
 		this.globals = globals;
 		this.env = env;
@@ -123,7 +129,8 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 	
 	protected abstract String execute(String template_file) throws IOException, Exception;
 	
-	public void runTest() throws Exception {
+	@Override
+	public void runTest(ConsoleManager cm, LocalPhpUnitTestPackRunner.PhpUnitThread t, LocalPhpUnitTestPackRunner r) throws Exception {
 		host.mkdirs(my_temp_dir);
 		
 		final String template_file = my_temp_dir+"/test.php";
@@ -146,19 +153,20 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 		//
 
 		EPhpUnitTestStatus status;
+		float run_time_micros = 0; // TODO
 		if (checkRequireOnceError(output)) {
 			status = EPhpUnitTestStatus.TEST_EXCEPTION;
 			
-			tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, getSAPIOutput(), getSAPIConfig()));
+			tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, run_time_micros, getSAPIOutput(), getSAPIConfig()));
 		} else if (is_crashed) {
 			if (PAT_CLASS_NOT_FOUND.matcher(output).find()) {
 				status = EPhpUnitTestStatus.UNSUPPORTED;
 				
-				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, getSAPIOutput(), getSAPIConfig()));
+				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, run_time_micros, getSAPIOutput(), getSAPIConfig()));
 			} else if (PAT_FATAL_ERROR.matcher(output).find()) {
 				status = EPhpUnitTestStatus.ERROR;
 				
-				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, getSAPIOutput(), getSAPIConfig()));
+				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, run_time_micros, getSAPIOutput(), getSAPIConfig()));
 			} else {
 				// CRASH may really be a syntax error (BORK), check to make sure
 				final ExecOutput syntax_eo = host.execOut(
@@ -170,11 +178,11 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 					// its a syntax error - BORK, as test case can't run
 					status = EPhpUnitTestStatus.BORK;
 					
-					tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, syntax_eo.output, ini, getSAPIOutput(), getSAPIConfig()));
+					tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, syntax_eo.output, ini, run_time_micros, getSAPIOutput(), getSAPIConfig()));
 				} else {
 					status = EPhpUnitTestStatus.CRASH;
 					
-					tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, getSAPIOutput(), getSAPIConfig()));
+					tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, run_time_micros, getSAPIOutput(), getSAPIConfig()));
 				}
 			}
 		} else {
@@ -220,12 +228,11 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 				else if (host.isWindows() && output_lc.contains("posix is not supported"))
 					status = EPhpUnitTestStatus.XSKIP;
 			}
+			final String output_str = StringUtil.join(lines, 1, "\n");
 			if (status.isNotPass()) {
-				final String output_str = StringUtil.join(lines, 1, "\n");
-				
-				tmgr.addResult(host, scenario_set, notifyNotPass(new PhpUnitTestResult(test_case, status, scenario_set, host, output_str, ini, getSAPIOutput(), getSAPIConfig())));
+				tmgr.addResult(host, scenario_set, notifyNotPass(new PhpUnitTestResult(test_case, status, scenario_set, host, output_str, ini, run_time_micros, getSAPIOutput(), getSAPIConfig())));
 			} else {
-				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, null, ini, getSAPIOutput(), getSAPIConfig()));
+				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output_str, ini, run_time_micros, getSAPIOutput(), getSAPIConfig()));
 			}
 		}
 		
@@ -244,7 +251,7 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 	protected abstract void stop(boolean force);
 	@Overridable
 	protected int getMaxTestRuntimeSeconds() {
-		return 60;
+		return PhpUnitTestCase.MAX_TEST_TIME_SECONDS;
 	}
 
 	/** configures PhpUnit globals to use the given database.

@@ -58,6 +58,7 @@ public class PhpIni {
 	public static final String UNICODE_OUTPUT_ENCODING = "unicode.output_encoding";
 	public static final String UNICODE_FROM_ERROR_MODE = "unicode.from_error_mode";
 	public static final String SESSION_AUTO_START = "session.auto_start";
+	public static final String SYS_TEMP_DIR = "sys_temp_dir";
 	public static final String ON = "On";
 	public static final String OFF = "Off";
 	public static final String UTF_8 = "UTF-8";

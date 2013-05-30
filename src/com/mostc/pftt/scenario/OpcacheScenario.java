@@ -2,8 +2,10 @@ package com.mostc.pftt.scenario;
 
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.host.AHost.ExecHandle;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.EAcceleratorType;
+import com.mostc.pftt.model.core.EExecutableType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.core.PhptActiveTestPack;
@@ -26,6 +28,7 @@ import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
 public class OpcacheScenario extends AbstractCodeCacheScenario {
 	private String version;
+	
 
 	@Override
 	public String getNameWithVersionInfo() {
@@ -92,15 +95,45 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 		return EAcceleratorType.OPCACHE;
 	}
 	
+	protected void cleanupBaseAddressFile(AHost host, PhpBuild build, PhptActiveTestPack test_pack) {
+		// IMPORTANT: delete the `base address` file that
+		// Opcache left behind from previous test run
+		//
+		// in temp directory. name is like: ZendOptimizer+.MemoryBase@matt
+		// @see shared_alloc_win32.c (https://github.com/zend-dev/opcache/blob/master/shared_alloc_win32.c)
+		//
+		// for regular users, TEMP_DIR is often
+		// for Apache (as service) TEMP_DIR is often C:\Users\NT_Authority? (different than IIS service)
+		// for IIS (service) TEMP_DIR is often C:\Windows\Temp
+		host.deleteIfExistsElevated(host.getTempDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+		if (test_pack!=null) {
+			host.deleteIfExistsElevated(test_pack.getRunningDirectory()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());	
+			host.deleteIfExistsElevated(test_pack.getStorageDirectory()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+		}
+		host.deleteIfExistsElevated(build.getBuildPath()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());	
+		host.deleteIfExistsElevated(host.getPhpSdkDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+		host.deleteIfExistsElevated(host.getPfttDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+	}
+	
 	@Override
 	public boolean prepare(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack test_pack) {
 		if (host.isWindows()) {
-			// sometimes OpCache may put the memory mapped file here(CWD or TMP), be sure to delete it
-			host.deleteIfExistsElevated(test_pack.getRunningDirectory()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());	
-			host.deleteIfExistsElevated(test_pack.getStorageDirectory()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
-			host.deleteIfExistsElevated(build.getBuildPath()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());	
-			host.deleteIfExistsElevated(host.getPhpSdkDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
-			host.deleteIfExistsElevated(host.getPfttDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+			cleanupBaseAddressFile(host, build, test_pack);
+		}
+		return true;
+	}
+	
+	private ExecHandle startup_handle;
+	private boolean first = true;
+	private String temp_dir;
+	public boolean stop(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhpIni _ini) {
+		if (startup_handle!=null) {
+			startup_handle.close(true);
+			
+			host.deleteIfExistsElevated(temp_dir);
+			
+			startup_handle = null;
+			first = true;
 		}
 		return true;
 	}
@@ -108,16 +141,8 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 	@Override
 	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
 		if (host.isWindows()) {
-			// IMPORTANT: delete any (memory mapped files|file mapping objects|mapped files) that
-			// Optimizer+ left behind from previous test run
-			//
-			// in temp directory. name is like: ZendOptimizer+.MemoryBase@matt
-			// @see shared_alloc_win32.c (https://github.com/zend-dev/opcache/blob/master/shared_alloc_win32.c)
-			//
-			// for regular users, TEMP_DIR is often
-			// for Apache (as service) TEMP_DIR is often C:\Users\NT_Authority? (different than IIS service)
-			// for IIS (service) TEMP_DIR is often C:\Windows\Temp
-			host.deleteIfExistsElevated(host.getTempDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+			// TODO shouldn't be casting to AHost
+			cleanupBaseAddressFile((AHost)host, build, null);
 		}
 		
 		
@@ -198,8 +223,8 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 		// must be absolute path to opcache.so
 		ini.putMulti("zend_extension", dll_path);
 		
-		// CRITICAL: for CliScenario
 		ini.putSingle("opcache.enable", 1);
+		// CRITICAL: for CliScenario
 		ini.putSingle("opcache.enable_cli", 1);
 		
 		// recommended settings, @see https://github.com/zend-dev/opcache
@@ -207,6 +232,7 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 		ini.putSingle("opcache.memory_consumption", 128);
 		ini.putSingle("opcache.interned_strings_buffer", 8);
 		ini.putSingle("opcache.max_accelerated_files", 4000);
+		ini.putSingle("opcache.force_restart_timeout", 180);
 		ini.putSingle("opcache.revalidate_freq", 60);
 		ini.putSingle("opcache.save_comments", 0);
 		ini.putSingle("opcache.fast_shutdown", 1);
@@ -226,6 +252,37 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 				//|ZEND_OPTIMIZER_PASS_5
 				//|ZEND_OPTIMIZER_PASS_9
 			);*/
+		
+		//
+		if (host.isWindows() && first) {
+			first = false;
+			
+			// need to start a process to startup Opcache and leave it running
+			// to ensure that the SharedMemoryArea is never closed
+			//
+			// if there is a lot of process-churn with Opcache on Windows, this may happen
+			// (handles to the SharedMemoryArea are closed whenever a process exits.
+			//  if processes exit in the right order, all the handles will be closed.
+			//  the SharedMemoryArea will be closed if all handles to it are closed.
+			//  this causes the 'Fatal Error: Unable to reattach to base address' msg)
+			try {
+				temp_dir = host.mktempname("Opcache_Startup_Process");
+				host.mkdirs(temp_dir);
+				
+				String php_script = temp_dir+"/startup.php";
+				
+				host.saveTextFile(temp_dir+"/php.ini", ini.toString());
+				
+				// start thread to startup opcache
+				host.saveTextFile(php_script, "<?php while(true){sleep(60000);} ?>");
+				
+				startup_handle = ((AHost)host).execThread(build.getPhpExe(EExecutableType.CLI)+" -c "+temp_dir+" -f "+php_script);
+				
+			} catch ( Exception ex ) {
+				ex.printStackTrace();
+			}
+		}
+		//
 		
 		return true;
 	} // end public boolean setup

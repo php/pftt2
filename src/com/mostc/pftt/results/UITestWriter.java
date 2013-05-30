@@ -4,7 +4,9 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.HashMap;
 
 import javax.annotation.Nonnull;
@@ -25,6 +27,7 @@ public class UITestWriter extends AbstractUITestRW {
 	protected XmlSerializer serial;
 	protected BufferedOutputStream out;
 	protected final HashMap<EUITestStatus,Integer> count;
+	protected final PrintWriter started_pw;
 	
 	public UITestWriter(AHost host, File dir, PhpBuildInfo build_info, String scenario_set_str, String test_pack_name_and_version, String web_browser_name_and_version, String notes) throws IllegalArgumentException, IllegalStateException, FileNotFoundException, IOException {
 		super(dir, build_info);
@@ -36,6 +39,8 @@ public class UITestWriter extends AbstractUITestRW {
 		
 		dir.mkdirs();
 		
+		started_pw = new PrintWriter(new FileWriter(new File(dir, "STARTED.txt")));
+		
 		count = new HashMap<EUITestStatus,Integer>();
 		for ( EUITestStatus status : EUITestStatus.values() )
 			count.put(status, 0);
@@ -46,6 +51,10 @@ public class UITestWriter extends AbstractUITestRW {
 		
 		// setup serializer to indent XML (pretty print) so its easy for people to read
 		serial.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
+	}
+	
+	public void notifyStart(String test_name) {
+		started_pw.println(test_name);
 	}
 
 	@Override
@@ -127,6 +136,8 @@ public class UITestWriter extends AbstractUITestRW {
 	} // end public void addResult
 	
 	public void close() throws IllegalArgumentException, IllegalStateException, IOException {
+		started_pw.close();
+		
 		serial.startTag(null, "tally");
 		serial.attribute(null, "scenario_set", scenario_set_str);
 		serial.attribute(null, "test_pack_name_and_version", test_pack_name_and_version);

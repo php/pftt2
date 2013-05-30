@@ -10,7 +10,7 @@ import com.mostc.pftt.model.TestCase;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.scenario.ScenarioSet;
 
-public abstract class AbstractTestPackRunner<S extends SourceTestPack, T extends TestCase> {
+public abstract class AbstractTestPackRunner<S extends SourceTestPack<?, T>, T extends TestCase> {
 	protected final PhpBuild build;
 	protected AHost storage_host;
 	protected final AHost runner_host;

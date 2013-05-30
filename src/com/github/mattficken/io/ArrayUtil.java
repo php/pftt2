@@ -7,6 +7,12 @@ import java.util.List;
 
 public class ArrayUtil {
 	
+	public static <E extends Object> List<E> clone(List<E> in) {
+		ArrayList<E> out = new ArrayList<E>(in.size());
+		out.addAll(in);
+		return out;
+	}
+	
 	public static <E extends Object> E[] toArray(List<E> unknown_options) {
 		return unknown_options.toArray(newArray(unknown_options, unknown_options.size()));
 	}
@@ -82,6 +88,13 @@ public class ArrayUtil {
 		}
 		
 		return clazz == null ? null : (E[]) out.toArray((E[])Array.newInstance(clazz, out.size()));
+	}
+	
+	public static <E extends Object> List<E> toList(E[] e) {
+		ArrayList<E> o = new ArrayList<E>(e.length);
+		for ( int i=0 ; i < e.length ; i++ )
+			o.add(e[i]);
+		return o;
 	}
 	
 	public static <E extends Object> List<E> toList(E e) {

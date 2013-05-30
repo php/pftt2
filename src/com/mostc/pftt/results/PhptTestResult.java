@@ -79,6 +79,8 @@ public class PhptTestResult {
 	public String regex_compiler_dump;
 	/** if FAIL or XFAIL_WORKS and has an EXPECTF or EXPECTREGEX section, this will be the debug output of matching done by the regular expression engine. */
 	public String regex_output;
+	/** microseconds it took to run the test */
+	public float run_time_micros;
 	
 	protected PhptTestResult() {
 		
@@ -239,6 +241,8 @@ public class PhptTestResult {
 			serial.attribute(null, "testCase", test_case.getName());
 		if (actual_cs!=null)
 			serial.attribute(null, "actualCharset", actual_cs.toString());
+		serial.attribute(null, "runTimeMicros", Float.toString(run_time_micros));
+		
 		//if (host!=null)
 			// TODO serial.attribute(null, "host", host.getName());
 		

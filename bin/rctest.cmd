@@ -12,7 +12,7 @@ REM core_all,app_all: 30 scenario sets (+6 for IIS-Standard, +6 for IIS express)
 REM ui_all: 12 scenario sets (+3 for IIS-Standard, +3 for IIS express    *2 for Internet Explorer)
 
 REM no spaces, separate with commas ,,,
-SET PFTT_CONFIGS=apache,cli,builtin_web,deduplication,dfs,smb,localfs,opcache,no_code_cache,symfony
+SET PFTT_CONFIGS=apache,cli,builtin_web,smb,localfs,opcache,no_code_cache,symfony
 REM 36 * 5 * 3 = 540 * 9
 REM SET PFTT_CONFIGS=rchosts,apcu,wincacheu,no_user_cache,apache,cli,builtin_web,iis,iis_express,deduplication,dfs,smb,ca,localfs,opcache,no_code_cache,symfony,wordpress,joomla,mediawiki,drupal,xdebug,mysql,postgresql,imap,curl,ftp,soap,xmlrpc,EN_US,SHIFT_JIS,BIG5,EUC_JP,EUC_KR,GB18030,ISO_2022_CN,ISO_2022_JP,ISO_2022_KR
 

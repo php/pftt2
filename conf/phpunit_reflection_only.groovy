@@ -6,3 +6,7 @@
 def scenarios() {
 	return new PhpUnitReflectionOnlyScenario();
 }
+
+def describe() {
+	"""Forces using only Reflection to reference test methods. This may cause Opcache to optimize out some test methods."""
+}

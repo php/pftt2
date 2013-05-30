@@ -2,12 +2,15 @@ package com.mostc.pftt.main;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.net.ftp.FTPClient;
 import org.codehaus.groovy.control.CompilationFailedException;
@@ -15,10 +18,13 @@ import org.codehaus.groovy.runtime.metaclass.MissingMethodExceptionNoStack;
 import org.codehaus.groovy.runtime.metaclass.MissingPropertyExceptionNoStack;
 import org.columba.ristretto.smtp.SMTPProtocol;
 
+import com.github.mattficken.io.ArrayUtil;
 import com.github.mattficken.io.IOUtil;
+import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
+import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.model.ui.UITestPack;
 import com.mostc.pftt.results.ConsoleManager;
@@ -66,12 +72,27 @@ import groovy.lang.MetaMethod;
  * def configure_ftp_client(def ftp_client) {
  * 		// specify ftp server and credentials
  * }
+ * def describe() {
+ * 		// return description String of this config file
+ * }
+ * def processConsoleOptions(List) {
+ * 		// add to/remove/edit console options (mainly for task configuration files)
+ * }
+ * def prepareENV(map) {
+ * 		// edit environment variables (HashMap)
+ * }
+ * def prepareINI(ini) {
+ * 		// edit INI (PhpIni)
+ * }
+ * def noScenarios() {
+ * 		// return string fragments of names to skip when calculating scenario permutations
+ * }
  * 
  * @author Matt Ficken
  * 
  */
 
-public final class Config {
+public final class Config implements IENVINIFilter {
 	public static final String HOSTS_METHOD = "hosts";
 	public static final String SCENARIO_SETS_METHOD = "scenario_sets";
 	public static final String SCENARIOS_METHOD = "scenarios";
@@ -79,13 +100,18 @@ public final class Config {
 	public static final String GET_UI_TEST_PACK_METHOD = "getUITestPack";
 	public static final String CONFIGURE_SMTP_METHOD = "configure_smtp";
 	public static final String CONFIGURE_FTP_CLIENT_METHOD = "configure_ftp_client";
+	public static final String DESCRIBE_METHOD_NAME = "describe";
+	public static final String PROCESS_CONSOLE_OPTIONS_METHOD_NAME = "processConsoleOptions";
+	public static final String NO_SCENARIOS_METHOD_NAME = "noScenarios";
+	public static final String PREPARE_ENV_METHOD_NAME = "prepareENV";
+	public static final String PREPARE_INI_METHOD_NAME = "prepareINI";
 	//
 	protected final LinkedList<AHost> hosts;
 	protected final LinkedList<Scenario> scenarios;
 	protected final LinkedList<ScenarioSet> scenario_sets;
 	protected final HashMap<EScenarioSetPermutationLayer,List<ScenarioSet>> permuted_scenario_sets;
 	protected GroovyObject configure_smtp_method, configure_ftp_client_method;
-	protected final List<GroovyObject> get_php_unit_source_test_pack_methods, get_ui_test_pack_methods;
+	protected final List<GroovyObject> get_php_unit_source_test_pack_methods, get_ui_test_pack_methods, process_console_options_methods, prepare_ini_methods, prepare_env_methods, no_scenarios_methods;
 	protected String configure_smtp_file, configure_ftp_client_file;
 	protected final List<String> get_php_unit_source_test_pack_files, get_ui_test_pack_files;
 	
@@ -98,6 +124,10 @@ public final class Config {
 		get_ui_test_pack_methods = new ArrayList<GroovyObject>(2);
 		get_php_unit_source_test_pack_files = new ArrayList<String>(2);
 		get_ui_test_pack_files = new ArrayList<String>(2);
+		process_console_options_methods = new ArrayList<GroovyObject>(2);
+		prepare_ini_methods = new ArrayList<GroovyObject>(2);
+		prepare_env_methods = new ArrayList<GroovyObject>(2);
+		no_scenarios_methods = new ArrayList<GroovyObject>(2);
 		
 		permuted_scenario_sets = new HashMap<EScenarioSetPermutationLayer,List<ScenarioSet>>();
 	}
@@ -106,14 +136,71 @@ public final class Config {
 		return hosts;
 	}
 	
+	@Override
+	public void prepareEnv(ConsoleManager cm, Map<String,String> env) {
+		if (prepare_env_methods.isEmpty())
+			return;
+		for ( GroovyObject go : prepare_env_methods ) {
+			invokeMethod(null, cm, go, PREPARE_ENV_METHOD_NAME, env, null);
+		}
+	}
+	
+	@Override
+	public void prepareIni(ConsoleManager cm, PhpIni ini) {
+		if (prepare_ini_methods.isEmpty())
+			return;
+		for ( GroovyObject go : prepare_ini_methods ) {
+			invokeMethod(null, cm, go, PREPARE_INI_METHOD_NAME, ini, null);
+		}
+	}
+	
+	public boolean processConsoleOptions(ConsoleManager cm, List<String> options) {
+		if (process_console_options_methods.isEmpty())
+			return false;
+		List<String> _options = ArrayUtil.clone(options);
+		for ( GroovyObject go : process_console_options_methods ) {
+			invokeMethod(null, cm, go, PROCESS_CONSOLE_OPTIONS_METHOD_NAME, options, null);
+		}
+		return !_options.equals(options);
+	}
+	
+	public static List<ScenarioSet> not(List<String> not_scenarios, List<ScenarioSet> scenario_sets) {
+		if (not_scenarios==null||not_scenarios.isEmpty())
+			return scenario_sets;
+		Iterator<ScenarioSet> it = scenario_sets.iterator();
+		String nv;
+		while (it.hasNext()) {
+			nv = it.next().getNameWithVersionInfo().toLowerCase();
+			for ( String str : not_scenarios ) {
+				if (nv.contains(str.toLowerCase())) {
+					// match, remove it
+					it.remove();
+					break;
+				}
+			}
+		} // end while
+		return scenario_sets;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public List<String> getNotScenarios(ConsoleManager cm) {
+		if (no_scenarios_methods.isEmpty())
+			return null;
+		ArrayList<String> strings = new ArrayList<String>(no_scenarios_methods.size());
+		for ( GroovyObject go : no_scenarios_methods )
+			strings.addAll((List<String>)invokeMethod(List.class, cm, go, NO_SCENARIOS_METHOD_NAME, null, no_scenarios_methods));
+		return strings;
+	}
+	
 	/** returns the ScenarioSets from this configuration
 	 * 
 	 * this is the ScenarioSets defined in the configuration file(s)'s 
 	 * scenario_sets() functions AND all valid permutations of Scenarios
 	 * provided by the scenarios() functions.
 	 * 
-	 * @param cm
-	 * @param layer - TODO
+	 * @param cm -
+	 * @param layer - PHP_CORE (PHPT) tests can have multiple database scenarios per ScenarioSet, while
+	 * application tests can ony have 1 database scenario per ScenarioSet.
 	 * @return
 	 */
 	public List<ScenarioSet> getScenarioSets(ConsoleManager cm, EScenarioSetPermutationLayer layer) {
@@ -122,15 +209,16 @@ public final class Config {
 		
 		List<ScenarioSet> this_scenario_sets = permuted_scenario_sets.get(layer);
 		if (this_scenario_sets!=null)
-			return this_scenario_sets;
+			return not(getNotScenarios(cm), this_scenario_sets);
 		
-		this_scenario_sets = permuteScenarioSets(cm, layer);
+		this_scenario_sets = not(getNotScenarios(cm), permuteScenarioSets(cm, layer));
 		
+		// cache for next time (this config won't change, so its ok to cache)
 		permuted_scenario_sets.put(layer, this_scenario_sets);
 		
 		return this_scenario_sets;
 	}
-	
+		
 	public List<ScenarioSet> getScenarioSets(EScenarioSetPermutationLayer layer) {
 		return getScenarioSets(null, layer);
 	}
@@ -172,17 +260,7 @@ public final class Config {
 	public boolean configureSMTP(ConsoleManager cm, SMTPProtocol smtp) {
 		if (configure_smtp_method==null)
 			return false;
-		try {
-			configure_smtp_method.invokeMethod(CONFIGURE_SMTP_METHOD, smtp);
-			
-			return true;
-		} catch ( Exception ex ) {
-			if (cm==null)
-				ex.printStackTrace(System.err);
-			else
-				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "configureSMTP", ex, "", configure_smtp_file);
-		}
-		return false;
+		return null != invokeMethod(null, cm, configure_smtp_method, CONFIGURE_SMTP_METHOD, smtp, configure_smtp_file);
 	}
 	
 	public boolean configureFTPClient(FTPClient ftp) {
@@ -192,30 +270,13 @@ public final class Config {
 	public boolean configureFTPClient(ConsoleManager cm, FTPClient ftp) {
 		if (configure_ftp_client_method==null)
 			return false;
-		try {
-			configure_ftp_client_method.invokeMethod(CONFIGURE_FTP_CLIENT_METHOD, ftp);
-			
-			return true;
-		} catch ( Exception ex ) {
-			if (cm==null)
-				ex.printStackTrace(System.err);
-			else
-				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "configureFTPClient", ex, "", configure_ftp_client_file);
-		}
-		return false;
+		return null != invokeMethod(null, cm, configure_ftp_client_method, CONFIGURE_FTP_CLIENT_METHOD, ftp, configure_ftp_client_file);
 	}
 	
 	public List<UITestPack> getUITestPacks(ConsoleManager cm) {
 		ArrayList<UITestPack> out = new ArrayList<UITestPack>(get_ui_test_pack_methods.size());
 		for ( GroovyObject m : get_ui_test_pack_methods ) {
-			try {
-				out.add((UITestPack) m.invokeMethod(GET_UI_TEST_PACK_METHOD, null));
-			} catch ( Exception ex ) {
-				if (cm==null)
-					ex.printStackTrace(System.err);
-				else
-					cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "getUITestPacks", ex, "", get_ui_test_pack_files);
-			}
+			out.add((UITestPack) invokeMethod(UITestPack.class, cm, m, GET_UI_TEST_PACK_METHOD, null, get_ui_test_pack_files));
 		}
 		return out;
 	}
@@ -229,16 +290,25 @@ public final class Config {
 	public List<PhpUnitSourceTestPack> getPhpUnitSourceTestPacks(ConsoleManager cm) {
 		ArrayList<PhpUnitSourceTestPack> out = new ArrayList<PhpUnitSourceTestPack>(get_php_unit_source_test_pack_methods.size());
 		for ( GroovyObject m : get_php_unit_source_test_pack_methods ) {
-			try {
-				out.add((PhpUnitSourceTestPack) m.invokeMethod(GET_PHP_UNIT_SOURCE_TEST_PACK_METHOD, null));
-			} catch ( Exception ex ) {
-				if (cm==null)
-					ex.printStackTrace(System.err);
-				else
-					cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "getPhpUnitSourceTestPack", ex, "", get_php_unit_source_test_pack_files);
-			}
+			out.add((PhpUnitSourceTestPack) invokeMethod(PhpUnitSourceTestPack.class, cm, m, GET_PHP_UNIT_SOURCE_TEST_PACK_METHOD, null, get_php_unit_source_test_pack_files));
 		}
 		return out;
+	}
+	
+	protected Object invokeMethod(Class<?> ret_clazz, ConsoleManager cm, GroovyObject go, String method_name, Object params, Object a) {
+		try {
+			Object obj = go.invokeMethod(method_name, params);
+			if (ret_clazz==null)
+				return obj == null ? Boolean.TRUE : obj;
+			else if (ret_clazz.isAssignableFrom(obj.getClass()))
+				return obj;
+		} catch ( Exception ex ) {
+			if (cm==null)
+				ex.printStackTrace(System.err);
+			else
+				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), method_name, ex, "", a);
+		}
+		return null;
 	}
 	
 	public static Config loadConfigFromStreams(ConsoleManager cm, InputStream... ins) throws CompilationFailedException, InstantiationException, IllegalAccessException, IOException {
@@ -265,12 +335,21 @@ public final class Config {
 		return loadConfigCommon(cm, scenarios, config);
 	} // end public static Config loadConfigFromStreams
 	
-	/** // allow flexibility in the configuration file name
-					//  1. add .groovy for user
-					//  2. search current dir / assume filename is absolute path
-					//  3. search $PFTT_DIR/conf
-					//  4. search $PFTT_DIR/conf/internal
-					//  5. search $PFTT_DIR/conf/app
+	/** 
+	 * 
+	 * allow flexibility in the configuration file name
+		1. add .groovy for user
+		2. search current dir / assume filename is absolute path
+		3. search $PFTT_DIR/conf
+		4. search $PFTT_DIR/conf/ini
+		5. search $PFTT_DIR/conf/env
+		6. search $PFTT_DIR/conf/internal
+		7. search $PFTT_DIR/conf/internal_Example
+		8. search $PFTT_DIR/conf/not
+		9. search $PFTT_DIR/conf/app
+		10. search $PFTT_DIR/conf/web_browser
+		11. search $PFTT_DIR/conf/dev
+		12. search $PFTT_DIR/conf/task
 	 * 
 	 * @param cm
 	 * @param file_names
@@ -280,6 +359,7 @@ public final class Config {
 	 * @throws IllegalAccessException
 	 * @throws IOException
 	 */
+	private static final String[] DIR_IN_ORDER = new String[]{"", "ini", "env", "internal", "internal_example", "not", "app", "web_browser", "task"};
 	public static Config loadConfigFromFiles(ConsoleManager cm, String... file_names) throws CompilationFailedException, InstantiationException, IllegalAccessException, IOException {
 		ArrayList<File> config_files = new ArrayList<File>(file_names.length);
 		File config_file;
@@ -295,40 +375,40 @@ public final class Config {
 					if (!config_files.contains(config_file))
 						config_files.add(config_file);
 				} else {
-					config_file = new File(LocalHost.getLocalPfttDir()+"/conf/"+file_name);
-					if (config_file.exists()) {
-						if (!config_files.contains(config_file))
-							config_files.add(config_file);
-					} else {
-						config_file = new File(LocalHost.getLocalPfttDir()+"/conf/"+file_name+".groovy");
+					boolean match = false;
+					for ( String dir : DIR_IN_ORDER ) {
+						config_file = new File(LocalHost.getLocalPfttDir()+"/conf/"+dir+"/"+file_name);
 						if (config_file.exists()) {
 							if (!config_files.contains(config_file))
 								config_files.add(config_file);
 						} else {
-							config_file = new File(LocalHost.getLocalPfttDir()+"/conf/internal/"+file_name);
+							config_file = new File(LocalHost.getLocalPfttDir()+"/conf/"+dir+"/"+file_name+".groovy");
+							if (config_file.exists()) {
+								if (!config_files.contains(config_file))
+									config_files.add(config_file);
+								match = true;
+								break;
+							} else {
+								match = false;
+							}
+						}
+					}
+					if (!match) {
+						for ( String dir : DIR_IN_ORDER ) {
+							config_file = new File(LocalHost.getLocalPfttDir()+"/conf/dev/"+dir+"/"+file_name);
 							if (config_file.exists()) {
 								if (!config_files.contains(config_file))
 									config_files.add(config_file);
 							} else {
-								config_file = new File(LocalHost.getLocalPfttDir()+"/conf/internal/"+file_name+".groovy");
+								config_file = new File(LocalHost.getLocalPfttDir()+"/conf/dev/"+dir+"/"+file_name+".groovy");
 								if (config_file.exists()) {
 									if (!config_files.contains(config_file))
 										config_files.add(config_file);
+									break;
 								} else {
-									config_file = new File(LocalHost.getLocalPfttDir()+"/conf/app/"+file_name);
-									if (config_file.exists()) {
-										if (!config_files.contains(config_file))
-											config_files.add(config_file);
-									} else {
-										config_file = new File(LocalHost.getLocalPfttDir()+"/conf/app/"+file_name+".groovy");
-										if (config_file.exists()) {
-											if (!config_files.contains(config_file))
-												config_files.add(config_file);
-										} else {
-											System.err.println("User Error: config file not found: "+config_file);
-											return null;
-										}
-									}
+									cm.println(EPrintType.WARNING, Config.class, "Unable to find config file: "+file_name);
+									System.exit(0);
+									return null;
 								}
 							}
 						}
@@ -338,6 +418,26 @@ public final class Config {
 		} // end for
 		return loadConfigFromFiles(cm, (File[])config_files.toArray(new File[config_files.size()]));
 	} // end public static Config loadConfigFromFiles
+	
+	/**
+	 * 
+	 * @param file
+	 * @return
+	 * @throws CompilationFailedException
+	 * @throws FileNotFoundException
+	 * @throws IOException
+	 * @throws InstantiationException
+	 * @throws IllegalAccessException
+	 */
+	public static String getConfigDescription(File file) throws CompilationFailedException, FileNotFoundException, IOException, InstantiationException, IllegalAccessException {
+		GroovyClassLoader loader = new GroovyClassLoader(Config.class.getClassLoader());
+		
+		Class<?> clazz = loader.parseClass(importString(IOUtil.toString(new FileInputStream(file), IOUtil.QUARTER_MEGABYTE)), file.getAbsolutePath());
+		
+		GroovyObject go = (GroovyObject) clazz.newInstance();
+		
+		return StringUtil.toString(go.invokeMethod(DESCRIBE_METHOD_NAME, null));
+	}
 	
 	/** 
 	 * 
@@ -558,6 +658,63 @@ public final class Config {
 			 	ex.printStackTrace(System.err);
 			} else {
 				cm.addGlobalException(EPrintType.CANT_CONTINUE, Config.class, "loadObjectToConfig", ex, GET_UI_TEST_PACK_METHOD, file_name);
+			}
+		}
+		
+		try {
+			if (hasMethod(go, PROCESS_CONSOLE_OPTIONS_METHOD_NAME)) {
+				config.process_console_options_methods.add(go);
+			}
+		} catch ( MissingPropertyExceptionNoStack ex ) {
+		} catch ( MissingMethodExceptionNoStack ex ) {
+		} catch ( Exception ex ) {
+			if (cm==null) {
+				System.err.println("file_name="+file_name);
+			 	ex.printStackTrace(System.err);
+			} else {
+				cm.addGlobalException(EPrintType.CANT_CONTINUE, Config.class, "loadObjectToConfig", ex, PROCESS_CONSOLE_OPTIONS_METHOD_NAME, file_name);
+			}
+		}
+		try {
+			if (hasMethod(go, NO_SCENARIOS_METHOD_NAME)) {
+				config.no_scenarios_methods.add(go);
+			}
+		} catch ( MissingPropertyExceptionNoStack ex ) {
+		} catch ( MissingMethodExceptionNoStack ex ) {
+		} catch ( Exception ex ) {
+			if (cm==null) {
+				System.err.println("file_name="+file_name);
+			 	ex.printStackTrace(System.err);
+			} else {
+				cm.addGlobalException(EPrintType.CANT_CONTINUE, Config.class, "loadObjectToConfig", ex, NO_SCENARIOS_METHOD_NAME);
+			}
+		}
+		try {
+			if (hasMethod(go, PREPARE_ENV_METHOD_NAME)) {
+				config.prepare_env_methods.add(go);
+			}
+		} catch ( MissingPropertyExceptionNoStack ex ) {
+		} catch ( MissingMethodExceptionNoStack ex ) {
+		} catch ( Exception ex ) {
+			if (cm==null) {
+				System.err.println("file_name="+file_name);
+			 	ex.printStackTrace(System.err);
+			} else {
+				cm.addGlobalException(EPrintType.CANT_CONTINUE, Config.class, "loadObjectToConfig", ex, PREPARE_ENV_METHOD_NAME, file_name);
+			}
+		}
+		try {
+			if (hasMethod(go, PREPARE_INI_METHOD_NAME)) {
+				config.prepare_ini_methods.add(go);
+			}
+		} catch ( MissingPropertyExceptionNoStack ex ) {
+		} catch ( MissingMethodExceptionNoStack ex ) {
+		} catch ( Exception ex ) {
+			if (cm==null) {
+				System.err.println("file_name="+file_name);
+			 	ex.printStackTrace(System.err);
+			} else {
+				cm.addGlobalException(EPrintType.CANT_CONTINUE, Config.class, "loadObjectToConfig", ex, PREPARE_INI_METHOD_NAME, file_name);
 			}
 		}
 	} // end protected static void loadObjectToConfig

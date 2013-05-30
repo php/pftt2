@@ -70,7 +70,7 @@ import com.mostc.pftt.util.StringUtil2;
  * 
  * 5. test application running on multiple OS/versions AND multiple ScenarioSets
  *      -increases the value of running the tests
- *      -web apps, when they are testd, are usually only tested on 1 linux distro, thats it
+ *      -web apps, when they are tested, are usually only tested on 1 linux distro, thats it
  *      -we can assume that the app works under some or the most common ScenarioSets
  *      -we want to find the ScenarioSets where it fails  
  *    
@@ -216,7 +216,7 @@ public class UITestRunner implements IUITestBranch {
 		protected final UITestRunner runner;
 		protected EUITestStatus last_status = EUITestStatus.NOT_IMPLEMENTED;
 		protected UIAccount user_account;
-		protected UITest cleanup_test;
+		protected UITestCase cleanup_test;
 		protected final UITestBranch parent;
 		protected boolean skip_branch;
 		
@@ -249,8 +249,8 @@ public class UITestRunner implements IUITestBranch {
 			return branch;
 		}
 		
-		protected IUITestBranch doTest(boolean xfail, UIAccount account, String comment, UITest test, Object g, Object cleanup_test) {
-			IUITestBranch branch = doTest(xfail, account, comment, new UITest[]{test}, null);
+		protected IUITestBranch doTest(boolean xfail, UIAccount account, String comment, UITestCase test, Object g, Object cleanup_test) {
+			IUITestBranch branch = doTest(xfail, account, comment, new UITestCase[]{test}, null);
 			((Closure<?>)g).call(branch);
 			if (cleanup_test!=null)
 				((Closure<?>)cleanup_test).call(branch);
@@ -260,8 +260,8 @@ public class UITestRunner implements IUITestBranch {
 		protected IUITestBranch doTest(boolean xfail, UIAccount user_account, String comment, Class<?>[] clazzes, Class<?> cleanup_clazz) {
 			if (skip_branch||runner.exit)
 				return new DummyUITestRunner(EUITestStatus.SKIP, user_account);
-			ArrayList<UITest> tests = new ArrayList<UITest>(clazzes.length);
-			UITest cleanup_test = null, test;
+			ArrayList<UITestCase> tests = new ArrayList<UITestCase>(clazzes.length);
+			UITestCase cleanup_test = null, test;
 			for ( Class<?> clazz : clazzes ) {
 				test = createTestInstance(clazz);
 				if (test==null)
@@ -275,18 +275,18 @@ public class UITestRunner implements IUITestBranch {
 					return new DummyUITestRunner(EUITestStatus.TEST_EXCEPTION, user_account);
 			}
 			
-			return doTest(xfail, user_account, comment, (UITest[])tests.toArray(new UITest[tests.size()]), cleanup_test);
+			return doTest(xfail, user_account, comment, (UITestCase[])tests.toArray(new UITestCase[tests.size()]), cleanup_test);
 		} // end protected IUITestBranch do_test
 		
 		public static String getTestName(Class<?> clazz) {
 			return clazz.getSimpleName();
 		}
 		
-		protected UITest createTestInstance(Class<?> clazz) {
+		protected UITestCase createTestInstance(Class<?> clazz) {
 			// is class not nested or is it a nested class (not inner class)
 			if (clazz.getDeclaringClass()==null||Modifier.isStatic(clazz.getModifiers())) {
 				try {
-					return (UITest) clazz.newInstance();
+					return (UITestCase) clazz.newInstance();
 				} catch ( Exception ex ) {
 					final String err_msg = "A UITest class must have a constructor that accepts 0 arguments\n" + ErrorUtil.toString(ex);
 					if (runner.do_devel)
@@ -329,7 +329,7 @@ public class UITestRunner implements IUITestBranch {
 				return null;
 			}
 			try {
-				return (UITest) con.newInstance(new Object[]{runner.test_pack});
+				return (UITestCase) con.newInstance(new Object[]{runner.test_pack});
 			} catch ( Exception ex ) {
 				final String err_msg = "A UITest class must have a constructor that accepts 0 arguments\n" + ErrorUtil.toString(ex);
 				if (runner.do_devel)
@@ -362,7 +362,7 @@ public class UITestRunner implements IUITestBranch {
 			return this;
 		}
 		
-		protected IUITestBranch doTest(boolean xfail, UIAccount user_account, String comment, Object test, Object g, UITest cleanup_test) {
+		protected IUITestBranch doTest(boolean xfail, UIAccount user_account, String comment, Object test, Object g, UITestCase cleanup_test) {
 			if (user_account==null)
 				user_account = this.user_account;
 			if (skip_branch||runner.exit)
@@ -371,25 +371,25 @@ public class UITestRunner implements IUITestBranch {
 			if (g!=null)
 				((Closure<?>)g).call(this);
 			if (cleanup_test!=null) {
-				doTest(false, user_account, cleanup_test.getComment(), new UITest[]{cleanup_test}, null);
+				doTest(false, user_account, cleanup_test.getComment(), new UITestCase[]{cleanup_test}, null);
 			}
 			return this;
 		}
 		
-		protected IUITestBranch doTest(boolean xfail, UIAccount user_account, final String all_comment, UITest[] tests, UITest cleanup_test) {
+		protected IUITestBranch doTest(boolean xfail, UIAccount user_account, final String all_comment, UITestCase[] tests, UITestCase cleanup_test) {
 			if (user_account==null)
 				user_account = this.user_account;
 			if (skip_branch||runner.exit)
 				return new DummyUITestRunner(EUITestStatus.SKIP, user_account);
 			if (this.cleanup_test!=null) {
 				// cleanup from previous test branch
-				final UITest c = this.cleanup_test;
+				final UITestCase c = this.cleanup_test;
 				this.cleanup_test = null;
-				doTest(false, user_account, c.getComment(), new UITest[]{c}, null);
+				doTest(false, user_account, c.getComment(), new UITestCase[]{c}, null);
 			}
 			// execute the test(s)
 			String comment;
-			for ( UITest test : tests ) {
+			for ( UITestCase test : tests ) {
 				test.user_account = user_account;
 				comment = StringUtil.isEmpty(all_comment) ? test.getComment() : all_comment;
 				
@@ -457,7 +457,7 @@ public class UITestRunner implements IUITestBranch {
 						// continue
 					} else if (StringUtil.startsWithIC(line, "s")) {
 						skip_branch = true;
-						doTest(false, user_account, comment, new UITest[]{cleanup_test}, null);
+						doTest(false, user_account, comment, new UITestCase[]{cleanup_test}, null);
 						return new DummyUITestRunner(EUITestStatus.SKIP, user_account);
 					} else if (StringUtil.startsWithIC(line, "e")||StringUtil.startsWithIC(line, "x")) {
 						runner.exit = true;
@@ -528,7 +528,17 @@ public class UITestRunner implements IUITestBranch {
 			}
 		} // end protected IUITestRunner do_test
 		
-		protected EUITestStatus doExecSingleTest(boolean xfail, String test_name, UITest test) {
+		protected EUITestStatus doExecSingleTest(boolean xfail, String test_name, UITestCase test) {
+			// record that test was started
+			runner.tmgr.notifyStart(
+					runner.this_host, 
+					runner.this_scenario_set,
+					runner.test_pack, 
+					runner.getWebBrowserNameAndVersion(),
+					test_name
+				);
+			
+			
 			EUITestStatus status;
 			try {
 				if (test.start(runner.sdriver)) {
@@ -580,20 +590,20 @@ public class UITestRunner implements IUITestBranch {
 		
 		/* -- begin IUITestBranch impl -- */
 		@Override
-		public IUITestBranch test(UITest... tests) {
+		public IUITestBranch test(UITestCase... tests) {
 			return test((String)null, tests);
 		}
 		@Override
-		public IUITestBranch test(String comment, UITest... tests) {
+		public IUITestBranch test(String comment, UITestCase... tests) {
 			return doTest(false, null, comment, tests, null);
 		}
 		@Override
-		public IUITestBranch test(UIAccount account, UITest test, UITest cleanup_test) {
+		public IUITestBranch test(UIAccount account, UITestCase test, UITestCase cleanup_test) {
 			return test(account, (String)null, test, cleanup_test);
 		}
 		@Override
-		public IUITestBranch test(UIAccount account, String comment, UITest test, UITest cleanup_test) {
-			return doTest(false, account, comment, new UITest[]{test}, cleanup_test);
+		public IUITestBranch test(UIAccount account, String comment, UITestCase test, UITestCase cleanup_test) {
+			return doTest(false, account, comment, new UITestCase[]{test}, cleanup_test);
 		}
 		@Override
 		public IUITestBranch test(Class<?>... tests) {
@@ -612,20 +622,20 @@ public class UITestRunner implements IUITestBranch {
 			return doTest(false, account, comment, new Class[]{test}, cleanup_test);
 		}
 		@Override
-		public IUITestBranch testXFail(UITest... tests) {
+		public IUITestBranch testXFail(UITestCase... tests) {
 			return testXFail(null, tests);
 		}
 		@Override
-		public IUITestBranch testXFail(String comment, UITest... tests) {
+		public IUITestBranch testXFail(String comment, UITestCase... tests) {
 			return doTest(true, null, comment, tests, null);
 		}
 		@Override
-		public IUITestBranch testXFail(UIAccount account, UITest test, UITest cleanup_test) {
+		public IUITestBranch testXFail(UIAccount account, UITestCase test, UITestCase cleanup_test) {
 			return testXFail(account, (String)null, test, cleanup_test);
 		}
 		@Override
-		public IUITestBranch testXFail(UIAccount account, String comment, UITest test, UITest cleanup_test) {
-			return doTest(true, account, comment, new UITest[]{test}, cleanup_test);
+		public IUITestBranch testXFail(UIAccount account, String comment, UITestCase test, UITestCase cleanup_test) {
+			return doTest(true, account, comment, new UITestCase[]{test}, cleanup_test);
 		}
 		@Override
 		public IUITestBranch testXFail(Class<?>... tests) {
@@ -659,11 +669,11 @@ public class UITestRunner implements IUITestBranch {
 				this.user_account = user_account;
 			}
 			
-			protected IUITestBranch skip(UIAccount account, String comment, UITest... tests) {
+			protected IUITestBranch skip(UIAccount account, String comment, UITestCase... tests) {
 				if (skip_branch||runner.exit)
 					return this;
 				String test_name;
-				for ( UITest test : tests ) {
+				for ( UITestCase test : tests ) {
 					test_name = test.createUniqueTestName(account);
 					
 					runner.tmgr.addResult(runner.this_host, runner.this_scenario_set, test_name, SKIP_TEST_MSG, EUITestStatus.SKIP, null, null, runner.test_pack, runner.sdriver.getWebBrowserNameAndVersion(), runner.web_server==null?null:runner.web_server.getSAPIOutput(), runner.web_server==null?null:runner.web_server.getSAPIConfig());
@@ -690,19 +700,19 @@ public class UITestRunner implements IUITestBranch {
 			}
 
 			@Override
-			public IUITestBranch test(UITest... tests) {
+			public IUITestBranch test(UITestCase... tests) {
 				return test(null, tests);
 			}
 			@Override
-			public IUITestBranch test(String comment, UITest... tests) {
+			public IUITestBranch test(String comment, UITestCase... tests) {
 				return skip(null, comment, tests);
 			}
 			@Override
-			public IUITestBranch test(UIAccount account, UITest test, UITest cleanup_test) {
+			public IUITestBranch test(UIAccount account, UITestCase test, UITestCase cleanup_test) {
 				return test(account, (String)null, test, cleanup_test);
 			}
 			@Override
-			public IUITestBranch test(UIAccount account, String comment, UITest test, UITest cleanup_test) {
+			public IUITestBranch test(UIAccount account, String comment, UITestCase test, UITestCase cleanup_test) {
 				return skip(account, comment, test);
 			}
 			@Override
@@ -722,19 +732,19 @@ public class UITestRunner implements IUITestBranch {
 				return skip(account, comment, test);
 			}
 			@Override
-			public IUITestBranch testXFail(UITest... tests) {
+			public IUITestBranch testXFail(UITestCase... tests) {
 				return testXFail(null, tests);
 			}
 			@Override
-			public IUITestBranch testXFail(String comment, UITest... tests) {
+			public IUITestBranch testXFail(String comment, UITestCase... tests) {
 				return skip(null, comment, tests);
 			}
 			@Override
-			public IUITestBranch testXFail(UIAccount account, UITest test, UITest cleanup_test) {
+			public IUITestBranch testXFail(UIAccount account, UITestCase test, UITestCase cleanup_test) {
 				return testXFail(account, (String)null, test, cleanup_test);
 			}
 			@Override
-			public IUITestBranch testXFail(UIAccount account, String comment, UITest test, UITest cleanup_test) {
+			public IUITestBranch testXFail(UIAccount account, String comment, UITestCase test, UITestCase cleanup_test) {
 				return skip(account, comment, test);
 			}
 			@Override
@@ -795,7 +805,7 @@ public class UITestRunner implements IUITestBranch {
 				return test(null, comment, g, (Object)null, (Object)null);
 			}
 			@Override
-			public IUITestBranch test(UIAccount account, UITest test, Object g, Object cleanup_test) {
+			public IUITestBranch test(UIAccount account, UITestCase test, Object g, Object cleanup_test) {
 				return test(account, null, test, g, cleanup_test);
 			}
 			@Override
@@ -803,11 +813,11 @@ public class UITestRunner implements IUITestBranch {
 				return test(account, null, test, g, cleanup_test);
 			}
 			@Override
-			public IUITestBranch test(UIAccount account, Object test, Object g, UITest cleanup_test) {
+			public IUITestBranch test(UIAccount account, Object test, Object g, UITestCase cleanup_test) {
 				return test(account, null, test, g, cleanup_test);
 			}
 			@Override
-			public IUITestBranch test(UIAccount account, UITest test, Object cleanup_test) {
+			public IUITestBranch test(UIAccount account, UITestCase test, Object cleanup_test) {
 				return test(account, (String)null, test, cleanup_test);
 			}
 			@Override
@@ -815,11 +825,11 @@ public class UITestRunner implements IUITestBranch {
 				return test(account, (String)null, test, cleanup_test);
 			}
 			@Override
-			public IUITestBranch test(UIAccount account, Object test, UITest cleanup_test) {
+			public IUITestBranch test(UIAccount account, Object test, UITestCase cleanup_test) {
 				return test(account, (String)null, test, null, cleanup_test);
 			}
 			@Override
-			public IUITestBranch testXFail(UIAccount account, UITest test, Object g, Object cleanup_test) {
+			public IUITestBranch testXFail(UIAccount account, UITestCase test, Object g, Object cleanup_test) {
 				return testXFail(account, (String)null, test, g, cleanup_test);
 			}
 			@Override
@@ -827,11 +837,11 @@ public class UITestRunner implements IUITestBranch {
 				return testXFail(account, (String)null, test, g, cleanup_test);
 			}
 			@Override
-			public IUITestBranch testXFail(UIAccount account, Object test, Object g, UITest cleanup_test) {
+			public IUITestBranch testXFail(UIAccount account, Object test, Object g, UITestCase cleanup_test) {
 				return testXFail(account, (String)null, test, g, cleanup_test);
 			}
 			@Override
-			public IUITestBranch testXFail(UIAccount account, UITest test, Object cleanup_test) {
+			public IUITestBranch testXFail(UIAccount account, UITestCase test, Object cleanup_test) {
 				return testXFail(account, (String)null, test, cleanup_test);
 			}
 			@Override
@@ -839,11 +849,11 @@ public class UITestRunner implements IUITestBranch {
 				return testXFail(account, (String)null, test, cleanup_test);
 			}
 			@Override
-			public IUITestBranch testXFail(UIAccount account, Object test, UITest cleanup_test) {
+			public IUITestBranch testXFail(UIAccount account, Object test, UITestCase cleanup_test) {
 				return testXFail(account, (String)null, test, cleanup_test);
 			}
 			@Override
-			public IUITestBranch test(UIAccount account, String comment, UITest test, Object cleanup_test) {
+			public IUITestBranch test(UIAccount account, String comment, UITestCase test, Object cleanup_test) {
 				return test(account, comment, test, null, cleanup_test);
 			}
 			@Override
@@ -851,11 +861,11 @@ public class UITestRunner implements IUITestBranch {
 				return test(account, comment, test, null, cleanup_test);
 			}
 			@Override
-			public IUITestBranch test(UIAccount account, String comment, Object test, UITest cleanup_test) {
+			public IUITestBranch test(UIAccount account, String comment, Object test, UITestCase cleanup_test) {
 				return test(account, comment, test, null, cleanup_test);
 			}
 			@Override
-			public IUITestBranch testXFail(UIAccount account, String comment, UITest test, Object cleanup_test) {
+			public IUITestBranch testXFail(UIAccount account, String comment, UITestCase test, Object cleanup_test) {
 				return testXFail(account, comment, test, null, cleanup_test);
 			}
 			@Override
@@ -863,11 +873,11 @@ public class UITestRunner implements IUITestBranch {
 				return testXFail(account, comment, test, null, cleanup_test);
 			}
 			@Override
-			public IUITestBranch testXFail(UIAccount account, String comment, Object test, UITest cleanup_test) {
+			public IUITestBranch testXFail(UIAccount account, String comment, Object test, UITestCase cleanup_test) {
 				return testXFail(account, comment, test, null, cleanup_test);
 			}
 			@Override
-			public IUITestBranch test(UIAccount account, String comment, UITest test, Object g, Object cleanup_test) {
+			public IUITestBranch test(UIAccount account, String comment, UITestCase test, Object g, Object cleanup_test) {
 				return skip(account, comment, test);
 			}
 			@Override
@@ -875,11 +885,11 @@ public class UITestRunner implements IUITestBranch {
 				return skip(account, comment, test);
 			}
 			@Override
-			public IUITestBranch test(UIAccount account, String comment, Object test, Object g, UITest cleanup_test) {
+			public IUITestBranch test(UIAccount account, String comment, Object test, Object g, UITestCase cleanup_test) {
 				return skip(account, comment, test);
 			}
 			@Override
-			public IUITestBranch testXFail(UIAccount account, String comment, UITest test, Object g, Object cleanup_test) {
+			public IUITestBranch testXFail(UIAccount account, String comment, UITestCase test, Object g, Object cleanup_test) {
 				return skip(account, comment, test);
 			}
 			@Override
@@ -887,7 +897,7 @@ public class UITestRunner implements IUITestBranch {
 				return skip(account, comment, test);
 			}
 			@Override
-			public IUITestBranch testXFail(UIAccount account, String comment, Object test, Object g, UITest cleanup_test) {
+			public IUITestBranch testXFail(UIAccount account, String comment, Object test, Object g, UITestCase cleanup_test) {
 				return skip(account, comment, test);
 			}
 			@Override
@@ -938,7 +948,7 @@ public class UITestRunner implements IUITestBranch {
 			return test(null, comment, g, (Object)null, (Object)null);
 		}
 		@Override
-		public IUITestBranch test(UIAccount account, UITest test, Object g, Object cleanup_test) {
+		public IUITestBranch test(UIAccount account, UITestCase test, Object g, Object cleanup_test) {
 			return test(account, null, test, g, cleanup_test);
 		}
 		@Override
@@ -946,11 +956,11 @@ public class UITestRunner implements IUITestBranch {
 			return test(account, null, test, g, cleanup_test);
 		}
 		@Override
-		public IUITestBranch test(UIAccount account, Object test, Object g, UITest cleanup_test) {
+		public IUITestBranch test(UIAccount account, Object test, Object g, UITestCase cleanup_test) {
 			return test(account, null, test, g, cleanup_test);
 		}
 		@Override
-		public IUITestBranch test(UIAccount account, UITest test, Object cleanup_test) {
+		public IUITestBranch test(UIAccount account, UITestCase test, Object cleanup_test) {
 			return test(account, (String)null, test, cleanup_test);
 		}
 		@Override
@@ -958,11 +968,11 @@ public class UITestRunner implements IUITestBranch {
 			return test(account, (String)null, test, cleanup_test);
 		}
 		@Override
-		public IUITestBranch test(UIAccount account, Object test, UITest cleanup_test) {
+		public IUITestBranch test(UIAccount account, Object test, UITestCase cleanup_test) {
 			return test(account, (String)null, test, null, cleanup_test);
 		}
 		@Override
-		public IUITestBranch testXFail(UIAccount account, UITest test, Object g, Object cleanup_test) {
+		public IUITestBranch testXFail(UIAccount account, UITestCase test, Object g, Object cleanup_test) {
 			return testXFail(account, (String)null, test, g, cleanup_test);
 		}
 		@Override
@@ -970,11 +980,11 @@ public class UITestRunner implements IUITestBranch {
 			return testXFail(account, (String)null, test, g, cleanup_test);
 		}
 		@Override
-		public IUITestBranch testXFail(UIAccount account, Object test, Object g, UITest cleanup_test) {
+		public IUITestBranch testXFail(UIAccount account, Object test, Object g, UITestCase cleanup_test) {
 			return testXFail(account, (String)null, test, g, cleanup_test);
 		}
 		@Override
-		public IUITestBranch testXFail(UIAccount account, UITest test, Object cleanup_test) {
+		public IUITestBranch testXFail(UIAccount account, UITestCase test, Object cleanup_test) {
 			return testXFail(account, (String)null, test, cleanup_test);
 		}
 		@Override
@@ -982,11 +992,11 @@ public class UITestRunner implements IUITestBranch {
 			return testXFail(account, (String)null, test, cleanup_test);
 		}
 		@Override
-		public IUITestBranch testXFail(UIAccount account, Object test, UITest cleanup_test) {
+		public IUITestBranch testXFail(UIAccount account, Object test, UITestCase cleanup_test) {
 			return testXFail(account, (String)null, test, cleanup_test);
 		}
 		@Override
-		public IUITestBranch test(UIAccount account, String comment, UITest test, Object g, Object cleanup_test) {
+		public IUITestBranch test(UIAccount account, String comment, UITestCase test, Object g, Object cleanup_test) {
 			return doTest(false, account, comment, test, g, cleanup_test);
 		}
 		@Override
@@ -994,11 +1004,11 @@ public class UITestRunner implements IUITestBranch {
 			return doTest(false, account, comment, test, g, cleanup_test);
 		}
 		@Override
-		public IUITestBranch test(UIAccount account, String comment, Object test, Object g, UITest cleanup_test) {
+		public IUITestBranch test(UIAccount account, String comment, Object test, Object g, UITestCase cleanup_test) {
 			return doTest(false, account, comment, test, g, cleanup_test);
 		}
 		@Override
-		public IUITestBranch test(UIAccount account, String comment, UITest test, Object cleanup_test) {
+		public IUITestBranch test(UIAccount account, String comment, UITestCase test, Object cleanup_test) {
 			return test(account, comment, test, null, cleanup_test);
 		}
 		@Override
@@ -1006,11 +1016,11 @@ public class UITestRunner implements IUITestBranch {
 			return test(account, comment, test, null, cleanup_test);
 		}
 		@Override
-		public IUITestBranch test(UIAccount account, String comment, Object test, UITest cleanup_test) {
+		public IUITestBranch test(UIAccount account, String comment, Object test, UITestCase cleanup_test) {
 			return test(account, comment, test, null, cleanup_test);
 		}
 		@Override
-		public IUITestBranch testXFail(UIAccount account, String comment, UITest test, Object g, Object cleanup_test) {
+		public IUITestBranch testXFail(UIAccount account, String comment, UITestCase test, Object g, Object cleanup_test) {
 			return doTest(true, account, comment, test, g, cleanup_test);
 		}
 		@Override
@@ -1018,11 +1028,11 @@ public class UITestRunner implements IUITestBranch {
 			return doTest(true, account, comment, test, g, cleanup_test);
 		}
 		@Override
-		public IUITestBranch testXFail(UIAccount account, String comment, Object test, Object g, UITest cleanup_test) {
+		public IUITestBranch testXFail(UIAccount account, String comment, Object test, Object g, UITestCase cleanup_test) {
 			return doTest(true, account, comment, test, g, cleanup_test);
 		}
 		@Override
-		public IUITestBranch testXFail(UIAccount account, String comment, UITest test, Object cleanup_test) {
+		public IUITestBranch testXFail(UIAccount account, String comment, UITestCase test, Object cleanup_test) {
 			return testXFail(account, comment, test, null, cleanup_test);
 		}
 		@Override
@@ -1030,7 +1040,7 @@ public class UITestRunner implements IUITestBranch {
 			return testXFail(account, comment, test, null, cleanup_test);
 		}
 		@Override
-		public IUITestBranch testXFail(UIAccount account, String comment, Object test, UITest cleanup_test) {
+		public IUITestBranch testXFail(UIAccount account, String comment, Object test, UITestCase cleanup_test) {
 			return testXFail(account, comment, test, null, cleanup_test);
 		}
 		@Override
@@ -1091,19 +1101,19 @@ public class UITestRunner implements IUITestBranch {
 
 	/* -- begin IUITestBranch impl -- */
 	@Override
-	public IUITestBranch test(UITest... tests) {
+	public IUITestBranch test(UITestCase... tests) {
 		return root.test(tests);
 	}
 	@Override
-	public IUITestBranch test(String comment, UITest... tests) {
+	public IUITestBranch test(String comment, UITestCase... tests) {
 		return root.test(comment, tests);
 	}
 	@Override
-	public IUITestBranch test(UIAccount account, UITest test, UITest cleanup_test) {
+	public IUITestBranch test(UIAccount account, UITestCase test, UITestCase cleanup_test) {
 		return root.test(account, test, cleanup_test);
 	}
 	@Override
-	public IUITestBranch test(UIAccount account, String comment, UITest test, UITest cleanup_test) {
+	public IUITestBranch test(UIAccount account, String comment, UITestCase test, UITestCase cleanup_test) {
 		return root.test(account, comment, test, cleanup_test);
 	}
 	@Override
@@ -1123,19 +1133,19 @@ public class UITestRunner implements IUITestBranch {
 		return root.test(account, comment, test, cleanup_test);
 	}
 	@Override
-	public IUITestBranch testXFail(UITest... tests) {
+	public IUITestBranch testXFail(UITestCase... tests) {
 		return root.testXFail(tests);
 	}
 	@Override
-	public IUITestBranch testXFail(String comment, UITest... tests) {
+	public IUITestBranch testXFail(String comment, UITestCase... tests) {
 		return root.testXFail(comment, tests);
 	}
 	@Override
-	public IUITestBranch testXFail(UIAccount account, UITest test, UITest cleanup_test) {
+	public IUITestBranch testXFail(UIAccount account, UITestCase test, UITestCase cleanup_test) {
 		return root.testXFail(account, test, cleanup_test);
 	}
 	@Override
-	public IUITestBranch testXFail(UIAccount account, String comment, UITest test, UITest cleanup_test) {
+	public IUITestBranch testXFail(UIAccount account, String comment, UITestCase test, UITestCase cleanup_test) {
 		return root.testXFail(account, comment, test, cleanup_test);
 	}
 	@Override
@@ -1928,7 +1938,7 @@ public class UITestRunner implements IUITestBranch {
 		return root.test(comment, g);
 	}
 	@Override
-	public IUITestBranch test(UIAccount account, UITest test, Object g, Object cleanup_test) {
+	public IUITestBranch test(UIAccount account, UITestCase test, Object g, Object cleanup_test) {
 		return root.test(account, test, g, cleanup_test);
 	}
 	@Override
@@ -1936,11 +1946,11 @@ public class UITestRunner implements IUITestBranch {
 		return root.test(account, test, g, cleanup_test);
 	}
 	@Override
-	public IUITestBranch test(UIAccount account, Object test, Object g, UITest cleanup_test) {
+	public IUITestBranch test(UIAccount account, Object test, Object g, UITestCase cleanup_test) {
 		return root.test(account, test, g, cleanup_test);
 	}
 	@Override
-	public IUITestBranch test(UIAccount account, UITest test, Object cleanup_test) {
+	public IUITestBranch test(UIAccount account, UITestCase test, Object cleanup_test) {
 		return root.test(account, test, cleanup_test);
 	}
 	@Override
@@ -1948,11 +1958,11 @@ public class UITestRunner implements IUITestBranch {
 		return root.test(account, test, cleanup_test);
 	}
 	@Override
-	public IUITestBranch test(UIAccount account, Object test, UITest cleanup_test) {
+	public IUITestBranch test(UIAccount account, Object test, UITestCase cleanup_test) {
 		return root.test(account, test, cleanup_test);
 	}
 	@Override
-	public IUITestBranch testXFail(UIAccount account, UITest test, Object g, Object cleanup_test) {
+	public IUITestBranch testXFail(UIAccount account, UITestCase test, Object g, Object cleanup_test) {
 		return root.testXFail(account, test, g, cleanup_test);
 	}
 	@Override
@@ -1960,11 +1970,11 @@ public class UITestRunner implements IUITestBranch {
 		return root.testXFail(account, test, g, cleanup_test);
 	}
 	@Override
-	public IUITestBranch testXFail(UIAccount account, Object test, Object g, UITest cleanup_test) {
+	public IUITestBranch testXFail(UIAccount account, Object test, Object g, UITestCase cleanup_test) {
 		return root.testXFail(account, test, g, cleanup_test);
 	}
 	@Override
-	public IUITestBranch testXFail(UIAccount account, UITest test, Object cleanup_test) {
+	public IUITestBranch testXFail(UIAccount account, UITestCase test, Object cleanup_test) {
 		return root.testXFail(account, test, cleanup_test);
 	}
 	@Override
@@ -1972,11 +1982,11 @@ public class UITestRunner implements IUITestBranch {
 		return root.testXFail(account, test, cleanup_test);
 	}
 	@Override
-	public IUITestBranch testXFail(UIAccount account, Object test, UITest cleanup_test) {
+	public IUITestBranch testXFail(UIAccount account, Object test, UITestCase cleanup_test) {
 		return root.testXFail(account, test, cleanup_test);
 	}
 	@Override
-	public IUITestBranch test(UIAccount account, String comment, UITest test, Object g, Object cleanup_test) {
+	public IUITestBranch test(UIAccount account, String comment, UITestCase test, Object g, Object cleanup_test) {
 		return root.test(account, comment, test, g, cleanup_test);
 	}
 	@Override
@@ -1984,11 +1994,11 @@ public class UITestRunner implements IUITestBranch {
 		return root.test(account, comment, test, g, cleanup_test);
 	}
 	@Override
-	public IUITestBranch test(UIAccount account, String comment, Object test, Object g, UITest cleanup_test) {
+	public IUITestBranch test(UIAccount account, String comment, Object test, Object g, UITestCase cleanup_test) {
 		return root.test(account, comment, test, g, cleanup_test);
 	}
 	@Override
-	public IUITestBranch test(UIAccount account, String comment, UITest test, Object cleanup_test) {
+	public IUITestBranch test(UIAccount account, String comment, UITestCase test, Object cleanup_test) {
 		return root.test(account, comment, test, cleanup_test);
 	}
 	@Override
@@ -1996,11 +2006,11 @@ public class UITestRunner implements IUITestBranch {
 		return root.test(account, comment, test, cleanup_test);
 	}
 	@Override
-	public IUITestBranch test(UIAccount account, String comment, Object test, UITest cleanup_test) {
+	public IUITestBranch test(UIAccount account, String comment, Object test, UITestCase cleanup_test) {
 		return root.test(account, comment, test, cleanup_test);
 	}
 	@Override
-	public IUITestBranch testXFail(UIAccount account, String comment, UITest test, Object g, Object cleanup_test) {
+	public IUITestBranch testXFail(UIAccount account, String comment, UITestCase test, Object g, Object cleanup_test) {
 		return root.testXFail(account, comment, test, g, cleanup_test);
 	}
 	@Override
@@ -2008,11 +2018,11 @@ public class UITestRunner implements IUITestBranch {
 		return root.testXFail(account, comment, test, g, cleanup_test);
 	}
 	@Override
-	public IUITestBranch testXFail(UIAccount account, String comment, Object test, Object g, UITest cleanup_test) {
+	public IUITestBranch testXFail(UIAccount account, String comment, Object test, Object g, UITestCase cleanup_test) {
 		return root.testXFail(account, comment, test, g, cleanup_test);
 	}
 	@Override
-	public IUITestBranch testXFail(UIAccount account, String comment, UITest test, Object cleanup_test) {
+	public IUITestBranch testXFail(UIAccount account, String comment, UITestCase test, Object cleanup_test) {
 		return root.testXFail(account, comment, test, cleanup_test);
 	}
 	@Override
@@ -2020,7 +2030,7 @@ public class UITestRunner implements IUITestBranch {
 		return root.testXFail(account, comment, test, cleanup_test);
 	}
 	@Override
-	public IUITestBranch testXFail(UIAccount account, String comment, Object test, UITest cleanup_test) {
+	public IUITestBranch testXFail(UIAccount account, String comment, Object test, UITestCase cleanup_test) {
 		return root.testXFail(account, comment, test, cleanup_test);
 	}
 	@Override

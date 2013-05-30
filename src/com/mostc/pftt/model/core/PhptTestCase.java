@@ -980,6 +980,13 @@ public class PhptTestCase extends TestCase {
 			"ext/intl/tests/locale_get_display_variant2.phpt",
 			"ext/intl/tests/symfony_format_type_int32_intl1.phpt",
 		};
+	/** SPEC: PHPT tests are given 60 seconds to execute. If they have not finished by then,
+	 * they are killed and whatever output (if any) they returned is used to evalute for PASS/FAIL.
+	 * 
+	 * Note: tests reach their time limit and EXPECT no output will probably PASS (unless they CRASH)
+	 * because they probably returned no output.  
+	 */
+	public static final int MAX_TEST_TIME_SECONDS = 60;
 	/** returns if this test is expected to take more than 40 seconds to execute.
 	 * 
 	 * most tests take only a few seconds or less, so 40 is pretty slow. 60 seconds is the

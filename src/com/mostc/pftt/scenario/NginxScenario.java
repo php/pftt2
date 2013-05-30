@@ -14,7 +14,7 @@ import com.mostc.pftt.model.sapi.WebServerManager;
  *
  */
 
-public class NginxScenario extends AbstractWebServerScenario {
+public class NginxScenario extends AbstractProductionWebServerScenario {
 	
 	public NginxScenario() {
 		this(null);

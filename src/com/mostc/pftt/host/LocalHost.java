@@ -190,7 +190,7 @@ public class LocalHost extends AHost {
 			
 		StringBuilder output_sb = new StringBuilder(1024);
 		
-		eh.run(output_sb, charset, timeout, thread, thread_slow_sec, false);
+		eh.run(output_sb, charset, timeout, thread, thread_slow_sec, 0);
 		
 		
 		
@@ -265,6 +265,7 @@ public class LocalHost extends AHost {
 		protected InputStream stdout, stderr;
 		protected String image_name;
 		protected Charset charset;
+		protected final AtomicBoolean run = new AtomicBoolean(true), wait = new AtomicBoolean(true);
 		
 		public LocalExecHandle(Process process, OutputStream stdin, InputStream stdout, InputStream stderr, String[] cmd_array) {
 			this.process = new AtomicReference<Process>(process);
@@ -293,7 +294,6 @@ public class LocalHost extends AHost {
 			}
 		}
 
-		AtomicBoolean run = new AtomicBoolean(true), wait = new AtomicBoolean(true);
 		@Override
 		public synchronized void close(final boolean force) {
 			if (!run.get())
@@ -339,6 +339,13 @@ public class LocalHost extends AHost {
 								break; 
 								// process terminated, stop trying (or may terminate new process reusing the same id)
 							} catch ( Throwable t ) {
+								if (stdout!=null) {
+									// TODO testing - interrupt reading by exec_copy_line() so it will stop blocking
+									try {
+										stdout.close();
+									} catch ( Throwable t2 ) {}
+									stdout = null;
+								}
 								// kill it
 								//
 								// Windows BN: process trees on Windows won't get terminated correctly by calling Process#destroy
@@ -447,21 +454,38 @@ public class LocalHost extends AHost {
 			close_thread.start();
 		} // end public void close
 		
-		protected void run(StringBuilder output_sb, Charset charset, boolean suspend) throws IOException, InterruptedException {
+		protected void run(StringBuilder output_sb, Charset charset, int suspend_seconds) throws IOException, InterruptedException {
 			final Process p = process.get();
 			if (p==null)
 				return;
-			if (suspend) {
+			//
+			if (isWindows() && suspend_seconds > 0) {
 				final int pid = getWindowsProcessID(p);
 				
+				final long suspend_millis = suspend_seconds*1000;
+				final long suspend_start_time = System.currentTimeMillis();
+				// suspend
 				try {
 					execOut("pssuspend "+pid, 10);
 				} catch ( Exception ex ) {}
+				final long suspend_run_time = Math.abs(System.currentTimeMillis() - suspend_start_time);
+				
+				// wait before resuming
+				// (assume it'll take same amount of time to resume as it took to suspend => *2)
+				Thread.sleep(suspend_millis - (suspend_run_time*2));
+				
+				// resume
+				try {
+					execOut("pssuspend -r "+pid, 10);
+				} catch ( Exception ex ) {}
 			}
+			//
+			
+			// read process' output (block until #close or exit)
 			exec_copy_lines(output_sb, stdout, charset);
 			// ignores STDERR
 			
-			//
+			// wait for process exit (shouldn't get here until exit or #close though)
 			for (int time = 50;wait.get();) {
 				try {
 					exit_code = p.exitValue();
@@ -478,9 +502,11 @@ public class LocalHost extends AHost {
 			}
 			//
 			
+			// free up process handle
 			try {
 				p.destroy();
 			} catch ( Exception ex ) {}
+			
 			// encourage JVM to free up the Windows process handle (may have problems if too many are left open too long)
 			process.set(null);
 			System.gc();
@@ -536,7 +562,7 @@ public class LocalHost extends AHost {
 		}
 
 		@Override
-		public void run(StringBuilder output_sb, Charset charset, int timeout_sec, TestPackRunnerThread thread, int thread_slow_sec, boolean suspend) throws IOException, InterruptedException {
+		public void run(StringBuilder output_sb, Charset charset, int timeout_sec, TestPackRunnerThread thread, int thread_slow_sec, int suspend_seconds) throws IOException, InterruptedException {
 			TimerThread a = null, b = null;
 			if (thread!=null && thread_slow_sec>NO_TIMEOUT) {
 				b = TimerUtil.waitSeconds(thread_slow_sec, new ThreadSlowTask(thread));
@@ -546,7 +572,7 @@ public class LocalHost extends AHost {
 				a = TimerUtil.waitSeconds(timeout_sec, new ExitMonitorTask(this));
 			}
 						
-			this.run(output_sb, charset, suspend&&isWindows());
+			this.run(output_sb, charset, suspend_seconds);
 			
 			if (a!=null)
 				a.cancel();
@@ -633,42 +659,64 @@ public class LocalHost extends AHost {
 	} // end public static String[] splitCmdString
 	
 	protected LocalExecHandle exec_impl(String[] cmd_array, Map<String,String> env, String chdir, byte[] stdin_data) throws IOException, InterruptedException {
-		ProcessBuilder builder = new ProcessBuilder(cmd_array);
-		if (env!=null) {
-			//
-			if (env.containsKey(PATH)) {
-				String a = System.getenv(PATH);
-				String b = env.get(PATH);
-				
-				if (StringUtil.isNotEmpty(a) && StringUtil.isNotEmpty(b)) {
-					b = a + pathsSeparator() + b;
+		Process process = null;
+		{
+			ProcessBuilder builder = new ProcessBuilder(cmd_array);
+			if (env!=null) {
+				//
+				if (env.containsKey(PATH)) {
+					String a = System.getenv(PATH);
+					String b = env.get(PATH);
 					
-					env.put(PATH, b);
+					if (StringUtil.isNotEmpty(a) && StringUtil.isNotEmpty(b)) {
+						b = a + pathsSeparator() + b;
+						
+						env.put(PATH, b);
+					}
 				}
+				//
+				
+				if (env!=null)
+					builder.environment().putAll(env);
 			}
-			//
-			
-			if (env!=null)
-				builder.environment().putAll(env);
-		}
-		if (StringUtil.isNotEmpty(chdir))
-			builder.directory(new File(chdir));
-		builder.redirectErrorStream(true);
-			      
-		// start the process
-		Process process;
-		try {
-			process = builder.start();
-		} catch ( IOException ex ) {
-			if (ex.getMessage().contains("file busy")) {
-				// randomly sometimes on Linux, get this problem (CLI scenario's shell scripts) ... wait and try again
-				Thread.sleep(100);
+			if (StringUtil.isNotEmpty(chdir))
+				builder.directory(new File(chdir));
+			builder.redirectErrorStream(true);
+				      
+			// start the process
+			try {
 				process = builder.start();
-			} else {
-				throw ex;
-			}
+			} catch ( IOException ex ) {
+				if (isWindows() && ex.getMessage().contains("Not enough storage")) {
+					//
+					// Windows kernel is out of resource handles ... can happen when running lots of processes (100s+)
+					// (handles in use by running processes + handles this process needed > # of resource handles windows can allocate)
+					//
+					//
+					// Wait a while and then try again 3 times
+					for ( int i=1 ; i < 4 ; i++ ) {
+						Thread.sleep(10000 * i); // 10 20 30 => 60 total
+					
+						try {
+							process = builder.start();
+							break;
+						} catch ( IOException ex2 ) {
+							if (ex2.getMessage().contains("Not enough storage")) {
+								// wait longer and try again
+							} else {
+								throw ex2;
+							}
+						}
+					} // end for
+				} else if (ex.getMessage().contains("file busy")) {
+					// randomly sometimes on Linux, get this problem (CLI scenario's shell scripts) ... wait and try again
+					Thread.sleep(100);
+					process = builder.start();
+				} else {
+					throw ex;
+				}
+			} // end try
 		}
-		builder = null;
 			      
 		OutputStream stdin = process.getOutputStream();
 		

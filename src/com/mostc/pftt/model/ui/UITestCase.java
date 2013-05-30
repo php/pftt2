@@ -25,7 +25,7 @@ import com.mostc.pftt.model.ui.UIAccount.IUserType;
  *
  */
 
-public abstract class UITest {
+public abstract class UITestCase {
 	protected UIAccount user_account;
 	
 	public abstract EUITestStatus test(IUITestDriver driver) throws Exception;
@@ -33,7 +33,7 @@ public abstract class UITest {
 	
 	@Override
 	public boolean equals(Object o) {
-		if (o instanceof UITest) {
+		if (o instanceof UITestCase) {
 			return getClass().isAssignableFrom(o.getClass());
 		} else {
 			return false;
@@ -49,7 +49,7 @@ public abstract class UITest {
 		return UIAccount.isAnon(user_account);
 	}
 	
-	public static EUITestStatus testChild(UITest child, IUITestDriver driver) throws Exception {
+	public static EUITestStatus testChild(UITestCase child, IUITestDriver driver) throws Exception {
 		EUITestStatus status = child.test(driver);
 		if (status==null)
 			return EUITestStatus.NOT_IMPLEMENTED;
@@ -57,7 +57,7 @@ public abstract class UITest {
 			return status;
 	}
 	
-	public static boolean testChildPass(UITest child, IUITestDriver driver) throws Exception {
+	public static boolean testChildPass(UITestCase child, IUITestDriver driver) throws Exception {
 		switch(testChild(child, driver)) {
 		case PASS:
 		case PASS_WITH_WARNING:

@@ -44,6 +44,13 @@ import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.AbstractFileSystemScenario.ITestPackStorageDir;
 import com.mostc.pftt.util.ErrorUtil;
 
+/**
+ * 
+ * Dynamic Thread Pooling: dynamically increases and decreases the number of threads used to run tests
+ * as slower or faster test are encountered to maximize cpu utilization.
+ * 
+ */
+
 public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S extends SourceTestPack<A,T>, T extends TestCase> extends AbstractTestPackRunner<S, T> {
 	protected static final int MAX_THREAD_COUNT = 256;
 	protected S src_test_pack;
@@ -53,7 +60,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 	protected int thread_safe_test_count;
 	protected A active_test_pack;
 	protected AtomicReference<ETestPackRunnerState> runner_state;
-	protected AtomicInteger test_count;
+	protected final AtomicInteger test_count;
 	protected LinkedBlockingQueue<TestPackThread<T>> threads; 
 	protected HashMap<TestCaseGroupKey,TestCaseGroup<T>> thread_safe_tests = new HashMap<TestCaseGroupKey,TestCaseGroup<T>>();
 	protected HashMap<String[],NonThreadSafeExt<T>> non_thread_safe_tests = new HashMap<String[],NonThreadSafeExt<T>>();
@@ -103,6 +110,8 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		this.twriter = twriter;
 		
 		this.timer = new Timer();
+		
+		test_count = new AtomicInteger(0);
 		
 		threads = new LinkedBlockingQueue<TestPackThread<T>>();
 		
@@ -245,8 +254,6 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		
 		try {
 			groupTestCases(test_cases);
-			System.out.println("248 "+this.non_thread_safe_tests.size());
-			System.out.println("249 "+this.thread_safe_tests.size());
 			
 			cm.println(EPrintType.IN_PROGRESS, getClass(), "ready to go!    scenario_set="+scenario_set+" runner_host="+runner_host+" storage_dir="+storage_dir.getClass()+" local_path="+storage_dir.getLocalPath(runner_host)+" remote_path="+storage_dir.getRemotePath(runner_host));
 			
@@ -478,7 +485,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		}
 		cm.println(EPrintType.IN_PROGRESS, getClass(), "Starting up Test Threads: thread_count="+thread_count+" runner_host="+runner_host+" sapi_scenario="+sapi_scenario);
 			
-		test_count = new AtomicInteger(0);
+		test_count.set(0);
 		
 		for ( int i=0 ; i < thread_count ; i++ ) { 
 			start_thread(parallel);
@@ -509,7 +516,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 						if (thread.isDebuggerAttached()) {
 							not_running = false; // keep running
 							break;
-						} else if (thread.jobs!=null&&!thread.jobs.isEmpty()||(thread.ext!=null&&!thread.ext.test_groups.isEmpty())) {
+						} else if (thread.jobs==null||!thread.jobs.isEmpty()||(thread.ext!=null&&!thread.ext.test_groups.isEmpty())) {
 							thread.replaceThisThread();
 							threads.remove(thread);
 						} else {
@@ -519,19 +526,6 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 						}
 						continue;
 					} 
-					
-					if ((thread.jobs!=null&&!thread.jobs.isEmpty())||(thread.ext!=null&&!thread.ext.test_groups.isEmpty())||thread.isDebuggerAttached()) {
-						// keep running if a thread
-						// 1. is running a test
-						// 2. has jobs(tests) to still execute
-						// 3. has a test that is being debugged (windbg, gdb, etc...)
-						not_running = false;
-						break;
-					} else {
-						// thread has nothing to do, kill it
-						thread.stopThisThread();
-						threads.remove(thread);
-					}
 				}
 				if (not_running) {
 					// no threads have jobs left to do, stop waiting
@@ -549,13 +543,14 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		}
 	} // end protected void executeTestCases
 		
-	protected void start_thread(boolean parallel) throws IllegalStateException, IOException {
+	protected TestPackThread<T> start_thread(boolean parallel) throws IllegalStateException, IOException {
 		TestPackThread<T> t = createTestPackThread(parallel);
 		threads.add(t);
 		// if running Swing UI, run thread minimum priority in favor of Swing EDT
 		t.setPriority(Thread.MIN_PRIORITY);
 		t.setDaemon(true);
 		t.start();
+		return t;
 	}
 	
 	protected abstract TestPackThread<T> createTestPackThread(boolean parallel) throws IllegalStateException, IOException;
@@ -564,6 +559,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		protected final boolean parallel;
 		protected final int run_test_times_all;
 		protected final AtomicLong test_run_start_time;
+		protected final LinkedList<TestPackThread<T>> scale_up_threads = new LinkedList<TestPackThread<T>>();
 		protected TestCaseGroupKey group_key;
 		protected NonThreadSafeExt<T> ext;
 		protected TestCaseGroup<T> group;
@@ -581,6 +577,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			// @see -run_test_times_all console option
 			run_test_times_all = Math.max(1, cm.getRunTestTimesAll());
 			setName("TestPack"+getName());
+			setDaemon(true);
 		}
 				
 		@Override
@@ -588,9 +585,12 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			arg1.printStackTrace();
 			// wait for #executeTestCases to remove this thread from group
 			System.out.println("END_THREAD " +arg1+" "+Thread.currentThread());
+			if (arg1 instanceof TestTimeoutException)
+				return;
 			try {
 				twriter.addGlobalException(runner_host, ErrorUtil.toString(arg1));
 			} catch ( Throwable t ) {}
+			createNewThread();
 		}
 						
 		@Override
@@ -663,8 +663,8 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 					if (group==null)
 						break;
 					
-					exec_jobs(group.group_key, group.test_cases, test_count);
-					ext.test_groups.remove();
+					exec_jobs(group.group_key, group.test_cases);
+					while (ext.test_groups.remove(group)) {}
 				}
 			}
 			ext = null;
@@ -678,9 +678,9 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 				if (group==null) {
 					break;
 				} else if (group.test_cases.isEmpty()) {
-					thread_safe_groups.remove(group);
+					while (thread_safe_groups.remove(group)) {}
 				} else {
-					exec_jobs(group.group_key, group.test_cases, test_count);
+					exec_jobs(group.group_key, group.test_cases);
 				}
 			}
 		} // end protected void runThreadSafe
@@ -694,12 +694,16 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			return run_thread.get() && runner_state.get()==ETestPackRunnerState.RUNNING;
 		}
 		
-		protected void exec_jobs(TestCaseGroupKey group_key, LinkedBlockingQueue<T> jobs, AtomicInteger test_count) {
+		protected void exec_jobs(TestCaseGroupKey group_key, LinkedBlockingQueue<T> jobs) {
+			if (cm.getRunCount() > 0 && test_count.get() > cm.getRunCount() ) {
+				// run maximum number of tests, don't run any more
+				return;
+			}
+			
 			this.group_key = group_key;
-			SAPIInstance sa = null;
 			LinkedList<T> completed_tests = new LinkedList<T>();
 			this.jobs = jobs;
-			
+			SAPIInstance sa = null;	
 			try {
 				while ( (test_case = jobs.poll()) != null && shouldRun() ) {
 					completed_tests.add(test_case);
@@ -729,7 +733,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 								// test runner instance (otherwise each test runner will create its own instance, which is slow)
 								if (sapi_scenario instanceof AbstractWebServerScenario) { // TODO temp
 									//SAPIInstance 
-									if (cm.isNoRestartAll())
+									//if (cm.isNoRestartAll())
 										sa = thread_wsi;
 									if ((cm.isRestartEachTestAll()&&!cm.isNoRestartAll())||sa==null||sa.isCrashedOrDebuggedAndClosed()||(debugger_attached && !((WebServerInstance)sa).isDebuggerAttached())) {
 										if (sa!=null && cm.isRestartEachTestAll() && !cm.isNoRestartAll() && (cm.isDisableDebugPrompt()||!sa.isCrashedOrDebuggedAndClosed()||!runner_host.isWindows()))
@@ -757,6 +761,24 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 						
 							// finally: create the test case runner and run the actual test
 							runTest(group_key, test_case);
+							
+							
+							if (Math.abs(System.currentTimeMillis() - test_run_start_time.get()) < sapi_scenario.getFastTestTimeSeconds()) {
+								// scale back down
+								Iterator<TestPackThread<T>> it = scale_up_threads.iterator();
+								TestPackThread<T> slow;
+								while (it.hasNext()) {
+									slow = it.next();
+									if (slow.ext==null) {
+										// stop after current test case finished
+										slow.run_thread.set(false);	
+									} else {
+										// don't stop this one because ext has been dequeued
+										// and would have gotten lost
+									}
+									it.remove();
+								}
+							}
 							
 						} catch ( InterruptedException ex ) {
 							if (cm.isPfttDebug())
@@ -809,8 +831,9 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 
 		@Override
 		protected void createNewThread() {
+			// scale up to handle cluster of slower test cases
 			try {
-				start_thread(parallel);
+				scale_up_threads.add(start_thread(parallel));
 			} catch ( Throwable t ) {
 				twriter.addGlobalException(runner_host, ErrorUtil.toString(t));
 			}
@@ -830,6 +853,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		}
 		
 	} // end public abstract class TestPackThread
+	AtomicInteger web_server_count = new AtomicInteger(0);
 	
 	@SuppressWarnings("serial")
 	public static class TestTimeoutException extends RuntimeException {

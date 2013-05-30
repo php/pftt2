@@ -25,8 +25,9 @@ public class PhpUnitTestResult {
 	public String http_response;
 	protected String sapi_output, sapi_config;
 	public PhpIni ini;
+	public final float run_time_micros;
 	
-	public PhpUnitTestResult(PhpUnitTestCase test_case, EPhpUnitTestStatus status, ScenarioSet scenario_set, Host host, String output) {
+	public PhpUnitTestResult(PhpUnitTestCase test_case, EPhpUnitTestStatus status, ScenarioSet scenario_set, Host host, String output, float run_time_micros) {
 		if (output!=null&&(output.contains("Missing argume")||output.contains("Argument 1 passed")))
 			status = EPhpUnitTestStatus.SKIP; // TODO temp
 		
@@ -35,10 +36,11 @@ public class PhpUnitTestResult {
 		this.scenario_set = scenario_set;
 		this.host = host;
 		this.output = output;
+		this.run_time_micros = run_time_micros;
 	}
 	
-	public PhpUnitTestResult(PhpUnitTestCase test_case, EPhpUnitTestStatus status, ScenarioSet scenario_set, Host host, String output, PhpIni ini, String sapi_output, String sapi_config) {
-		this(test_case, status, scenario_set, host, output);
+	public PhpUnitTestResult(PhpUnitTestCase test_case, EPhpUnitTestStatus status, ScenarioSet scenario_set, Host host, String output, PhpIni ini, float run_time_micros, String sapi_output, String sapi_config) {
+		this(test_case, status, scenario_set, host, output, run_time_micros);
 		this.sapi_output = sapi_output;
 		this.sapi_config = sapi_config;
 		this.ini = ini;
@@ -89,6 +91,7 @@ public class PhpUnitTestResult {
 		
 		if (status!=null)
 			serial.attribute("pftt", "status", status.toString());
+		serial.attribute("pftt", "runTimeMicros", Float.toString(run_time_micros));
 		
 		if (StringUtil.isNotEmpty(output)) {
 			switch(status) {
@@ -118,6 +121,10 @@ public class PhpUnitTestResult {
 				serial.text(output);
 				serial.endTag(null, "failure");
 				break;
+			case PASS:
+				serial.startTag("pftt", "output");
+				serial.text(output);
+				serial.endTag("pftt", "output");
 			default:
 				break;
 			}

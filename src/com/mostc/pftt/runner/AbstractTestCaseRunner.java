@@ -1,6 +1,11 @@
 package com.mostc.pftt.runner;
 
-public abstract class AbstractTestCaseRunner {
+import java.io.IOException;
+
+import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.runner.AbstractLocalTestPackRunner.TestPackThread;
+
+public abstract class AbstractTestCaseRunner<T extends TestPackThread,R extends AbstractLocalTestPackRunner> {
 	/** PFTT extension: this ENV var provides the ScenarioSet PFTT is running */
 	public static final String ENV_PFTT_SCENARIO_SET = "PFTT_SCENARIO_SET";
 	/** PFTT extension: tells test case its running under PFTT instead of run-test.php or phpunit 
@@ -22,4 +27,6 @@ public abstract class AbstractTestCaseRunner {
 	public abstract String getSAPIOutput();
 	
 	public abstract String getSAPIConfig();
+	
+	public abstract void runTest(ConsoleManager cm, T t, R r) throws IOException, Exception, Throwable;
 }

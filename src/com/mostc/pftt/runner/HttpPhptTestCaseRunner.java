@@ -36,6 +36,7 @@ import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
+import com.mostc.pftt.scenario.AbstractWebServerScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.ErrorUtil;
 import com.mostc.pftt.util.TimerUtil;
@@ -59,8 +60,8 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected final HttpRequestExecutor httpexecutor;
 	protected Socket test_socket;
 
-	public HttpPhptTestCaseRunner(PhpIni ini, Map<String,String> env, HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
-		super(ini, thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
+	public HttpPhptTestCaseRunner(AbstractWebServerScenario sapi_scenario, PhpIni ini, Map<String,String> env, HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+		super(sapi_scenario, ini, thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 		this.params = params;
 		this.httpproc = httpproc;
 		this.httpexecutor = httpexecutor;
@@ -272,6 +273,9 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	} // end protected String do_http_execute
 	
 	protected String do_http_get(String path) throws Exception {
+		if (cm.getSuspendSeconds()>0)
+			Thread.sleep(cm.getSuspendSeconds()*1000);
+		
 		return do_http_get(path, 0);
 	}
 	
@@ -311,7 +315,15 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		conn = new DebuggingHttpClientConnection(request_bytes, response_bytes);
 		test_socket = null;
 		final TimerThread timeout_task = TimerUtil.waitSeconds(
-				60, 
+				sapi_scenario.getSlowTestTimeSeconds(), 
+				new Runnable() {
+						public void run() {
+							// test is slow, launch another thread to speed things up
+							thread.notifySlowTest();
+						}
+					},
+				// 60 seconds from start (not 60 from 20)
+				PhptTestCase.MAX_TEST_TIME_SECONDS,
 				new Runnable() {
 						public void run() {
 							if (web!=null)
@@ -390,6 +402,9 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	} // end protected String do_http_get
 	
 	protected String do_http_post(String path) throws Exception {
+		if (cm.getSuspendSeconds()>0)
+			Thread.sleep(cm.getSuspendSeconds()*1000);
+		
 		return do_http_post(path, 0);
 	}
 	
@@ -403,7 +418,15 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		}
 		conn = new DebuggingHttpClientConnection(request_bytes, response_bytes);
 		final TimerThread timeout_task = TimerUtil.waitSeconds(
-				60, 
+				sapi_scenario.getSlowTestTimeSeconds(), 
+				new Runnable() {
+						public void run() {
+							// test is slow, launch another thread to speed things up
+							thread.notifySlowTest();
+						}
+					},
+				// 60 seconds from start
+				PhptTestCase.MAX_TEST_TIME_SECONDS,
 				new Runnable() {
 					public void run() {
 						if (web!=null)

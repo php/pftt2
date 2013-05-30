@@ -123,7 +123,7 @@ public class MediaWikiUITestPack {
 		test.test(new SpecBookSourcesTest());
 	} // end protected void testPrefAndSpecial
 
-	public static abstract class MWTest extends UITest {
+	public static abstract class MWTest extends UITestCase {
 		String baseUrl = "http://192.168.1.73/";
 		
 		public boolean start(IUITestDriver driver) throws Exception {

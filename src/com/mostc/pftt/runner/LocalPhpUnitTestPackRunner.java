@@ -121,8 +121,10 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 		// CRITICAL: provide the INI to run all PhpUnitTestCases
 		//           unlike PhptTestCases all PhpUnitTestCases share the same INI and environment variables
 		PhpIni ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, runner_host, build);
+		// TODO temp - wordpress support - ini = new PhpIni("extension=php_mysql.dll\nextension_dir=C:\\php-sdk\\php-5.5.0RC1-Win32-VC11-x86\\ext");
 		AbstractINIScenario.setupScenarios(cm, runner_host, scenario_set, build, ini);
 		src_test_pack.prepareINI(cm, runner_host, scenario_set, build, ini);
+				
 		return new SharedSAPIInstancesTestCaseGroupKey(ini, null);
 	}
 
@@ -183,7 +185,8 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 					group_key.getPhpIni(),
 					reflection_only
 				);
-			r.runTest();
+			twriter.notifyStart(runner_host, scenario_set, src_test_pack, test_case);
+			r.runTest(cm, this, LocalPhpUnitTestPackRunner.this);
 		}
 
 		@Override
@@ -199,7 +202,7 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 
 		@Override
 		protected void recordSkipped(PhpUnitTestCase test_case) {
-			twriter.addResult(runner_host, scenario_set, new PhpUnitTestResult(test_case, EPhpUnitTestStatus.SKIP, scenario_set, runner_host, null, null, "PFTT: Test Timed Out", null));
+			twriter.addResult(runner_host, scenario_set, new PhpUnitTestResult(test_case, EPhpUnitTestStatus.SKIP, scenario_set, runner_host, null, null, 0, "PFTT: Test Timed Out", null));
 		}
 		
 	} // end public class PhpUnitThread

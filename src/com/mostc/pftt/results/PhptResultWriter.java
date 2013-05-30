@@ -25,6 +25,7 @@ import com.mostc.pftt.scenario.ScenarioSet;
 
 public class PhptResultWriter extends AbstractPhptRW {
 	protected final File dir;
+	protected final PrintWriter all_csv_pw, started_pw;
 	protected final HashMap<EPhptTestStatus,StatusListEntry> status_list_map;
 	protected final KXmlSerializer serial;
 	protected final AHost host;
@@ -43,6 +44,9 @@ public class PhptResultWriter extends AbstractPhptRW {
 		
 		dir.mkdirs();
 		
+		all_csv_pw = new PrintWriter(new FileWriter(new File(dir, "ALL.csv")));
+		started_pw = new PrintWriter(new FileWriter(new File(dir, "STARTED.txt")));
+		
 		status_list_map = new HashMap<EPhptTestStatus,StatusListEntry>();
 		serial  = new KXmlSerializer();
 		// setup serializer to indent XML (pretty print) so its easy for people to read
@@ -56,7 +60,7 @@ public class PhptResultWriter extends AbstractPhptRW {
 		protected final EPhptTestStatus status;
 		protected final File journal_file;
 		protected PrintWriter journal_writer;
-		protected final LinkedList<String> test_names;
+		protected LinkedList<String> test_names;
 		
 		public StatusListEntry(EPhptTestStatus status) throws IOException {
 			this.status = status;
@@ -105,6 +109,7 @@ public class PhptResultWriter extends AbstractPhptRW {
 			journal_file.delete();
 			
 			journal_writer = null;
+			test_names = null;
 		}
 	} // end protected class StatusListEntry
 
@@ -113,6 +118,9 @@ public class PhptResultWriter extends AbstractPhptRW {
 		if (closed)
 			return;
 		closed = true;
+		
+		started_pw.close();
+		all_csv_pw.close();
 		
 		// write tally file
 		try {
@@ -141,8 +149,15 @@ public class PhptResultWriter extends AbstractPhptRW {
 			e.close();
 	} // end public void close
 	
-	int count; // TODO temp 5/13
-	public void writeResult(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhptTestResult result) {
+	public void notifyStart(String test_name) {
+		started_pw.println(test_name);
+	}
+	
+	int count; // TODO
+	public void writeResult(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhptTestResult result) throws IllegalStateException {
+		if (closed)
+			throw new IllegalStateException("can not write to closed PhptResultWriter. it is closed");
+		
 		
 		status_list_map.get(result.status).write(result);
 	
@@ -205,6 +220,15 @@ public class PhptResultWriter extends AbstractPhptRW {
 			}
 		}
 		//
+		
+		// store name, status and run-time in CSV file format
+		all_csv_pw.print("'");
+		all_csv_pw.print(result.test_case.getName());
+		all_csv_pw.print("','");
+		all_csv_pw.print(result.status);
+		all_csv_pw.print("',");
+		all_csv_pw.print(result.run_time_micros);
+		all_csv_pw.println();
 	} // end public void writeResult
 
 	@Override

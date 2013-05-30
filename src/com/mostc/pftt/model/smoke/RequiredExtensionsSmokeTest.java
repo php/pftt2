@@ -172,6 +172,9 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 		ini.putMulti(PhpIni.UNICODE_OUTPUT_ENCODING, PhpIni.UTF_8);
 		ini.putMulti(PhpIni.UNICODE_FROM_ERROR_MODE, PhpIni.U_INVALID_SUBSTITUTE);
 		ini.putMulti(PhpIni.SESSION_AUTO_START, PhpIni.OFF);
+		// added sys_temp_dir for PHAR PHPTs - otherwise they'll use CWD for their temp dir
+		// even if its on a remote file system (slow & buggy)
+		ini.putSingle(PhpIni.SYS_TEMP_DIR, host.getTempDir());
 		
 		// default php.ini has these extensions on Windows
 		// NOTE: this is validated by RequiredExtensionsSmokeTest. similar/same info is both there and here

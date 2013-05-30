@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -64,7 +65,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	protected final ArrayList<PhpUnitDist> php_unit_dists;
 	protected final ArrayList<String> blacklist_test_names, whitelist_test_names, include_dirs, include_files;
 	protected final QuercusContext qctx;
-	protected final ArrayList<PhpUnitTestCase> test_cases;
+	protected WeakReference<ArrayList<PhpUnitTestCase>> _ref_test_cases;
 	
 	public PhpUnitSourceTestPack() {
 		blacklist_test_names = new ArrayList<String>(3);
@@ -72,7 +73,6 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 		php_unit_dists = new ArrayList<PhpUnitDist>(3);
 		include_dirs = new ArrayList<String>(5);
 		include_files = new ArrayList<String>(3);
-		test_cases = new ArrayList<PhpUnitTestCase>();
 		
 		qctx = new QuercusContext();
 		
@@ -199,12 +199,21 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	 * @throws IOException
 	 * @throws Exception
 	 */
-	public void read(ConsoleManager cm, List<PhpUnitTestCase> _test_cases) throws IOException, Exception {
+	public void read(ConsoleManager cm, List<PhpUnitTestCase> test_cases) throws IOException, Exception {
 		// TODO if subdir used, only search within that
-		if (test_cases.size()>0) {
-			_test_cases.addAll(test_cases);
-			return;
+		
+		//
+		// read from cache
+		ArrayList<PhpUnitTestCase> _test_cases;
+		if (_ref_test_cases!=null) {
+			_test_cases = _ref_test_cases.get();
+			if (_test_cases!=null) {
+				test_cases.addAll(_test_cases);
+				return;
+			}
 		}
+		//
+		
 		
 		final int max_read_count = cm.getMaxTestReadCount();
 		for (PhpUnitDist php_unit_dist : php_unit_dists) {
@@ -218,8 +227,13 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 					return a.getName().compareTo(b.getName());
 				}
 			});
+		
+		// cache for future use
+		_test_cases = new ArrayList<PhpUnitTestCase>(test_cases.size());
 		_test_cases.addAll(test_cases);
-	}
+		_ref_test_cases = new WeakReference<ArrayList<PhpUnitTestCase>>(_test_cases);
+		//
+	} // end public void read
 	
 	@Overridable
 	protected boolean isFileNameATest(String file_name) {
