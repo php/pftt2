@@ -61,15 +61,15 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 					switch(build.getVersionBranch(cm, host)) {
 					case PHP_5_3:
 						if (build.isNTS(host))
-							dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.1-5.3-nts-vc9-x86/php_opcache.dll";
+							dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-20130521-7.0.2-dev-5.3-nts-vc9-x86/php_opcache.dll";
 						else
-							dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.1-5.3-ts-vc9-x86/php_opcache.dll";
+							dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-20130521-7.0.2-dev-5.3-ts-vc9-x86/php_opcache.dll";
 						break;
 					case PHP_5_4:
 						if (build.isNTS(host))
-							dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.1-5.4-nts-vc9-x86/php_opcache.dll";
+							dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-20130521-7.0.2-dev-5.4-nts-vc9-x86/php_opcache.dll";
 						else
-							dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.1-5.4-ts-vc9-x86/php_opcache.dll";
+							dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-20130521-7.0.2-dev-5.4-ts-vc9-x86/php_opcache.dll";
 						break;
 					default:
 						break;
@@ -166,7 +166,7 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 					// may have already setup scenario
 					if (build.is54(cm, host)||build.is53(cm, host))
 						// 5.4 and 5.3 don't include opcache, so provide the version of opcache being used
-						version = "7.0.1";
+						version = "7.0.2-dev";
 				} else {
 					// try to install it for 5.3 and 5.4 builds
 					try {
@@ -175,15 +175,15 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 						case PHP_5_3:
 							// @see #isSuccessful (it checks if these dlls exist!)
 							if (build.isNTS(host))
-								src_dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.1-5.3-nts-vc9-x86/php_opcache.dll";
+								src_dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-20130521-7.0.2-dev-5.3-nts-vc9-x86/php_opcache.dll";
 							else
-								src_dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.1-5.3-ts-vc9-x86/php_opcache.dll";
+								src_dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-20130521-7.0.2-dev-5.3-ts-vc9-x86/php_opcache.dll";
 							break;
 						case PHP_5_4:
 							if (build.isNTS(host))
-								src_dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.1-5.4-nts-vc9-x86/php_opcache.dll";
+								src_dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-20130521-7.0.2-dev-5.4-nts-vc9-x86/php_opcache.dll";
 							else
-								src_dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.1-5.4-ts-vc9-x86/php_opcache.dll";
+								src_dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-20130521-7.0.2-dev-5.4-ts-vc9-x86/php_opcache.dll";
 							break;
 						default:
 							break;
@@ -192,7 +192,7 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 							host.copy(src_dll_path, dll_path);
 							
 							// install succeeded
-							version = "7.0.1"; // XXX detect version
+							version = "7.0.2-dev"; // XXX detect version
 						}
 					} catch ( Exception ex ) {
 						if (cm!=null)
