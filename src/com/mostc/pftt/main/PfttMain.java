@@ -78,6 +78,7 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 // the php test tool that you'd actually want to use
 // doesn't resort to brittle shell scripts
 
+// TODO wordpress-tests changes to make it work with pftt
 // TODO valgrind
 // TODO linux installer
 
@@ -1095,7 +1096,7 @@ public class PfttMain {
 	
 	public static void main(String[] args) throws Throwable {
 		// 
-		if (args[0].equals("sleep")) {
+		if (args.length > 0 && args[0].equals("sleep")) {
 			// special help for sleep.cmd
 			// @see bin\sleep.cmd
 			int seconds = Integer.parseInt(args[1]);
@@ -1149,12 +1150,14 @@ public class PfttMain {
 		}
 		
 		// have config files process console args (add to them, remove, etc...)
-		List<String> args_list = ArrayUtil.toList(args);
-		if (config.processConsoleOptions(cm, args_list)) {
-			// config file(s) changed console options. show the console options PFTT will now be run with.
-			System.out.println("PFTT: Console Options: "+args_list);
+		if (args.length > 0) {
+			List<String> args_list = ArrayUtil.toList(args);
+			if (config.processConsoleOptions(cm, args_list)) {
+				// config file(s) changed console options. show the console options PFTT will now be run with.
+				System.out.println("PFTT: Console Options: "+args_list);
+			}
+			args = ArrayUtil.toArray(args_list);
 		}
-		args = ArrayUtil.toArray(args_list);
 		//
 		
 		// process all console args now
