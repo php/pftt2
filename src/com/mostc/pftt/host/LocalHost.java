@@ -41,7 +41,7 @@ import com.github.mattficken.io.NoCharsetByLineReader;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
 import com.mostc.pftt.util.TimerUtil;
 import com.mostc.pftt.util.TimerUtil.TimerThread;
@@ -190,7 +190,7 @@ public class LocalHost extends AHost {
 			
 		StringBuilder output_sb = new StringBuilder(1024);
 		
-		eh.run(output_sb, charset, timeout, thread, thread_slow_sec, 0);
+		eh.run(null, output_sb, charset, timeout, thread, thread_slow_sec, 0);
 		
 		
 		
@@ -295,7 +295,9 @@ public class LocalHost extends AHost {
 		}
 
 		@Override
-		public synchronized void close(final boolean force) {
+		public synchronized void close(ConsoleManager cm, final boolean force) {
+			if (cm != null && cm.isPfttDebug())
+				new IllegalArgumentException().printStackTrace();
 			if (!run.get())
 				return; // already trying|tried to close
 			final Process p = this.process.get();
@@ -340,7 +342,6 @@ public class LocalHost extends AHost {
 								// process terminated, stop trying (or may terminate new process reusing the same id)
 							} catch ( Throwable t ) {
 								if (stdout!=null) {
-									// TODO testing - interrupt reading by exec_copy_line() so it will stop blocking
 									try {
 										stdout.close();
 									} catch ( Throwable t2 ) {}
@@ -514,7 +515,7 @@ public class LocalHost extends AHost {
 				
 		protected void exec_copy_lines(StringBuilder sb, InputStream in, Charset charset) throws IOException {
 			DefaultCharsetDeciderDecoder d = charset == null ? null : PhptTestCase.newCharsetDeciderDecoder();
-			ByLineReader reader = charset == null ? new NoCharsetByLineReader(in) : new MultiCharsetByLineReader(in, d);
+			ByLineReader reader = charset == null ? new NoCharsetByLineReader(new java.io.BufferedInputStream(in)) : new MultiCharsetByLineReader(in, d);
 			String line;
 			try {
 				while (reader.hasMoreLines()&&run.get()) {
@@ -562,14 +563,14 @@ public class LocalHost extends AHost {
 		}
 
 		@Override
-		public void run(StringBuilder output_sb, Charset charset, int timeout_sec, TestPackRunnerThread thread, int thread_slow_sec, int suspend_seconds) throws IOException, InterruptedException {
+		public void run(ConsoleManager cm, StringBuilder output_sb, Charset charset, int timeout_sec, TestPackRunnerThread thread, int thread_slow_sec, int suspend_seconds) throws IOException, InterruptedException {
 			TimerThread a = null, b = null;
 			if (thread!=null && thread_slow_sec>NO_TIMEOUT) {
 				b = TimerUtil.waitSeconds(thread_slow_sec, new ThreadSlowTask(thread));
 			}
 			
 			if (timeout_sec>NO_TIMEOUT) {
-				a = TimerUtil.waitSeconds(timeout_sec, new ExitMonitorTask(this));
+				a = TimerUtil.waitSeconds(timeout_sec, new ExitMonitorTask(cm, this));
 			}
 						
 			this.run(output_sb, charset, suspend_seconds);
@@ -734,9 +735,11 @@ public class LocalHost extends AHost {
 	} // end protected LocalExecHandle exec_impl
 		
 	protected static class ExitMonitorTask implements Runnable {
+		protected final ConsoleManager cm;
 		protected final LocalExecHandle h;
 		
-		protected ExitMonitorTask(LocalExecHandle h) {
+		protected ExitMonitorTask(ConsoleManager cm, LocalExecHandle h) {
+			this.cm = cm;
 			this.h = h;
 		}
 		
@@ -745,7 +748,7 @@ public class LocalHost extends AHost {
 			// go further trying to kill the process
 			//
 			// LocalHostExecHandle#close checks for WerFault.exe blocking on Windows
-			h.close(true);
+			h.close(cm, true);
 		}
 		
 	} // end protected static class ExitMonitorTask	

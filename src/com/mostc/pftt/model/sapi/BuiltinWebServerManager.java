@@ -11,7 +11,7 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 /** manages local instances of PHP's builtin web server

@@ -1,0 +1,24 @@
+#!/bin/bash
+export PHP_SDK=$HOME/php-sdk
+
+export PFTT_HOME=$PHP_SDK/PFTT/current
+
+export PHP_DRIVE=/
+export PATH=$PFTT_HOME/bin:$PFTT_HOME/bin/internal:$PATH
+export PFTT_ROOT_DIR=$PHP_SDK/PFTT
+export PFTT_BIN=$PFTT_HOME/bin
+export PFTT_BIN_INTERNAL=$PFTT_BIN/internal
+export PFTT_CONF=$PFTT_HOME/conf
+export PFTT_CONF_INTERNAL=$PFTT_CONF/internal
+export PFTT_CONF_APP=$PFTT_CONF/app
+export PFTT_CONF_TASK=$PFTT_CONF/task
+export PFTT_CONF_WEB_BROWSER=$PFTT_CONF/web_browser
+export PFTT_DEV_CONF=$PFTT_CONF/dev
+export PFTT_DEV_CONF_APP=$PFTT_DEV_CONF/app
+export PFTT_DEV_CONF_TASK=$PFTT_DEV_CONF/task
+export PFTT_DEV_CONF_WEB_BROWSER=$PFTT_DEV_CONF/web_browser
+export PFTT_CACHE=$PFTT_HOME/cache
+export PFTT_CACHE_WORKING=$PFTT_CACHE/working
+export PFTT_CACHE_DEP=$PFTT_CACHE/dep
+export PFTT_DEP=$PFTT_CACHE_DEP
+export PFTT_WORKING=$PFTT_CACHE_WORKING

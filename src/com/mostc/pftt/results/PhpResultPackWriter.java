@@ -329,12 +329,16 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 					this_result.test_case.getPhpUnitDist().getSourceTestPack()
 				);
 			
-			w.writeResult(this_result);
+			w.writeResult(cm.phpunit_gui!=null, this_result);
 			
 			// show on console
 			// TODO
 			w.count++;
 			System.out.println(w.count+" "+_toString(this_result.status)+" "+this_result.test_case);
+			
+			if (cm!=null) {
+				cm.showResult(this_host, 0, w.count, this_result);
+			}
 		}
 		
 	} // end protected class PhpUnitResultQueueEntry
@@ -560,7 +564,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 
 		@Override
 		public void handle() throws IllegalArgumentException, IllegalStateException, IOException {
-			getCreatePhpUnitResultWriter(this_host, this_scenario_set, src_test_pack).close();
+			getCreatePhpUnitResultWriter(this_host, this_scenario_set, src_test_pack).close(cm.phpunit_gui!=null);
 		}
 		
 	}
@@ -647,11 +651,12 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 
 	@Override
 	public AbstractPhptRW getPHPT(AHost host, ScenarioSet scenario_set) {
-		HashMap<ScenarioSet,PhptResultWriter> map_a = phpt_writer_map.get(host);
-		if (map_a==null)
-			return null;
-		else
-			return map_a.get(scenario_set);
+		try {
+			return getCreatePhptResultWriter(host, scenario_set);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return null;
 	}
 
 	@Override
@@ -729,6 +734,16 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 			return null;
 		HashMap<ScenarioSet,PhpUnitResultWriter> b = a.get(test_pack_name_and_version);
 		return b == null ? null : b.get(scenario_set);
+	}
+	
+	@Override
+	public AbstractPhpUnitRW getPhpUnit(AHost host, PhpUnitSourceTestPack test_pack, ScenarioSet scenario_set) {
+		try {
+			return getCreatePhpUnitResultWriter(host, scenario_set, test_pack);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
 	}
 
 	@Override

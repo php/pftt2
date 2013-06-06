@@ -10,7 +10,7 @@ import com.mostc.pftt.results.ConsoleManager;
 
 public abstract class SAPIInstance {
 	public abstract String getSAPIOutput();
-	public abstract void close();
+	public abstract void close(ConsoleManager cm);
 	public abstract boolean isRunning();
 	public abstract String getInstanceInfo(ConsoleManager cm);
 	public abstract boolean isCrashedOrDebuggedAndClosed();

@@ -8,7 +8,7 @@ import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 
 /** Utilities for setting up the test environment and convenience settings on Hosts
  * 

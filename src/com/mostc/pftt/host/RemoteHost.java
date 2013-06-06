@@ -3,7 +3,7 @@ package com.mostc.pftt.host;
 import java.io.IOException;
 
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 
 public abstract class RemoteHost extends AHost {
 	

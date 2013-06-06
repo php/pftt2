@@ -1,23 +1,3 @@
-import java.io.File;
-import java.io.IOException;
-import java.util.List;
-
-import com.mostc.pftt.model.app.PhpUnitDist;
-import com.mostc.pftt.model.app.PhpUnitTestCase;
-
-import com.github.mattficken.Overridable;
-
-
-import java.util.Calendar;
-import java.util.Locale;
-
-import org.openqa.selenium.By;
-import org.openqa.selenium.WebElement;
-
-import com.github.mattficken.io.StringUtil;
-import com.mostc.pftt.model.ui.*;
-
-
 
 def scenarios() {
 	// WordpressScenario looks for MySQLScenario to get database configuration
@@ -45,22 +25,16 @@ class WordpressPhpUnitTestPack extends PhpUnitSourceTestPack {
 		// TODO Auto-generated method stub
 		return super.clone();
 	}
-	/*public String[][] getNonThreadSafeTestFileNames() {
-		return [
-			["Symfony/Component/HttpFoundation"],
-			["Symfony/Component/HttpKernel"],
-			["Symfony/Component/Security/Tests/Acl/"],
-			["Symfony/Component/Form/Tests/"]
-		]
-	}*/
 	
 	@Override
 	public boolean isDevelopment() {
-		return true;
+		return false;
 	}
 	
-	@Overridable
+	@Override
 	protected boolean isFileNameATest(String file_name) {
+		// many apps/frameworks name their test files Test*.php. 
+		// wordpress does not ... check all .php files for PhpUnit test case classes.
 		return file_name.endsWith(".php");
 	}
 	
@@ -78,32 +52,7 @@ class WordpressPhpUnitTestPack extends PhpUnitSourceTestPack {
 		addBlacklist("image/editor.php")
 		addBlacklist("image/editor_gd.php")
 		addBlacklist("image/editor_imagick.php")
-		
-		/*setPreambleCode("""
-define( 'DB_NAME', 'pftt_wordpress_tests' );
-define( 'DB_USER', 'wp_test' );
-define( 'DB_PASSWORD', 'password01!' );
-define( 'DB_HOST', 'localhost' );
-define( 'DB_CHARSET', 'utf8' );
-define( 'DB_COLLATE', '' );
-// PFTT: include extra debugging information with messages
-define('WP_DEBUG', TRUE);
-// PFTT: CRITICAL: or WP_UnitTestCase::knownWPBug and ::knownUTBug will check Trac for each test(slow/unreliable), and may skip most/all tests
-define('WP_TESTS_FORCE_KNOWN_BUGS', TRUE);
-// PFTT:
-define( 'WP_TESTS_MULTISITE', FALSE );
 
-\$table_prefix  = 'wptests_';   // Only numbers, letters, and underscores please!
-
-define( 'WP_TESTS_DOMAIN', 'example.org' );
-define( 'WP_TESTS_EMAIL', 'admin@example.org' );
-define( 'WP_TESTS_TITLE', 'Test Blog' );
-
-define( 'WP_PHP_BINARY', 'c:\\php-sdk\\php-5.4.15C1-Win32-VC9-x86' );
-
-define( 'WPLANG', '' );
-""")*/
-		
 		addIncludeDirectory(getRoot()+"/wordpress");
 		addIncludeDirectory(getRoot()+"/wordpress/wp-includes");
 		addIncludeDirectory(getRoot()+"/wordpress/wp-content");
@@ -123,19 +72,59 @@ define( 'WPLANG', '' );
 		return true;
 	} // end public boolean openAfterInstall
 	@Override
-	public void prepareINI(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini) {
-		//com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, host, build);
-		ini.putSingle('extension_dir', 'C:\\php-sdk\\php-5.4.15RC1-Win32-VC9-x86\\ext')
-		ini.putMulti('extension', 'php_mysql.dll')
-		ini.putMulti('extension', 'php_mysqli.dll')
-		ini.putMulti('extension', 'php_pdo_mysql.dll')
+	public int getThreadCount(AHost host, ScenarioSet scenario_set, int default_thread_count) {
+		// Wordpress-Tests install wordpress on every test and do all-up tests (instead of propper unit tests)
+		// so they're slow... run with fewer threads
+		return default_thread_count / 4;
+	}
+	@Override
+	public String getPreBootstrapCode(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build) {
+		def db_name = Thread.currentThread().getName().replace('-', '_') + '_';
+		
+		// each thread gets its own database
+		// tried using 1 database and different table_prefix for each thread but that
+		// would still eventually result in a WP error message about the database being damaged and Wordpress needing to be installed
+		//
+		// experience has shown that using a separate database per thread is required to get consistent test results
+		//
+		//
+		// drop and recreate it from the previous test
+		// (in case previous test messed up the database ... happens using a single database and different table prefixes too)
+		def con = java.sql.DriverManager.getConnection("jdbc:mysql://localhost/?user=root&password=password01!")
+		con.createStatement().execute("DROP DATABASE IF EXISTS $db_name");
+		con.createStatement().execute("CREATE DATABASE $db_name");
+		con.createStatement().execute("GRANT ALL ON $db_name.* TO `wp_test`@`localhost` IDENTIFIED BY 'password01!'");
+		con.createStatement().execute("GRANT ALL ON $db_name.* TO `wp_test` IDENTIFIED BY 'password01!'");
+		con.close();
+		
+		
+		def build_path = build.getPhpExe();
+		return """
+define( 'DB_NAME', '$db_name' );
+define( 'DB_USER', 'wp_test' );
+define( 'DB_PASSWORD', 'password01!' );
+define( 'DB_HOST', 'localhost' );
+define( 'WP_PHP_BINARY', '$build_path' );
+
+\$table_prefix  = 'wp_tests_';
+"""
+	}
+	@Override
+	public void startRun(ConsoleManager cm, AHost runner_host, ScenarioSet scenario_set, PhpBuild build) {
+		cm.println(EPrintType.IN_PROGRESS, getClass(), "Configuring MySQL and Wordpress");
+		
+		Class.forName("com.mysql.jdbc.Driver");
+		def con = java.sql.DriverManager.getConnection("jdbc:mysql://localhost/?user=root&password=password01!")
+
+		// may need this to handle default column values
+		con.createStatement().execute("SET GLOBAL sql_mode='MYSQL40'");
+		// need this to handle extra threads
+		con.createStatement().execute("SET GLOBAL max_connections=500");
+		con.close();
 	}
 	
 } // end class WordpressPhpUnitTestPack
 
-// TODO list-config command should tell which functions each config file implements
-// TODO should rename to getUnitSourceTestPack
 def getPhpUnitSourceTestPack() {
-	// test symfony
 	return new WordpressPhpUnitTestPack();
 }

@@ -3,12 +3,17 @@ package com.mostc.pftt.scenario.app;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.scenario.AbstractDatabaseScenario;
 import com.mostc.pftt.scenario.MySQLScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 public abstract class ZipDbApplication extends ZipApplication {
+	
+	@Override
+	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		return null != scenario_set.getScenario(MySQLScenario.class); 
+	}
 	
 	protected MySQLScenario requireMySQLScenario(ConsoleManager cm, ScenarioSet scenario_set) {
 		MySQLScenario mysql = scenario_set.getScenario(MySQLScenario.class);

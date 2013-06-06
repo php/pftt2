@@ -1,6 +1,8 @@
 package com.mostc.pftt.results;
 
 import java.awt.Container;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.lang.ref.WeakReference;
 import java.util.List;
 
@@ -9,11 +11,16 @@ import javax.swing.JFrame;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.main.PfttMain;
 import com.mostc.pftt.model.TestCase;
+import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
 import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.PhpDebugPack;
 import com.mostc.pftt.model.core.PhptTestCase;
+import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner;
+import com.mostc.pftt.runner.AbstractTestPackRunner.ETestPackRunnerState;
+import com.mostc.pftt.ui.PhpUnitDebuggerFrame;
 import com.mostc.pftt.ui.PhptDebuggerFrame;
 import com.mostc.pftt.util.ErrorUtil;
 
@@ -22,7 +29,8 @@ public class LocalConsoleManager implements ConsoleManager {
 	protected final int run_test_times_all, run_test_times_list_times, run_group_times, run_group_times_list_times, max_test_read_count, thread_count, delay_between_ms, suspend_seconds, run_count;
 	protected String source_pack;
 	protected PhpDebugPack debug_pack;
-	protected PhptDebuggerFrame gui;
+	protected PhptDebuggerFrame phpt_gui;
+	protected PhpUnitDebuggerFrame phpunit_gui;
 	protected PhpResultPackWriter w; // TODO
 	protected List<String> debug_list, run_test_times_list, run_group_times_list, skip_list;
 		
@@ -65,21 +73,55 @@ public class LocalConsoleManager implements ConsoleManager {
 	
 	public void showGUI(LocalPhptTestPackRunner test_pack_runner) {
 		if (show_gui) {
-			if (gui!=null)
-				((JFrame)gui.getRootPane().getParent()).dispose();
+			if (phpt_gui!=null)
+				((JFrame)phpt_gui.getRootPane().getParent()).dispose();
 			
-			gui = new PhptDebuggerFrame(test_pack_runner);
-			show_gui("", gui);
+			phpt_gui = new PhptDebuggerFrame(test_pack_runner);
+			show_gui("", phpt_gui);
 		}
 	}
 	
-	protected static void show_gui(String title, Container c) {
+	public void showGUI(final LocalPhpUnitTestPackRunner test_pack_runner, PhpUnitSourceTestPack test_pack) {
+		if (show_gui) {
+			if (phpunit_gui!=null)
+				((JFrame)phpunit_gui.getRootPane().getParent()).dispose();
+			
+			phpunit_gui = new PhpUnitDebuggerFrame(test_pack_runner, test_pack);
+			phpunit_gui.setPhpResultPackWriter(w);
+			JFrame jf = show_gui("", phpunit_gui);
+			jf.addWindowListener(new WindowListener() {
+					@Override
+					public void windowActivated(WindowEvent e) {}
+					@Override
+					public void windowClosed(WindowEvent e) {
+						test_pack_runner.setState(ETestPackRunnerState.NOT_RUNNING);
+						PfttMain.exit();
+					}
+					@Override
+					public void windowClosing(WindowEvent e) {
+						test_pack_runner.setState(ETestPackRunnerState.NOT_RUNNING);
+						PfttMain.exit();
+					}
+					@Override
+					public void windowDeactivated(WindowEvent e) {}
+					@Override
+					public void windowDeiconified(WindowEvent e) {}
+					@Override
+					public void windowIconified(WindowEvent e) {}
+					@Override
+					public void windowOpened(WindowEvent e) {}
+				});
+		}
+	}
+	
+	protected static JFrame show_gui(String title, Container c) {
 		JFrame jf = new JFrame("PFTT - "+title);
 		jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		jf.setContentPane(c);
 		jf.pack();
 		jf.setExtendedState(JFrame.MAXIMIZED_BOTH);				
 		jf.setVisible(true);
+		return jf;
 	}
 	
 	public boolean isNoRestartAll() {
@@ -116,8 +158,13 @@ public class LocalConsoleManager implements ConsoleManager {
 	}
 	
 	protected void showResult(AHost host, int totalCount, int completed, PhptTestResult result) {
-		if (gui!=null)
-			gui.showResult(host, totalCount, completed, result);
+		if (phpt_gui!=null)
+			phpt_gui.showResult(host, totalCount, completed, result);
+	}
+	
+	protected void showResult(AHost host, int totalCount, int completed, PhpUnitTestResult result) {
+		if (phpunit_gui!=null)
+			phpunit_gui.showResult(result);
 	}
 	
 	private WeakReference<String> last_clue_msg;

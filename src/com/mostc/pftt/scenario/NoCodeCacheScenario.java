@@ -6,7 +6,7 @@ import com.mostc.pftt.model.core.EAcceleratorType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 
 /** Placeholder scenario for no code caching being used (neither APC or WinCache are used)
  * 

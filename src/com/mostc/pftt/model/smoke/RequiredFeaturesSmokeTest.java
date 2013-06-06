@@ -3,7 +3,7 @@ package com.mostc.pftt.model.smoke;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 
 /** tests that a build has all required features
  * 

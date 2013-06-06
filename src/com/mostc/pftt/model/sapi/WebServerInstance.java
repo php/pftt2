@@ -11,6 +11,7 @@ import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.TestCase;
 import com.mostc.pftt.model.core.PhpIni;
+import com.mostc.pftt.results.ConsoleManager;
 
 /** an instance of a web server
  * 
@@ -213,9 +214,9 @@ public abstract class WebServerInstance extends SAPIInstance {
 	}
 	
 	@Override
-	public void close() {
+	public void close(ConsoleManager cm) {
 		try {
-			do_close();
+			do_close(cm);
 		} finally {
 			synchronized(ws_mgr.instances) {
 				ws_mgr.instances.remove(this);
@@ -223,10 +224,10 @@ public abstract class WebServerInstance extends SAPIInstance {
 		}
 		// be sure all replacements get closed too
 		for ( WebServerInstance c=replacement ; c != null ; c = c.replacement )
-			c.close();
+			c.close(cm);
 	}
 	
-	protected abstract void do_close();
+	protected abstract void do_close(ConsoleManager cm);
 
 	public abstract String getDocroot();
 	

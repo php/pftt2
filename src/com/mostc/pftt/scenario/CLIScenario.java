@@ -55,9 +55,19 @@ public class CliScenario extends AbstractSAPIScenario {
 	
 	@Override
 	public int getTestThreadCount(AHost host) {
-		return 6 * host.getCPUCount();
+		return 16 * host.getCPUCount();
 	}
-
+	
+	@Override
+	public boolean isSlowTest(PhptTestCase test_case) {
+		return test_case.isExtension(CLI_SLOW_TESTS) || super.isSlowTest(test_case);
+	}
+	
+	public static final Trie CLI_SLOW_TESTS = PhptTestCase.createExtensions("mbstring",
+			"intl", "gd", "session", "reflection", "dom", "date", "spl",
+			"standard/tests/strings", "standard/tests/math", "standard/tests/image",
+			"standard/tests/file", "gettext", "xml", "zlib");
+	
 	@Override
 	public ESAPIType getSAPIType() {
 		return ESAPIType.CLI;

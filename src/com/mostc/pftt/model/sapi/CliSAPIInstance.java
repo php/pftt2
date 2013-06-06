@@ -62,7 +62,7 @@ public class CliSAPIInstance extends SAPIInstance {
 	}
 	
 	@Override
-	public void close() {
+	public void close(ConsoleManager cm) {
 		try {
 			host.delete(ini_dir);
 		} catch ( Exception ex ) {

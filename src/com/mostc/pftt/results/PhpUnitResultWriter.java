@@ -47,7 +47,7 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 	protected final OutputStream out;
 	protected final PrintWriter all_csv_pw, started_pw;
 	protected final HashMap<EPhpUnitTestStatus,StatusListEntry> status_list_map;
-	protected HashMap<String,String> fail_output_by_name;
+	protected HashMap<String,String> output_by_name;
 	protected final ScenarioSet scenario_set;
 	protected final AHost host;
 	protected final PhpBuildInfo build_info;
@@ -69,7 +69,7 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 		all_csv_pw = new PrintWriter(new FileWriter(new File(dir, "ALL.csv")));
 		started_pw = new PrintWriter(new FileWriter(new File(dir, "STARTED.txt")));
 		
-		fail_output_by_name = new HashMap<String,String>(800);
+		output_by_name = new HashMap<String,String>(800);
 		
 		// include scenario-set in file name to make it easier to view a bunch of them in Notepad++ or other MDIs
 		File file = new File(dir+"/"+StringUtil.max("phpunit_"+test_pack.getName()+"_"+scenario_set.getNameWithVersionInfo(), 80)+".xml");
@@ -130,12 +130,12 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 		}
 	} // end protected class StatusListEntry
 	
-	public String getFailureOutput(String test_name) {
-		return fail_output_by_name == null ? null : fail_output_by_name.get(test_name);
+	public String getTestOutput(String test_name) {
+		return output_by_name == null ? null : output_by_name.get(test_name);
 	}
 
 	// @see PHPUnit/Util/Log/JUnit.php#startTestSuite
-	public void writeResult(PhpUnitTestResult result) throws IllegalArgumentException, IllegalStateException, IOException {
+	public void writeResult(boolean store_output, PhpUnitTestResult result) throws IllegalArgumentException, IllegalStateException, IOException {
 		if (closed)
 			throw new IllegalStateException("can not write to closed PhpUnitResultWriter. it is closed.");
 		
@@ -146,9 +146,10 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 		final String test_name = result.getName();
 		status_list_map.get(result.status).write(test_name, result);
 		
-		if ((result.status==EPhpUnitTestStatus.FAILURE||result.status==EPhpUnitTestStatus.ERROR||result.status==EPhpUnitTestStatus.CRASH) && StringUtil.isNotEmpty(result.output)) {
+		if ( (store_output || (result.status==EPhpUnitTestStatus.FAILURE||result.status==EPhpUnitTestStatus.ERROR||result.status==EPhpUnitTestStatus.CRASH))
+				&& StringUtil.isNotEmpty(result.output)) {
 			// store crash output too: for exit code and status
-			fail_output_by_name.put(test_name, result.output);
+			output_by_name.put(test_name, result.output);
 		}
 		
 		
@@ -196,9 +197,14 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 		serial.endTag(null, "testsuite");
 	}
 	
+	@Override
+	public void close() throws IllegalArgumentException, IllegalStateException, IOException {
+		close(false);
+	}
+	
 	private boolean closed = false;
 	protected int count; // TODO
-	public void close() throws IllegalArgumentException, IllegalStateException, IOException {
+	public void close(boolean store_output) throws IllegalArgumentException, IllegalStateException, IOException {
 		if (closed)
 			return;
 		closed = true;
@@ -228,7 +234,8 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 		for ( StatusListEntry e : status_list_map.values() )
 			e.close();
 		
-		fail_output_by_name = null;
+		if (!store_output)
+			output_by_name = null;
 	} // end public void close
 	
 	private void writeTally() throws IllegalArgumentException, IllegalStateException, IOException {

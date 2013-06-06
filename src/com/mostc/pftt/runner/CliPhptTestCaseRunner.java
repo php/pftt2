@@ -133,9 +133,16 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			env.put(ENV_HTTP_COOKIE, "");
 		}
 		
-		// 0 => for memory debugging
-		env.put(ENV_USE_ZEND_ALLOC, "1");
-		// TODO ZEND_DONT_UNLOAD_MODULES
+		
+		// SPEC: see run-test.php line 1487
+		if (false) { // TODO cm.isMemCheck()) {
+			env.put(ENV_USE_ZEND_ALLOC, "0");
+			env.put(ENV_ZEND_DONT_UNLOAD_MODULES, "1");
+		} else {
+			env.put(ENV_USE_ZEND_ALLOC, "1");
+			env.put(ENV_ZEND_DONT_UNLOAD_MODULES, "0");
+		}
+		
 		// important: some tests need these to work
 		env.put(ENV_TEST_PHP_EXECUTABLE, build.getPhpExe());
 		env.put(ENV_PHP_PATH, build.getPhpExe());
@@ -192,7 +199,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		// execute SKIPIF (60 second timeout)
 		output = sapi.execute(exe_type, skipif_file, null, AHost.ONE_MINUTE, env, active_test_pack.getStorageDirectory());
 					
-		return "";//output.output;
+		return output.output;
 	} // end String executeSkipIf
 	
 	protected ExecHandle running_test_handle;
@@ -201,7 +208,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		if (running_test_handle==null)
 			return;
 		
-		running_test_handle.close(force);
+		running_test_handle.close(cm, force);
 	}
 	
 	private String doExecuteTest() throws Exception {
@@ -216,12 +223,12 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		StringBuilder output_sb = new StringBuilder(1024);
 		
 		running_test_handle.run(
-				output_sb, 
+				cm, 
+				output_sb,
 				test_case.isNon8BitCharset()?test_case.getCommonCharset():null,
 				PhptTestCase.MAX_TEST_TIME_SECONDS,
 				thread,
-				sapi_scenario.getSlowTestTimeSeconds(),
-				cm.getSuspendSeconds()
+				sapi_scenario.getSlowTestTimeSeconds(), cm.getSuspendSeconds()
 			);
 		
 		return output_sb.toString();

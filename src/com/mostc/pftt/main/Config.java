@@ -28,7 +28,7 @@ import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.model.ui.UITestPack;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
@@ -46,6 +46,11 @@ import groovy.lang.MetaMethod;
  * @see Config#loadConfigFromFile
  * 
  * An example configuration file:
+ * def scenarios() {
+ * 	// provide the scenarios to run... these are automatically permuted into the ScenarioSets which are actually run
+ *  //
+ *  // you can create your own scenarios here that override existing Scenarios to change their behavior, settings, etc...
+ * }
  * def hosts() {
  * 		[
  * 			// connect to a host using ssh
@@ -492,6 +497,7 @@ public final class Config implements IENVINIFilter {
 		sb.append("import ");sb.append(SMTPProtocol.class.getName());sb.append(";\n");
 		sb.append("import ");sb.append(FTPClient.class.getName());sb.append(";\n");
 		sb.append("import ");sb.append(ConsoleManager.class.getPackage().getName());sb.append(".*;\n");
+		sb.append("import ");sb.append(EPrintType.class.getName());sb.append(";\n");
 		
 		sb.append(code);
 		return sb.toString();

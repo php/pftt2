@@ -437,7 +437,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			String output_trim = output.trim();
 			
 			try {
-				expected_re_match = test_case.getExpectedCompiled(host, scenario_set, twriter).match(output_trim); 
+				expected_re_match = test_case.getExpectedCompiled(host, scenario_set, twriter, false).match(output_trim); 
 			} catch (Throwable ex) {
 				twriter.addTestException(host, scenario_set, test_case, ex, expected);
 				throw ex;
@@ -448,6 +448,20 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 						
 				return;
 			} 
+			if (test_case.expectsWarningOrFatalError()) {
+				try {
+					expected_re_match = test_case.getExpectedCompiled(host, scenario_set, twriter, true).match(output_trim); 
+				} catch (Throwable ex) {
+					twriter.addTestException(host, scenario_set, test_case, ex, expected);
+					throw ex;
+				}
+				if (expected_re_match) {
+	
+					twriter.addResult(host, scenario_set, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null)));
+							
+					return;
+				}
+			}
 			preoverride_actual = output;
 			output_trim = PhptOverrideManager.replaceWithExactOverrides(host, output_trim);
 				
@@ -459,7 +473,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			} else {
 				// compare again
 				try {
-					expected_re_match = test_case.getExpectedCompiled(host, scenario_set, twriter).match(output_trim); 
+					expected_re_match = test_case.getExpectedCompiled(host, scenario_set, twriter, false).match(output_trim); 
 				} catch (Throwable ex) {
 					twriter.addTestException(host, scenario_set, test_case, ex, expected);
 					throw ex;
@@ -470,13 +484,27 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 							
 					return;
 				}
+				if (test_case.expectsWarningOrFatalError()) {
+					try {
+						expected_re_match = test_case.getExpectedCompiled(host, scenario_set, twriter, true).match(output_trim); 
+					} catch (Throwable ex) {
+						twriter.addTestException(host, scenario_set, test_case, ex, expected);
+						throw ex;
+					}
+					if (expected_re_match) {
+	
+						twriter.addResult(host, scenario_set, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null)));
+								
+						return;
+					}
+				}
 			}
 		} else if (test_case.containsSection(EPhptSection.EXPECT)) {	
 			expected = test_case.get(EPhptSection.EXPECT);
 						
 			output = remove_header_from_output(output);
 			
-			if (equalsNoWS(output, expected)||(output.contains("<html>")&&!output.contains("404"))||(test_case.isNamed("ext/phar/tests/zip/phar_commitwrite.phpt")&&expected.contains(output.substring(50, 60)))||(test_case.isNamed("ext/phar/tests/tar/phar_commitwrite.phpt")&&expected.contains(output.substring(60, 70)))) {
+			if (equalsNoWS(output, expected)||(test_case.expectsWarningOrFatalError() && equalsNoWS(output, PhptTestCase.removeWarningAndFatalError(expected)))||(output.contains("<html>")&&!output.contains("404"))||(test_case.isNamed("ext/phar/tests/zip/phar_commitwrite.phpt")&&expected.contains(output.substring(50, 60)))||(test_case.isNamed("ext/phar/tests/tar/phar_commitwrite.phpt")&&expected.contains(output.substring(60, 70)))) {
 				
 				twriter.addResult(host, scenario_set, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null)));
 						

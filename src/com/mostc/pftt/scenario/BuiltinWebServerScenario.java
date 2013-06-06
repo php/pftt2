@@ -14,9 +14,7 @@ import com.mostc.pftt.model.core.PhptActiveTestPack;
 import com.mostc.pftt.model.core.PhptSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.model.sapi.BuiltinWebServerManager;
-import com.mostc.pftt.model.sapi.SharedSAPIInstancesTestCaseGroupKey;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
-import com.mostc.pftt.model.sapi.WebServerInstance;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
@@ -66,6 +64,177 @@ public class BuiltinWebServerScenario extends AbstractWebServerScenario {
 		// XXX update this calculation from time to time as this web server's performance improves (probably decrease number)
 		return 8 * host.getCPUCount();
 	}
+	
+	@Override
+	public boolean isExpectedCrash(PhptTestCase test_case) {
+		// TODO temp 6/2 isSlowTest - test
+		return test_case.isNamed(BUILTIN_WEB_EXPECTED_CRASHES) || isSlowTest(test_case) || super.isExpectedCrash(test_case);
+	}
+	
+	public static final Trie BUILTIN_WEB_EXPECTED_CRASHES = PhptTestCase.createNamed(
+			"ext/standard/tests/network/udp6loop.phpt",
+			"ext/standard/tests/serialize/serialization_objects_003.phpt",
+			"tests/basic/rfc1867_anonymous_upload.phpt",
+			"ext/standard/tests/mail/mail_variation_alt3-win32.phpt",
+			"ext/standard/tests/mail/mail_basic_alt4-win32.phpt",
+			"ext/calendar/tests/jdtounix.phpt",
+			"ext/bcmath/tests/bcdiv.phpt",
+			"ext/bcmath/tests/bcpow.phpt",
+			"ext/standard/tests/network/long2ip_variation1.phpt",
+			"ext/bcmath/tests/bcpow.phpt",
+			"ext/fileinfo/tests/finfo_file_001.phpt",
+			"ext/standard/tests/network/gethostbyname_error003.phpt",
+			"ext/standard/tests/network/gethostbyname_error002.phpt",
+			"tests/func/002.phpt",
+			"ext/zip/tests/bug7214.phpt",
+			"sapi/cgi/tests/011.phpt",
+			"ext/tokenizer/tests/token_get_all_variation13.phpt",
+			"ext/tidy/tests/025.phpt",
+			"ext/zip/tests/zip_entry_filesize.phpt",
+			"ext/tidy/tests/004.phpt",
+			"ext/tidy/tests/006.phpt",
+			"ext/tidy/tests/003.phpt",
+			"ext/xml/tests/xml_set_element_handler_error.phpt",
+			"ext/standard/tests/url/parse_url_basic_004.phpt",
+			"ext/tidy/tests/027.phpt",
+			"ext/tidy/tests/014.phpt",
+			"ext/standard/tests/url/rawurlencode_variation_001.phpt",
+			"ext/standard/tests/url/parse_url_relative_scheme.phpt",
+			"ext/xml/tests/xml_parse_into_struct_variation1.phpt",
+			"ext/zip/tests/bug7658.phpt",
+			"ext/standard/tests/url/get_headers_error_001.phpt",
+			"ext/zlib/tests/zlib_scheme_copy_variation2.phpt",
+			"ext/standard/tests/url/urldecode_error_001.phpt",
+			"ext/zlib/tests/readgzfile_variation14.phpt",
+			"ext/xml/tests/bug32001b.phpt",
+			"ext/standard/tests/url/bug55273.phpt",
+			"ext/zlib/tests/readgzfile_variation13.phpt",
+			"ext/zlib/tests/gzwrite_variation1.phpt",
+			"ext/standard/tests/url/bug55399.phpt",
+			"ext/standard/tests/url/base64_decode_basic_001.phpt",
+			"ext/xml/tests/xml_parser_free_variation1.phpt",
+			"ext/tidy/tests/001.phpt",
+			"ext/standard/tests/url/parse_url_basic_003.phpt",
+			"ext/zip/tests/bug7214.phpt",
+			"ext/xml/tests/xml_set_character_data_handler_variation1.phpt",
+			"ext/tidy/tests/016.phpt",
+			"ext/standard/tests/url/base64_encode_basic_002.phpt",
+			"ext/standard/tests/url/base64_decode_variation_002.phpt",
+			"ext/standard/tests/url/base64_decode_variation_001.phpt",
+			"ext/xml/tests/xml_parse_variation1.phpt",
+			"ext/standard/tests/network/gethostbyname_error004.phpt",
+			"ext/tidy/tests/016.phpt",
+			"tests/basic/bug51709_2.phpt",
+			"tests/basic/009.phpt",
+			"ext/xml/tests/xml_set_character_data_handler_variation1.phpt",
+			"ext/zlib/tests/gzwrite_error.phpt",
+			"ext/xml/tests/xml_parser_set_option_variation1.phpt",
+			"ext/xml/tests/xml_error_string_variation1.phpt",
+			"ext/standard/tests/streams/bug61115-1.phpt",
+			"ext/standard/tests/streams/bug46024.phpt",
+			"ext/standard/tests/streams/bug49936.phpt",
+			"ext/standard/tests/serialize/serialization_resources_001.phpt",
+			"ext/standard/tests/serialize/precision.phpt",
+			"ext/standard/tests/streams/bug61115.phpt",
+			"ext/standard/tests/serialize/bug62836_1.phpt",
+			"ext/standard/tests/serialize/serialization_objects_009.phpt",
+			"ext/standard/tests/streams/bug46024.phpt",
+			"ext/standard/tests/misc/time_nanosleep_error5.phpt",
+			"ext/standard/tests/mail/ezmlm_hash_basic_64bit.phpt",
+			"ext/standard/tests/serialize/serialization_objects_005.phpt",
+			"ext/standard/tests/streams/bug61115-2.phpt",
+			"ext/standard/tests/class_object/get_object_vars_error_001.phpt",
+			"ext/standard/tests/class_object/get_parent_class_variation_002.phpt",
+			"ext/standard/tests/class_object/get_parent_class_error_001.phpt",
+			"ext/standard/tests/class_object/get_parent_class_variation_001.phpt",
+			"ext/standard/tests/class_object/get_object_vars_variation_003.phpt",
+			"ext/standard/tests/class_object/get_class_methods_variation_002.phpt",
+			"ext/standard/tests/class_object/get_declared_classes_variation1.phpt",
+			"ext/standard/tests/class_object/get_class_variation_001.phpt",
+			"ext/standard/tests/class_object/interface_exists_variation1.phpt",
+			"ext/standard/tests/class_object/interface_exists_variation4.phpt",
+			"ext/reflection/tests/reflectionclass_issubclassof_error1.phpt",
+			"ext/mbstring/tests/mb_ereg1.phpt",
+			"ext/mcrypt/tests/mcrypt_filters.phpt",
+			"ext/openssl/tests/014.phpt",
+			"ext/openssl/tests/014.phpt",
+			"ext/libxml/tests/bug54440.phpt",
+			"ext/openssl/tests/bug54992.phpt",
+			"ext/openssl/tests/bug48182.phpt",
+			"ext/mcrypt/tests/mcrypt_enc_self_test.phpt",
+			"ext/mcrypt/tests/mcrypt_ecb_variation5.phpt",
+			"ext/ereg/tests/015.phpt",
+			"ext/filter/tests/003.phpt",
+			"ext/enchant/tests/broker_describe.phpt",
+			"ext/filter/tests/037.phpt",
+			"ext/filter/tests/bug46973.phpt",
+			"ext/ereg/tests/eregi_variation_001.phpt",
+			"ext/ereg/tests/spliti_error_002.phpt",
+			"ext/ereg/tests/split_error_002.phpt",
+			"ext/ereg/tests/spliti_variation_001.phpt",
+			"ext/filter/tests/bug46973.phpt",
+			"ext/filter/tests/bug8315.phpt",
+			"ext/filter/tests/028.phpt",
+			"ext/ereg/tests/ereg_variation_004.phpt",
+			"ext/ereg/tests/eregi_replace_error_002.phpt",
+			"ext/filter/tests/010.phpt",
+			"ext/exif/tests/exif_imagetype_variation1.phpt",
+			"ext/ereg/tests/spliti_basic_001.phpt",
+			"ext/ereg/tests/ereg_replace_error_002.phpt",
+			"ext/filter/tests/017.phpt",
+			"ext/ereg/tests/eregi_error_002.phpt",
+			"ext/ereg/tests/ereg_replace_basic_001.phpt",
+			"ext/ereg/tests/ereg_error_002.phpt",
+			"ext/filter/tests/bug49510.phpt",
+			"ext/calendar/tests/jdtomonthname.phpt",
+			"ext/com_dotnet/tests/bug33386.phpt",
+			"ext/com_dotnet/tests/bug45280.phpt",
+			"ext/calendar/tests/easter_days.phpt",
+			"ext/calendar/tests/cal_to_jd.phpt",
+			"ext/com_dotnet/tests/bug34272.phpt",
+			"ext/calendar/tests/jdtofrench.phpt",
+			"ext/calendar/tests/jdtomonthname.phpt",
+			"ext/calendar/tests/jddayofweek.phpt",
+			"ext/bcmath/tests/bcdiv_error2.phpt",
+			"ext/bcmath/tests/bcdiv_error1.phpt",
+			"ext/calendar/tests/easter_days.phpt",
+			"ext/reflection/tests/bug45571.phpt",
+			"ext/bcmath/tests/bcpowmod_error3.phpt",
+			"ext/bcmath/tests/bcmod_error1.phpt",
+			"ext/readline/tests/readline_read_history_001.phpt",
+			"ext/readline/tests/readline_list_history_001.phpt",
+			"ext/readline/tests/readline_info_001.phpt",
+			"ext/reflection/tests/016.phpt",
+			"ext/readline/tests/readline_completion_function_001.phpt",
+			"ext/bz2/tests/002.phpt",
+			"ext/bcmath/tests/bcpowmod_error2.phpt",
+			"ext/bz2/tests/001.phpt",
+			"ext/calendar/tests/jdtounix.phpt",
+			"ext/calendar/tests/easter_date.phpt",
+			"ext/standard/tests/network/udp4loop.phpt",
+			"ext/sockets/tests/socket_select-wrongparams-2.phpt",
+			"ext/xmlwriter/tests/oo_009.phpt",
+			"ext/reflection/tests/traits005.phpt",
+			"ext/reflection/tests/reflectionobject_export_basic2.phpt",
+			"ext/reflection/tests/traits003.phpt"
+		); // end BUILTIN_WEB_EXPECTED_CRASHES
+
+	
+	@Override
+	public boolean isSlowTest(PhptTestCase test_case) {
+		return test_case.isExtension(BUILTIN_WEB_SLOW_TESTS) || super.isSlowTest(test_case);
+	}
+	
+	public static final Trie BUILTIN_WEB_SLOW_TESTS = PhptTestCase.createExtensions("mbstring",
+			"intl", "gd", "session", "reflection", "dom", "date", "spl",
+			"standard/tests/strings", "standard/tests/math", "standard/tests/image", "standard/tests/general_functions/",
+			"standard/tests/file", "gettext", "xml", "zlib", "iconv", "ctype", "gmp", "hash");
+	static {
+		BUILTIN_WEB_SLOW_TESTS.addString("tests/security/");
+		BUILTIN_WEB_SLOW_TESTS.addString("tests/lang/");
+		BUILTIN_WEB_SLOW_TESTS.addString("tests/classes/");
+		BUILTIN_WEB_SLOW_TESTS.addString("zend/tests/");
+	}
 
 	@Override
 	public ESAPIType getSAPIType() {
@@ -74,13 +243,13 @@ public class BuiltinWebServerScenario extends AbstractWebServerScenario {
 	
 	@Override
 	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
-		return new BuiltinWebHttpPhptTestCaseRunner(this, group_key.getPhpIni(), group_key.getEnv(), params, httpproc, httpexecutor, smgr, (WebServerInstance) ((SharedSAPIInstancesTestCaseGroupKey)group_key).getSAPIInstance(), thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
+		return new BuiltinWebHttpPhptTestCaseRunner(this, group_key.getPhpIni(), group_key.getEnv(), params, httpproc, httpexecutor, smgr, thread.getThreadWebServerInstance(), thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 	}
 	
 	
 	@Override
 	public AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(PhpUnitThread thread, TestCaseGroupKey group_key, ConsoleManager cm, ITestResultReceiver twriter, Map<String,String> globals, Map<String,String> env, AHost runner_host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
-		return new BuiltinWebHttpPhpUnitTestCaseRunner(this, thread, twriter, params, httpproc, httpexecutor, smgr, (WebServerInstance) ((SharedSAPIInstancesTestCaseGroupKey)group_key).getSAPIInstance(), globals, env, cm, runner_host, scenario_set, build, test_case, my_temp_dir, constants, include_path, include_files, ini, reflection_only);
+		return new BuiltinWebHttpPhpUnitTestCaseRunner(this, thread, twriter, params, httpproc, httpexecutor, smgr, thread.getThreadWebServerInstance(), globals, env, cm, runner_host, scenario_set, build, test_case, my_temp_dir, constants, include_path, include_files, ini, reflection_only);
 	}
 	
 	@Override
@@ -171,12 +340,12 @@ public class BuiltinWebServerScenario extends AbstractWebServerScenario {
 
 	@Override
 	public int getSlowTestTimeSeconds() {
-		return 5;
+		return 40;
 	}
 	
 	@Override
 	public long getFastTestTimeSeconds() {
-		return 2;
+		return 30;
 	}
 
 } // end public class BuiltinWebServerScenario

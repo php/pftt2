@@ -17,11 +17,19 @@ package com.mostc.pftt.scenario;
 public enum EScenarioSetPermutationLayer {
 	USER_INTERFACE,
 	/** running PhpUnit, etc... tests */
-	WEB_APPLICATION,
+	WEB_APPLICATION {
+		public boolean reject(Scenario scenario) {
+			return scenario instanceof ApplicationScenario; // TODO for wordpress,symfony,joomla
+		}
+	},
 	/** running PHPT tests against php.exe or php-cgi.exe */
 	PHP_CORE,
 	FILE_SYSTEM,
 	PERFORMANCE,
 	DATABASE,
 	WEB_SERVER;
+
+	public boolean reject(Scenario scenario) {
+		return false;
+	}
 }

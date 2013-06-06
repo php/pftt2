@@ -5,7 +5,7 @@ import java.io.IOException;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.ActiveTestPack;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 
 /** Placeholder scenario for storing a PHP build and its test pack on the local 
  * file system as opposed to remotely somewhere.

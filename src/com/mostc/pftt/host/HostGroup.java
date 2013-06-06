@@ -852,6 +852,12 @@ public class HostGroup extends Host implements List<Host> {
 		return null;
 	}
 	@Override
+	public String joinMultiplePaths(List<String> paths, String... paths2) {
+		for (Host h : this)
+			return h.joinMultiplePaths(paths, paths2);
+		return null;
+	}
+	@Override
 	public boolean isX64() {
 		for (Host h : this) {
 			if (!h.isX64())

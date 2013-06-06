@@ -11,7 +11,7 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.ErrorUtil;
 
@@ -219,7 +219,7 @@ public class IISManager extends WebServerManager {
 		}
 
 		@Override
-		protected synchronized void do_close() {
+		protected synchronized void do_close(ConsoleManager cm) {
 			if (!running)
 				return;
 			

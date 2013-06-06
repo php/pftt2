@@ -8,7 +8,7 @@ import com.mostc.pftt.host.TempFileExecOutput;
 import com.mostc.pftt.model.ActiveTestPack;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 
 /** Tests PHP with PHP build and test pack being stored remotely on a group of DFS SMB Shares.
  * 

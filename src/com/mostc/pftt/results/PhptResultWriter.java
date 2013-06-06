@@ -20,7 +20,6 @@ import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.EPhptSection;
 import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.PhpBuildInfo;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 public class PhptResultWriter extends AbstractPhptRW {

@@ -14,6 +14,7 @@ import com.mostc.pftt.host.AHost.ExecHandle;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.DebuggerManager;
 import com.mostc.pftt.util.DebuggerManager.Debugger;
@@ -47,7 +48,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 					// on Windows, that means that `php.exe -S` instances will still be running
 					// you'll need to do: taskkill /im:php.exe /f /t
 					// or: taskkill /im:httpd.exe /f /t
-					close();
+					close(null);
 				}
 			});
 		}
@@ -148,6 +149,15 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 					waitIfTooManyActiveDebuggers();
 					
 					web.debug_handle = dbg_mgr.newDebugger(cm, host, scenario_set, server_name, build, (LocalHost.LocalExecHandle) handle);
+					
+					// SPEC: see run-test.php line 1487
+					if (false) { // TODO cm.isMemCheck()) {
+						env.put(AbstractPhptTestCaseRunner.ENV_USE_ZEND_ALLOC, "0");
+						env.put(AbstractPhptTestCaseRunner.ENV_ZEND_DONT_UNLOAD_MODULES, "1");
+					} else {
+						env.put(AbstractPhptTestCaseRunner.ENV_USE_ZEND_ALLOC, "1");
+						env.put(AbstractPhptTestCaseRunner.ENV_ZEND_DONT_UNLOAD_MODULES, "0");
+					}
 				}
 				//
 				
@@ -184,7 +194,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 			} catch ( Exception ex ) {
 				if (handle!=null && !handle.isCrashed())
 					// make sure process is killed in this case (don't kill crashed process)
-					handle.close();
+					handle.close(cm);
 				
 				sapi_output += ErrorUtil.toString(ex) + "\n";
 			}
@@ -212,11 +222,6 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 			this.cmd = cmd;
 			this.hostname = hostname;
 			this.port = port;
-		}
-		
-		@Override
-		public boolean isCrashedAndDebugged() {
-			return process.isCrashedAndDebugged();
 		}
 		
 		@Override
@@ -258,7 +263,12 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 		
 		@Override
 		public boolean isCrashedOrDebuggedAndClosed() {
-			return super.isCrashedOrDebuggedAndClosed() || process.isCrashedOrDebuggedAndClosed();
+			return false; // TODO temp 5/30 super.isCrashedOrDebuggedAndClosed() || process.isCrashedOrDebuggedAndClosed();
+		}
+		
+		@Override
+		public boolean isCrashedAndDebugged() {
+			return false; // TODO temp 5/30 process.isCrashedAndDebugged();
 		}
 		
 		@Override
@@ -268,7 +278,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 
 		private boolean waiting_for_debug_of_crashed_process;
 		@Override
-		protected void do_close() {
+		protected void do_close(ConsoleManager cm) {
 			if (isCrashedOrDebuggedAndClosed() && debug_handle!=null) {
 				if (waiting_for_debug_of_crashed_process)
 					return;
@@ -292,9 +302,9 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 				return;
 			} else if (debug_handle!=null) {
 				// process didn't crash, close debugger
-				debug_handle.close();
+				debug_handle.close(cm);
 			}
-			process.close(true);
+			process.close(cm, true);
 		}
 
 		@Override

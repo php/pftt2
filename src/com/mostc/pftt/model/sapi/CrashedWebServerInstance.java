@@ -54,7 +54,7 @@ public class CrashedWebServerInstance extends WebServerInstance {
 	}
 
 	@Override
-	public void close() {
+	public void close(ConsoleManager cm) {
 	}
 
 	@Override
@@ -63,7 +63,7 @@ public class CrashedWebServerInstance extends WebServerInstance {
 	}
 
 	@Override
-	protected void do_close() {
+	protected void do_close(ConsoleManager cm) {
 		// N/A
 	}
 

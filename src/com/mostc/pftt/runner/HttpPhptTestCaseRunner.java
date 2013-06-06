@@ -2,6 +2,7 @@ package com.mostc.pftt.runner;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.URLEncoder;
 import java.util.HashMap;
@@ -122,9 +123,15 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				
 				// notify of crash so it gets reported everywhere
 				web.notifyCrash("PFTT: timeout during test("+section+" SECTION): "+test_case.getName()+"\n"+ErrorUtil.toString(ex1), 0);
+				
+				if (cm.isNoRestartAll()) {
+					// don't close or replace web server
+					return "";
+				}
+				
 				// ok to close this here, since its not an Access Violation(AV) and so won't prompt
 				// the user to enter Visual Studio, WinDbg or GDB
-				web.close(); 
+				web.close(cm); 
 				
 				if (web.isCrashedAndDebugged()) {
 					// don't run again if user debugged this test already (it'll just make them debug it again)
@@ -220,7 +227,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 					if (_web!=this.web) {
 						this.web = _web;
 						is_replacement = true;
-					
+											
 						if (web==null||web.isCrashedOrDebuggedAndClosed()) {
 							markTestAsCrash();
 							
@@ -265,7 +272,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 					//
 					// don't close crashed servers on windows unless WER popup is disabled because user may want to
 					// debug them. if user doesn't, they'll click close in WER popup
-					web.close();
+					web.close(cm);
 				}
 			
 			}
@@ -279,6 +286,18 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		return do_http_get(path, 0);
 	}
 	
+	@Override // TODO
+	protected String get_ini_get_all_path() throws IllegalStateException, IOException {
+		// ensure ini_get_all.php exists
+		// TODO temp 5/15 - should store this once only and delete it later
+		String ini_get_all_path = host.joinIntoOnePath(active_test_pack.getStorageDirectory(), "ini_get_all.php");
+		if (!host.exists(ini_get_all_path)) {
+			// TODO locking?
+			host.saveTextFile(ini_get_all_path, "<?php var_dump($argv);\nvar_dump(ini_get_all()); ?>");
+		}
+		return ini_get_all_path;
+	}
+	
 	@Override
 	public String getIniActual() throws Exception {
 		// ensure ini_get_all.php has been created
@@ -290,7 +309,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	@Override
 	protected void stop(boolean force) {
 		if (force && is_replacement && web !=null && !web.isDebuggerAttached())
-			web.close();
+			web.close(cm);
 		final Socket s = test_socket;
 		if (s==null)
 			return;
@@ -324,12 +343,12 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 					},
 				// 60 seconds from start (not 60 from 20)
 				PhptTestCase.MAX_TEST_TIME_SECONDS,
-				new Runnable() {
+				/*new Runnable() {
 						public void run() {
 							if (web!=null)
 								web.close();
 						}
-					},
+					},*/
 				new Runnable() {
 						public void run() {
 							if (conn!=null) {
@@ -351,11 +370,12 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			context.setAttribute(ExecutionContext.HTTP_CONNECTION, conn);
 			context.setAttribute(ExecutionContext.HTTP_TARGET_HOST, http_host);
 			
-			test_socket = new Socket(http_host.getHostName(), http_host.getPort());
+			test_socket = new Socket();
+			test_socket.setSoTimeout(60*1000);
+			test_socket.connect(new InetSocketAddress(http_host.getHostName(), http_host.getPort()));
+			
 			conn.bind(test_socket, params);
 			conn.setSocketTimeout(60*1000);
-			
-			
 			
 			HttpGet request = new HttpGet(path);
 			if (cookie_str!=null)
@@ -372,6 +392,8 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			response.setParams(params);
 			httpexecutor.postProcess(response, httpproc, context);
 			
+			timeout_task.cancel();
+			
 			//
 			// support for HTTP redirects: used by some PHAR tests
 			if (i<10) {
@@ -386,7 +408,11 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			}
 			//
 			
-			timeout_task.cancel();
+			if (response.getStatusLine().getStatusCode()==500) {
+				not_crashed = false;
+				web.notifyCrash("HTTP 500", 500);
+				throw new RuntimeException("HTTP 500 Error");
+			}
 			
 			return IOUtil.toString(response.getEntity().getContent(), IOUtil.HALF_MEGABYTE);
 		} finally {
@@ -427,12 +453,12 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 					},
 				// 60 seconds from start
 				PhptTestCase.MAX_TEST_TIME_SECONDS,
-				new Runnable() {
+				/*new Runnable() {
 					public void run() {
 						if (web!=null)
 							web.close();
 					}
-				},
+				},*/
 				new Runnable() {
 					public void run() {
 						if (conn!=null) {
@@ -454,8 +480,11 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			context.setAttribute(ExecutionContext.HTTP_CONNECTION, conn);
 			context.setAttribute(ExecutionContext.HTTP_TARGET_HOST, http_host);
 			
-			Socket socket = new Socket(http_host.getHostName(), http_host.getPort());
-			conn.bind(socket, params);
+			test_socket = new Socket();
+			test_socket.setSoTimeout(60*1000);
+			test_socket.connect(new InetSocketAddress(http_host.getHostName(), http_host.getPort()));
+			
+			conn.bind(test_socket, params);
 			conn.setSocketTimeout(60*1000);
 			
 			HttpPost request = new HttpPost(path);
@@ -473,6 +502,8 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			response.setParams(params);
 			httpexecutor.postProcess(response, httpproc, context);
 			
+			timeout_task.cancel();
+			
 			//
 			// support for HTTP redirects: used by some PHAR tests
 			if (i<10) {
@@ -483,7 +514,11 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			}
 			//
 			
-			timeout_task.cancel();
+			if (response.getStatusLine().getStatusCode()==500) {
+				not_crashed = false;
+				web.notifyCrash("HTTP 500", 500);
+				throw new RuntimeException("HTTP 500 Error");
+			}
 			
 			return IOUtil.toString(response.getEntity().getContent(), IOUtil.HALF_MEGABYTE);
 		} finally {

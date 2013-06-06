@@ -42,9 +42,9 @@ import com.mostc.pftt.model.ui.EUITestExecutionStyle;
 import com.mostc.pftt.model.ui.UITestPack;
 import com.mostc.pftt.model.ui.UITestRunner;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.LocalConsoleManager;
 import com.mostc.pftt.results.PhpResultPackWriter;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner;
 import com.mostc.pftt.scenario.AbstractINIScenario;
@@ -72,41 +72,31 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
  * 
  */
 
+// MediaWiki PhpUnit Code Coverage: https://integration.wikimedia.org/cover/mediawiki-core/master/php/
+//
 // real unattended (automated) testing that actually works
 // the php test tool that you'd actually want to use
 // doesn't resort to brittle shell scripts
 
-// TODO fix `rg <revision>'
-//      do multiple revisions too
-// TODO 'rg -bo <revision>' download only the build
 // TODO valgrind
 // TODO linux installer
-// TODO timing support for phpunit tests
-//    `aa -thread_count cpu -c symfony,apache,opcache,no_code_cache php-5.5`
-//    create BY_TIME.csv (one entry per test regardless of how many times it was run)
-//      'test_name','status','average time','test file'
-//    can stat analyze with LO-Calc
-//    
-//    -support using `-run_test_times_all 3` to run test 3 times and report the averaged time
-//
-//    this will help trace slow code paths in symfony
-//      -symfony has propper unit tests that test different parts of code paths used just by a demo app/the 1 page used for performance tests
-//      -wordpress has more all-up tests, so only ~1 will test the code paths used by the 1 main page used for performance tests
-//
-//    verify `-thread_count cpu` works for this by comparing it with a run with `-thread_count 1`
-//
-// TODO -thread_count cpu sets thread count == number of CPUs
-//       -thread_count cpu2 == *2
-// TODO debug output when adding phpunit tests 
 
 
 // TODO UI testing
 //        no Anon-Logout
+// TODO code coverage analysis
+//         see http://phpunit.de/manual/3.0/en/code-coverage-analysis.html
+//         CCA is a big ask from community see https://drupal.org/project/testing
+//         uses xdebug
+//       see http://xdebug.org/docs/code_coverage
+//       see http://xdebug.org/docs/basic
+//       for Application Unit testing
+//       for UI Testing
+//       for Core Testing??
 //
-//
-// commit: UI testing support
-//
-//
+//        can get CCA data from XDebug, but what to do with it???
+//         -look at the data needed to generate a CCA report
+//         -look at the data needed to generate a CCA summary report
 // TODO need way to enter development versions of application tests and UI tests
 //       could have conf/dev folder
 //          -what about the phpunit tests themselves (Where stored?)
@@ -118,9 +108,6 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //       rctest should have an rc_hosts config file
 //          -store example in conf/internal_examples
 //              -so rctest will just use that unless/until user creates one in conf/internal
-// TODO joomla unit testing
-// commit:
-//
 // TODO include Selenium WebDriver in javadoc
 // TODO WincacheUScenario for CLI
 //     -and APCUScenario
@@ -248,7 +235,7 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //     it has phpunit tests
 //     see http://github.com/WindowsAzure
 //
-// NGINX-FastCGI - as/more popular than IIS
+// NGINX-FastCGI - is as/more popular than IIS
 //
 // PECL extensions to consider testing:
 //       geoip haru(pdf) http
@@ -398,6 +385,7 @@ public class PfttMain {
 		System.out.println("-ini_actual_all - includes INI for all tests (default=only for failures)... SLOW but helps verify"); // TODO
 		System.out.println("-suspend_seconds <seconds> - suspends test process for <seconds> before running test so you can check the process first (1 minute timeout after resume)"); // TODO
 		System.out.println("-run_count <N> - runs N number of tests. does not count early SKIPped tests (whereas -max_test_read_count does)"); // TODO
+		System.out.println("-mem_check - runs tests with Valgrind or other memory checker (OS dependent). Slow, typically use this with `*_list` or `*_named` NOT `*_all`.");
 		System.out.println();
 		System.out.println("   === Threading Options ===");
 		System.out.println("-no_thread_safety - runs tests in any thread, regardless of thread-safety. This can increase load/stress, but may lead to false FAILS/ERRORs, especially in file or database tests.");
@@ -485,6 +473,7 @@ public class PfttMain {
 				List<AHost> hosts = config.getHosts();
 				AHost host = hosts.isEmpty()?this.host:hosts.get(0);
 				LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, host, host);
+				cm.showGUI(r, test_pack);
 				
 				// TODO implement app_list
 				//test_pack.read(test_cases, cm, tmgr, build);
@@ -516,6 +505,7 @@ public class PfttMain {
 				List<AHost> hosts = config.getHosts();
 				AHost host = hosts.isEmpty()?this.host:hosts.get(0);
 				LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, host, host);
+				cm.showGUI(r, test_pack);
 				r.runAllTests(test_pack);
 				tmgr.notifyPhpUnitFinished(host, scenario_set, test_pack);
 			}
@@ -636,39 +626,60 @@ public class PfttMain {
 		} // end for (scenario_set)
 	} // end public void coreList
 	
+	public enum ERevisionGetOption {
+		ALL,
+		BUILD_ONLY,
+		TEST_PACK_ONLY,
+		DEBUG_PACK_ONLY
+	}
+	
 	public void releaseGet(boolean overwrite, boolean confirm_prompt, URL url) {
 		download_release_and_decompress(cm, overwrite, confirm_prompt, "build", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, url), url);
 	}
 	
 	public void releaseGetPrevious(final boolean overwrite, final boolean confirm_prompt, final EBuildBranch branch, final ECPUArch cpu_arch, final EBuildType build_type) {
+		releaseGetPrevious(overwrite, confirm_prompt, branch, cpu_arch, build_type, null);
+	}
+	
+	public void releaseGetPrevious(final boolean overwrite, final boolean confirm_prompt, final EBuildBranch branch, final ECPUArch cpu_arch, final EBuildType build_type, final ERevisionGetOption option) {
 		System.out.println("PFTT: release_get: finding previous "+build_type+" ("+cpu_arch+") build of "+branch+"...");
 		final FindBuildTestPackPair find_pair = WindowsSnapshotDownloadUtil.findPreviousPair(build_type, cpu_arch, WindowsSnapshotDownloadUtil.getDownloadURL(branch));
 		if (find_pair==null||find_pair.getBuild()==null) {
 			System.err.println("PFTT: release_get: unable to find previous build of "+branch+" of type "+build_type);
 			return;
 		}
-		Thread t0 = new Thread() {
-				public void run() {
-					download_release_and_decompress(cm, overwrite, confirm_prompt, "build", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
-				}
-			};
-		t0.start();
-		Thread t1 = new Thread() {
-				public void run() {
-					download_release_and_decompress(cm, overwrite, confirm_prompt, "test-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
-				}
-			};
-		t1.start();
-		Thread t2 = new Thread() {
-				public void run() {
-					download_release_and_decompress(cm, overwrite, confirm_prompt, "debug-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getDebug_pack()), find_pair.getDebug_pack());
-				}
-			};
-		t2.start();
+		Thread t0 = null, t1 = null, t2 = null;
+		if ((option==null||option==ERevisionGetOption.ALL||option==ERevisionGetOption.BUILD_ONLY)) {
+			t0 = new Thread() {
+					public void run() {
+						download_release_and_decompress(cm, overwrite, confirm_prompt, "build", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
+					}
+				};
+			t0.start();
+		}
+		if ((option==null||option==ERevisionGetOption.ALL||option==ERevisionGetOption.TEST_PACK_ONLY)) {
+			t1 = new Thread() {
+					public void run() {
+						download_release_and_decompress(cm, overwrite, confirm_prompt, "test-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
+					}
+				};
+			t1.start();
+		}
+		if ((option==null||option==ERevisionGetOption.ALL||option==ERevisionGetOption.DEBUG_PACK_ONLY)) {
+			t2 = new Thread() {
+					public void run() {
+						download_release_and_decompress(cm, overwrite, confirm_prompt, "debug-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getDebug_pack()), find_pair.getDebug_pack());
+					}
+				};
+			t2.start();
+		}
 		try {
-			t0.join();
-			t1.join();
-			t2.join();
+			if (t0!=null)
+				t0.join();
+			if (t1!=null)
+				t1.join();
+			if (t2!=null)
+				t2.join();
 		} catch ( Exception ex ) {
 			ex.printStackTrace(); // shouldn't happen
 		}
@@ -680,35 +691,49 @@ public class PfttMain {
 	}
 	
 	public BuildTestDebugPack releaseGetNewest(final boolean overwrite, final boolean confirm_prompt, final EBuildBranch branch, final ECPUArch cpu_arch, final EBuildType build_type) {
+		return releaseGetNewest(overwrite, confirm_prompt, branch, cpu_arch, build_type, null);
+	}
+	
+	public BuildTestDebugPack releaseGetNewest(final boolean overwrite, final boolean confirm_prompt, final EBuildBranch branch, final ECPUArch cpu_arch, final EBuildType build_type, final ERevisionGetOption option) {
 		System.out.println("PFTT: release_get: finding newest "+build_type+" ("+cpu_arch+") build of "+branch+"...");
 		final FindBuildTestPackPair find_pair = WindowsSnapshotDownloadUtil.findNewestPair(build_type, cpu_arch, WindowsSnapshotDownloadUtil.getDownloadURL(branch));
 		if (find_pair==null||find_pair.getBuild()==null) {
 			System.err.println("PFTT: release_get: unable to find newest build of "+branch+" of type "+build_type);
 			return null;
 		}
+		Thread t0 = null, t1 = null, t2 = null;
 		final BuildTestDebugPack btd_pack = new BuildTestDebugPack();
-		Thread t0 = new Thread() {
-				public void run() {
-					btd_pack.build = download_release_and_decompress(cm, overwrite, confirm_prompt, "build", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
-				}
-			};
-		t0.start();
-		Thread t1 = new Thread() {
-				public void run() {
-					btd_pack.test_pack = download_release_and_decompress(cm, overwrite, confirm_prompt, "test-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
-				}
-			};
-		t1.start();
-		Thread t2 = new Thread() {
-				public void run() {
-					btd_pack.debug_pack = download_release_and_decompress(cm, overwrite, confirm_prompt, "debug-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getDebug_pack()), find_pair.getDebug_pack());
-				}
-			};
-		t2.start();
+		if ((option==null||option==ERevisionGetOption.ALL||option==ERevisionGetOption.BUILD_ONLY)) {
+			t0 = new Thread() {
+					public void run() {
+						btd_pack.build = download_release_and_decompress(cm, overwrite, confirm_prompt, "build", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
+					}
+				};
+			t0.start();
+		}
+		if ((option==null||option==ERevisionGetOption.ALL||option==ERevisionGetOption.TEST_PACK_ONLY)) {
+			t1 = new Thread() {
+					public void run() {
+						btd_pack.test_pack = download_release_and_decompress(cm, overwrite, confirm_prompt, "test-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
+					}
+				};
+			t1.start();
+		}
+		if ((option==null||option==ERevisionGetOption.ALL||option==ERevisionGetOption.DEBUG_PACK_ONLY)) {
+			t2 = new Thread() {
+					public void run() {
+						btd_pack.debug_pack = download_release_and_decompress(cm, overwrite, confirm_prompt, "debug-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getDebug_pack()), find_pair.getDebug_pack());
+					}
+				};
+			t2.start();
+		}
 		try {
-			t0.join();
-			t1.join();
-			t2.join();
+			if (t0!=null)
+				t0.join();
+			if (t1!=null)
+				t1.join();
+			if (t2!=null)
+				t2.join();
 		} catch ( Exception ex ) {
 			ex.printStackTrace();
 		}
@@ -717,14 +742,18 @@ public class PfttMain {
 	} // end public BuildTestDebugPack releaseGetNewest
 
 	public void releaseGetRevision(final boolean overwrite, final boolean confirm_prompt, final EBuildBranch branch, final ECPUArch cpu_arch, final EBuildType build_type, final String revision) {
-		System.out.println("PFTT: release_get: finding "+build_type+" ("+cpu_arch+") build in "+revision+" of "+branch+"...");
+		releaseGetRevision(overwrite, confirm_prompt, branch, cpu_arch, build_type, revision, null);
+	}
+	
+	public void releaseGetRevision(final boolean overwrite, final boolean confirm_prompt, final EBuildBranch branch, final ECPUArch cpu_arch, final EBuildType build_type, final String revision, final ERevisionGetOption option) {
+		System.out.println("PFTT: release_get: finding "+build_type+" ("+cpu_arch+") build of "+revision+" in "+branch+"...");
 		final FindBuildTestPackPair find_pair = WindowsSnapshotDownloadUtil.getDownloadURL(branch, build_type, cpu_arch, revision);
 		if (find_pair==null||find_pair.getBuild()==null) {
 			System.err.println("PFTT: release_get: no build of type "+build_type+" or test-pack found for revision "+revision+" of "+branch);
 			return;
 		}
 		Thread t0 = null, t1 = null, t2 = null;
-		if (find_pair.getBuild()!=null) {
+		if ((option==null||option==ERevisionGetOption.ALL||option==ERevisionGetOption.BUILD_ONLY)&&find_pair.getBuild()!=null) {
 			t0 = new Thread() {
 					public void run() {
 						download_release_and_decompress(cm, overwrite, confirm_prompt, "build", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getBuild()), find_pair.getBuild());
@@ -732,7 +761,7 @@ public class PfttMain {
 				};
 			t0.start();
 		}
-		if (find_pair.getTest_pack()!=null) {
+		if ((option==null||option==ERevisionGetOption.ALL||option==ERevisionGetOption.TEST_PACK_ONLY)&&find_pair.getTest_pack()!=null) {
 			t1 = new Thread() {
 					public void run() {
 						download_release_and_decompress(cm, overwrite, confirm_prompt, "test-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getTest_pack()), find_pair.getTest_pack());
@@ -740,7 +769,7 @@ public class PfttMain {
 				};
 			t1.start();
 		}
-		if (find_pair.getDebug_pack()!=null) {
+		if ((option==null||option==ERevisionGetOption.ALL||option==ERevisionGetOption.DEBUG_PACK_ONLY)&&find_pair.getDebug_pack()!=null) {
 			t2 = new Thread() {
 					public void run() {
 						download_release_and_decompress(cm, overwrite, confirm_prompt, "debug-pack", host, WindowsSnapshotDownloadUtil.snapshotURLtoLocalFile(host, find_pair.getDebug_pack()), find_pair.getDebug_pack());
@@ -1186,7 +1215,18 @@ public class PfttMain {
 				delay_between_ms = Integer.parseInt(args[args_i]);
 			} else if (args[args_i].equals("-thread_count")) {
 				args_i++;
-				thread_count = Integer.parseInt(args[args_i]);
+				
+				if (args[args_i].equals("cpu")) {
+					thread_count = p.host.getCPUCount();
+				} else if (args[args_i].equals("cpu2")) {
+					thread_count = p.host.getCPUCount() * 2;
+				} else if (args[args_i].equals("cpu3")) {
+					thread_count = p.host.getCPUCount() * 3;
+				} else if (args[args_i].equals("cpu4")) {
+					thread_count = p.host.getCPUCount() * 4;
+				} else {
+					thread_count = Integer.parseInt(args[args_i]);
+				}
 			} else if (args[args_i].equals("-suspend_seconds")) {
 				args_i++;
 				suspend_seconds = Integer.parseInt(args[args_i]);
@@ -1227,7 +1267,7 @@ public class PfttMain {
 				// also intercepted and handled by bin/pftt.cmd batch script
 				debug = true;
 				
-			} else if (args[args_i].equals("-disable_debug_prompt")||args[args_i].equals("-debug_none")) {
+			} else if (args[args_i].equals("-disable_debug_prompt")||args[args_i].equals("-debug_none")||args[args_i].equals("-d")) {
 				disable_debug_prompt = true; 
 			} else if (args[args_i].equals("-results_only")) {
 				results_only = true;
@@ -1577,26 +1617,33 @@ public class PfttMain {
 					EBuildBranch branch = null;
 					EBuildType build_type = null;
 					ECPUArch cpu_arch = null;
-					String revision = null;
+					ArrayList<String> revisions = new ArrayList<String>(1);
 					URL url = null;
+					ERevisionGetOption option = ERevisionGetOption.ALL;
 					if (command.equals("rgn")||command.equals("rgnew")||command.equals("rgnewest"))
-						revision = "newest";
+						revisions.add("newest");
 					else if (command.equals("rgp")||command.equals("rgprev")||command.equals("rgprevious"))
-						revision = "previous";
+						revisions.add("previous");
 					
-					for ( ; args_i < args.length && ( branch == null || build_type == null || revision == null || cpu_arch == null ) ; args_i++ ) {
+					for ( ; args_i < args.length ; args_i++ ) {
 						if (branch==null)
 							branch = EBuildBranch.guessValueOf(args[args_i]);
 						if (build_type==null)
 							build_type = EBuildType.guessValueOf(args[args_i]);
 						if (cpu_arch==null)
 							cpu_arch = ECPUArch.guessValueOf(args[args_i]);
-						if (revision==null&&args[args_i].startsWith("r"))
-							revision = args[args_i];
+						if (args[args_i].equals("-bo"))
+							option = ERevisionGetOption.BUILD_ONLY;
+						else if (args[args_i].equals("-tpo"))
+							option = ERevisionGetOption.TEST_PACK_ONLY;
+						else if (args[args_i].equals("-dpo"))
+							option = ERevisionGetOption.DEBUG_PACK_ONLY;
+						else if (args[args_i].startsWith("r") && args[args_i].length()>7 && !args[args_i].equals("release_get"))
+							revisions.add(args[args_i]);
 						else if (args[args_i].equals("previous")||args[args_i].equals("prev")||args[args_i].equals("p"))
-							revision = "previous";
+							revisions.add("previous");
 						else if (args[args_i].equals("newest")||args[args_i].equals("new")||args[args_i].equals("n"))
-							revision = "newest";
+							revisions.add("newest");
 						else if (args[args_i].startsWith("http://"))
 							url = new URL(args[args_i]);
 					}
@@ -1605,14 +1652,14 @@ public class PfttMain {
 						cpu_arch = branch.getCPUArch();
 					if (url==null&&(branch==null||build_type==null||cpu_arch==null)) {
 						System.err.println("User error: must specify branch, build-type (NTS or TS), CPU Arch (NTS or TS) and revision");
-						System.err.println("Usage: pftt release_get <branch> <build-type> <X86|X64> [r<revision>|newest|previous]");
+						System.err.println("Usage: pftt release_get <branch> <build-type> <X86|X64> [r<revision>|newest|previous|r<revision 2>]");
 						System.err.println("Usage: pftt release_get <URL>");
 						System.err.println("Branch can be any of: "+StringUtil.toString(EBuildBranch.values()));
 						System.err.println("Build Type can be any of: "+StringUtil.toString(EBuildType.values()));
 						System.err.println("CPU can be any of: "+StringUtil.toString(ECPUArch.values()));
 						System.exit(-255);
 						return;
-					} else if (url==null&&revision==null) {
+					} else if (url==null&&revisions.isEmpty()) {
 						System.err.println("User error: must specify branch, build-type (NTS or TS), CPU Arch (NTS or TS) and revision");
 						System.err.println("Usage: pftt release_get <branch> <build-type> <X86|X64> [r<revision>|newest|previous]");
 						System.err.println("Usage: pftt release_get <URL>");
@@ -1623,14 +1670,18 @@ public class PfttMain {
 						no_show_gui(show_gui, command);
 						
 						// input processed, dispatch
-						if (url!=null)
+						if (url!=null) {
 							p.releaseGet(overwrite, true, url);
-						else if (revision.equals("newest"))
-							p.releaseGetNewest(overwrite, true, branch, cpu_arch, build_type);
-						else if (revision.equals("previous"))
-							p.releaseGetPrevious(overwrite, true, branch, cpu_arch, build_type);
-						else
-							p.releaseGetRevision(overwrite, true, branch, cpu_arch, build_type, revision);
+						} else {
+							for ( String revision : revisions ) {
+								if (revision.equals("newest"))
+									p.releaseGetNewest(overwrite, true, branch, cpu_arch, build_type, option);
+								else if (revision.equals("previous"))
+									p.releaseGetPrevious(overwrite, true, branch, cpu_arch, build_type, option);
+								else
+									p.releaseGetRevision(overwrite, true, branch, cpu_arch, build_type, revision, option);		
+							}
+						} // end if
 					}
 				} else if (command.equals("release_list")||command.equals("rl")||command.equals("rlist")) {
 					EBuildBranch branch = null;
@@ -1795,16 +1846,23 @@ public class PfttMain {
 		}
 		if (!show_gui) {
 			// ensure all threads end
-			System.out.println("PFTT: finished.");
-			//
-			// should exit with this
-			System.exit(0);
-			//
-			// if not:
-			// wait 30 seconds for shutdown hooks, etc... then halt for sure
-			Thread.sleep(30000);
-			Runtime.getRuntime().halt(0);
+			
+			exit();
 		}
 	} // end public static void main
+	
+	public static void exit() {
+		System.out.println("PFTT: exiting...");
+		// should exit with this
+		System.exit(0);
+		//
+		// if not:
+		// wait 30 seconds for shutdown hooks, etc... then halt for sure
+		try {
+			Thread.sleep(30000);
+		} catch ( InterruptedException ex ) {}
+		System.out.println("PFTT: exiting...");
+		Runtime.getRuntime().halt(0);
+	}
 	
 } // end class RunTests

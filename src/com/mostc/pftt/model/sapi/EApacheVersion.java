@@ -3,7 +3,7 @@ package com.mostc.pftt.model.sapi;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 
 public enum EApacheVersion {
 	APACHE_2_2 {

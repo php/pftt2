@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.lang.ref.WeakReference;
+import java.lang.ref.SoftReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -61,11 +61,10 @@ import com.mostc.pftt.scenario.ScenarioSet;
 
 public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitActiveTestPack, PhpUnitTestCase> {
 	protected String test_pack_root;
-	protected String preamble_code;
 	protected final ArrayList<PhpUnitDist> php_unit_dists;
 	protected final ArrayList<String> blacklist_test_names, whitelist_test_names, include_dirs, include_files;
 	protected final QuercusContext qctx;
-	protected WeakReference<ArrayList<PhpUnitTestCase>> _ref_test_cases;
+	protected SoftReference<ArrayList<PhpUnitTestCase>> _ref_test_cases;
 	
 	public PhpUnitSourceTestPack() {
 		blacklist_test_names = new ArrayList<String>(3);
@@ -141,7 +140,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	 * 1. in the include path
 	 * 2. loaded by the bootstrap
 	 * 3. loaded as an include file
-	 * 4. loaded by #preamble_code
+	 * 4. loaded by Pre-bootstrap or Post-bootstrap code
 	 * 
 	 * @param dir
 	 * @return
@@ -231,7 +230,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 		// cache for future use
 		_test_cases = new ArrayList<PhpUnitTestCase>(test_cases.size());
 		_test_cases.addAll(test_cases);
-		_ref_test_cases = new WeakReference<ArrayList<PhpUnitTestCase>>(_test_cases);
+		_ref_test_cases = new SoftReference<ArrayList<PhpUnitTestCase>>(_test_cases);
 		//
 	} // end public void read
 	
@@ -433,23 +432,36 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	public String getRoot() {
 		return this.test_pack_root;
 	}
-
-	/** optional: PHP code to run before every test case. this is meant to do additional initialization
-	 * that a bootstrap file doesn't do (without having to modify that bootstrap file)
+	
+	/** (Optional) return PHP code to run BEFORE loading the bootstrap file
 	 * 
-	 * @see PhpUnitDist#bootstrap
-	 * */
-	public void setPreambleCode(String preamble_code) {
-		this.preamble_code = preamble_code;
+	 * @param cm
+	 * @param host
+	 * @param scenario_set
+	 * @param build
+	 * @return
+	 */
+	@Overridable
+	public String getPreBootstrapCode(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build) {
+		return null;
 	}
 	
-	/** optional: PHP code to run before every test case. this is meant to do additional initialization
-	 * that a bootstrap file doesn't do (without having to modify that bootstrap file)
+	/** (Optional) return PHP code to run AFTER loading the bootstrap file
 	 * 
-	 * @see PhpUnitDist#bootstrap
-	 * */
-	public String getPreambleCode() {
-		return preamble_code;
+	 * @param cm
+	 * @param host
+	 * @param scenario_set
+	 * @param build
+	 * @return
+	 */
+	@Overridable
+	public String getPostBootstrapCode(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build) {
+		return null;
+	}
+	
+	@Overridable
+	public int getThreadCount(AHost host, ScenarioSet scenario_set, int default_thread_count) {
+		return default_thread_count;
 	}
 	
 	public abstract String getNameAndVersionString();
@@ -487,6 +499,41 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	 */
 	public void prepareINI(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini) {
 		
+	}
+	
+	/** called when an individual test case is run
+	 * 
+	 * @param cm
+	 * @param runner_host
+	 * @param scenario_set
+	 * @param build
+	 * @param test_case
+	 */
+	@Overridable
+	public void startTest(ConsoleManager cm, AHost runner_host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case) {
+		
+	}
+
+	/** called just before test-run starts
+	 * 
+	 * @param cm
+	 * @param runner_host
+	 * @param scenario_set
+	 * @param build
+	 */
+	@Overridable
+	public void startRun(ConsoleManager cm, AHost runner_host, ScenarioSet scenario_set, PhpBuild build) {
+	}
+	
+	/** called just after test-run stops
+	 * 
+	 * @param cm
+	 * @param runner_host
+	 * @param scenario_set
+	 * @param build
+	 */
+	@Overridable
+	public void stopRun(ConsoleManager cm, AHost runner_host, ScenarioSet scenario_set, PhpBuild build) {
 	}
 	
 } // end public abstract class PhpUnitSourceTestPack

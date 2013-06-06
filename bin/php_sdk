@@ -1,2 +1,2 @@
 #!/bin/sh
-cd $HOME/php-sdk
+cd $PHP_SDK

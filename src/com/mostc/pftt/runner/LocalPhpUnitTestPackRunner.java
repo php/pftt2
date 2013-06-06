@@ -14,13 +14,12 @@ import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
 import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
-import com.mostc.pftt.model.sapi.SharedSAPIInstancesTestCaseGroupKey;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhpUnitTestResult;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.scenario.AbstractCodeCacheScenario;
 import com.mostc.pftt.scenario.AbstractFileSystemScenario.ITestPackStorageDir;
 import com.mostc.pftt.scenario.AbstractSMBScenario.SMBStorageDir;
@@ -115,17 +114,24 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 	} // end protected void setupStorageAndTestPack
 	
 	@Override
+	protected int decideThreadCount() {
+		int default_thread_count = super.decideThreadCount() * 2;
+		
+		// some test-packs need different numbers of threads - ask
+		return Math.max(1, src_test_pack.getThreadCount(runner_host, scenario_set, default_thread_count));
+	}
+	
+	@Override
 	protected TestCaseGroupKey createGroupKey(PhpUnitTestCase test_case, TestCaseGroupKey group_key) throws Exception {
 		if (group_key!=null)
 			return group_key;
 		// CRITICAL: provide the INI to run all PhpUnitTestCases
 		//           unlike PhptTestCases all PhpUnitTestCases share the same INI and environment variables
 		PhpIni ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, runner_host, build);
-		// TODO temp - wordpress support - ini = new PhpIni("extension=php_mysql.dll\nextension_dir=C:\\php-sdk\\php-5.5.0RC1-Win32-VC11-x86\\ext");
 		AbstractINIScenario.setupScenarios(cm, runner_host, scenario_set, build, ini);
 		src_test_pack.prepareINI(cm, runner_host, scenario_set, build, ini);
 				
-		return new SharedSAPIInstancesTestCaseGroupKey(ini, null);
+		return new TestCaseGroupKey(ini, null);
 	}
 
 	@Override
@@ -140,6 +146,13 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 			}
 		}
 		return false;
+	}
+	
+	@Override
+	protected void executeTestCases(boolean parallel) throws InterruptedException, IllegalStateException, IOException {
+		src_test_pack.startRun(cm, runner_host, scenario_set, build);
+		super.executeTestCases(parallel);
+		src_test_pack.stopRun(cm, runner_host, scenario_set, build);
 	}
 
 	@Override
@@ -180,7 +193,7 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 					test_case,
 					my_temp_dir,
 					constants,
-					test_case.getPhpUnitDist().getIncludePath(),
+					test_case.getPhpUnitDist().getIncludePath(runner_host),
 					test_case.getPhpUnitDist().getIncludeFiles(),
 					group_key.getPhpIni(),
 					reflection_only

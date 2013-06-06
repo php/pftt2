@@ -10,7 +10,7 @@ import com.mostc.pftt.host.RemoteHost;
 import com.mostc.pftt.model.ActiveTestPack;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 
 /** Scenarios that test PHP using builds and test packs that are stored remotely and 
  * accessed using SMB/CIFS.

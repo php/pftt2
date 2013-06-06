@@ -31,9 +31,7 @@ import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.core.PhptActiveTestPack;
 import com.mostc.pftt.model.core.PhptSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
-import com.mostc.pftt.model.sapi.SharedSAPIInstancesTestCaseGroupKey;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
-import com.mostc.pftt.model.sapi.WebServerInstance;
 import com.mostc.pftt.model.sapi.WebServerManager;
 import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.results.ConsoleManager;
@@ -122,7 +120,7 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 	
 	@Override
 	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
-		return new HttpPhptTestCaseRunner(this, group_key.getPhpIni(), group_key.getEnv(), params, httpproc, httpexecutor, smgr, (WebServerInstance) ((SharedSAPIInstancesTestCaseGroupKey)group_key).getSAPIInstance(), thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
+		return new HttpPhptTestCaseRunner(this, group_key.getPhpIni(), group_key.getEnv(), params, httpproc, httpexecutor, smgr, thread.getThreadWebServerInstance(), thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 	}
 	
 	@Override
@@ -154,25 +152,25 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 			//  @see #groupTestCases #handleNTS and #handleTS
 			//     (which store in maps keyed by PhpIni, which implicity does the comparison)
 			//
-			return new SharedSAPIInstancesTestCaseGroupKey(ini, env);
+			return new TestCaseGroupKey(ini, env);
 		} else if (env==null && group_key!=null && group_key.getPhpIni().isDefault()) {
 			return group_key;
 		} else {
 			PhpIni ini = createIniForTest(cm, host, build, active_test_pack, scenario_set);
 			filter.prepareEnv(cm, env);
 			filter.prepareIni(cm, ini);
-			return new SharedSAPIInstancesTestCaseGroupKey(ini, env);
+			return new TestCaseGroupKey(ini, env);
 		}
 	} // end public TestCaseGroupKey createTestGroupKey
 	
 	@Override
-	public void close(boolean debug) {
-		smgr.close(debug);
+	public void close(ConsoleManager cm, boolean debug) {
+		smgr.close(cm, debug);
 	}
 		
 	@Override
 	public AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(PhpUnitThread thread, TestCaseGroupKey group_key, ConsoleManager cm, ITestResultReceiver twriter, Map<String,String> globals, Map<String,String> env, AHost runner_host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
-		return new HttpPhpUnitTestCaseRunner(this, thread, twriter, params, httpproc, httpexecutor, smgr, (WebServerInstance) ((SharedSAPIInstancesTestCaseGroupKey)group_key).getSAPIInstance(), globals, env, cm, runner_host, scenario_set, build, test_case, my_temp_dir, constants, include_path, include_files, ini, reflection_only);
+		return new HttpPhpUnitTestCaseRunner(this, thread, twriter, params, httpproc, httpexecutor, smgr, thread.getThreadWebServerInstance(), globals, env, cm, runner_host, scenario_set, build, test_case, my_temp_dir, constants, include_path, include_files, ini, reflection_only);
 	}
 	
 	@Override

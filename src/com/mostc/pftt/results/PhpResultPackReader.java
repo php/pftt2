@@ -9,7 +9,6 @@ import java.util.LinkedList;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.PhpBuildInfo;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 /** Reads result-pack of a test run completed in the past.

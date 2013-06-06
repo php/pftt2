@@ -8,7 +8,7 @@ import com.mostc.pftt.model.core.ESAPIType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 
 /** Smoke test that verifies a PHP Build has all the required extensions.
  * 
@@ -144,7 +144,7 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 		// testing 5.3 is especially important
 		//
 		// NOTE: 5.3 php builds do not include E_STRICT with E_ALL. you must explicitly include both here!
-		ini.putMulti(PhpIni.ERROR_REPORTING, build.is53(cm, host)?PhpIni.E_ALL_STRICT_DEPRECATED:PhpIni.E_ALL_NOTICE_WARNING);
+		ini.putMulti(PhpIni.ERROR_REPORTING, "-1"); // TODO build.is53(cm, host)?PhpIni.E_ALL_STRICT_DEPRECATED:PhpIni.E_ALL_NOTICE_WARNING);
 		// CRITICAL
 		ini.putMulti(PhpIni.DISPLAY_ERRORS, PhpIni.ON);
 		// CRITICAL

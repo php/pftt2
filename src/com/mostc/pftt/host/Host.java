@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.regex.Pattern;
@@ -648,6 +649,7 @@ public abstract class Host {
 	public abstract long getSize(String file);
 	public abstract long getMTime(String file);
 	public abstract String joinMultiplePaths(String ...paths);
+	public abstract String joinMultiplePaths(List<String> paths, String ...paths2);
 
 	public boolean unzip(String zip_file, String base_dir) {
 		return unzip(null, zip_file, base_dir);

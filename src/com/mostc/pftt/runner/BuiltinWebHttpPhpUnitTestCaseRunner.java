@@ -40,7 +40,7 @@ public class BuiltinWebHttpPhpUnitTestCaseRunner extends HttpPhpUnitTestCaseRunn
 		if (test_socket==null)
 			return;
 		if (web!=null)
-			web.close();
+			web.close(cm);
 		try {
 			test_socket.close();
 		} catch ( Exception ex ) {
@@ -49,17 +49,18 @@ public class BuiltinWebHttpPhpUnitTestCaseRunner extends HttpPhpUnitTestCaseRunn
 	}
 	
 	@Override
-	protected String do_http_execute(String path) throws Exception {
+	protected String do_http_get(String path) throws Exception {
+		// CRITICAL: do this with #do_http_get not #do_http_execute
+		//           doing it with #do_http_execute will trigger the web server to be recreated
 		try {
-			return super.do_http_execute(path);
+			return super.do_http_get(path);
 		} catch ( IOException ex ) {
-			// wait and then try again (may its taking a long time to startup? - this seems to decrease the number of timeouts)
-			Thread.sleep(10000);
+			Thread.sleep(3000);
 			try {
-				return super.do_http_execute(path);
+				return super.do_http_get(path);
 			} catch ( IOException ex2 ) {
-				Thread.sleep(10000);
-				return super.do_http_execute(path);
+				Thread.sleep(9000);
+				return super.do_http_get(path);
 			}
 		}
 	}

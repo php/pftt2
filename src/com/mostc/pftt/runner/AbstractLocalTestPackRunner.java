@@ -9,7 +9,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
-import java.util.Timer;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -25,14 +24,14 @@ import com.mostc.pftt.model.SourceTestPack;
 import com.mostc.pftt.model.TestCase;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
+import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.model.sapi.AbstractManagedProcessesWebServerManager;
 import com.mostc.pftt.model.sapi.SAPIInstance;
-import com.mostc.pftt.model.sapi.SharedSAPIInstancesTestCaseGroupKey;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.model.sapi.WebServerInstance;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.ITestResultReceiver;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.results.PhpResultPackWriter;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
 import com.mostc.pftt.scenario.AbstractFileSystemScenario;
@@ -52,11 +51,10 @@ import com.mostc.pftt.util.ErrorUtil;
  */
 
 public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S extends SourceTestPack<A,T>, T extends TestCase> extends AbstractTestPackRunner<S, T> {
-	protected static final int MAX_THREAD_COUNT = 256;
+	protected static final int MAX_THREAD_COUNT = 128;
 	protected S src_test_pack;
 	protected final ConsoleManager cm;
 	protected final ITestResultReceiver twriter;
-	protected final Timer timer;
 	protected int thread_safe_test_count;
 	protected A active_test_pack;
 	protected AtomicReference<ETestPackRunnerState> runner_state;
@@ -79,6 +77,23 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			test_groups = new LinkedBlockingQueue<TestCaseGroup<T>>(); 
 		}
 	}
+	
+	public AHost getRunnerHost() {
+		return runner_host;
+	}
+	public AHost getStorageHost() {
+		return storage_host;
+	}
+	public S getSourceTestPack() {
+		return src_test_pack;
+	}
+	public A getActiveTestPack() {
+		return active_test_pack;
+	}
+	public ScenarioSet getScenarioSet() {
+		return scenario_set;
+	}
+	
 	
 	protected static class TestCaseGroup<T extends TestCase> {
 		protected TestCaseGroupKey group_key;
@@ -108,8 +123,6 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		super(scenario_set, build, storage_host, runner_host);
 		this.cm = cm;
 		this.twriter = twriter;
-		
-		this.timer = new Timer();
 		
 		test_count = new AtomicInteger(0);
 		
@@ -182,7 +195,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 				return false;
 			}
 			
-			sa.close();
+			sa.close(cm);
 		}
 		//
 		// ensure all scenarios are implemented
@@ -291,7 +304,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 	public void close() {
 		if (sapi_scenario!=null) {
 			// don't kill procs we're debugging
-			sapi_scenario.close(cm.isDebugAll() || cm.isDebugList());
+			sapi_scenario.close(cm, cm.isDebugAll() || cm.isDebugList());
 		}
 	}
 	
@@ -453,7 +466,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		
 	}
 	
-	protected void executeTestCases(boolean parallel) throws InterruptedException, IllegalStateException, IOException {
+	protected int decideThreadCount() {
 		// decide number of threads
 		// 1. ask SAPI Scenario
 		// 2. limit to number of thread safe tests + number of NTS extensions (extensions with NTS tests)
@@ -483,6 +496,11 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			// safety check: don't run too many threads
 			thread_count = MAX_THREAD_COUNT;
 		}
+		return thread_count;
+	} // end protected int decideThreadCount
+	
+	protected void executeTestCases(boolean parallel) throws InterruptedException, IllegalStateException, IOException {
+		int thread_count = decideThreadCount();
 		cm.println(EPrintType.IN_PROGRESS, getClass(), "Starting up Test Threads: thread_count="+thread_count+" runner_host="+runner_host+" sapi_scenario="+sapi_scenario);
 			
 		test_count.set(0);
@@ -579,6 +597,11 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			setName("TestPack"+getName());
 			setDaemon(true);
 		}
+		
+		@Nullable
+		public WebServerInstance getThreadWebServerInstance() {
+			return thread_wsi;
+		}
 				
 		@Override
 		public void uncaughtException(java.lang.Thread arg0, java.lang.Throwable arg1) {
@@ -615,6 +638,15 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 				}
 			} finally {
 				threads.remove(Thread.currentThread());
+				
+				if (thread_wsi!=null) {
+					if (thread_wsi.isCrashedAndDebugged()||thread_wsi.isDebuggerAttached()) {
+						// let it keep running
+					} else {
+						// be sure its terminated
+						thread_wsi.close(cm);
+					}
+				}
 			}
 		} // end public void run
 		
@@ -632,6 +664,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			recordSkipped(test_case);
 		}
 		
+		@SuppressWarnings("deprecation")
 		public void stopThisThread() {
 			// don't run any more tests in this thread
 			run_thread.set(false);
@@ -639,10 +672,9 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			stopRunningCurrentTest();
 			
 			// kill any web server, etc... used only by this thread
-			if (group_key instanceof SharedSAPIInstancesTestCaseGroupKey) {
-				SAPIInstance sapi = ((SharedSAPIInstancesTestCaseGroupKey)group_key).getSAPIInstance(TestPackThread.this);
-				if (sapi!=null)
-					sapi.close();
+			if (thread_wsi!=null) {
+				thread_wsi.close(cm);
+				thread_wsi = null;
 			}
 			// interrupt thread to make it stop
 			try {
@@ -703,123 +735,124 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			this.group_key = group_key;
 			LinkedList<T> completed_tests = new LinkedList<T>();
 			this.jobs = jobs;
-			SAPIInstance sa = null;	
-			try {
-				while ( (test_case = jobs.poll()) != null && shouldRun() ) {
-					completed_tests.add(test_case);
-					test_run_start_time.set(System.currentTimeMillis());
+			
+			while ( (test_case = jobs.poll()) != null && shouldRun() ) {
+				completed_tests.add(test_case);
+				test_run_start_time.set(System.currentTimeMillis());
+				
+				int a = run_test_times_all;
+				
+				// @see -run_test_times_list console option
+				if (cm.isInRunTestTimesList(test_case)) {
+					a = cm.getRunTestTimesListTimes();
+				}
+				
+				for ( int i=0 ; i < a ; i++ ) {
 					
-					int a = run_test_times_all;
+					// CRITICAL: catch exception to record with test
+					try {
+						group_key.prepare();
+						
+						if (parallel) {
+							// -debug_all and -debug_list console options
+							final boolean debugger_attached = (cm.isDebugAll() || cm.isInDebugList(test_case));
+							
+							
+							// TODO create better mechanism to send `sa` to each test case runner
+							// @see HttpTestCaseRunner#http_execute which calls #notifyCrash
+							// make sure a WebServerInstance is still running here, so it will be shared with each
+							// test runner instance (otherwise each test runner will create its own instance, which is slow)
+							if (sapi_scenario instanceof AbstractWebServerScenario) { // TODO temp
+								
+								if (thread_wsi != null && test_case instanceof PhptTestCase && sapi_scenario.isExpectedCrash((PhptTestCase)test_case) && !cm.isNoRestartAll()) {
+									// if this test is expected to timeout the first try, restart the web server
+									// for the first try to avoid waiting for the timeout and then restarting the web server
+									// (saves bothering to wait for the timeout)
+									thread_wsi.close(cm);
+									thread_wsi = null;
+								}
+								
+								if (thread_wsi==null ||
+										( !cm.isNoRestartAll()
+										 && ( cm.isRestartEachTestAll() || !thread_wsi.isRunning() )
+										 && ( !thread_wsi.isCrashedAndDebugged() || cm.isDisableDebugPrompt() )
+												)) {
+									WebServerInstance new_wsi = null;
+									try {
+										new_wsi = ((AbstractWebServerScenario)sapi_scenario).smgr.getWebServerInstance(cm, runner_host, scenario_set, build, group_key.getPhpIni(), 
+												group_key.getEnv(),
+												this instanceof PhpUnitThread ? ((PhpUnitThread)this).my_temp_dir // TODO temp phpunit 
+														:
+												active_test_pack.getStorageDirectory(),
+												thread_wsi, debugger_attached, completed_tests);
+										if (new_wsi!=thread_wsi && thread_wsi!=null) {
+											// be sure to close it or it will keep running (#getWebServerInstance doesn't close this)
+											thread_wsi.close(cm);
+										}
+									} catch ( Throwable t ) {
+										// just in case
+										if (new_wsi!=null)
+											new_wsi.close(cm);
+										i--;continue; // try again
+									} finally {
+										thread_wsi = new_wsi;
+									}
+								}
+							}
+						} // end if
+						
+						
+						
 					
-					// @see -run_test_times_list console option
-					if (cm.isInRunTestTimesList(test_case)) {
-						a = cm.getRunTestTimesListTimes();
+						// finally: create the test case runner and run the actual test
+						runTest(group_key, test_case);
+						
+						
+						if (Math.abs(System.currentTimeMillis() - test_run_start_time.get()) < sapi_scenario.getFastTestTimeSeconds()) {
+							// scale back down
+							Iterator<TestPackThread<T>> it = scale_up_threads.iterator();
+							TestPackThread<T> slow;
+							while (it.hasNext()) {
+								slow = it.next();
+								if (slow.ext==null) {
+									// stop after current test case finished
+									slow.run_thread.set(false);	
+								} else {
+									// don't stop this one because ext has been dequeued
+									// and would have gotten lost
+								}
+								it.remove();
+							}
+						}
+						
+					} catch ( InterruptedException ex ) {
+						if (cm.isPfttDebug())
+							ex.printStackTrace();
+						// ignore
+					} catch ( Throwable ex ) {
+						twriter.addTestException(storage_host, scenario_set, test_case, ex, thread_wsi);
 					}
 					
-					for ( int i=0 ; i < a ; i++ ) {
-						
-						// CRITICAL: catch exception to record with test
-						try {
-							group_key.prepare();
-							
-							if (parallel) {
-								// -debug_all and -debug_list console options
-								final boolean debugger_attached = (cm.isDebugAll() || cm.isInDebugList(test_case));
-								
-								
-								// TODO create better mechanism to send `sa` to each test case runner
-								// @see HttpTestCaseRunner#http_execute which calls #notifyCrash
-								// make sure a WebServerInstance is still running here, so it will be shared with each
-								// test runner instance (otherwise each test runner will create its own instance, which is slow)
-								if (sapi_scenario instanceof AbstractWebServerScenario) { // TODO temp
-									//SAPIInstance 
-									//if (cm.isNoRestartAll())
-										sa = thread_wsi;
-									if ((cm.isRestartEachTestAll()&&!cm.isNoRestartAll())||sa==null||sa.isCrashedOrDebuggedAndClosed()||(debugger_attached && !((WebServerInstance)sa).isDebuggerAttached())) {
-										if (sa!=null && cm.isRestartEachTestAll() && !cm.isNoRestartAll() && (cm.isDisableDebugPrompt()||!sa.isCrashedOrDebuggedAndClosed()||!runner_host.isWindows()))
-											sa.close();
-										
-										//((SharedSAPIInstanceTestCaseGroupKey)group_key).setSAPIInstance(
-										sa = ((AbstractWebServerScenario)sapi_scenario).smgr.getWebServerInstance(cm, runner_host, scenario_set, build, group_key.getPhpIni(), 
-												group_key.getEnv(), this instanceof PhpUnitThread ? ((PhpUnitThread)this).my_temp_dir // TODO temp phpunit 
-														:
-												
-												active_test_pack.getStorageDirectory(), (WebServerInstance) sa, debugger_attached, completed_tests);
-										//);
-										if (cm.isNoRestartAll())
-											thread_wsi = (WebServerInstance) sa;
-										
-										// TODO don't store sa on group_key! (don't share sa between threads)
-										// important: this closes sa
-										((SharedSAPIInstancesTestCaseGroupKey)group_key).setSAPIInstance(cm, runner_host, sa); // TODO temp
-									}
-								}
-							} // end if
-							
-							
-							
-						
-							// finally: create the test case runner and run the actual test
-							runTest(group_key, test_case);
-							
-							
-							if (Math.abs(System.currentTimeMillis() - test_run_start_time.get()) < sapi_scenario.getFastTestTimeSeconds()) {
-								// scale back down
-								Iterator<TestPackThread<T>> it = scale_up_threads.iterator();
-								TestPackThread<T> slow;
-								while (it.hasNext()) {
-									slow = it.next();
-									if (slow.ext==null) {
-										// stop after current test case finished
-										slow.run_thread.set(false);	
-									} else {
-										// don't stop this one because ext has been dequeued
-										// and would have gotten lost
-									}
-									it.remove();
-								}
-							}
-							
-						} catch ( InterruptedException ex ) {
-							if (cm.isPfttDebug())
-								ex.printStackTrace();
-							// ignore
-						} catch ( Throwable ex ) {
-							twriter.addTestException(storage_host, scenario_set, test_case, ex, sa);
+					try {
+						// -delay_between_ms console option
+						//
+						// TODO take this time into account when checking max execution time
+						// TODO also count number of times test is supposed to be run
+						if (cm.getDelayBetweenMS()>0) {
+							Thread.sleep(cm.getDelayBetweenMS());
 						}
 						
-						try {
-							// -delay_between_ms console option
-							//
-							// TODO take this time into account when checking max execution time
-							// TODO also count number of times test is supposed to be run
-							if (cm.getDelayBetweenMS()>0) {
-								Thread.sleep(cm.getDelayBetweenMS());
-							}
-							
-							AbstractManagedProcessesWebServerManager.waitIfTooManyActiveDebuggers();
-						} catch ( Throwable ex ) {
-							if (cm.isPfttDebug())
-								ex.printStackTrace();
-						}
-					} // end for
-					
-					test_run_start_time.set(0);
-					test_count.incrementAndGet();
-					Thread.yield();
-				} // end while
-			} finally {
-				if (parallel) {
-					// @see HttpTestCaseRunner#http_execute which calls #notifyCrash
-					// make sure a WebServerInstance is still running here, so it will be shared with each
-					// test runner instance (otherwise each test runner will create its own instance, which is slow)
-					/*if (sapi_scenario instanceof AbstractWebServerScenario) { // TODO temp
-						SAPIInstance sa = ((SharedSAPIInstanceTestCaseGroupKey)group_key).getSAPIInstance();*/
-						if (sa!=null && (cm.isDisableDebugPrompt()||!sa.isCrashedOrDebuggedAndClosed()||!runner_host.isWindows()))
-							sa.close();
-					//}
-				}
-			} // end try
+						AbstractManagedProcessesWebServerManager.waitIfTooManyActiveDebuggers();
+					} catch ( Throwable ex ) {
+						if (cm.isPfttDebug())
+							ex.printStackTrace();
+					}
+				} // end for
+				
+				test_run_start_time.set(0);
+				test_count.incrementAndGet();
+				Thread.yield();
+			} // end while
 		} // end protected void exec_jobs
 		
 		protected abstract void runTest(TestCaseGroupKey group_key, T test_case) throws IOException, Exception, Throwable;
@@ -844,12 +877,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		protected abstract void recordSkipped(T test_case);
 		
 		public boolean isDebuggerAttached() {
-			if (group_key instanceof SharedSAPIInstancesTestCaseGroupKey) {
-				SAPIInstance sapi = ((SharedSAPIInstancesTestCaseGroupKey)group_key).getSAPIInstance();
-				if (sapi instanceof WebServerInstance)
-					return ((WebServerInstance)sapi).isDebuggerAttached();
-			}
-			return false;
+			return thread_wsi != null && thread_wsi.isDebuggerAttached();
 		}
 		
 	} // end public abstract class TestPackThread

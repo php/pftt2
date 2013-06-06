@@ -5,7 +5,7 @@ import java.nio.charset.Charset;
 
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 
 public class ExecOutput {
 	/** output of executed program */

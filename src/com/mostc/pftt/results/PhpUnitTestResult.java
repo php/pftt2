@@ -46,6 +46,10 @@ public class PhpUnitTestResult {
 		this.ini = ini;
 	}
 	
+	public String toString() {
+		return getName();
+	}
+	
 	public String getName() {
 		return test_case.getName();
 	}

@@ -15,7 +15,6 @@ import com.mostc.pftt.main.PfttMain;
 import com.mostc.pftt.model.app.EPhpUnitTestStatus;
 import com.mostc.pftt.model.core.PhpBuildInfo;
 import com.mostc.pftt.model.core.PhpIni;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
 public class PhpUnitResultReader extends AbstractPhpUnitRW {
 	protected final HashMap<EPhpUnitTestStatus,StatusListEntry> status_list_map;
@@ -150,7 +149,7 @@ public class PhpUnitResultReader extends AbstractPhpUnitRW {
 	} // end protected class StatusListEntry
 	
 	@Override
-	public String getFailureOutput(String test_name) {
+	public String getTestOutput(String test_name) {
 		return ""; // TODO
 	}
 	

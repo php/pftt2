@@ -32,11 +32,11 @@ public class PhpUnitTemplate {
 	 * @param reflection_only - if true, the only reference to the test method will be made in reflection. Opcache may optimize the test method out (so test will appear to PASS - check by running test that should be a FAILURE or ERROR)
 	 * @return
 	 */
-	public static String renderTemplate(AHost host, ScenarioSet scenario_set, PhpUnitTestCase test_case, String preamble_code, String bootstrap_file, String cwd, String include_path, String[] included_files, Map<String, String> globals, Map<String, String> constants, HashMap<String, String> env, String my_temp_dir, boolean reflection_only) {
-		return renderTemplate(host, scenario_set, test_case, preamble_code, bootstrap_file, cwd, include_path, included_files, globals, constants, env, my_temp_dir, reflection_only, false);
+	public static String renderTemplate(AHost host, ScenarioSet scenario_set, PhpUnitTestCase test_case, String prebootstrap_code, String bootstrap_file, String postbootstrap_code, String cwd, String include_path, String[] included_files, Map<String, String> globals, Map<String, String> constants, HashMap<String, String> env, String my_temp_dir, boolean reflection_only) {
+		return renderTemplate(host, scenario_set, test_case, prebootstrap_code, bootstrap_file, postbootstrap_code, cwd, include_path, included_files, globals, constants, env, my_temp_dir, reflection_only, false);
 	}
 	
-	public static String renderTemplate(AHost host, ScenarioSet scenario_set, PhpUnitTestCase test_case, String preamble_code, String bootstrap_file, String cwd, String include_path, String[] included_files, Map<String, String> globals, Map<String, String> constants, HashMap<String, String> env, String my_temp_dir, boolean reflection_only, boolean strict) {
+	public static String renderTemplate(AHost host, ScenarioSet scenario_set, PhpUnitTestCase test_case, String prebootstrap_code, String bootstrap_file, String postbootstrap_code, String cwd, String include_path, String[] included_files, Map<String, String> globals, Map<String, String> constants, HashMap<String, String> env, String my_temp_dir, boolean reflection_only, boolean strict) {
 		// XXX will need to get these values from PHP code 
 		// data source: PhpUnit_Framework_TestCase constructor (default value)
 		String data = "a:0:{}";
@@ -58,6 +58,7 @@ public class PhpUnitTemplate {
 		//           temporary dir ENV vars passed to AHost#exec doesn't always work
 		//           @see PHP sys_get_temp_dir() - many Symfony filesystem tests use this
 		def pftt_scenario_set = scenario_set.getNameWithVersionInfo();
+		
 		pw.print(
 """<?php
 set_include_path('$include_path');
@@ -71,14 +72,17 @@ putenv('PFTT_IS=true');
 putenv('PFTT_SCENARIO_SET=$pftt_scenario_set');
 
 """)
+		if (StringUtil.isNotEmpty(prebootstrap_code)) {
+			pw.print(prebootstrap_code);
+		}
 		if (StringUtil.isNotEmpty(bootstrap_file)) {
 			pw.print("""require_once '$bootstrap_file';
 """);
 		}
-		if (StringUtil.isNotEmpty(preamble_code)) {
-			pw.print("""$preamble_code;
-""");
+		if (StringUtil.isNotEmpty(postbootstrap_code)) {
+			pw.print(postbootstrap_code);
 		}
+		
 		//
 		// PhpUnit runner will check output for 'Fatal Error' to catch errors (and not get confused by the output)
 		// but should still try to catch fatal errors here and gather what information is possible
@@ -215,35 +219,31 @@ pw.println("""	} catch ( Exception \$e ) {
 	// PFTT
 	switch(\$status) {
 	case PHPUnit_Runner_BaseTestRunner::STATUS_PASSED:
-		echo "PASS";
-		echo PHP_EOL;
-		echo "run time \$run_time micros";echo PHP_EOL;
+		echo 'status=PASS'; echo PHP_EOL;
+		echo "run_time=\$run_time"; echo PHP_EOL;
 		break;
 	case PHPUnit_Runner_BaseTestRunner::STATUS_SKIPPED:
-		echo 'SKIP';
-		echo PHP_EOL;
+		echo 'status=SKIP'; echo PHP_EOL;
+		echo "run_time=\$run_time"; echo PHP_EOL;
 		echo \$status_msg;
 		echo PHP_EOL;
 		echo \$output;
-		echo "run time \$run_time micros";echo PHP_EOL;
 		dump_info();
 		break;
 	case PHPUnit_Runner_BaseTestRunner::STATUS_INCOMPLETE:
-		echo 'NOT_IMPLEMENTED';
-		echo PHP_EOL;
+		echo 'status=NOT_IMPLEMENTED'; echo PHP_EOL;
+		echo "run_time=\$run_time"; echo PHP_EOL;
 		echo \$status_msg;
 		echo PHP_EOL;
 		echo \$output;
-		echo "run time \$run_time micros";echo PHP_EOL;
 		break;
 	case PHPUnit_Runner_BaseTestRunner::STATUS_FAILURE:
-		echo 'FAILURE';
-		echo PHP_EOL;
+		echo 'status=FAILURE'; echo PHP_EOL;
+		echo "run_time=\$run_time"; echo PHP_EOL;
 		echo \$status_msg;
 		echo PHP_EOL;
 		echo \$output;
 		dump_info();
-		echo "run time \$run_time micros";echo PHP_EOL;
 		break;
 	case PHPUnit_Runner_BaseTestRunner::STATUS_ERROR:
 		\$status = 'ERROR';
@@ -259,13 +259,12 @@ pw.println("""	} catch ( Exception \$e ) {
 				break;
 			}
 		}
-		echo \$status;
-		echo PHP_EOL;
+		echo "status=\$status"; echo PHP_EOL;
+		echo "run_time=\$run_time"; echo PHP_EOL;
 		echo \$status_msg;
 		echo PHP_EOL;
 		echo \$output;
 		dump_info();
-		echo "run time \$run_time micros";echo PHP_EOL;
 		break;
 	}
 

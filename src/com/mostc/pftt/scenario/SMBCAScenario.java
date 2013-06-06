@@ -4,7 +4,7 @@ import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.RemoteHost;
 import com.mostc.pftt.host.TempFileExecOutput;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 
 /** Tests PHP using SMB Continuous Availability (CA) (NOT IMPLEMENTED)
  * 

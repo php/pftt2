@@ -1,0 +1,5 @@
+#!/bin/bash
+killall php
+killall php-cgi
+killall -9 php
+killall -9 php-cgi

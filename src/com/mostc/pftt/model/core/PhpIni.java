@@ -1,6 +1,6 @@
 package com.mostc.pftt.model.core;
 
-import java.lang.ref.WeakReference;
+import java.lang.ref.SoftReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -104,8 +104,8 @@ public class PhpIni {
 	//
 	//
 	private final HashMap<String, ArrayList<String>> ini_map;
-	private WeakReference<PhpIni> ext_ini;
-	private WeakReference<String> ini_str, cli_arg;
+	private SoftReference<PhpIni> ext_ini;
+	private SoftReference<String> ini_str, cli_arg;
 	public boolean is_default = false;
 	
 	public PhpIni() {
@@ -155,7 +155,7 @@ public class PhpIni {
 				putMulti(ini_name, ini_value);
 			}
 		}
-		this.ini_str = new WeakReference<String>(ini_str);
+		this.ini_str = new SoftReference<String>(ini_str);
 	}
 		
 	/** add the path to the include path (if not already present)
@@ -471,13 +471,13 @@ public class PhpIni {
 			}
 		}
 		ini_str = sb.toString();
-		this.ini_str = new WeakReference<String>(ini_str);
+		this.ini_str = new SoftReference<String>(ini_str);
 		return ini_str;
 	}
 	
 	@Override
 	public int hashCode() {
-		return toString().hashCode();
+		return ini_map.hashCode();
 	}
 	
 	@Override
@@ -486,7 +486,7 @@ public class PhpIni {
 	}
 	
 	public boolean equals(PhpIni ini) {
-		return this.toString().equals(ini.toString());
+		return this.ini_map.equals(ini.ini_map);
 	}
 	
 	/** returns a PhpIni that only has the EXTENSION and EXTENSION_DIR directives from this PhpIni.
@@ -508,7 +508,7 @@ public class PhpIni {
 		}
 		
 		ext_ini = new ReadOnlyPhpIni();
-		this.ext_ini = ext_ini.ext_ini = new WeakReference<PhpIni>(ext_ini);
+		this.ext_ini = ext_ini.ext_ini = new SoftReference<PhpIni>(ext_ini);
 		String ext_dir = get(EXTENSION_DIR);
 		if (ext_dir!=null)
 			ext_ini.putSingle(EXTENSION_DIR, ext_dir);
@@ -554,7 +554,7 @@ public class PhpIni {
 			sb.append("\"");
 		}
 		String cli_arg_str = sb.toString();
-		cli_arg = new WeakReference<String>(cli_arg_str);
+		cli_arg = new SoftReference<String>(cli_arg_str);
 		return cli_arg_str;
 	} // end public String toCliArgString
 	static final Pattern PAT_bs = Pattern.compile("\"");

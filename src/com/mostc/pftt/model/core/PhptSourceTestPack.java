@@ -3,7 +3,7 @@ package com.mostc.pftt.model.core;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.lang.ref.WeakReference;
+import java.lang.ref.SoftReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -17,9 +17,9 @@ import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.SourceTestPack;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhpResultPackWriter;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
 /** manages a test-pack of PHPT tests
  * 
@@ -35,7 +35,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 	protected AHost host;
 	protected final LinkedList<File> non_phpt_files;
 	protected final HashMap<String,PhptTestCase> test_cases_by_name;
-	protected WeakReference<ArrayList<PhptTestCase>> _ref_test_cases;
+	protected SoftReference<ArrayList<PhptTestCase>> _ref_test_cases;
 	
 	public PhptSourceTestPack(String test_pack) {
 		this.test_pack_file = new File(test_pack);
@@ -79,12 +79,29 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		// these are symlinks(junctions) which may cause an infinite loop
 		//
 		// normally, they are deleted, but if certain tests were interrupted, they may still be there
-		host.deleteIfExists(test_pack+"/ext/standard/tests/file/windows_links/mklink_junction");
+		host.deleteIfExists(test_pack+"/ext/standard/tests/file/12345");
+		host.deleteIfExists(test_pack+"/ext/standard/tests/file/clearstatcache_001.php_link1");
+		host.deleteIfExists(test_pack+"/ext/standard/tests/file/clearstatcache_001.php_link2");
+		host.deleteIfExists(test_pack+"/ext/standard/tests/file/copy_variation15");
+		host.deleteIfExists(test_pack+"/ext/standard/tests/file/is_dir_variation2_symlink");
+		host.deleteIfExists(test_pack+"/ext/standard/tests/file/mkdir");
+		host.deleteIfExists(test_pack+"/ext/standard/tests/file/mkdir_variation2");
+		host.deleteIfExists(test_pack+"/ext/standard/tests/file/realpath_basic");
+		host.deleteIfExists(test_pack+"/ext/standard/tests/file/rename_variation");
+		host.deleteIfExists(test_pack+"/ext/standard/tests/file/rename_variation.tmp");
+		host.deleteIfExists(test_pack+"/ext/standard/tests/file/rename_variation_dir");
+		host.deleteIfExists(test_pack+"/ext/standard/tests/file/rename_variation_link.tmp");
+		host.deleteIfExists(test_pack+"/ext/standard/tests/file/symlink_link_linkinfo_is_link_basic1");
+		host.deleteIfExists(test_pack+"/ext/standard/tests/file/symlink_link_linkinfo_is_link_basic2");
+		host.deleteIfExists(test_pack+"/ext/standard/tests/file/symlink_link_linkinfo_is_link_variation7");
+		host.deleteIfExists(test_pack+"/ext/standard/tests/file/symlink_link_linkinfo_is_link_variation9");
+		host.deleteIfExists(test_pack+"/ext/standard/tests/file/unlink_variation1");
 		host.deleteIfExists(test_pack+"/ext/standard/tests/file/windows_links/directory");
 		host.deleteIfExists(test_pack+"/ext/standard/tests/file/windows_links/mounted_volume");
 		host.deleteIfExists(test_pack+"/ext/standard/tests/file/windows_links/mnt");
 		host.deleteIfExists(test_pack+"/tests/security/globtest1");
 		host.deleteIfExists(test_pack+"/tests/security/globtest2");
+		host.deleteIfExists(test_pack+"/ext/zip/tests/51353_unpack");
 		
 		host.deleteFileExtension(test_pack, ".skip.php");
 		host.deleteFileExtension(test_pack, ".cmd");
@@ -163,7 +180,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		// cache for use next time
 		_test_cases = new ArrayList<PhptTestCase>(test_cases.size());
 		_test_cases.addAll(test_cases);
-		_ref_test_cases = new WeakReference<ArrayList<PhptTestCase>>(_test_cases);
+		_ref_test_cases = new SoftReference<ArrayList<PhptTestCase>>(_test_cases);
 		//
 		twriter.setTotalCount(test_cases.size());
 	} // end public void read
@@ -190,7 +207,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		// cache for use next time
 		_test_cases = new ArrayList<PhptTestCase>(test_cases.size());
 		_test_cases.addAll(test_cases);
-		_ref_test_cases = new WeakReference<ArrayList<PhptTestCase>>(_test_cases);
+		_ref_test_cases = new SoftReference<ArrayList<PhptTestCase>>(_test_cases);
 		//
 		twriter.setTotalCount(test_cases.size());
 	}

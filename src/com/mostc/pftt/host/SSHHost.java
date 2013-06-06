@@ -38,7 +38,7 @@ import com.github.mattficken.io.MultiCharsetByLineReader;
 import com.github.mattficken.io.NoCharsetByLineReader;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
 import com.sshtools.j2ssh.SftpClient;
 import com.sshtools.j2ssh.SshClient;
@@ -426,7 +426,7 @@ public class SSHHost extends RemoteHost {
 		}
 		
 		@Override
-		public void close(boolean force) {
+		public void close(ConsoleManager cm, boolean force) {
 			/* TODO ccm.winCloseAllHandles(SSHHost.this, process_id);
 			ccm.winKillProcess(SSHHost.this, image_name, process_id);
 			ccm.ensureWERFaultIsNotRunning(SSHHost.this, process_id); */
@@ -464,7 +464,7 @@ public class SSHHost extends RemoteHost {
 		}
 
 		@Override
-		public void run(StringBuilder output_sb, Charset charset, int timeout_sec, final TestPackRunnerThread thread, int slow_sec, int suspend_seconds) throws IOException, InterruptedException {
+		public void run(ConsoleManager cm, StringBuilder output_sb, Charset charset, int timeout_sec, final TestPackRunnerThread thread, int slow_sec, int suspend_seconds) throws IOException, InterruptedException {
 			do_run(session, charset, timeout_sec, thread, slow_sec);
 			output_sb.append(out.toString());
 		}

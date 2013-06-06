@@ -16,7 +16,7 @@ public abstract class AbstractPhpUnitRW extends AbstractTestResultRW {
 				count(EPhpUnitTestStatus.DEPRECATED) +
 				count(EPhpUnitTestStatus.CRASH);
 	}
-	public abstract String getFailureOutput(String test_name);
+	public abstract String getTestOutput(String test_name);
 	public abstract int count(EPhpUnitTestStatus status);
 	public abstract List<String> getTestNames(EPhpUnitTestStatus status);
 	@Override

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
+import java.util.List;
 import java.util.Map;
 
 import javax.annotation.Nullable;
@@ -15,7 +16,7 @@ import com.github.mattficken.io.CharsetDeciderDecoder;
 import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
 import com.mostc.pftt.util.NTStatus;
 
@@ -360,24 +361,24 @@ public abstract class AHost extends Host {
 		public abstract InputStream getSTDOUT();
 		public abstract OutputStream getSTDIN();
 		/** KILLs process
-		 * 
+		 * @param cm TODO
 		 * @param force - on Windows, if the process crashed and Windows Error Reporting(WER) is enabled (default=enabled),
 		 *                then a WER Popup dialog will block the process from being killed. set force=true
 		 *                if the process needs to be killed even in this situation (normally process should be left running/crashed
 		 *                so user can debug it)
 		 *                if false, even on Windows will still KILL the process.
 		 */
-		public abstract void close(boolean force);
+		public abstract void close(ConsoleManager cm, boolean force);
 		/** KILLs process.
 		 * 
 		 * Note: on Windows, if process crashed and Windows Error Reporting(WER) is enabled (default=enabled)
 		 * a WER Popup dialog box will appear and block the process from exiting AND block the process from
 		 * being killed
 		 * 
-		 * @see #close(boolean)
+		 * @see #close(ConsoleManager, boolean)
 		 */
-		public void close() {
-			close(false);
+		public void close(ConsoleManager cm) {
+			close(cm, false);
 		}
 		public abstract boolean isRunning();
 		/** returns if process crashed.
@@ -428,7 +429,7 @@ public abstract class AHost extends Host {
 		
 		
 		// TODO
-		public abstract void run(StringBuilder output_sb, Charset charset, int timeout_sec, TestPackRunnerThread thread, int slow_sec, int suspend_seconds) throws IOException, InterruptedException;
+		public abstract void run(ConsoleManager cm, StringBuilder output_sb, Charset charset, int timeout_sec, TestPackRunnerThread thread, int slow_sec, int suspend_seconds) throws IOException, InterruptedException;
 	} // end public abstract class ExecHandle
 	
 	/** checks exit code to see if it means process crashed
@@ -984,6 +985,26 @@ public abstract class AHost extends Host {
 		else
 			// fallback
 			return getSystemDrive()+"\\Windows";
+	}
+	
+	@Override
+	public String joinMultiplePaths(List<String> paths1, String ...paths2) {
+		StringBuilder sb = new StringBuilder(128);
+		if (paths1!=null) {
+			for ( String p : paths1 ) {
+				if (sb.length() > 0)
+					sb.append(pathsSeparator());
+				sb.append(p);
+			}
+		}
+		if (paths2!=null) {
+			for ( String p : paths2 ) {
+				if (sb.length() > 0)
+					sb.append(pathsSeparator());
+				sb.append(p);
+			}
+		}
+		return sb.toString();
 	}
 
 	@Override

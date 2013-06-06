@@ -10,7 +10,6 @@ import com.mostc.pftt.main.PfttMain;
 import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.PhpBuildInfo;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
 
 public class PhptResultReader extends AbstractPhptRW {
 	protected final HashMap<EPhptTestStatus,StatusListEntry> status_list_map;

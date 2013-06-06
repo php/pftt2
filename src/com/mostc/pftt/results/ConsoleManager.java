@@ -42,18 +42,6 @@ public interface ConsoleManager {
 	public void restartingAndRetryingTest(TestCase test_case);
 	public void restartingAndRetryingTest(String test_case_name);
 	public void println(EPrintType type, String ctx_str, String string);
-	public static enum EPrintType {
-		SKIP_OPERATION,
-		XSKIP_OPERATION, 
-		SKIP_OPTIONAL,
-		CLUE,
-		WARNING,
-		CANT_CONTINUE,
-		IN_PROGRESS,
-		COMPLETED_OPERATION,
-		OPERATION_FAILED_CONTINUING,
-		TIP
-	}
 	public void println(EPrintType type, Class<?> clazz, String string);
 	public void addGlobalException(EPrintType type, Class<?> clazz, String method_name, Exception ex, String msg);
 	public void addGlobalException(EPrintType type, Class<?> clazz, String method_name, Exception ex, String msg, Object a);

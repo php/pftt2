@@ -2,10 +2,13 @@ package com.mostc.pftt.runner;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
 import com.github.mattficken.Overridable;
+import com.github.mattficken.io.ArrayUtil;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.ExecOutput;
@@ -16,6 +19,7 @@ import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
@@ -112,10 +116,11 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 				host, 
 				scenario_set, 
 				test_case, 
-				test_case.getPhpUnitDist().getSourceTestPack().getPreambleCode(),
+				test_case.getPhpUnitDist().getSourceTestPack().getPreBootstrapCode(cm, host, scenario_set, build),
 				test_case.getPhpUnitDist().getBootstrapFile() == null ? 
 						null : 
 						test_case.getPhpUnitDist().getBootstrapFile().getAbsolutePath(),
+				test_case.getPhpUnitDist().getSourceTestPack().getPostBootstrapCode(cm, host, scenario_set, build),
 				test_case.getPhpUnitDist().getPath().getAbsolutePath(),
 				include_path,
 				include_files,
@@ -132,6 +137,14 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 	@Override
 	public void runTest(ConsoleManager cm, LocalPhpUnitTestPackRunner.PhpUnitThread t, LocalPhpUnitTestPackRunner r) throws Exception {
 		host.mkdirs(my_temp_dir);
+		
+		//
+		try {
+			test_case.getPhpUnitDist().getSourceTestPack().startTest(cm, host, scenario_set, build, test_case);
+		} catch ( Exception ex ) {
+			cm.addGlobalException(EPrintType.CLUE, getClass(), "runTest", ex, "test-pack notification exception");
+		}
+		//
 		
 		final String template_file = my_temp_dir+"/test.php";
 		
@@ -152,8 +165,8 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 		}
 		//
 
-		EPhpUnitTestStatus status;
-		float run_time_micros = 0; // TODO
+		EPhpUnitTestStatus status = null;
+		float run_time_micros = 0;
 		if (checkRequireOnceError(output)) {
 			status = EPhpUnitTestStatus.TEST_EXCEPTION;
 			
@@ -186,41 +199,50 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 				}
 			}
 		} else {
-			// SPEC: the php script will print the status on the first line
-			//       and then the remaining lines are all of the output
+			// SPEC: the php script will print
+			// status=<status>
+			// run_time=<time in microseconds>
+			// <everything else is output>
 			//
 			// @see PhpUnitTemplate#renderTemplate for the PHP script
 			//
-			String[] lines = StringUtil.splitLines(output);
-			String status_str = lines[0];
+			String output_str;
+			{
+				List<String> lines = ArrayUtil.toList(StringUtil.splitLines(output));
+				Iterator<String> line_it = lines.iterator();
+				String line;
+				while (line_it.hasNext()) {
+					line = line_it.next();
+					if (line.startsWith("status=")) {
+						status = EPhpUnitTestStatus.fromString(line.substring("status=".length()));
+						
+						if (status==null) {
+							if (output.contains("Fatal Error"))
+								status = EPhpUnitTestStatus.ERROR;
+							else
+								status = EPhpUnitTestStatus.FAILURE;
+						}
+						
+						line_it.remove(); // remove this line from output_str
+					} else if (line.startsWith("run_time=")) {
+						run_time_micros = Float.parseFloat(line.substring("run_time=".length()));
+						
+						line_it.remove(); // remove this line from output_str
+					} 
+				}
+				output_str = StringUtil.join(lines, "\n");
+			}
+			//
 			
-			// read status code
-			if (status_str.length() > 0) {
-				status = null;
-				for ( EPhpUnitTestStatus s : EPhpUnitTestStatus.values()) { 
-					//if (status_str.equals(s.toString())) {
-					if (output.contains(s.toString())) { // TODO temp 5/7/2013
-						status = s;
-						break;
-					}
-				}
-				
-				if (status==null) {
-					if (output.contains("Fatal Error"))
-						status = EPhpUnitTestStatus.ERROR;
-					else
-						status = EPhpUnitTestStatus.FAILURE;
-				}
-			} else {
+			if (status==null) {
 				// if test had a 'Fatal Error', it might not have been able to print the status code at all
 				// (otherwise it should always have a status code)
 				status = EPhpUnitTestStatus.ERROR;
 			}
-			//
 			
 			if (status == EPhpUnitTestStatus.SKIP) {
 				// check if it should be XSKIP instead
-				final String output_lc = output.toLowerCase();
+				final String output_lc = output_str.toLowerCase();
 				if (host.isWindows() && output_lc.contains("not ") && output_lc.contains(" windows"))
 					status = EPhpUnitTestStatus.XSKIP;
 				else if (!host.isWindows() && output_lc.contains("only ") && output_lc.contains(" windows"))
@@ -228,7 +250,7 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 				else if (host.isWindows() && output_lc.contains("posix is not supported"))
 					status = EPhpUnitTestStatus.XSKIP;
 			}
-			final String output_str = StringUtil.join(lines, 1, "\n");
+			
 			if (status.isNotPass()) {
 				tmgr.addResult(host, scenario_set, notifyNotPass(new PhpUnitTestResult(test_case, status, scenario_set, host, output_str, ini, run_time_micros, getSAPIOutput(), getSAPIConfig())));
 			} else {

@@ -1,0 +1,3 @@
+#!/bin/bash
+killall httpd
+killall -9 httpd

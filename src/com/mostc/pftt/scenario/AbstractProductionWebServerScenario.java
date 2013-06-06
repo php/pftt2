@@ -21,12 +21,12 @@ public abstract class AbstractProductionWebServerScenario extends AbstractWebSer
 	
 	@Override
 	public int getSlowTestTimeSeconds() {
-		return 10;
+		return 15;
 	}
 	
 	@Override
 	public long getFastTestTimeSeconds() {
-		return 5;
+		return 10;
 	}
 	
 } // end public abstract class AbstractProductionWebServerScenario

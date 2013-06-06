@@ -4,7 +4,7 @@ import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.scenario.AbstractWebServerScenario;
 import com.mostc.pftt.scenario.ApplicationScenario;
 import com.mostc.pftt.scenario.ScenarioSet;

@@ -30,7 +30,7 @@ import org.apache.http.protocol.RequestUserAgent;
 import com.github.mattficken.io.IOUtil;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 
 public class DownloadUtil {
 

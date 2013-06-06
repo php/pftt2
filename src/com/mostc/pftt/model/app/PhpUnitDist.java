@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.github.mattficken.io.StringUtil;
+import com.mostc.pftt.host.AHost;
 
 /** represents a PhpUnit.xml.dist file
  * 
@@ -80,11 +81,10 @@ public class PhpUnitDist {
 	}
 	
 	String _include_path;
-	public String getIncludePath() {
+	public String getIncludePath(AHost host) {
 		if (_include_path!=null)
 			return _include_path;
-		// TODO ;
-		return _include_path = StringUtil.join(src_test_pack.include_dirs, ";") + ";" +path.getAbsolutePath();
+		return _include_path = host.joinMultiplePaths(src_test_pack.include_dirs, path.getAbsolutePath());
 	}
 	
 	/** add an included file.

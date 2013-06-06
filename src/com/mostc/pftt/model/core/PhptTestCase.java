@@ -3,6 +3,7 @@ package com.mostc.pftt.model.core;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
@@ -67,7 +68,8 @@ public class PhptTestCase extends TestCase {
 			new String[]{"ext/standard/tests/file/mkdir_", "ext/standard/tests/file/mkdir-"},
 			new String[]{"ext/standard/tests/file/lstat_", "ext/standard/tests/file/stat_"},
 			new String[]{"ext/standard/tests/file/fgets_"},
-			new String[]{"ext/standard/tests/file/fgetcsv_", "ext/standard/tests/file/fputcsv_"},
+			new String[]{"ext/standard/tests/file/fgetcsv_"},
+			new String[]{"ext/standard/tests/file/fputcsv_"}, // TODO
 			new String[]{"ext/standard/tests/file/tempnam_"},
 			new String[]{"ext/standard/tests/file/touch_"},
 			new String[]{"ext/standard/tests/file/symlink_"},
@@ -75,15 +77,14 @@ public class PhptTestCase extends TestCase {
 			new String[]{"ext/standard/tests/file/windows_acls/", "ext/standard/tests/file/windows_links/"},
 			// note: this array is processed in order, so this entry will catch any remaining /file/ phpts
 			new String[]{"ext/standard/tests/dir/"},
-			new String[]{"ext/standard/tests/streams/stream_get_meta_data_socket_variation1.phpt"},
-			new String[]{"ext/standard/tests/streams/stream_get_meta_data_socket_variation2.phpt"},
-			new String[]{"ext/standard/tests/streams/stream_get_meta_data_socket_variation3.phpt"},
-			new String[]{"ext/standard/tests/streams/stream_get_meta_data_socket_variation4.phpt"},
+			new String[]{"ext/standard/tests/streams/stream_get_"},
+			new String[]{"ext/standard/tests/streams/stream_set_"},
+			new String[]{"ext/standard/tests/streams/"},
 			new String[]{"ext/standard/tests/sockets/", "ext/sockets/"},
 			// the bug38450* tests fail randomly under apache if run on apache instance
 			// with other tests - run them (serially) on their own apache instance
-			new String[]{"ext/standard/tests/file/bug38450"},
-			new String[]{"ext/standard/tests/network/"},
+			// TODO new String[]{"ext/standard/tests/file/bug38450"},
+			// TODO new String[]{"ext/standard/tests/network/"},
 			new String[]{"ext/mysql/", "ext/pdo_mysql/", "ext/mysqli/"},
 			new String[]{"ext/pgsql/", "ext/pdo_pgsql/"},
 			// several 61367 tests that aren't thread-safe (temp files)
@@ -101,7 +102,8 @@ public class PhptTestCase extends TestCase {
 			new String[]{"ext/soap/"},
 			new String[]{"ext/fileinfo/"},
 			new String[]{"ext/ldap/"},
-			new String[]{"ext/spl/tests/splfileobject_fputcsv_", "ext/spl/tests/splfileobject_fgetcsv_"}
+			new String[]{"ext/spl/tests/splfileobject_fputcsv_"}, // TODO
+			new String[]{"ext/spl/tests/splfileobject_fgetcsv_"}
 		};
 	// PHPT test files end with .phpt
 	public static final String PHPT_FILE_EXTENSION = ".phpt";
@@ -113,7 +115,7 @@ public class PhptTestCase extends TestCase {
 	private PhptTestCase parent;
 	private WeakReference<PhpIni> ini;
 	private WeakReference<String> ini_pwd, contents;
-	private WeakReference<RE> expected_re;
+	private SoftReference<RE> expected_re;
 	private PhptSourceTestPack test_pack;
 	private CharsetICU common_charset;
 	private CharsetEncoder ce;
@@ -360,11 +362,45 @@ public class PhptTestCase extends TestCase {
 	 * @param host
 	 * @param scenario_set
 	 * @param twriter
+	 * @param  
 	 * @return
 	 */
 	public RE getExpectedCompiled(AHost host, ScenarioSet scenario_set, ITestResultReceiver twriter) {
+		return getExpectedCompiled(host, scenario_set, twriter, false);
+	}
+	
+	public static boolean hasWarningOrFatalError(String input) {
+		return input.contains("Warning") || input.contains("Fatal Error") || input.contains("Deprecated") || input.contains("Strict Standards:");
+	}
+	
+	public boolean expectsWarningOrFatalError() {
+		String a = get(EPhptSection.EXPECTF);
+		if (a!=null)
+			return hasWarningOrFatalError(a);
+		a = get(EPhptSection.EXPECTREGEX);
+		if (a!=null)
+			return hasWarningOrFatalError(a);
+		a = get(EPhptSection.EXPECT);
+		if (a!=null)
+			return hasWarningOrFatalError(a);
+		else
+			return false; // shouldn't get here except for BORK'd tests
+	}
+	
+	public static String removeWarningAndFatalError(String input) {
+		StringBuilder sb = new StringBuilder(input.length());
+		for ( String line : StringUtil.splitLines(input)) {
+			if (!(line.startsWith("Warning")||line.startsWith("Fatal Error")||line.startsWith("Deprecated")||line.startsWith("Strict Standards:"))) {
+				sb.append(line);
+				sb.append("\n");
+			}
+		}
+		return sb.toString().trim();
+	}
+	
+	public RE getExpectedCompiled(AHost host, ScenarioSet scenario_set, ITestResultReceiver twriter, boolean remove_warning_and_error) {
 		RE expected_re;
-		if (this.expected_re!=null) {
+		if (!remove_warning_and_error && this.expected_re!=null) {
 			expected_re = this.expected_re.get();
 			if (expected_re!=null)
 				return expected_re;
@@ -372,19 +408,19 @@ public class PhptTestCase extends TestCase {
 		
 		String expected_str, oexpected_str;		
 		if (containsSection(EPhptSection.EXPECTREGEX)) {
-			expected_str = oexpected_str = getTrim(EPhptSection.EXPECTREGEX);
+			expected_str = oexpected_str = remove_warning_and_error ? removeWarningAndFatalError(get(EPhptSection.EXPECTREGEX)) : getTrim(EPhptSection.EXPECTREGEX);
 		} else if (containsSection(EPhptSection.EXPECTF)) {
 			//
 			// EXPECTF has special strings (ex: %s) that are replaced by builtin regular expressions
 			// after that replacement, it is treated just like EXPECTREGEX
 			//
-			expected_str = oexpected_str = getTrim(EPhptSection.EXPECTF);
+			expected_str = oexpected_str = remove_warning_and_error ? removeWarningAndFatalError(get(EPhptSection.EXPECTF)) : getTrim(EPhptSection.EXPECTF);
 			
 			expected_str = prepareExpectF(expected_str);
 		} else {
 			return null;
 		}
-		
+				
 		{
 			String override_expected_str = PhptOverrideManager.replaceWithRegexOverrides(host, expected_str);
 			if (override_expected_str!=null) {
@@ -396,7 +432,7 @@ public class PhptTestCase extends TestCase {
 			REProgram wanted_re_prog = new RECompiler().compile(expected_str);
 			
 			expected_re = new RE(wanted_re_prog);
-			this.expected_re = new WeakReference<RE>(expected_re);
+			this.expected_re = new SoftReference<RE>(expected_re);
 			return expected_re;
 		} catch ( Throwable ex ) {
 			// log exception
@@ -405,7 +441,7 @@ public class PhptTestCase extends TestCase {
 			
 			twriter.addTestException(host, scenario_set, this, ex, expected_str, oexpected_str);
 			expected_re = new RE(); // marker to avoid trying again
-			this.expected_re = new WeakReference<RE>(expected_re);
+			this.expected_re = new SoftReference<RE>(expected_re);
 			return expected_re;
 		}
 	} // end public RE getExpectedCompiled
@@ -995,7 +1031,7 @@ public class PhptTestCase extends TestCase {
 	 * @return
 	 */
 	public boolean isSlowTest() {
-		return isExtension("phar") || isNamed(SLOW_TESTS);
+		return isExtension("phar") || isExtension("standard/tests/streams") || isNamed(SLOW_TESTS);
 	}
 	public static Trie SLOW_TESTS = createNamed(
 				// tests that check the SKIP_SLOW_TESTS env var (ie tests considered slow by their authors)
@@ -1055,15 +1091,7 @@ public class PhptTestCase extends TestCase {
 				"ext/standard/tests/file/file_get_contents_error002.phpt",
 				"tests/lang/bug32924.phpt",
 				"tests/lang/bug45392.phpt",
-				"ext/standard/tests/streams/stream_get_meta_data_socket_variation3.phpt",
-				"ext/standard/tests/streams/stream_get_meta_data_socket_variation1.phpt",
-				"ext/standard/tests/streams/stream_get_meta_data_socket_variation2.phpt",
-				"ext/standard/tests/streams/stream_get_meta_data_socket_variation4.phpt",
-				"ext/standard/tests/streams/stream_socket_pair.phpt",
-				"ext/standard/tests/streams/stream_set_timeout_error.phpt",
 				"ext/standard/tests/network/shutdown.phpt",
-				"ext/standard/tests/streams/bug61371-win.phpt",
-				"ext/standard/tests/streams/stream_get_meta_data_socket_variation4.phpt",
 				"tests/security/open_basedir_error_log_variation.phpt",
 				"tests/security/open_basedir_fileatime.phpt",
 				"tests/security/open_basedir_filectime.phpt",

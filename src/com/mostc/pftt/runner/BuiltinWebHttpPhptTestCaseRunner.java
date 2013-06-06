@@ -40,7 +40,7 @@ public class BuiltinWebHttpPhptTestCaseRunner extends HttpPhptTestCaseRunner {
 	@Override
 	protected void stop(boolean force) {
 		if (web!=null)
-			web.close();
+			web.close(cm);
 		final Socket s = test_socket;
 		if (s==null)
 			return;
@@ -59,19 +59,35 @@ public class BuiltinWebHttpPhptTestCaseRunner extends HttpPhptTestCaseRunner {
 		// some intl tests have + in their name... sending this to the builtin web server breaks it (HTTP 404)
 		return super.createBaseName().replace("+", "");
 	}
+		
+	@Override
+	protected String do_http_get(String path) throws Exception {
+		// CRITICAL: do this with #do_http_get not #do_http_execute
+		//           doing it with #do_http_execute will trigger the web server to be recreated
+		try {
+			return super.do_http_get(path);
+		} catch ( IOException ex ) {
+			Thread.sleep(3000);
+			try {
+				return super.do_http_get(path);
+			} catch ( IOException ex2 ) {
+				Thread.sleep(8000);
+				return super.do_http_get(path);
+			}
+		}
+	}
 	
 	@Override
-	protected String do_http_execute(String path, EPhptSection section) throws Exception {
+	protected String do_http_post(String path) throws Exception {
 		try {
-			return super.do_http_execute(path, section);
+			return super.do_http_post(path);
 		} catch ( IOException ex ) {
-			// wait and then try again (may its taking a long time to startup? - this seems to decrease the number of timeouts)
-			Thread.sleep(10000);
+			Thread.sleep(3000);
 			try {
-				return super.do_http_execute(path, section);
+				return super.do_http_post(path);
 			} catch ( IOException ex2 ) {
-				Thread.sleep(10000);
-				return super.do_http_execute(path, section);
+				Thread.sleep(12000);
+				return super.do_http_post(path);
 			}
 		}
 	}

@@ -220,5 +220,36 @@ public enum EPhpUnitTestStatus {
 	 * @return
 	 */
 	public abstract EPhptTestStatus toPhptStatus();
+	
+	public static EPhpUnitTestStatus fromString(String str) {
+		if (str.equals("PASS"))
+			return PASS;
+		else if (str.equals("SKIP"))
+			return SKIP;
+		else if (str.equals("ERROR"))
+			return ERROR;
+		else if (str.equals("FAILURE"))
+			return FAILURE;
+		else if (str.equals("WARNING"))
+			return WARNING;
+		else if (str.equals("NOT_IMPLEMENTED"))
+			return NOT_IMPLEMENTED;
+		else if (str.equals("TEST_EXCEPTION"))
+			return TEST_EXCEPTION;
+		else if (str.equals("XSKIP"))
+			return XSKIP;
+		else if (str.equals("DEPRECATED"))
+			return DEPRECATED;
+		else if (str.equals("NOTICE"))
+			return NOTICE;
+		else if (str.equals("UNSUPPORTED"))
+			return UNSUPPORTED;
+		else if (str.equals("CRASH"))
+			return CRASH;
+		else if (str.equals("BORK"))
+			return BORK;
+		else
+			return null;
+	}
 		
 } // end public enum EPhpUnitTestStatus

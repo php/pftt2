@@ -27,7 +27,7 @@ public class CliPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	protected void stop(boolean force) {
 		if (running_test_handle==null)
 			return;
-		running_test_handle.close(force);
+		running_test_handle.close(cm, force);
 	}
 	
 	private void doExecute(String template_file, String ini_dir) throws Exception {
@@ -40,12 +40,12 @@ public class CliPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 		StringBuilder output_sb = new StringBuilder(128);
 		
 		running_test_handle.run(
+				cm, 
 				output_sb, 
 				null, 
 				getMaxTestRuntimeSeconds(), 
 				null, 
-				0, 
-				cm.getSuspendSeconds()
+				0, cm.getSuspendSeconds()
 			);
 		
 		output_str = output_sb.toString();

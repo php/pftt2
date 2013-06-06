@@ -11,7 +11,7 @@ import com.mostc.pftt.host.LocalHost.LocalExecHandle;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 
@@ -189,7 +189,7 @@ public abstract class DebuggerManager {
 
 	public static abstract class Debugger {
 
-		public abstract void close();
+		public abstract void close(ConsoleManager cm);
 		public abstract boolean isRunning();
 		
 	}

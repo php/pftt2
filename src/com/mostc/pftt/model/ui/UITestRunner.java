@@ -39,7 +39,7 @@ import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.main.PfttMain;
 import com.mostc.pftt.model.sapi.WebServerInstance;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.PhpResultPackWriter;
 import com.mostc.pftt.scenario.EnchantScenario;
 import com.mostc.pftt.scenario.ScenarioSet;

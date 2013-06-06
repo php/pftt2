@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.lang.ref.WeakReference;
+import java.lang.ref.SoftReference;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.WeakHashMap;
@@ -20,7 +20,7 @@ import com.mostc.pftt.host.TempFileExecOutput;
 import com.mostc.pftt.model.sapi.SAPIManager;
 import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.util.StringUtil2;
 
 /** Represents a single build of PHP.
@@ -37,11 +37,11 @@ import com.mostc.pftt.util.StringUtil2;
 public class PhpBuild extends SAPIManager {
 	private String build_path, php_exe, php_cgi_exe;
 	private WeakHashMap<PhpIni,WeakHashMap<String,Boolean>> ext_enable_map;
-	private WeakReference<String> php_info;
-	private WeakReference<PhpIni> php_ini;
+	private SoftReference<String> php_info;
+	private SoftReference<PhpIni> php_ini;
 	private String version_str, revision;
 	private EBuildBranch branch;
-	private WeakReference<String[]> module_list;
+	private SoftReference<String[]> module_list;
 	private int major, minor, release;
 	
 	public PhpBuild(String build_path) {
@@ -328,7 +328,7 @@ public class PhpBuild extends SAPIManager {
 		else
 			ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, host, this);
 		
-		this.php_ini = new WeakReference<PhpIni>(ini);
+		this.php_ini = new SoftReference<PhpIni>(ini);
 		return ini;
 	}
 	
@@ -624,7 +624,7 @@ public class PhpBuild extends SAPIManager {
 		eo.printOutputIfCrash(Host.toContext(getClass(), "getPhpInfo"), cm);
 		php_info = eo.output;
 		eo.cleanup(host);
-		this.php_info = new WeakReference<String>(php_info);
+		this.php_info = new SoftReference<String>(php_info);
 		return php_info;
 	}
 	
@@ -636,7 +636,7 @@ public class PhpBuild extends SAPIManager {
 	 * @throws IOException
 	 */
 	public void setDefaultPhpIni(Host host, ESAPIType type, PhpIni ini) throws IOException {
-		this.php_ini = new WeakReference<PhpIni>(ini);
+		this.php_ini = new SoftReference<PhpIni>(ini);
 		
 		host.saveTextFile(getDefaultPhpIniPath(host, type), ini.toString());
 		
@@ -815,7 +815,7 @@ public class PhpBuild extends SAPIManager {
 		}
 		
 		module_list = (String[]) list.toArray(new String[list.size()]);
-		this.module_list = new WeakReference<String[]>(module_list);
+		this.module_list = new SoftReference<String[]>(module_list);
 		return module_list;
 	}
 

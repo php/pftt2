@@ -6,7 +6,7 @@ import com.mostc.pftt.host.AHost.ExecHandle;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 /** handles integrating with WinDebug.
@@ -142,14 +142,14 @@ public class WinDebugManager extends DebuggerManager {
 		}
 		
 		@Override
-		public void close() {
+		public void close(ConsoleManager cm) {
 			if (debug_handle.isRunning()&&(process.isCrashed()||process.isRunning())) {
 				// if it has crashed, wait for user to manually close the debugger
 				// if it hasn't crashed yet (still running, might crash) wait to close the debugger
 				return;
 			}
 			 
-			debug_handle.close(true);
+			debug_handle.close(cm, true);
 			
 			wait = false;
 			

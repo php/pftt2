@@ -1,11 +1,11 @@
 package com.mostc.pftt.runner;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Random;
 
 import javax.annotation.Nullable;
 
@@ -19,9 +19,9 @@ import com.mostc.pftt.model.core.PhptSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.AbstractFileSystemScenario.ITestPackStorageDir;
@@ -117,25 +117,23 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 		// evenly/randomly distribute SLOOOooow test cases throughout the list
 		// will get faster usage with the dynamic thread pool
 		//    -rather than having slow tests all clustered together
-		try {
-			final Random r = new Random();
-			final int test_count = test_cases.size();
-			final int half_test_count = test_count / 2;
-			Collections.sort(test_cases, new Comparator<PhptTestCase>() {
-					@Override
-					public int compare(PhptTestCase a, PhptTestCase b) {
-						return r.nextInt(test_count)-half_test_count;//return b.isSlowTest() ? -1 : a.isSlowTest() ? -1 : +1;
-					}
-					
-				});
-		} catch ( Throwable t ) {}
+		Collections.sort(test_cases, SLOW_FIRST);
 		//
 	}
+	
+	protected Comparator<PhptTestCase> SLOW_FIRST = new Comparator<PhptTestCase>() {
+			@Override
+			public int compare(PhptTestCase a, PhptTestCase b) {
+				final boolean as = !sapi_scenario.isSlowTest(a);
+				final boolean bs = !sapi_scenario.isSlowTest(b);
+				return ( as ^ bs ) ? ( as ^ true  ? -1 : 1 ) : 0;
+			}
+		};
 	
 	@Override
 	protected TestCaseGroupKey createGroupKey(PhptTestCase test_case, TestCaseGroupKey group_key) throws Exception {
 		String name = test_case.getName();
-		if (name.contains("posix")||name.contains("sql")||name.contains("curl")||name.contains("ftp")||name.contains("dba")||name.contains("sybase")||name.contains("interbase")||name.contains("ldap")||name.contains("imap")||name.contains("oci")||name.contains("soap")||name.contains("xmlrpc")||name.contains("pcntl")||name.contains("odbc")||name.contains("snmp")||name.contains("pdo")) {
+		if (name.contains("svsvmsg")||name.contains("sysvshm")||name.contains("posix")||name.contains("sql")||name.contains("curl")||name.contains("ftp")||name.contains("dba")||name.contains("sybase")||name.contains("interbase")||name.contains("ldap")||name.contains("imap")||name.contains("oci")||name.contains("soap")||name.contains("xmlrpc")||name.contains("pcntl")||name.contains("odbc")||name.contains("snmp")||name.contains("pdo")) {
 			// TODO temp 5/29
 			twriter.addResult(runner_host, scenario_set, new PhptTestResult(runner_host, EPhptTestStatus.SKIP, test_case, "Skip", null, null, null, null, null, null, null, null, null, null, null));
 			return null;
@@ -182,14 +180,23 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 	
 	@Override
 	protected void postGroup(LinkedList<TestCaseGroup<PhptTestCase>> thread_safe_list, List<PhptTestCase> test_cases) {
-		// run smaller groups first
+		// run larger groups first
 		Collections.sort(thread_safe_list, new Comparator<TestCaseGroup<PhptTestCase>>() {
 				@Override
 				public int compare(TestCaseGroup<PhptTestCase> a, TestCaseGroup<PhptTestCase> b) {
-					return a.test_cases.size() - b.test_cases.size();
+					return b.test_cases.size() - a.test_cases.size();
 				}
 			});
-	}
+		ArrayList<PhptTestCase> buf;
+		for ( TestCaseGroup<PhptTestCase> a : thread_safe_list ) {
+			buf = new ArrayList<PhptTestCase>(a.test_cases.size());
+			buf.addAll(a.test_cases);
+			Collections.sort(buf, SLOW_FIRST);
+			a.test_cases.clear();
+			for ( PhptTestCase t : buf )
+				a.test_cases.add(t);
+		}
+	} // end protected void postGroup
 	
 	@Override
 	protected TestPackThread<PhptTestCase> createTestPackThread(boolean parallel) {

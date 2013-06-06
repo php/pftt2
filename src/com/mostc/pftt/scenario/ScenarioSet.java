@@ -276,6 +276,9 @@ public class ScenarioSet extends ArrayList<Scenario> {
 	public static List<ScenarioSet> permuteScenarioSets(EScenarioSetPermutationLayer layer, List<Scenario> scenarios) {
 		HashMap<Class<?>,List<Scenario>> map = new HashMap<Class<?>,List<Scenario>>();
 		for ( Scenario scenario : scenarios ) {
+			if (layer!=null && layer.reject(scenario))
+				continue;
+			
 			Class<?> clazz = scenario.getSerialKey(layer);
 			//
 			List<Scenario> list = map.get(clazz);

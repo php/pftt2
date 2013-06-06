@@ -48,27 +48,33 @@ public abstract class WebServerManager extends SAPIManager {
 	public abstract String getName();
 	
 	/** closes all web servers this managed
-	 * 
+	 * @param cm TODO
 	 * @param debug - TRUE if you might want to debug a web server that has crashed
 	 */
-	public void close(boolean debug) {
+	public void close(ConsoleManager cm, boolean debug) {
 		synchronized(instances) {
 			for ( WebServerInstance wsi : instances ) {
 				if (debug && wsi.isCrashedOrDebuggedAndClosed())
 					continue;
 				
 				// don't close instance if user might want to debug it
-				wsi.do_close();
+				wsi.do_close(cm);
 			}
 			instances.clear();
 		}
 	}
 	
-	public void close() {
-		close(false);
+	public void close(ConsoleManager cm) {
+		close(cm, false);
 	}
 	
 	private static boolean eq(WebServerInstance c, boolean debugger_attached, PhpIni ini, Map<String,String> env) {
+		if (c.isRunning())
+			return true; // TODO temp 5/30
+		
+		// TODO note - AbstractManagedProcessesWebServerManager, BuiltinWebServerManager and ApacheManager
+		//             all add to `env` which means this `env` might not match (because its missing some extra keys)
+		//             (what about checking just the values of the keys they both have in common?)
 		if (c.isRunning() && (!debugger_attached||c.isDebuggerAttached())) {
 			if (c.getPhpIni()!=null&&ini!=null&&c.getPhpIni().equals(ini))
 				return true;

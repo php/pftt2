@@ -18,6 +18,7 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner<
 	public static final String ENV_TEST_PHP_CGI_EXECUTABLE = "TEST_PHP_CGI_EXECUTABLE";
 	public static final String ENV_PHP_PATH = "PHP_PATH";
 	public static final String ENV_USE_ZEND_ALLOC = "USE_ZEND_ALLOC";
+	public static final String ENV_ZEND_DONT_UNLOAD_MODULES = "ZEND_DONT_UNLOAD_MODULES";
 	public static final String ENV_REDIRECT_STATUS = "REDIRECT_STATUS";
 	public static final String ENV_QUERY_STRING = "QUERY_STRING";
 	public static final String ENV_REQUEST_METHOD = "REQUEST_METHOD";

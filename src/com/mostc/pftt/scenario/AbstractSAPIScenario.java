@@ -2,6 +2,7 @@ package com.mostc.pftt.scenario;
 
 import java.util.Map;
 
+import com.github.mattficken.Overridable;
 import com.github.mattficken.io.Trie;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.main.IENVINIFilter;
@@ -41,6 +42,26 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 		return scenario_set.getScenario(AbstractSAPIScenario.class, DEFAULT_SAPI_SCENARIO);
 	}
 	
+	/** returns if this test is expected to take more than 40 seconds to execute on this Scenario.
+	 * 
+	 * fe, some PHPT tests are slow on builtin_web scenario but not slow on apache.
+	 * 
+	 * most tests take only a few seconds or less, so 40 is pretty slow. 60 seconds is the
+	 * maximum amount of time a test is allowed to execute, beyond that, its killed.
+	 * 
+	 * @param test_case
+	 * @return
+	 */
+	@Overridable
+	public boolean isSlowTest(PhptTestCase test_case) {
+		return test_case.isSlowTest();
+	}
+	
+	@Overridable
+	public boolean isExpectedCrash(PhptTestCase test_case) {
+		return false;
+	}
+	
 	@Override
 	public Class<?> getSerialKey(EScenarioSetPermutationLayer layer) {
 		return AbstractSAPIScenario.class;
@@ -62,7 +83,7 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 	 */
 	public abstract AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack);
 	
-	public void close(boolean debug) {
+	public void close(ConsoleManager cm, boolean debug) {
 		
 	}
 
@@ -139,7 +160,27 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 			"ext/mbstring/tests/php_gr_jp_16242.phpt",
 			"tests/basic/req60524-win.phpt",
 			"tests/func/011.phpt",
-			"zend/tests/unset_cv10.phpt"
+			"zend/tests/unset_cv10.phpt",
+			// TODO
+			//
+			"ext/pcre/tests/backtrack_limit.phpt",
+			"ext/pcre/tests/recursion_limit.phpt",
+			"ext/phar/tests/bug45218_slowtest.phpt",
+			"ext/phar/tests/phar_buildfromdirectory6.phpt",
+			"ext/reflection/tests/015.phpt",
+			"ext/session/tests/bug60860.phpt",
+			"ext/standard/tests/file/bug24482.phpt",
+			"ext/standard/tests/file/bug41655_1.phpt",
+			"ext/standard/tests/strings/htmlentities10.phpt",
+			"tests/basic/bug29971.phpt",
+			"tests/lang/short_tags.002.phpt",
+			"tests/security/open_basedir_glob_variation.phpt",
+			"ext/standard/tests/network/tcp4loop.phpt",
+			"ext/standard/tests/network/tcp6loop.phpt",
+			"ext/standard/tests/network/udp4loop.phpt",
+			"ext/standard/tests/network/udp6loop.phpt",
+			"zend/tests/bug52041.phpt",
+			"zend/tests/halt_compiler4.phpt"
 		);
 	public static Trie NON_WINDOWS_EXTS = PhptTestCase.createExtensions("sysvsem", "sysvmsg", "sysvshm", "gettext", "exif", "readline", "posix", "shmop");
 	public static Trie SCENARIO_EXTS = PhptTestCase.createExtensions("dba", "sybase", "snmp", "interbase", "ldap", "imap", "oci8", "pcntl", "soap", "xmlrpc", "pdo", "odbc", "pdo_mysql", "pdo_mssql", "mssql", "pdo_pgsql", "sybase_ct", "mysqli", "ftp", "curl");

@@ -1,7 +1,6 @@
 package com.mostc.pftt.model.smoke;
 
 import com.mostc.pftt.model.core.EPhptTestStatus;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
 import com.mostc.pftt.results.PhpResultPackWriter;
 
 /** compares the count of tests completed to the total of each test status and the total number of

@@ -1,7 +1,7 @@
 package com.mostc.pftt.model.sapi;
 
 import java.io.IOException;
-import java.lang.ref.WeakReference;
+import java.lang.ref.SoftReference;
 import java.util.Collection;
 import java.util.Map;
 
@@ -19,7 +19,7 @@ import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.model.sapi.EApacheVersion.ApacheHttpdAndVersion;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.results.ConsoleManager.EPrintType;
+import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.scenario.ScenarioSet;
@@ -249,7 +249,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		protected final AHost host;
 		protected final PhpBuild build;
 		protected final EApacheVersion apache_version;
-		protected WeakReference<String> log_ref;
+		protected SoftReference<String> log_ref;
 		
 		public ApacheWebServerInstance(EApacheVersion apache_version, PhpBuild build, ApacheManager ws_mgr, String docroot, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port, AHost host, String conf_dir, String apache_conf_file, String error_log, String conf_str) {
 			super(ws_mgr, docroot, cmd, ini, env, hostname, port);
@@ -284,18 +284,18 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			if (log==null) {
 				log = host.getContents(error_log);
 				if (StringUtil.isNotEmpty(log)) {
-					log_ref = new WeakReference<String>(log);
+					log_ref = new SoftReference<String>(log);
 				}
 			}
 			return log;
 		}
 		
 		@Override
-		protected void do_close() {
+		protected void do_close(ConsoleManager cm) {
 			// do this several times to make sure it gets done successfully
 			final boolean c = process.isCrashedOrDebuggedAndClosed();
 			for ( int i=0; i <3;i++) {
-				super.do_close();
+				super.do_close(cm);
 				
 				if (!c) {
 					// don't delete temp dir if crashed so user can analyze
@@ -329,8 +329,8 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		
 	} // end public class ApacheWebServerInstance
 	
-	public void close() {
-		super.close();
+	public void close(ConsoleManager cm) {
+		super.close(cm);
 		
 		LocalHost host = new LocalHost();
 		host.delete(host.getTempDir()+"/PFTT-ApacheManager-*");
