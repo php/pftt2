@@ -13,11 +13,6 @@ import com.mostc.pftt.results.ConsoleManager;
  */
 
 public class WinCacheScenario extends AbstractCodeCacheScenario {
-
-	@Override
-	public String getNameWithVersionInfo() {
-		return "WinCache"; // XXX version
-	}
 	
 	@Override
 	public String getName() {
@@ -30,9 +25,8 @@ public class WinCacheScenario extends AbstractCodeCacheScenario {
 	}
 
 	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
-		// TODO download and install wincache.dll
-		return false;
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
+		return SETUP_FAILED;
 	}
 
 	@Override
@@ -46,6 +40,11 @@ public class WinCacheScenario extends AbstractCodeCacheScenario {
 		//
 		// not sure if its supported on scenarios other than CLI or IIS (so allow it)
 		return !scenario_set.contains(ApacheModPHPScenario.class);
+	}
+
+	@Override
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		return SETUP_FAILED;
 	}
 
 }

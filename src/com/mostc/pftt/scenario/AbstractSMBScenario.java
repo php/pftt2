@@ -68,8 +68,10 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 	 * @return TRUE on success, FALSE on failure (can't use this storage if failure)
 	 */
 	@Override
-	public SMBStorageDir createStorageDir(ConsoleManager cm, AHost local_host) {
-		SMBStorageDir dir = newSMBStorageDir();
+	public ITestPackStorageDir setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		AHost local_host = (AHost) host; // TODO
+		
+		SMBStorageDir dir = createSMBStorageDir();
 		
 		if ( createShare(dir, cm) ) {
 			if ( connect(dir, cm, local_host) ) {
@@ -80,21 +82,31 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		}
 		
 		// failed, try cleaning up
-		dir.disposeForce(cm, local_host, null);
+		dir.closeForce(cm, local_host, null);
 		
 		return null;
 	}
 	
-	protected SMBStorageDir newSMBStorageDir() {
+	protected SMBStorageDir createSMBStorageDir() {
 		return new SMBStorageDir();
 	}
 	
-	public class SMBStorageDir implements ITestPackStorageDir {
+	public class SMBStorageDir extends AbstractTestPackStorageDir {
 		// file path is path on server where share is stored
 		// network path is in both UNC and URL format (UNC for Windows, URL for Linux)
 		protected String share_name, remote_path, unc_path, url_path, local_path;
 		protected Thread shutdown_hook;
 		private boolean disposed;
+		
+		@Override
+		public String getNameWithVersionInfo() {
+			return getName();
+		}
+
+		@Override
+		public String getName() {
+			return AbstractSMBScenario.this.getName();
+		}
 		
 		protected void addShutdownHook() {
 			shutdown_hook = new Thread() {
@@ -121,12 +133,12 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		}
 		
 		@Override
-		public boolean disposeIfEmpty(ConsoleManager cm, AHost local_host, ActiveTestPack active_test_pack) {
+		public boolean closeIfEmpty(ConsoleManager cm, AHost local_host, ActiveTestPack active_test_pack) {
 			if (new File(local_path).list().length > 0) {
 				cm.println(EPrintType.CANT_CONTINUE, getClass(), "Unable to dispose of Storage Directory. It is not empty: local="+local_path);
 				return false;
 			} else {
-				return disposeForce(cm, local_host, active_test_pack);
+				return closeForce(cm, local_host, active_test_pack);
 			}
 		}
 		
@@ -136,11 +148,11 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		}
 		
 		protected void disposeForce(ActiveTestPack active_test_pack) {
-			disposeForce(null, new LocalHost(), active_test_pack);
+			closeForce(null, new LocalHost(), active_test_pack);
 		}
 		
 		@Override
-		public boolean disposeForce(ConsoleManager cm, AHost local_host, ActiveTestPack active_test_pack) {
+		public boolean closeForce(ConsoleManager cm, AHost local_host, ActiveTestPack active_test_pack) {
 			if (disposed)
 				return true;
 			
@@ -158,11 +170,6 @@ public abstract class AbstractSMBScenario extends AbstractRemoteFileSystemScenar
 		}
 		
 	} // end public class SMBStorageDir
-	
-	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
-		return createShare(newSMBStorageDir(), cm);
-	}
 	
 	public boolean shareExists(ConsoleManager cm, String share_name) {
 		if (!remote_host.isWindows())

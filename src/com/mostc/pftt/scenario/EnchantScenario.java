@@ -16,12 +16,12 @@ import com.mostc.pftt.results.EPrintType;
 public class EnchantScenario extends AbstractINIScenario {
 
 	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
 		// copy dictionary to where the build expects it
 		// enchant will be able to find it there, so PHPTs will work
 		
 		if (!host.isWindows())
-			return true;
+			return SETUP_SUCCESS;
 		
 		// this is only needed for Windows
 		try {
@@ -34,10 +34,10 @@ public class EnchantScenario extends AbstractINIScenario {
 				host.copy(build.getBuildPath()+"/libenchant*", build.getBuildPath()+"/lib/enchant/");
 			}
 			
-			return true;
+			return SETUP_SUCCESS;
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "setup", ex, "Unable to install spell checker dictionary");
-			return false;
+			return null;
 		}
 	}
 	

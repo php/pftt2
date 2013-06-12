@@ -28,9 +28,9 @@ public class PhptResultReader extends AbstractPhptRW {
 		this.test_pack_branch = test_pack_branch;
 		this.test_pack_version = test_pack_version;
 		
-		// read tally file
+		// read tally file 
 		PhptTallyFile tally = PhptTallyFile.open(new File(dir+"/tally.xml"));
-		this.os_name = tally.os_name;
+		this.os_name = tally.os_name; 
 		status_list_map.put(EPhptTestStatus.PASS, new StatusListEntry(tally.pass));
 		status_list_map.put(EPhptTestStatus.FAIL, new StatusListEntry(tally.fail));
 		status_list_map.put(EPhptTestStatus.CRASH, new StatusListEntry(tally.crash));

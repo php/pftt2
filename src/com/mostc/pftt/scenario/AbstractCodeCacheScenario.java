@@ -18,6 +18,9 @@ public abstract class AbstractCodeCacheScenario extends AbstractINIScenario {
 	
 	public abstract EAcceleratorType getAcceleratorType();
 	
+	@Override
 	public abstract boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set);
 	
+	@Override
+	public abstract IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set);
 }

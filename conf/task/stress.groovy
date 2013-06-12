@@ -1,4 +1,8 @@
 
+def describe() {
+	" "
+}
+
 def processConsoleOptions(List options) {
 	options.add("-thread_count")
 	options.add("16")

@@ -242,23 +242,23 @@ public class BuiltinWebServerScenario extends AbstractWebServerScenario {
 	}
 	
 	@Override
-	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
-		return new BuiltinWebHttpPhptTestCaseRunner(this, group_key.getPhpIni(), group_key.getEnv(), params, httpproc, httpexecutor, smgr, thread.getThreadWebServerInstance(), thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
+	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+		return new BuiltinWebHttpPhptTestCaseRunner(this, group_key.getPhpIni(), group_key.getEnv(), params, httpproc, httpexecutor, smgr, thread.getThreadWebServerInstance(), thread, test_case, cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack);
 	}
 	
 	
 	@Override
-	public AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(PhpUnitThread thread, TestCaseGroupKey group_key, ConsoleManager cm, ITestResultReceiver twriter, Map<String,String> globals, Map<String,String> env, AHost runner_host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
-		return new BuiltinWebHttpPhpUnitTestCaseRunner(this, thread, twriter, params, httpproc, httpexecutor, smgr, thread.getThreadWebServerInstance(), globals, env, cm, runner_host, scenario_set, build, test_case, my_temp_dir, constants, include_path, include_files, ini, reflection_only);
+	public AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(PhpUnitThread thread, TestCaseGroupKey group_key, ConsoleManager cm, ITestResultReceiver twriter, Map<String,String> globals, Map<String,String> env, AHost runner_host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
+		return new BuiltinWebHttpPhpUnitTestCaseRunner(this, thread, twriter, params, httpproc, httpexecutor, smgr, thread.getThreadWebServerInstance(), globals, env, cm, runner_host, scenario_set_setup, build, test_case, my_temp_dir, constants, include_path, include_files, ini, reflection_only);
 	}
 	
 	@Override
-	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
-		if (super.willSkip(cm, twriter, host, scenario_set, type, build, test_case)) {
+	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup setup, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+		if (super.willSkip(cm, twriter, host, setup, type, build, test_case)) {
 			return true;
 		} else if (test_case.isNamed(NOT_ON_BUILTIN_WEB_SERVER)) {
 
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on builtin web server", null, null, null, null, null, null, null, null, null, null, null));
+			twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on builtin web server", null, null, null, null, null, null, null, null, null, null, null));
 			return true;
 		} else {
 			return false;

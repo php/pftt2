@@ -3,7 +3,7 @@ package com.mostc.pftt.results
 class PhptTallyFile {
 	public String os_name
 	public int pass, fail, crash, skip, xskip, xfail, xfail_works, unsupported, bork, exception
-	
+	  
 	static PhptTallyFile open(File file) {
 		def root = new XmlSlurper().parse(file);
 		for ( def e : root.depthFirst().findAll { it.name() == 'tally' } ) {

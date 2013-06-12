@@ -18,9 +18,4 @@ public class IMAPScenario extends AbstractNetworkedServiceScenario {
 		return false;
 	}
 
-	@Override
-	public String getNameWithVersionInfo() {
-		return "IMAP"; // XXX -[server implementation and server version]
-	}
-
 }

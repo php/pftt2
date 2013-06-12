@@ -1,6 +1,10 @@
 
 def scenarios() {
-	new PhpMotionScenario()
+	new PhpmotionScenario()
+}
+
+def describe() {
+	"Load PhpMotion application"
 }
 
 def getUITestPack() {

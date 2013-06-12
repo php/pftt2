@@ -57,12 +57,7 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 	public static AbstractWebServerScenario getWebServerScenario(ScenarioSet scenario_set) {
 		return scenario_set.getScenario(AbstractWebServerScenario.class, null);
 	}
-	
-	@Override
-	public String getNameWithVersionInfo() {
-		return smgr.getNameWithVersionInfo();
-	}
-	
+		
 	protected final HttpParams params;
 	protected final HttpProcessor httpproc;
 	protected final HttpRequestExecutor httpexecutor;
@@ -96,54 +91,41 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 		httpexecutor = new HttpRequestExecutor();
 	}
 	
-	/**
-	 * 
-	 */
-	@Override
-	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
-		return smgr.start(cm, host, build, ini) ? EScenarioStartState.STARTED : EScenarioStartState.FAILED_TO_START;
-	}
-	
-	@Override
-	public boolean stop(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
-		return smgr.stop(cm, host, build, ini);
-	}
-	
 	public String getDefaultDocroot(Host host, PhpBuild build) {
 		return smgr.getDefaultDocroot(host, build);
 	}
 	
 	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		return smgr.setup(cm, host, build);
 	}
 	
 	@Override
-	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
-		return new HttpPhptTestCaseRunner(this, group_key.getPhpIni(), group_key.getEnv(), params, httpproc, httpexecutor, smgr, thread.getThreadWebServerInstance(), thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
+	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+		return new HttpPhptTestCaseRunner(this, group_key.getPhpIni(), group_key.getEnv(), params, httpproc, httpexecutor, smgr, thread.getThreadWebServerInstance(), thread, test_case, cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack);
 	}
 	
 	@Override
-	public PhpIni createIniForTest(ConsoleManager cm, AHost host, PhpBuild build, PhptActiveTestPack active_test_pack, ScenarioSet scenario_set) {
+	public PhpIni createIniForTest(ConsoleManager cm, AHost host, PhpBuild build, PhptActiveTestPack active_test_pack, ScenarioSetSetup scenario_set_setup) {
 		// entire PhpIni will be given to web server when its started
 		PhpIni ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, host, build);
-		AbstractINIScenario.setupScenarios(cm, host, scenario_set, build, ini);
+		scenario_set_setup.prepareINI(cm, host, build, ini);
 		ini.is_default = true;
 		return ini;
 	}
 	
 	@Override
-	public TestCaseGroupKey createTestGroupKey(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack active_test_pack, PhptTestCase test_case, IENVINIFilter filter, TestCaseGroupKey group_key) throws Exception {
+	public TestCaseGroupKey createTestGroupKey(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSetSetup scenario_set_setup, PhptActiveTestPack active_test_pack, PhptTestCase test_case, IENVINIFilter filter, TestCaseGroupKey group_key) throws Exception {
 		Map<String,String> env = null;
 		// ENV vars will be passed to web server manager to wrap the web server in when its executed
 		if (test_case.containsSection(EPhptSection.ENV)) {
-			env = AbstractPhptTestCaseRunner.generateENVForTestCase(cm, host, build, scenario_set, test_case);
+			env = AbstractPhptTestCaseRunner.generateENVForTestCase(cm, host, build, scenario_set_setup.getScenarioSet(), test_case);
 			
 			// for most test cases, env will be null|empty, so the TestCaseGroupKey will match (assuming PhpInis match)
 		}
 		
 		if (test_case.containsSection(EPhptSection.INI)) {
-			PhpIni ini = createIniForTest(cm, host, build, active_test_pack, scenario_set);
+			PhpIni ini = createIniForTest(cm, host, build, active_test_pack, scenario_set_setup);
 			ini.replaceAll(test_case.getINI(active_test_pack, host));
 			filter.prepareEnv(cm, env);
 			filter.prepareIni(cm, ini);
@@ -156,7 +138,7 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 		} else if (env==null && group_key!=null && group_key.getPhpIni().isDefault()) {
 			return group_key;
 		} else {
-			PhpIni ini = createIniForTest(cm, host, build, active_test_pack, scenario_set);
+			PhpIni ini = createIniForTest(cm, host, build, active_test_pack, scenario_set_setup);
 			filter.prepareEnv(cm, env);
 			filter.prepareIni(cm, ini);
 			return new TestCaseGroupKey(ini, env);
@@ -169,32 +151,32 @@ public abstract class AbstractWebServerScenario extends AbstractSAPIScenario {
 	}
 		
 	@Override
-	public AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(PhpUnitThread thread, TestCaseGroupKey group_key, ConsoleManager cm, ITestResultReceiver twriter, Map<String,String> globals, Map<String,String> env, AHost runner_host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
-		return new HttpPhpUnitTestCaseRunner(this, thread, twriter, params, httpproc, httpexecutor, smgr, thread.getThreadWebServerInstance(), globals, env, cm, runner_host, scenario_set, build, test_case, my_temp_dir, constants, include_path, include_files, ini, reflection_only);
+	public AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(PhpUnitThread thread, TestCaseGroupKey group_key, ConsoleManager cm, ITestResultReceiver twriter, Map<String,String> globals, Map<String,String> env, AHost runner_host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
+		return new HttpPhpUnitTestCaseRunner(this, thread, twriter, params, httpproc, httpexecutor, smgr, thread.getThreadWebServerInstance(), globals, env, cm, runner_host, scenario_set_setup, build, test_case, my_temp_dir, constants, include_path, include_files, ini, reflection_only);
 	}
 	
 	@Override
-	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
-		if (super.willSkip(cm, twriter, host, scenario_set, type, build, test_case)) {
+	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup setup, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+		if (super.willSkip(cm, twriter, host, setup, type, build, test_case)) {
 			return true;
 		} else if (test_case.containsSection(EPhptSection.STDIN)) {
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "STDIN section not supported for testing against web servers"));
+			twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "STDIN section not supported for testing against web servers"));
 			
 			return true;
 		} else if (test_case.containsSection(EPhptSection.ARGS)) {
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "ARGS section not supported for testing against web servers"));
+			twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "ARGS section not supported for testing against web servers"));
 			
 			return true;
 		} else if (cm.isDisableDebugPrompt()&&test_case.isNamed(BLOCKING_WINPOPUP)) {
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test shows blocking winpopup msg"));
+			twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test shows blocking winpopup msg"));
 			
 			return true;
 		} else if (test_case.isNamed(NOT_VALID_ON_WEB_SERVERS)) {
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on web servers"));
+			twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on web servers"));
 			
 			return true;
 		} else if (host.isWindows() && test_case.isNamed(NOT_VALID_ON_WEB_SERVERS_WINDOWS)) {
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on web servers"));
+			twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on web servers"));
 			
 			return true;
 		} else {

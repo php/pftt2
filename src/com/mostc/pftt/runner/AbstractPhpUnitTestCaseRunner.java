@@ -17,6 +17,7 @@ import com.mostc.pftt.model.app.EPhpUnitTestStatus;
 import com.mostc.pftt.model.app.PhpUnitTemplate;
 import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhpCodeCoverage;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
@@ -25,6 +26,7 @@ import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
 import com.mostc.pftt.scenario.AbstractSAPIScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.scenario.ScenarioSetSetup;
 
 /** runs a single PhpUnitTestCase
  * 
@@ -57,7 +59,7 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 	protected final String[] include_files;
 	protected final ConsoleManager cm;
 	protected final AHost host;
-	protected final ScenarioSet scenario_set;
+	protected final ScenarioSetSetup scenario_set;
 	protected final PhpBuild build;
 	protected final PhpUnitTestCase test_case;
 	protected final String my_temp_dir;
@@ -65,7 +67,7 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 	protected boolean is_crashed;
 	protected final boolean reflection_only;
 
-	public AbstractPhpUnitTestCaseRunner(AbstractSAPIScenario sapi_scenario, PhpUnitThread thread, ITestResultReceiver tmgr, Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
+	public AbstractPhpUnitTestCaseRunner(AbstractSAPIScenario sapi_scenario, PhpUnitThread thread, ITestResultReceiver tmgr, Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSetSetup scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
 		this.sapi_scenario = sapi_scenario;
 		this.thread = thread;
 		this.tmgr = tmgr;
@@ -114,13 +116,13 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 		
 		return PhpUnitTemplate.renderTemplate(
 				host, 
-				scenario_set, 
+				scenario_set.getScenarioSet(), 
 				test_case, 
-				test_case.getPhpUnitDist().getSourceTestPack().getPreBootstrapCode(cm, host, scenario_set, build),
+				test_case.getPhpUnitDist().getSourceTestPack().getPreBootstrapCode(cm, host, scenario_set.getScenarioSet(), build),
 				test_case.getPhpUnitDist().getBootstrapFile() == null ? 
 						null : 
 						test_case.getPhpUnitDist().getBootstrapFile().getAbsolutePath(),
-				test_case.getPhpUnitDist().getSourceTestPack().getPostBootstrapCode(cm, host, scenario_set, build),
+				test_case.getPhpUnitDist().getSourceTestPack().getPostBootstrapCode(cm, host, scenario_set.getScenarioSet(), build),
 				test_case.getPhpUnitDist().getPath().getAbsolutePath(),
 				include_path,
 				include_files,
@@ -140,7 +142,7 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 		
 		//
 		try {
-			test_case.getPhpUnitDist().getSourceTestPack().startTest(cm, host, scenario_set, build, test_case);
+			test_case.getPhpUnitDist().getSourceTestPack().startTest(cm, host, scenario_set.getScenarioSet(), build, test_case);
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CLUE, getClass(), "runTest", ex, "test-pack notification exception");
 		}
@@ -202,6 +204,10 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 			// SPEC: the php script will print
 			// status=<status>
 			// run_time=<time in microseconds>
+			// file=
+			// exe=line num
+			// didnt_exe=line num
+			// no_exe=line num
 			// <everything else is output>
 			//
 			// @see PhpUnitTemplate#renderTemplate for the PHP script
@@ -210,10 +216,27 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 			{
 				List<String> lines = ArrayUtil.toList(StringUtil.splitLines(output));
 				Iterator<String> line_it = lines.iterator();
-				String line;
+				String line, file = null;
+				PhpCodeCoverage cc = new PhpCodeCoverage();
 				while (line_it.hasNext()) {
 					line = line_it.next();
-					if (line.startsWith("status=")) {
+					if (line.startsWith("file=")) {
+						file = line.substring("file=".length());
+						
+						line_it.remove(); // remove this line from output_str
+					} else if (line.startsWith("exe=")) {
+						cc.addExecutedLine(file, Integer.parseInt(line.substring("no_exe=".length())));
+						
+						line_it.remove(); // remove this line from output_str
+					} else if (line.startsWith("didnt_exe=")) {
+						cc.addNotExecutedLine(file, Integer.parseInt(line.substring("no_exe=".length())));
+						
+						line_it.remove(); // remove this line from output_str
+					} else if (line.startsWith("no_exe=")) {
+						cc.addNonExecutableLine(file, Integer.parseInt(line.substring("no_exe=".length())));
+						
+						line_it.remove(); // remove this line from output_str
+					} else if (line.startsWith("status=")) {
 						status = EPhpUnitTestStatus.fromString(line.substring("status=".length()));
 						
 						if (status==null) {

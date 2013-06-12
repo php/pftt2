@@ -22,6 +22,7 @@ import com.github.mattficken.io.ArrayUtil;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.ExecOutput;
+import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
 import com.mostc.pftt.model.core.EBuildBranch;
@@ -50,8 +51,9 @@ import com.mostc.pftt.runner.LocalPhptTestPackRunner;
 import com.mostc.pftt.scenario.AbstractINIScenario;
 import com.mostc.pftt.scenario.AbstractSAPIScenario;
 import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
-import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.scenario.ScenarioSetSetup;
+import com.mostc.pftt.util.AlignedTable;
 import com.mostc.pftt.util.DownloadUtil;
 import com.mostc.pftt.util.HostEnvUtil;
 import com.mostc.pftt.util.WinDebugManager;
@@ -71,18 +73,17 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
  * -PhpUnitTestCase AbstractPhpUnitTestCaseRunner
  * 
  */
-
-// MediaWiki PhpUnit Code Coverage: https://integration.wikimedia.org/cover/mediawiki-core/master/php/
-//
+ 
 // real unattended (automated) testing that actually works
 // the php test tool that you'd actually want to use
 // doesn't resort to brittle shell scripts
 
-// TODO wordpress-tests changes to make it work with pftt
-// TODO valgrind
+// TODO http request to web server to make sure its running (instead of just tcp socket)
+// TODO mysql, postgresql scenario
+// TODO valgrind gdb?
 // TODO linux installer
-
-
+ 
+  
 // TODO UI testing
 //        no Anon-Logout
 // TODO code coverage analysis
@@ -110,9 +111,13 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //          -store example in conf/internal_examples
 //              -so rctest will just use that unless/until user creates one in conf/internal
 // TODO include Selenium WebDriver in javadoc
-// TODO WincacheUScenario for CLI
+// TODO WincacheUScenario 
 //     -and APCUScenario
 //       which both extend UserCache (not a code cache) - can use with and without opcache or apc or wincache
+//
+//      >  mediawiki can use WinCacheU for its user/object cache
+//           -makes a major performance difference
+//           -make it a point to unit test that!
 //
 // TODO joomla ui test
 //          https://github.com/joomla/joomla-cms/tree/master/tests/system
@@ -127,16 +132,6 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //       pdo odbc (to mssql??)
 // TODO http PECL extension 
 //     -by this point PFTT will cover at least some of every part of the PHP ecosystem
-// TODO list-config command
-//       -mention on start screen of pftt_shell
-//      call describe() on each config
-//    break up list by file folder
-//      dev/app:
-//      dev/internal:
-//      dev:
-//      app:
-//      internal:
-//      conf:
 // TODO pftt explain
 //        -shows PhpIni, etc.. not as a separate file though
 //           -if you need it for debug, use it from explain
@@ -282,7 +277,7 @@ public class PfttMain {
 	
 	/* -------------------------------------------------- */
 	
-	protected static void help() {
+	protected static void help(Config config) {
 		help_both();
 		System.out.println("Generally you can specify tasks rather than using more specific console options, for example:");
 		System.out.println("core_all -c stress <php build> <PHPT test-pack");
@@ -294,104 +289,123 @@ public class PfttMain {
 		System.out.println("For complete console options:");
 		System.out.println("help_all");
 		System.out.println();
+		
+		if (config!=null) {
+			// show help messages from any config files the user is trying to load
+			config.showHelpMessages();
+		}
+		
 		System.out.println();
 	}
 	
 	protected static void help_both() {
+		AlignedTable table;
 		System.out.println("Usage: pftt [options] <command[,command2]>");
 		System.out.println();
 		System.out.println(" == Commands ==");
-		System.out.println("core_all <build[,build2]> <test-pack> - runs all tests in given test pack");
-		System.out.println("core_named <build[,build2]> <test-pack> <test1> <test2> <test name fragment> - runs named tests or tests matching name pattern");
-		System.out.println("core_list <build[,build2]> <test-pack> <file> - runs list of tests stored in file");
-		System.out.println("app_all <build[,build2]> - runs all application tests specified in a Scenario config file against build");
-		System.out.println("app_named <build[,build2]> <test name fragment> - runs named application tests (tests specified in a Scenario config file)");
-		System.out.println("app_list <build[,build2]> <file> - runs application tests from list in file (tests specified in a Scenario config file)");
-		System.out.println("ui_all <build[,build2]> - runs all UI tests against application");
-		System.out.println("ui_list <build[,build2]> <file> - runs UI tests listed in file against application");
-		System.out.println("ui_named <build[,build2]> <test name> - runs named UI tests against application");
+		table = new AlignedTable(2, 104)
+			.addRow("core_all <build[,build2]> <test-pack>", "runs all tests in given test pack")
+			.addRow("core_named <build> <test-pack> <test name fragment>", "runs named tests or tests matching name pattern")
+			.addRow("core_list <build[,build2]> <test-pack> <file>", "runs list of tests stored in file")
+			.addRow("app_all <build[,build2]>", "runs all application tests specified in a Scenario config file against build")
+			.addRow("app_named <build[,build2]> <test name fragment>", "runs named application tests (tests specified in a Scenario config file)")
+			.addRow("app_list <build[,build2]> <file>", "runs application tests from list in file (tests specified in a Scenario config file)")
+			.addRow("ui_all <build[,build2]>", "runs all UI tests against application")
+			.addRow("ui_list <build[,build2]> <file>", "runs UI tests listed in file against application")
+			.addRow("ui_named <build[,build2]> <test name>", "runs named UI tests against application")
 		// TODO fs test
-		System.out.println("run-test <build> <test-pack> <full test name,test name 2> - runs named tests using run-tests.php from test-pack");
-		System.out.println("help");
-		System.out.println("smoke <build> - smoke test a build");
+			.addRow("run-test <build> <test-pack> <full test name,...>", "runs named tests using run-tests.php from test-pack")
+			.addRow("help", "")
+			.addRow("smoke <build>", "smoke test a build");
 		if (LocalHost.isLocalhostWindows()) {
-			System.out.println("perf <build> - performance test of build");
-			System.out.println("release_get <branch> <build-type> <revision> - download a build and test-pack snapshot release");
-			System.out.println("release_get <build|test-pack URL> - download a build or test-pack from any URL");
-			System.out.println("release_list <optional branch> <optional build-type> - list snapshot build and test-pack releases");
+			table.addRow("perf <build>", "performance test of build")
+				.addRow("release_get <branch> <build-type> <revision>", "download a build and test-pack snapshot release")
+				.addRow("release_get <build|test-pack URL>", "download a build or test-pack from any URL")
+				.addRow("release_list <optional branch> <optional build-type>", "list snapshot build and test-pack releases");
 		}
-		System.out.println("shell - interactive execution of custom instructions");
-		System.out.println("shell-ui - gui shell");
-		System.out.println("exec <file> - executes shell script (see shell)");
-		System.out.println("stop <build> - cleans up after setup, stops web server and other services");
-		System.out.println("setup <build> - sets up scenarios from -config -- installs IIS or Apache to run PHP, etc...");
+		table.addRow("parse", "parses PHP code for analysis by configuration tasks")
+			.addRow("stop <build>", "cleans up after setup, stops web server and other services")
+			.addRow("setup <build>", "sets up scenarios from -config -- installs IIS or Apache to run PHP, etc...");
+		System.out.println(table);
 		System.out.println();
 		System.out.println(" == Options ==");
-		System.out.println("-config <file1,file2> - load 1+ configuration file(s)");
-		System.out.println("-skip_smoke_tests- skips smoke tests and runs tests anyway (BE CAREFUL. RESULTS MAY BE INVALID or INACCURATE)");
+		System.out.println(new AlignedTable(2,104)
+				.addRow("-config <file1,file2>", "load 1+ configuration file(s)")
+				.addRow("-skip_smoke_tests", "skips smoke tests and runs tests anyway (BE CAREFUL. RESULTS MAY BE INVALID or INACCURATE)"));
 		System.out.println();
 		System.out.println("   === UI Options ===");
-		System.out.println("-gui - show gui for certain commands");
-		System.out.println("-pause - after everything is done, PFTT will wait for user to press any key");
-		System.out.println("-results_only - displays only test results and no other information (for automation).");
-		System.out.println("-pftt_debug - shows additional information to help debug problems with PFTT itself");
+		System.out.println(new AlignedTable(2, 104)
+				.addRow("-gui", "show gui for certain commands")
+				.addRow("-pause", "after everything is done, PFTT will wait for user to press any key")
+				.addRow("-results_only", "displays only test results and no other information (for automation).")
+				.addRow("-pftt_debug", "shows additional information to help debug problems with PFTT itself"));
 		if (LocalHost.isLocalhostWindows()) {
 			System.out.println();
 			System.out.println("   === Release Options ===");
-			System.out.println("-bo  - download build only");
-			System.out.println("-tpo  - download test-pack only");
-			System.out.println("-dpo  - download debug-pack only");
+			System.out.println(new AlignedTable(2, 104)
+				.addRow("-bo", "download build only")
+				.addRow("-tpo", "download test-pack only")
+				.addRow("-dpo", "download debug-pack only"));
 		}
 		System.out.println();
 		System.out.println("   === Unattended Options ===");
-		System.out.println("-no_result_file_for_pass_xskip_skip(-q) - doesn't store all result data for PASS, SKIP or XSKIP tests");
-		System.out.println("-disable_debug_prompt - disables asking you if you want to debug PHP crashes (for automation. default=enabled) (alias: -debug_none)");
-		System.out.println("-auto - changes default options for automated testing (-uac -disable_debug_prompt -phpt_not_in_place)");
+		table = new AlignedTable(2, 104)
+			.addRow("-no_result_file_for_pass_xskip_skip(-q)", "doesn't store all result data for PASS, SKIP or XSKIP tests")
+			.addRow("-disable_debug_prompt", "disables asking you if you want to debug PHP crashes (for automation. default=enabled) (alias: -debug_none)")
+			.addRow("-auto", "changes default options for automated testing (-uac -disable_debug_prompt -phpt_not_in_place)");
 		if (LocalHost.isLocalhostWindows()) {
-			System.out.println("-uac - runs PFTT in Elevated Privileges so you only get 1 UAC popup dialog (when PFTT is started)");
+			table.addRow("-uac", "runs PFTT in Elevated Privileges so you only get 1 UAC popup dialog (when PFTT is started)");
 		}
+		System.out.println(table);
 		System.out.println();
 		System.out.println("   === Temporary Files ===");
-		System.out.println("-phpt_not_in_place - copies PHPTs to a temporary dir and runs PHPTs from there (default=disabled, test in-place)");
-		System.out.println("-dont_cleanup_test_pack - doesn't delete temp dir created by -phpt_not_in_place or SMB scenario (default=delete)");
-		System.out.println("-overwrite - overwrites files without prompting (confirmation prompt by default)");
+		System.out.println(new AlignedTable(2, 104)
+			.addRow("-phpt_not_in_place", "copies PHPTs to a temporary dir and runs PHPTs from there (default=disabled, test in-place)")
+			.addRow("-dont_cleanup_test_pack", "doesn't delete temp dir created by -phpt_not_in_place or SMB scenario (default=delete)")
+			.addRow("-overwrite", "overwrites files without prompting (confirmation prompt by default)"));
 		System.out.println();
 		System.out.println("   === Crash Debugging ===");
-		System.out.println("-debug_all - runs all tests in Debugger");
-		System.out.println("-debug_list <list files> - runs tests in list in Debugger (exact name)");
-		System.out.println("-src_pack <path> - folder with the source code");
-		System.out.println("-debug_pack <path> - folder with debugger symbols (usually folder with .pdb files)");
+		System.out.println(new AlignedTable(2, 104)
+			.addRow("-debug_all", "runs all tests in Debugger")
+			.addRow("-debug_list <list files>", "runs tests in list in Debugger (exact name)")
+			.addRow("-src_pack <path>", "folder with the source code")
+			.addRow("-debug_pack <path>", "folder with debugger symbols (usually folder with .pdb files)"));
 		System.out.println();
 	} // end protected static void help_both
 	
 	protected static void help_all() {
 		help_both();
 		System.out.println("   === Test Enumeration ===");
-		System.out.println("-randomize_order - randomizes test case run order");
-		System.out.println("-skip_list <list files> - skip tests in list (exact name)");
-		System.out.println("-max_test_read_count <N> - maximum number of tests to read (without other options, this will be the number of tests run also... tests are normally only run once)");
-		System.out.println("-skip_name <test name,name 2, name 3> - skip tests in COMMA separated list");
+		System.out.println(new AlignedTable(2, 104)
+			.addRow("-randomize_order", "randomizes test case run order")
+			.addRow("-skip_list <list files>", "skip tests in list (exact name)")
+			.addRow("-max_test_read_count <N>", "maximum number of tests to read (without other options, this will be the number of tests run also... tests are normally only run once)")
+			.addRow("-skip_name <test name,name 2, name 3>", "skip tests in COMMA separated list"));
 		System.out.println();
 		System.out.println("   === Test Times ===");
-		System.out.println("-run_group_times_all <N> - runs all groups of tests N times (in same order every time, unless -randomize used)");
-		System.out.println("-run_group_times_list <N> <list file> - just like run_group_times_all and run_test_times_list (but for groups of tests)");
-		System.out.println("-run_test_times_all <N> - runs each test N times in a row/consecutively");
-		System.out.println("-run_test_times_list <N> <list file> - runs tests in that list N times. if used with -run_test_times_all, tests not in list can be run different number of times from tests in list (ex: run listed tests 5 times, run all other tests 2 times).");
+		System.out.println(new AlignedTable(2, 104)
+			.addRow("-run_group_times_all <N>", "runs all groups of tests N times (in same order every time, unless -randomize used)")
+			.addRow("-run_group_times_list <N> <list file>", "just like run_group_times_all and run_test_times_list (but for groups of tests)")
+			.addRow("-run_test_times_all <N>", "runs each test N times in a row/consecutively")
+			.addRow("-run_test_times_list <N> <list file>", "runs tests in that list N times. if used with -run_test_times_all, tests not in list can be run different number of times from tests in list (ex: run listed tests 5 times, run all other tests 2 times)."));
 		System.out.println();		
 		System.out.println("   === SAPI Restarting ===");
-		System.out.println("-restart_each_test_all - restart web server between each test (slow, default=no)");
-		System.out.println("-no_restart_all - will not restart any web server unless it crashes (be careful, this will INVALIDATE FUNCTIONAL TESTING results because configuration won't be changed for tests)");
+		System.out.println(new AlignedTable(2, 104)
+			.addRow("-restart_each_test_all", "restart web server between each test (slow, default=no)")
+			.addRow("-no_restart_all", "will not restart any web server unless it crashes (be careful, this will INVALIDATE FUNCTIONAL TESTING results because configuration won't be changed for tests)"));
 		System.out.println();
 		System.out.println("   === Debugging ===");
-		System.out.println("-ini_actual_all - includes INI for all tests (default=only for failures)... SLOW but helps verify"); // TODO
-		System.out.println("-suspend_seconds <seconds> - suspends test process for <seconds> before running test so you can check the process first (1 minute timeout after resume)"); // TODO
-		System.out.println("-run_count <N> - runs N number of tests. does not count early SKIPped tests (whereas -max_test_read_count does)"); // TODO
-		System.out.println("-mem_check - runs tests with Valgrind or other memory checker (OS dependent). Slow, typically use this with `*_list` or `*_named` NOT `*_all`.");
+		System.out.println(new AlignedTable(2, 104)
+			.addRow("-ini_actual_all", "includes INI for all tests (default=only for failures)... SLOW but helps verify")
+			.addRow("-suspend_seconds <seconds>", "suspends test process for <seconds> before running test so you can check the process first (1 minute timeout after resume)")
+			.addRow("-run_count <N>", "runs N number of tests. does not count early SKIPped tests (whereas -max_test_read_count does)")
+			.addRow("-mem_check", "runs tests with Valgrind or other memory checker (OS dependent). Slow, typically use this with `*_list` or `*_named` NOT `*_all`."));
 		System.out.println();
 		System.out.println("   === Threading Options ===");
-		System.out.println("-no_thread_safety - runs tests in any thread, regardless of thread-safety. This can increase load/stress, but may lead to false FAILS/ERRORs, especially in file or database tests.");
-		System.out.println("-thread_count <N> - sets number of threads to run tests in. running in multiple threads is usually a performance boost. by default, will run with multiple threads and automatically decide the best number of threads to use");
-		System.out.println("-thread_count cpu - sets number of threads == number of CPUs on (each) host");
+		System.out.println(new AlignedTable(2, 104)
+			.addRow("-no_thread_safety", "runs tests in any thread, regardless of thread-safety. This can increase load/stress, but may lead to false FAILS/ERRORs, especially in file or database tests.")
+			.addRow("-thread_count <N>", "sets number of threads to run tests in. running in multiple threads is usually a performance boost. by default, will run with multiple threads and automatically decide the best number of threads to use")
+			.addRow("-thread_count cpu", "sets number of threads == number of CPUs on (each) host"));
 		System.out.println();
 		System.out.println();
 	} // end protected static void help_all
@@ -401,14 +415,6 @@ public class PfttMain {
 		System.err.println("Error: Not implemented");
 		new RequiredExtensionsSmokeTest();
 		new RequiredFeaturesSmokeTest();
-	}
-	
-	public void shell_ui() {
-		System.err.println("Error: Not implemented");
-	}
-	
-	public void exec() {
-		System.err.println("Error: Not implemented");
 	}
 	
 	public void shell() {
@@ -480,7 +486,7 @@ public class PfttMain {
 				//test_pack.read(test_cases, cm, tmgr, build);
 				//r.runTestList(test_pack, test_cases);
 				
-				tmgr.notifyPhpUnitFinished(host, scenario_set, test_pack);
+				tmgr.notifyPhpUnitFinished(host, r.getScenarioSetSetup(), test_pack);
 				
 			} // end for (scenario_set)
 		}
@@ -508,7 +514,7 @@ public class PfttMain {
 				LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, host, host);
 				cm.showGUI(r, test_pack);
 				r.runAllTests(test_pack);
-				tmgr.notifyPhpUnitFinished(host, scenario_set, test_pack);
+				tmgr.notifyPhpUnitFinished(host, r.getScenarioSetSetup(), test_pack);
 			}
 		}
 	} // end public void appAll
@@ -551,9 +557,9 @@ public class PfttMain {
 				cm.showGUI(test_pack_runner);
 				
 				test_pack_runner.runAllTests(test_pack);
-			}
 			
-			tmgr.notifyPhptFinished(host, scenario_set);
+				tmgr.notifyPhptFinished(host, test_pack_runner.getScenarioSetSetup());
+			}
 			
 			//
 			{
@@ -611,9 +617,9 @@ public class PfttMain {
 				cm.showGUI(test_pack_runner);
 				
 				test_pack_runner.runTestList(test_pack, test_cases);
-			}
 			
-			tmgr.notifyPhptFinished(host, scenario_set);
+				tmgr.notifyPhptFinished(host, test_pack_runner.getScenarioSetSetup());
+			}
 			
 			//
 			{
@@ -1094,6 +1100,41 @@ public class PfttMain {
 		}
 	}
 	
+	protected static void walkConfDir(File conf_base, File dir, boolean nonempty_description) {
+		String description;
+		boolean first = true;
+		AlignedTable table = new AlignedTable(2, 104);
+		for ( File f : dir.listFiles() ) {
+			if (f.isFile() && StringUtil.endsWithIC(f.getName(), ".groovy")) {
+				try {
+					description = Config.getConfigDescription(f);
+				} catch ( Exception ex ) {
+					description = "";
+				}
+				if (StringUtil.isNotEmpty(description)!=nonempty_description)
+					continue;
+				
+				if (first) {
+					System.out.println();
+					System.out.println(Host.pathFrom(conf_base.getParentFile().getAbsolutePath(), dir.getAbsolutePath())+":");
+					
+					first = false;
+				}
+				table.addRow(Host.removeFileExt(f.getName()), description);
+			}
+		}
+		System.out.println(table);
+		for ( File f : dir.listFiles() ) {
+			if (f.isDirectory()) {
+				walkConfDir(conf_base, f, nonempty_description);
+			}
+		}
+	} // end protected static void walkConfDir
+	
+	protected static void walkConfDir(File conf_dir, boolean nonempty_description) {
+		walkConfDir(conf_dir, conf_dir, nonempty_description);
+	}
+	
 	public static void main(String[] args) throws Throwable {
 		// 
 		if (args.length > 0 && args[0].equals("sleep")) {
@@ -1289,7 +1330,7 @@ public class PfttMain {
 					System.exit(-250);
 				}
 			} else if (args[args_i].equals("-h")||args[args_i].equals("--h")||args[args_i].equals("-help")||args[args_i].equals("--help")) {
-				help();
+				help(config);
 				System.exit(0);
 				return;
 			} else if (args[args_i].equals("-ignore_unknown_option")) {
@@ -1322,7 +1363,7 @@ public class PfttMain {
 		try {
 			command = args.length < args_i ? null : args[args_i].toLowerCase();
 		} catch ( Exception ex ) {
-			help();
+			help(config);
 			System.exit(-255);
 			return;
 		}
@@ -1340,7 +1381,11 @@ public class PfttMain {
 			for ( int k=0; k < commands.length ; k++ ) {
 				command = commands[k];
 				
-				if (command.equals("app_named")||command.equals("appnamed")||command.equals("an")) {
+				if (command.equals("parse")) {
+					// TODO parse PHP code and give it to config files to handle
+					//       or serialize it as XML
+					
+				} else if (command.equals("app_named")||command.equals("appnamed")||command.equals("an")) {
 					checkUAC(is_uac, false, config, cm, EScenarioSetPermutationLayer.WEB_APPLICATION);
 					
 					PhpBuild[] builds = newBuilds(cm, p.host, args[args_i+1]); 
@@ -1535,6 +1580,12 @@ public class PfttMain {
 					}
 					
 					p.host.deleteIfExists(test_list_file); // cleanup
+				} else if (command.equals("list_config")||command.equals("list_configs")||command.equals("listconfigs")||command.equals("listconfig")||command.equals("lc")) {
+					
+					walkConfDir(new File(p.host.getPfttDir(), "conf"), false);
+					
+					walkConfDir(new File(p.host.getPfttDir(), "conf"), true);
+					
 				} else if (command.equals("stop")) {
 					if (!(args.length > args_i+1)) {
 						System.err.println("User Error: must include build");
@@ -1548,18 +1599,19 @@ public class PfttMain {
 					checkUAC(is_uac, true, config, cm, EScenarioSetPermutationLayer.WEB_SERVER);
 					
 					PhpIni ini;
+					ScenarioSetSetup scenario_set_setup;
 					for ( ScenarioSet set : getScenarioSets(config, EScenarioSetPermutationLayer.WEB_SERVER) ) {
 						ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, p.host, build);
 						AbstractINIScenario.setupScenarios(cm, p.host, set, build, ini);
 						
-						for ( Scenario scenario : set ) {
-							if (!scenario.setupRequired()) {
-								// ignore
-							} else if (scenario.stop(cm, p.host, build, set, ini)) {
-								cm.println(EPrintType.COMPLETED_OPERATION, "Stop", "Stopped: "+scenario.getNameWithVersionInfo());
-							} else {
-								cm.println(EPrintType.CANT_CONTINUE, "Stop", "Error stopping: "+scenario.getNameWithVersionInfo());
-							}
+						scenario_set_setup = ScenarioSetSetup.setupScenarioSet(cm, p.host, build, set);
+						
+						if (scenario_set_setup==null) {
+							cm.println(EPrintType.CANT_CONTINUE, "Stop", "Error opening: "+set.getName());
+						} else if (scenario_set_setup.closeOk(cm)) {
+							cm.println(EPrintType.COMPLETED_OPERATION, "Stop", "Stopped: "+scenario_set_setup.getNameWithVersionInfo());
+						} else {
+							cm.println(EPrintType.CANT_CONTINUE, "Stop", "Error stopping: "+scenario_set_setup.getNameWithVersionInfo());
 						}
 					}
 				} else if (command.equals("setup")||command.equals("set")||command.equals("setu")) {
@@ -1581,41 +1633,9 @@ public class PfttMain {
 						ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, p.host, build);
 						AbstractINIScenario.setupScenarios(cm, p.host, set, build, ini);
 						
-						for ( Scenario scenario : set ) {
-							if (!scenario.setupRequired()) {
-								// ignore
-							} else if (scenario.isImplemented()) {
-								if (scenario.setup(cm, p.host, build, set)) {
-									cm.println(EPrintType.COMPLETED_OPERATION, "Setup", "setup successful: "+scenario.getNameWithVersionInfo());
-									switch(scenario.start(cm, p.host, build, set, ini)) {
-									case STARTED:
-										cm.println(EPrintType.COMPLETED_OPERATION, "Setup", "Started: "+scenario.getNameWithVersionInfo());
-										break;
-									case FAILED_TO_START:
-										cm.println(EPrintType.CANT_CONTINUE, "Setup", "Error starting: "+scenario.getNameWithVersionInfo());
-										break;
-									case SKIP:
-										break;
-									default:
-										break;
-									}
-								} else {
-									cm.println(EPrintType.CANT_CONTINUE, "Setup", "setup failed: "+scenario.getNameWithVersionInfo());
-								}
-							} else {
-								cm.println(EPrintType.CANT_CONTINUE, "Setup", "Skipping scenario, not implemented: "+scenario.getNameWithVersionInfo());
-							}
-						} // end for
+						ScenarioSetSetup.setupScenarioSet(cm, p.host, build, set);
+						
 					}
-				} else if (command.equals("shell_ui")||(show_gui && command.equals("shell"))) {
-					p.shell_ui();
-				} else if (command.equals("shell")) {
-					no_show_gui(show_gui, command);
-					p.shell();				
-				} else if (command.equals("exec")) {
-					checkUAC(is_uac, false, config, cm, EScenarioSetPermutationLayer.PHP_CORE);
-					no_show_gui(show_gui, command);
-					p.exec();
 				} else if (command.equals("release_get")||command.equals("rgn")||command.equals("rgnew")||command.equals("rgnewest")||command.equals("rgp")||command.equals("rgprev")||command.equals("rgprevious")||command.equals("rg")||command.equals("rget")) {
 					EBuildBranch branch = null;
 					EBuildType build_type = null;
@@ -1752,7 +1772,7 @@ public class PfttMain {
 				} else if (command.equals("help")) {
 					no_show_gui(show_gui, command);
 					
-					help();
+					help(config);
 				} else if (command.equals("help_all")) {
 					no_show_gui(show_gui, command);
 					
@@ -1795,15 +1815,8 @@ public class PfttMain {
 							for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.WEB_APPLICATION) ) {
 								for ( AHost host : hosts ) {
 									// XXX move to separate class, method, etc...
-									boolean setup_fail = false;
-									for ( Scenario scenario : scenario_set ) {
-										if (!scenario.setup(cm, host, build, scenario_set)) {
-											cm.println(EPrintType.CANT_CONTINUE, PfttMain.class, "Scenario setup failed: "+scenario);
-											setup_fail = true;
-											break;
-										}
-									}
-									if (setup_fail)
+									ScenarioSetSetup scenario_set_setup = ScenarioSetSetup.setupScenarioSet(cm, host, build, scenario_set);
+									if (scenario_set_setup==null)
 										continue;
 									
 									web = ws_mgr.getWebServerInstance(cm, host, scenario_set, build, RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, host, build), null, "C:/PHP-SDK/APPS", null, cm.isDebugAll(), test_pack.getNameAndVersionInfo());
@@ -1815,15 +1828,15 @@ public class PfttMain {
 												null,
 												web.getRootURL(),
 												host,
-												scenario_set,
+												scenario_set_setup,
 												w,
 												test_pack
 											);
 									runner.setUp();
-									w.addNotes(host, test_pack, scenario_set, runner.getWebBrowserNameAndVersion(), test_pack.getNotes());
+									w.addNotes(host, test_pack, scenario_set_setup, runner.getWebBrowserNameAndVersion(), test_pack.getNotes());
 									runner.start();
 									runner.tearDown();
-									w.notifyUITestFinished(host, scenario_set, test_pack, runner.getWebBrowserNameAndVersion());
+									w.notifyUITestFinished(host, scenario_set_setup, test_pack, runner.getWebBrowserNameAndVersion());
 								} // end for (hosts)
 							} // end for (scenario_sets)
 						} // end for (test_packs)
@@ -1831,7 +1844,7 @@ public class PfttMain {
 				} else {
 					no_show_gui(show_gui, command);
 					
-					help();
+					help(config);
 				}
 			} // end for
 			
@@ -1839,7 +1852,7 @@ public class PfttMain {
 			for ( PhpResultPackWriter w : p.writer_map.values() )
 				w.close(true);
 		} else {		
-			help();
+			help(config);
 		}
 		if (pause) {
 			if (!cm.isResultsOnly())

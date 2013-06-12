@@ -15,9 +15,9 @@ import com.mostc.pftt.results.ConsoleManager;
 public class UNCPathsScenario extends PathsScenario {
 
 	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		// TODO Auto-generated method stub
-		return false;
+		return SETUP_FAILED;
 	}
 
 	@Override

@@ -1,6 +1,6 @@
 package com.mostc.pftt.scenario;
 
-import com.github.mattficken.io.StringUtil;
+import com.github.mattficken.Overridable;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.AHost.ExecHandle;
 import com.mostc.pftt.host.Host;
@@ -11,13 +11,14 @@ import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.core.PhptActiveTestPack;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
+import com.mostc.pftt.util.DllVersion;
 
 /** Opcache provides faster PHP execution through opcode caching and optimization.
  * It improves PHP performance by storing precompiled script bytecode in the shared memory. This
  * eliminates the stages of reading code from the disk and compiling it on future access. In
  * addition, it applies a few bytecode optimization patterns that make code execution faster.
  * 
- * 5.5+ PHP builds include OpCache. This Scenario installs OpCache on 5.3 and 5.4 builds. 
+ * 5.5+ PHP builds include Opcache. This Scenario installs Opcache on 5.3 and 5.4 builds. 
  * 
  * Formerly known as Optimizer+, Zend Optimizer+, often abbreviated as o+ or zo+ or Optimizer Plus
  * 
@@ -27,199 +28,9 @@ import com.mostc.pftt.results.EPrintType;
  */
 
 public class OpcacheScenario extends AbstractCodeCacheScenario {
-	private String version;
 	
-
-	@Override
-	public String getNameWithVersionInfo() {
-		// this will return the PHP Version the DLL was build for (ex: 5.4.10)
-		// (Get-Item C:\php-sdk\php-5.4-ts-windows-vc9-x86-r064c62e\ext\php_opcache.dll).VersionInfo
-		return version==null?"Opcache":"Opcache-"+version;
-	}
-	
-	@Override
-	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
-		String ext_dir = build.getDefaultExtensionDir();
-		boolean found = false;
-		if (host.isWindows()) {
-			found = host.exists(ext_dir + "/php_opcache.dll") ||
-					host.exists(ext_dir + "/php_opcache.dont_load");
-			
-		} else {
-			found = host.exists(ext_dir + "/php_opcache.so") ||
-					host.exists(ext_dir + "/php_opcache.dont_load");
-		}
-		if (found) {
-			if (cm!=null)
-				cm.println(EPrintType.CLUE, getClass(), "Found OpCache in: "+ext_dir);
-			return true;
-		} else {
-			if (host.isWindows()) {
-				// 5.3 and 5.4 builds don't include opcache. try to install it.
-				try {
-					String dll_path = null;
-					switch(build.getVersionBranch(cm, host)) {
-					case PHP_5_3:
-						if (build.isNTS(host))
-							dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.2-5.3-nts-vc9-x86/php_opcache.dll";
-						else
-							dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.2-5.3-ts-vc9-x86/php_opcache.dll";
-						break;
-					case PHP_5_4:
-						if (build.isNTS(host))
-							dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.2-5.4-nts-vc9-x86/php_opcache.dll";
-						else
-							dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.2-5.4-ts-vc9-x86/php_opcache.dll";
-						break;
-					default:
-						break;
-					} // end switch
-					if (dll_path!=null) {
-						return host.exists(dll_path);
-					}
-				} catch ( Exception ex ) {
-					if (cm!=null)
-						cm.addGlobalException(EPrintType.SKIP_OPERATION, getClass(), "setup", ex, "failed to install opcache");
-					else
-						ex.printStackTrace();
-				} 
-			} // end if
-			if (cm!=null)
-				cm.println(EPrintType.CLUE, getClass(), "Unable to find OpCache in: "+ext_dir);
-			return false;
-		} // end if
-	} // end public boolean isSupported
-
-	@Override
-	public EAcceleratorType getAcceleratorType() {
-		return EAcceleratorType.OPCACHE;
-	}
-	
-	protected void cleanupBaseAddressFile(AHost host, PhpBuild build, PhptActiveTestPack test_pack) {
-		// IMPORTANT: delete the `base address` file that
-		// Opcache left behind from previous test run
-		//
-		// in temp directory. name is like: ZendOptimizer+.MemoryBase@matt
-		// @see shared_alloc_win32.c (https://github.com/zend-dev/opcache/blob/master/shared_alloc_win32.c)
-		//
-		// for regular users, TEMP_DIR is often
-		// for Apache (as service) TEMP_DIR is often C:\Users\NT_Authority? (different than IIS service)
-		// for IIS (service) TEMP_DIR is often C:\Windows\Temp
-		host.deleteIfExistsElevated(host.getTempDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
-		if (test_pack!=null) {
-			host.deleteIfExistsElevated(test_pack.getRunningDirectory()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());	
-			host.deleteIfExistsElevated(test_pack.getStorageDirectory()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
-		}
-		host.deleteIfExistsElevated(build.getBuildPath()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());	
-		host.deleteIfExistsElevated(host.getPhpSdkDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
-		host.deleteIfExistsElevated(host.getPfttDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
-	}
-	
-	@Override
-	public boolean prepare(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack test_pack) {
-		if (host.isWindows()) {
-			cleanupBaseAddressFile(host, build, test_pack);
-		}
-		return true;
-	}
-	
-	private ExecHandle startup_handle;
-	private boolean first = true;
-	private String temp_dir;
-	public boolean stop(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhpIni _ini) {
-		if (startup_handle!=null) {
-			startup_handle.close(cm, true);
-			
-			host.deleteIfExistsElevated(temp_dir);
-			
-			startup_handle = null;
-			first = true;
-		}
-		return true;
-	}
-
-	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
-		if (host.isWindows()) {
-			// TODO shouldn't be casting to AHost
-			cleanupBaseAddressFile((AHost)host, build, null);
-		}
-		
-		
-		// assume SO is in same directory as PHP extensions
-		String dll_path;
-		try {
-			// seems that PHP will load O+ if dll is there even though its not in INI
-			//
-			// NoCodeCacheScenario may have renamed file to *.dont_load, UNDO that here
-			String ext_dir = ini.getExtensionDir();
-			if (StringUtil.isEmpty(ext_dir))
-				ext_dir = build.getDefaultExtensionDir();
-			if (host.isWindows()) {
-				dll_path = host.fixPath(ext_dir + "/php_opcache.dll");
-				
-				if (host.exists(dll_path.replace(".dll", ".dont_load")))
-					// make sure PHP doesn't find it and load it automatically
-					host.moveElevated(dll_path.replace(".dll", ".dont_load"), dll_path);
-				
-				if (host.exists(dll_path)) {
-					// may have already setup scenario
-					if (build.is54(cm, host)||build.is53(cm, host))
-						// 5.4 and 5.3 don't include opcache, so provide the version of opcache being used
-						version = "7.0.2";
-				} else {
-					// try to install it for 5.3 and 5.4 builds
-					try {
-						String src_dll_path = null;
-						switch(build.getVersionBranch(cm, host)) {
-						case PHP_5_3:
-							// @see #isSuccessful (it checks if these dlls exist!)
-							if (build.isNTS(host))
-								src_dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.2-5.3-nts-vc9-x86/php_opcache.dll";
-							else
-								src_dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.2-5.3-ts-vc9-x86/php_opcache.dll";
-							break;
-						case PHP_5_4:
-							if (build.isNTS(host))
-								src_dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.2-dev-5.4-nts-vc9-x86/php_opcache.dll";
-							else
-								src_dll_path = host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.2-dev-5.4-ts-vc9-x86/php_opcache.dll";
-							break;
-						default:
-							break;
-						} // end switch
-						if (src_dll_path!=null) {
-							host.copy(src_dll_path, dll_path);
-							
-							// install succeeded
-							version = "7.0.2"; // XXX detect version
-						}
-					} catch ( Exception ex ) {
-						if (cm!=null)
-							cm.addGlobalException(EPrintType.SKIP_OPERATION, getClass(), "setup", ex, "failed to install opcache");
-						else
-							ex.printStackTrace();
-					} 
-				}
-			} else {
-				dll_path = host.fixPath(ext_dir + "/php_opcache.so");
-				
-				if (host.exists(dll_path.replace(".so", ".dont_load")))
-					host.moveElevated(dll_path.replace(".so", ".dont_load"), dll_path);
-			}
-		} catch ( Exception ex ) {
-			cm.addGlobalException(EPrintType.CLUE, "setup", ex, "couldn't make sure OpCache was enabled");
-			
-			return false;
-		}
-		//
-		
-		if (!host.exists(dll_path)) {
-			version = null;
-			
-			return false; // install failed
-		}
-		
+	@Overridable 
+	public void prepareINI(PhpIni ini, String dll_path) {
 		// must be absolute path to opcache.so
 		ini.putMulti("zend_extension", dll_path);
 		
@@ -252,11 +63,189 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 				//|ZEND_OPTIMIZER_PASS_5
 				//|ZEND_OPTIMIZER_PASS_9
 			);*/
+	}
+	
+	@Overridable
+	protected DllVersion getSoPath55Plus(ConsoleManager cm, Host host, PhpBuild build, boolean rename) throws IllegalStateException, Exception {
+		String ext_dir = build.getDefaultExtensionDir();
+		
+		// @see NoCodeCacheScenario for .dont_load
+		if (rename && host.exists(ext_dir + "/php_opcache.dont_load"))
+			host.move(ext_dir + "/php_opcache.dont_load", ext_dir + "/php_opcache.so");
+		if (host.exists(ext_dir + "/php_opcache.so"))
+			return new DllVersion(ext_dir + "/php_opcache.so", build.getVersionRevision(cm, host));
+		else
+			return null;
+	}
+	
+	@Overridable
+	protected DllVersion getDllPath55Plus(ConsoleManager cm, Host host, PhpBuild build, boolean rename) throws IllegalStateException, Exception {
+		String ext_dir = build.getDefaultExtensionDir();
+		
+		// @see NoCodeCacheScenario for .dont_load
+		if (rename && host.exists(ext_dir + "/php_opcache.dont_load"))
+			host.move(ext_dir + "/php_opcache.dont_load", ext_dir + "/php_opcache.dll");
+		if (host.exists(ext_dir + "/php_opcache.dll"))
+			return new DllVersion(ext_dir + "/php_opcache.dll", build.getVersionRevision(cm, host));
+		else
+			return null;
+	}
+	
+	@Overridable
+	protected DllVersion getDllPath53TS(Host host) {
+		return new DllVersion(host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.2-5.3-ts-vc9-x86/php_opcache.dll", "7.0.2");
+	}
+	
+	@Overridable
+	protected DllVersion getDllPath53NTS(Host host) {
+		return new DllVersion(host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.2-5.3-nts-vc9-x86/php_opcache.dll", "7.0.2");
+	}
+	
+	@Overridable
+	protected DllVersion getDllPath54TS(Host host) {
+		return new DllVersion(host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.2-5.4-ts-vc9-x86/php_opcache.dll", "7.0.2");
+	}
+	
+	@Overridable
+	protected DllVersion getDllPath54NTS(Host host) {
+		return new DllVersion(host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.2-5.4-nts-vc9-x86/php_opcache.dll", "7.0.2");
+	}
+	
+	public DllVersion getDllPath(ConsoleManager cm, Host host, PhpBuild build) {
+		return getDllPath(cm, host, build, false);
+	}
+	
+	protected DllVersion getDllPath(ConsoleManager cm, Host host, PhpBuild build, boolean rename) {
+		DllVersion version = null;
+		try {
+			switch(build.getVersionBranch(cm, host)) {
+			case PHP_5_3:
+				if (host.isWindows()) {
+					if (build.isNTS(host))
+						version = getDllPath53NTS(host);
+					else
+						version = getDllPath53TS(host);
+				}
+				break;
+			case PHP_5_4:
+				if (host.isWindows()) {
+					if (build.isNTS(host))
+						version = getDllPath54NTS(host);
+					else
+						version = getDllPath53TS(host);
+				}
+				break;
+			default:
+				if (host.isWindows())
+					version = getDllPath55Plus(cm, host, build, rename);
+				else
+					version = getSoPath55Plus(cm, host, build, rename);
+			} // end switch
+		} catch ( Exception ex ) {
+			if (cm==null)
+				ex.printStackTrace();
+			else
+				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "getDllPath", ex, "Unable to find OpCache");
+		}
+		
+		if (version!=null) {
+			if (host.exists(version.getPath())) {
+				if (cm!=null)
+					cm.println(EPrintType.CLUE, getClass(), "Found Opcache in: "+version.getPath());		
+			} else {
+				if (cm!=null)
+					cm.println(EPrintType.WARNING, getClass(), "Opcache expected, but not found at: "+version.getPath());
+				version = null;
+			}
+		}
+		if (version==null) {
+			if (cm!=null)
+				cm.println(EPrintType.WARNING, getClass(), "Unable to find Opcache for: "+build.getBuildPath());	
+		}
+		return version;
+	} // end protected DllVersion getDllPath
+	
+	@Override
+	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		return getDllPath(cm, host, build) != null;
+	}
+
+	public class OpcacheSetup implements IScenarioSetup {
+		protected final DllVersion dll;
+		protected final Host host;
+		protected final ConsoleManager cm;
+		protected final PhpBuild build;
+		protected String version;
+		
+		public OpcacheSetup(DllVersion dll, Host host, ConsoleManager cm, PhpBuild build) throws Exception {
+			this.dll = dll;
+			this.host = host;
+			this.cm = cm;
+			this.build = build;
+			
+			this.version = dll.getVersion()==null||dll.getVersion().equals(build.getVersionRevision(cm, host))?"Opcache":"Opcache-"+dll.getVersion();
+		}
+		
+		@Override
+		public String getNameWithVersionInfo() {
+			// this will return the PHP Version the DLL was build for (ex: 5.4.10)
+			// (Get-Item C:\php-sdk\php-5.4-ts-windows-vc9-x86-r064c62e\ext\php_opcache.dll).VersionInfo
+			return version;
+		}	
+		@Override
+		public String getName() {
+			return OpcacheScenario.this.getName();
+		}
+		private ExecHandle startup_handle;
+		private String temp_dir;
+		
+		@Override
+		public void close(ConsoleManager cm) {
+			if (startup_handle!=null) {
+				startup_handle.close(cm, true);
+				
+				host.deleteIfExistsElevated(temp_dir);
+				
+				startup_handle = null;
+			}
+		}
+		
+		@Override
+		public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
+			OpcacheScenario.this.prepareINI(ini, dll.getPath());
+		}
+		
+	} // end public class OpcacheSetup
+	
+	@Overridable
+	protected OpcacheSetup createOpcacheSetup(DllVersion dll, Host host, ConsoleManager cm, PhpBuild build) throws Exception {
+		return new OpcacheSetup(dll, host, cm, build);
+	}
+
+	@Override
+	public OpcacheSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		if (host.isWindows()) {
+			// TODO shouldn't be casting to AHost
+			cleanupBaseAddressFile((AHost)host, build, null);
+		}
+		
+		// find dll and rename from .dont_load to .so or .dll if needed (=> true)
+		final DllVersion dll = getDllPath(cm, host, build, true);
+		if (dll==null)
+			return null;
+		
+		OpcacheSetup setup = null;
+		try {
+			setup = createOpcacheSetup(dll, host, cm, build);
+		} catch ( Exception ex ) {
+			if (cm==null)
+				ex.printStackTrace();
+			else
+				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "setup", ex, "Can't setup Opcache");
+		}
 		
 		//
-		if (host.isWindows() && first) {
-			first = false;
-			
+		if (setup != null && host.isWindows()) {
 			// need to start a process to startup Opcache and leave it running
 			// to ensure that the SharedMemoryArea is never closed
 			//
@@ -266,26 +255,27 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 			//  the SharedMemoryArea will be closed if all handles to it are closed.
 			//  this causes the 'Fatal Error: Unable to reattach to base address' msg)
 			try {
-				temp_dir = host.mktempname("Opcache_Startup_Process");
-				host.mkdirs(temp_dir);
+				setup.temp_dir = host.mktempname("Opcache_Startup_Process");
+				host.mkdirs(setup.temp_dir);
 				
-				String php_script = temp_dir+"/startup.php";
+				String php_script = setup.temp_dir+"/startup.php";
 				
-				host.saveTextFile(temp_dir+"/php.ini", ini.toString());
+				PhpIni ini = new PhpIni();
+				setup.prepareINI(cm, (AHost)host, build, scenario_set, ini);
+				host.saveTextFile(setup.temp_dir+"/php.ini", ini.toString());
 				
 				// start thread to startup opcache
 				host.saveTextFile(php_script, "<?php while(true){sleep(60000);} ?>");
 				
-				startup_handle = ((AHost)host).execThread(build.getPhpExe(EExecutableType.CLI)+" -c "+temp_dir+" -f "+php_script);
-				
+				setup.startup_handle = ((AHost)host).execThread(build.getPhpExe(EExecutableType.CLI)+" -c "+setup.temp_dir+" -f "+php_script);
 			} catch ( Exception ex ) {
 				ex.printStackTrace();
 			}
 		}
 		//
 		
-		return true;
-	} // end public boolean setup
+		return setup;
+	} // end public OpcacheSetup setup
 	
 	// @see Optimizer/zend_optimizer.h
 	public static final int ZEND_OPTIMIZER_PASS_1 = (1<<0); /* CSE, STRING construction */
@@ -303,14 +293,60 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 	public static final int ZEND_OPTIMIZER_PASS_13 = (1<<12);
 	public static final int ZEND_OPTIMIZER_PASS_14 = (1<<13);
 
+	protected void cleanupBaseAddressFile(AHost host, PhpBuild build, PhptActiveTestPack test_pack) {
+		// IMPORTANT: delete the `base address` file that
+		// Opcache left behind from previous test run
+		//
+		// in temp directory. name is like: ZendOptimizer+.MemoryBase@matt
+		// @see shared_alloc_win32.c (https://github.com/zend-dev/opcache/blob/master/shared_alloc_win32.c)
+		//
+		// for regular users, TEMP_DIR is often
+		// for Apache (as service) TEMP_DIR is often C:\Users\NT_Authority? (different than IIS service)
+		// for IIS (service) TEMP_DIR is often C:\Windows\Temp
+		host.deleteIfExistsElevated(host.getTempDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+		if (test_pack!=null) {
+			host.deleteIfExistsElevated(test_pack.getRunningDirectory()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());	
+			host.deleteIfExistsElevated(test_pack.getStorageDirectory()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+		}
+		host.deleteIfExistsElevated(build.getBuildPath()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());	
+		host.deleteIfExistsElevated(host.getPhpSdkDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+		host.deleteIfExistsElevated(host.getPfttDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+		host.deleteIfExistsElevated(host.getSystemRoot()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+		host.deleteIfExistsElevated(host.getSystemDrive()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+	}
+	
+	@Override
+	public EAcceleratorType getAcceleratorType() {
+		return EAcceleratorType.OPCACHE;
+	}
+	
 	@Override
 	public String getName() {
-		return "OpCache";
+		return "Opcache";
 	}
 
 	@Override
 	public boolean isImplemented() {
 		return true;
+	}
+
+	/** configures PhpBuild to use Opcache, but does not create the Opcache Startup Process
+	 * for that, see the other #setup method
+	 * 
+	 * @param cm
+	 * @param host
+	 * @param build
+	 * @param ini
+	 */
+	@Override
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
+		final DllVersion dll = this.getDllPath(cm, host, build);
+		if (dll==null) {
+			return SETUP_FAILED;
+		} else {
+			prepareINI(ini, dll.getPath());
+			return SETUP_SUCCESS;
+		}
 	}
 	
 } // end public class OpcacheScenario

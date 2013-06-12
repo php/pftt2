@@ -7,6 +7,11 @@ import com.mostc.pftt.results.PhptTestResult;
  *
  * @see EPhpUnitTestStatus - the Application test format
  * @author Matt Ficken
+ * 
+ * PFTT adds 3 statuses to the PHPT standard, to convert to standard:
+ * XSKIP - add XSKIP count to SKIP count
+ * CRASH - add CRASH count to FAIL count
+ * TEST_EXCEPTION - add TEST_EXCEPTION count to UNSUPPORTED count
  *
  */
 

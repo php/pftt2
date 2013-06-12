@@ -15,7 +15,7 @@ public abstract class SMBCSCOptionScenario extends AbstractOptionScenario {
 	public abstract boolean isEnable();
 	
 	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		// XXX linux client support
 		StringBuilder ps_sb = new StringBuilder();
 		ps_sb.append("$wmi = [wmiclass]\"\\\\localhost\\root\\cimv2:win32_offlinefilescache\"");
@@ -29,12 +29,12 @@ public abstract class SMBCSCOptionScenario extends AbstractOptionScenario {
 			if (host.exec(cm, getClass(), "powershell -File "+ps_file, Host.ONE_MINUTE)) {
 				host.delete(ps_file);
 				
-				return true;
+				return SETUP_SUCCESS;
 			}
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "setup", ex, "Unable to "+(isEnable()?"enable":"disable")+" CSC", host, ps_file);
 		}
-		return false;
+		return SETUP_FAILED;
 	} // end public boolean setup
 	
 } // end public abstract class SMBCSCOptionScenario

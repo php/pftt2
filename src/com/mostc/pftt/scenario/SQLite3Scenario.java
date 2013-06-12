@@ -4,7 +4,6 @@ import java.util.Map;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
-import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.runner.AbstractPhpUnitTestCaseRunner;
 
@@ -34,9 +33,9 @@ public class SQLite3Scenario extends AbstractDatabaseScenario {
 	}
 
 	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		// TODO Auto-generated method stub
-		return false;
+		return SETUP_FAILED;
 	}
 
 	@Override
@@ -46,18 +45,8 @@ public class SQLite3Scenario extends AbstractDatabaseScenario {
 	}
 	
 	@Override
-	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhpIni _ini) {
-		return EScenarioStartState.SKIP;
-	}
-
-	@Override
 	public void setGlobals(Map<String, String> globals) {
 		AbstractPhpUnitTestCaseRunner.addDatabaseConnection(dsn, username, password, database, globals);
-	}
-
-	@Override
-	public String getNameWithVersionInfo() {
-		return "SQLite3"; // XXX -[server implementation and server version]
 	}
 
 }

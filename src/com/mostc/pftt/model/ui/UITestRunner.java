@@ -43,6 +43,7 @@ import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.PhpResultPackWriter;
 import com.mostc.pftt.scenario.EnchantScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.ErrorUtil;
 import com.mostc.pftt.util.StringUtil2;
 
@@ -90,7 +91,7 @@ public class UITestRunner implements IUITestBranch {
 	protected UITestBranch root;
 	protected final ConsoleManager cm;
 	protected final AHost this_host;
-	protected final ScenarioSet this_scenario_set;
+	protected final ScenarioSetSetup this_scenario_set;
 	protected final PhpResultPackWriter tmgr;
 	protected final UITestPack test_pack;
 	protected final String base_url;
@@ -101,7 +102,7 @@ public class UITestRunner implements IUITestBranch {
 	protected final boolean do_devel;
 	protected final List<String> completed_test_names, only_run_test_names;
 	
-	public UITestRunner(ConsoleManager cm, List<String> only_run_test_names, EUITestExecutionStyle exec_style, WebServerInstance web_server, String base_url, AHost this_host, ScenarioSet this_scenario_set, PhpResultPackWriter tmgr, UITestPack test_pack) {
+	public UITestRunner(ConsoleManager cm, List<String> only_run_test_names, EUITestExecutionStyle exec_style, WebServerInstance web_server, String base_url, AHost this_host, ScenarioSetSetup this_scenario_set, PhpResultPackWriter tmgr, UITestPack test_pack) {
 		this.cm = cm;
 		this.exec_style = exec_style==null?EUITestExecutionStyle.NORMAL:exec_style;
 		this.web_server = web_server;

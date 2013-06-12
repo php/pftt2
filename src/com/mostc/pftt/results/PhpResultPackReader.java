@@ -10,6 +10,7 @@ import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.PhpBuildInfo;
 import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.scenario.ScenarioSetSetup;
 
 /** Reads result-pack of a test run completed in the past.
  * 
@@ -199,11 +200,11 @@ public class PhpResultPackReader extends PhpResultPack {
 	}
 
 	@Override
-	public AbstractPhptRW getPHPT(AHost host, ScenarioSet scenario_set) {
+	public AbstractPhptRW getPHPT(AHost host, ScenarioSetSetup scenario_set) {
 		return getPHPT(host.getName(), scenario_set);
 	}
 	
-	public AbstractPhptRW getPHPT(String host_name, ScenarioSet scenario_set) {
+	public AbstractPhptRW getPHPT(String host_name, ScenarioSetSetup scenario_set) {
 		host_name = host_name.toLowerCase();
 		HashMap<String,AbstractPhptRW> map_a = phpt_reader_map.get(host_name);
 		if (map_a==null) {
@@ -241,11 +242,11 @@ public class PhpResultPackReader extends PhpResultPack {
 	}
 
 	@Override
-	public Collection<AbstractPhpUnitRW> getPhpUnit(AHost host, ScenarioSet scenario_set) {
+	public Collection<AbstractPhpUnitRW> getPhpUnit(AHost host, ScenarioSetSetup scenario_set) {
 		return getPhpUnit(host.getName(), scenario_set);
 	}
 	
-	public Collection<AbstractPhpUnitRW> getPhpUnit(String host_name, ScenarioSet scenario_set) {
+	public Collection<AbstractPhpUnitRW> getPhpUnit(String host_name, ScenarioSetSetup scenario_set) {
 		host_name = host_name.toLowerCase();
 		HashMap<String,HashMap<String,AbstractPhpUnitRW>> map_a = php_unit_reader_map.get(host_name);
 		LinkedList<AbstractPhpUnitRW> out = new LinkedList<AbstractPhpUnitRW>();
@@ -295,7 +296,7 @@ public class PhpResultPackReader extends PhpResultPack {
 	}
 
 	@Override
-	public AbstractPhpUnitRW getPhpUnit(AHost host, String test_pack_name_and_version, ScenarioSet scenario_set) {
+	public AbstractPhpUnitRW getPhpUnit(AHost host, String test_pack_name_and_version, ScenarioSetSetup scenario_set) {
 		 HashMap<String,HashMap<String,AbstractPhpUnitRW>> map_a = php_unit_reader_map.get(host.getName());
 		 if (map_a==null)
 			 return null;
@@ -320,7 +321,7 @@ public class PhpResultPackReader extends PhpResultPack {
 	}
 
 	@Override
-	public AbstractUITestRW getUITest(AHost host, ScenarioSet scenario_set) {
+	public AbstractUITestRW getUITest(AHost host, ScenarioSetSetup scenario_set) {
 		HashMap<String,HashMap<String,HashMap<String,UITestReader>>> a = ui_test_reader_map.get(host.getName());
 		if (a!=null) {
 			for ( HashMap<String,HashMap<String,UITestReader>> b : a.values() ) {
@@ -362,7 +363,7 @@ public class PhpResultPackReader extends PhpResultPack {
 	}
 
 	@Override
-	public Collection<AbstractUITestRW> getUITest(AHost host, String test_pack_name_and_version, ScenarioSet scenario_set) {
+	public Collection<AbstractUITestRW> getUITest(AHost host, String test_pack_name_and_version, ScenarioSetSetup scenario_set) {
 		LinkedList<AbstractUITestRW> out = new LinkedList<AbstractUITestRW>();
 		HashMap<String,HashMap<String,HashMap<String,UITestReader>>> map_a = ui_test_reader_map.get(host.getName());
 		if (map_a==null)

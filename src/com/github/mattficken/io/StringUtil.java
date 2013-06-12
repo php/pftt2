@@ -126,9 +126,11 @@ public final class StringUtil {
 	}
 	
 	public static String padLast(String string, int len, char c) {
-		StringBuilder sb = new StringBuilder();
+		if (string.length()>=len)
+			return string;
+		StringBuilder sb = new StringBuilder(len);
 		sb.append(string);
-		while (sb.length()+string.length()<len)
+		while (sb.length() < len)
 			sb.append(c);
 		return sb.toString();
 	}
@@ -136,8 +138,8 @@ public final class StringUtil {
 	public static String padFirst(String string, int len, char c) {
 		if (string.length()>=len)
 			return string;
-		StringBuilder sb = new StringBuilder();
-		while (sb.length()+string.length() < len)
+		StringBuilder sb = new StringBuilder(len);
+		while (sb.length() < len)
 			sb.append(c);
 		sb.append(string);
 		return sb.toString();
@@ -273,6 +275,90 @@ public final class StringUtil {
 	
 	public static boolean isEmpty(Object[] o) {
 		return o == null || o.length == 0;
+	}
+	
+	public static String toString(int[] o) {
+		StringBuilder sb = new StringBuilder();
+		sb.append('[');
+		sb.append(o[0]);
+		for ( int i=1 ; i < o.length ; i++ ) {
+			sb.append(',');
+			sb.append(o[i]);
+		}
+		sb.append(']');
+		return sb.toString();
+	}
+	
+	public static String toString(short[] o) {
+		StringBuilder sb = new StringBuilder();
+		sb.append('[');
+		sb.append(o[0]);
+		for ( int i=1 ; i < o.length ; i++ ) {
+			sb.append(',');
+			sb.append(o[i]);
+		}
+		sb.append(']');
+		return sb.toString();
+	}
+	
+	public static String toString(float[] o) {
+		StringBuilder sb = new StringBuilder();
+		sb.append('[');
+		sb.append(o[0]);
+		for ( int i=1 ; i < o.length ; i++ ) {
+			sb.append(',');
+			sb.append(o[i]);
+		}
+		sb.append(']');
+		return sb.toString();
+	}
+	
+	public static String toString(long[] o) {
+		StringBuilder sb = new StringBuilder();
+		sb.append('[');
+		sb.append(o[0]);
+		for ( int i=1 ; i < o.length ; i++ ) {
+			sb.append(',');
+			sb.append(o[i]);
+		}
+		sb.append(']');
+		return sb.toString();
+	}
+	
+	public static String toString(double[] o) {
+		StringBuilder sb = new StringBuilder();
+		sb.append('[');
+		sb.append(o[0]);
+		for ( int i=1 ; i < o.length ; i++ ) {
+			sb.append(',');
+			sb.append(o[i]);
+		}
+		sb.append(']');
+		return sb.toString();
+	}
+	
+	public static String toString(boolean[] o) {
+		StringBuilder sb = new StringBuilder();
+		sb.append('[');
+		sb.append(o[0]);
+		for ( int i=1 ; i < o.length ; i++ ) {
+			sb.append(',');
+			sb.append(o[i]);
+		}
+		sb.append(']');
+		return sb.toString();
+	}
+	
+	public static String toString(char[] o) {
+		StringBuilder sb = new StringBuilder();
+		sb.append('[');
+		sb.append(o[0]);
+		for ( int i=1 ; i < o.length ; i++ ) {
+			sb.append(',');
+			sb.append(o[i]);
+		}
+		sb.append(']');
+		return sb.toString();
 	}
 
 	public static String toString(Object o) {

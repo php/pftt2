@@ -29,8 +29,8 @@ public class PlainSocketScenario extends AbstractSocketScenario {
 	}
 
 	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
-		return true;
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		return SETUP_SUCCESS;
 	}
 
 }

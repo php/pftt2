@@ -1,0 +1,75 @@
+--- a/includes/bootstrap.php	Mon May 06 15:26:14 2013
++++ b/includes/bootstrap.php	Tue Jun 04 00:31:47 2013
+@@ -41,9 +41,42 @@
+ 
+ $multisite = (int) ( defined( 'WP_TESTS_MULTISITE') && WP_TESTS_MULTISITE );
+ 
+-system( WP_PHP_BINARY . ' ' . escapeshellarg( dirname( __FILE__ ) . '/install.php' ) . ' ' . escapeshellarg( $config_file_path ) . ' ' . $multisite );
++// PFTT: 
++//system( WP_PHP_BINARY . ' ' . escapeshellarg( dirname( __FILE__ ) . '/install.php' ) . ' ' . escapeshellarg( $config_file_path ) . ' ' . $multisite );
+ 
+-if ( $multisite ) {
++/* -- begin install code -- */
++// adapted from install.php
++error_reporting( E_ALL & ~E_DEPRECATED & ~E_STRICT );
++
++define( 'WP_INSTALLING', true );
++require_once dirname( __FILE__ ) . '/functions.php';
++
++$_SERVER['SERVER_PROTOCOL'] = 'HTTP/1.1';
++$_SERVER['HTTP_HOST'] = WP_TESTS_DOMAIN;
++$PHP_SELF = $GLOBALS['PHP_SELF'] = $_SERVER['PHP_SELF'] = '/index.php';
++
++require_once ABSPATH . '/wp-settings.php';
++require_once ABSPATH . '/wp-admin/includes/upgrade.php';
++require_once ABSPATH . '/wp-includes/wp-db.php';
++
++define( 'WP_TESTS_VERSION_FILE', ABSPATH . '.wp-tests-version' );
++
++$wpdb->suppress_errors();
++$installed = $wpdb->get_var( "SELECT option_value FROM $wpdb->options WHERE option_name = 'siteurl'" );
++$wpdb->suppress_errors( false );
++
++$wpdb->query( 'SET storage_engine = INNODB' );
++$wpdb->select( DB_NAME, $wpdb->dbh );
++
++foreach ( $wpdb->tables() as $table => $prefixed_table ) {
++	$wpdb->query( "DROP TABLE IF EXISTS $prefixed_table" );
++}
++
++wp_install( WP_TESTS_TITLE, 'admin', WP_TESTS_EMAIL, true, null, 'password' );
++
++/* -- end install code -- */
++
++/*if ( $multisite ) {
+ 	echo "Running as multisite..." . PHP_EOL;
+ 	define( 'MULTISITE', true );
+ 	define( 'SUBDOMAIN_INSTALL', false );
+@@ -54,7 +87,7 @@
+ 	$GLOBALS['base'] = '/';
+ } else {
+ 	echo "Running as single site... To run multisite, use -c multisite.xml" . PHP_EOL;
+-}
++}*/
+ unset( $multisite );
+ 
+ require_once dirname( __FILE__ ) . '/functions.php';
+@@ -124,4 +157,16 @@
+ 			echo "Not running ajax tests... To execute these, use --group ajax." . PHP_EOL;
+     }
+ }
+-new WP_PHPUnit_TextUI_Command( $_SERVER['argv'] );
++//new WP_PHPUnit_TextUI_Command( $_SERVER['argv'] );
++WP_UnitTestCase::forceTicket('ajax');
++
++// PFTT includes
++require_once dirname(__FILE__).'/../tests/import/base.php';
++require_once dirname(__FILE__).'/../tests/import/import.php';
++require_once dirname(__FILE__).'/../tests/import/parser.php';
++require_once dirname(__FILE__).'/../tests/import/postmeta.php';
++require_once dirname(__FILE__).'/../tests/iterators.php';
++require_once dirname(__FILE__).'/../wordpress/wp-includes/class-wp-admin-bar.php';
++require_once dirname(__FILE__).'/../wordpress/wp-includes/class.wp-dependencies.php';
++require_once dirname(__FILE__).'/../wordpress/wp-includes/class.wp-scripts.php';
++?>
+\ No newline at end of file

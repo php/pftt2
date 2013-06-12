@@ -57,8 +57,7 @@ public class PhpUnitTemplate {
 		//           also set ENV vars in PHP for the temproary dir... for CLI or Apache, sometimes setting the
 		//           temporary dir ENV vars passed to AHost#exec doesn't always work
 		//           @see PHP sys_get_temp_dir() - many Symfony filesystem tests use this
-		def pftt_scenario_set = scenario_set.getNameWithVersionInfo();
-		
+		def pftt_scenario_set = scenario_set.getName();
 		pw.print(
 """<?php
 set_include_path('$include_path');
@@ -70,6 +69,23 @@ putenv('TEMP=$my_temp_dir');
 putenv('TMPDIR=$my_temp_dir');
 putenv('PFTT_IS=true');
 putenv('PFTT_SCENARIO_SET=$pftt_scenario_set');
+
+//xdebug_start_code_coverage( XDEBUG_CC_UNUSED | XDEBUG_CC_DEAD_CODE );
+
+function dump_coverage() {
+	/*	foreach ( xdebug_get_code_coverage() => \$filename, \$coverage ) {
+			echo "file=\$filename"; echo PHP_EOL;
+			foreach ( \$coverage => \$line_num, \$type ) {
+				if (\$type==1) {
+					echo "exe=\$line_num"; echo PHP_EOL;
+				} else if (\$type==-1) {
+					echo "didnt_exe=\$line_num"; echo PHP_EOL;
+				} else if (\$type==-2) {
+					echo "no_exe=\$line_num"; echo PHP_EOL;
+				}
+			}
+		}*/
+}
 
 """)
 		if (StringUtil.isNotEmpty(prebootstrap_code)) {
@@ -221,10 +237,12 @@ pw.println("""	} catch ( Exception \$e ) {
 	case PHPUnit_Runner_BaseTestRunner::STATUS_PASSED:
 		echo 'status=PASS'; echo PHP_EOL;
 		echo "run_time=\$run_time"; echo PHP_EOL;
+		dump_coverage();
 		break;
 	case PHPUnit_Runner_BaseTestRunner::STATUS_SKIPPED:
 		echo 'status=SKIP'; echo PHP_EOL;
 		echo "run_time=\$run_time"; echo PHP_EOL;
+		dump_coverage();
 		echo \$status_msg;
 		echo PHP_EOL;
 		echo \$output;
@@ -233,6 +251,7 @@ pw.println("""	} catch ( Exception \$e ) {
 	case PHPUnit_Runner_BaseTestRunner::STATUS_INCOMPLETE:
 		echo 'status=NOT_IMPLEMENTED'; echo PHP_EOL;
 		echo "run_time=\$run_time"; echo PHP_EOL;
+		dump_coverage();
 		echo \$status_msg;
 		echo PHP_EOL;
 		echo \$output;
@@ -240,6 +259,7 @@ pw.println("""	} catch ( Exception \$e ) {
 	case PHPUnit_Runner_BaseTestRunner::STATUS_FAILURE:
 		echo 'status=FAILURE'; echo PHP_EOL;
 		echo "run_time=\$run_time"; echo PHP_EOL;
+		dump_coverage();
 		echo \$status_msg;
 		echo PHP_EOL;
 		echo \$output;
@@ -261,6 +281,7 @@ pw.println("""	} catch ( Exception \$e ) {
 		}
 		echo "status=\$status"; echo PHP_EOL;
 		echo "run_time=\$run_time"; echo PHP_EOL;
+		dump_coverage();
 		echo \$status_msg;
 		echo PHP_EOL;
 		echo \$output;

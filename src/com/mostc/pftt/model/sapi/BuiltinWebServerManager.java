@@ -7,11 +7,13 @@ import javax.annotation.concurrent.ThreadSafe;
 
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.host.AHost.ExecHandle;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
+import com.mostc.pftt.scenario.IScenarioSetup;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 /** manages local instances of PHP's builtin web server
@@ -58,6 +60,11 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 			this.host = host;
 			this.build = build;
 		}
+		
+		@Override
+		public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
+			
+		}
 
 		@Override
 		public String getInstanceInfo(ConsoleManager cm) {
@@ -72,6 +79,16 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 		@Override
 		public String getSAPIConfig() {
 			return null;
+		}
+
+		@Override
+		public String getNameWithVersionInfo() {
+			return "Builtin-Web";
+		}
+
+		@Override
+		public String getName() {
+			return "Builtin-Web";
 		}
 		
 	} // end public static class BuiltinWebServerInstance
@@ -88,9 +105,50 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 	}
 
 	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build) {
+	public BuiltinWebSetup setup(ConsoleManager cm, Host host, PhpBuild build) {
 		// don't need to install anything, part of PHP 5.4+ builds
-		return true;
+		
+		try {
+			return new BuiltinWebSetup((AHost)host, build);
+		} catch ( Exception ex ) {
+			if (cm==null)
+				ex.printStackTrace();
+			else
+				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "close", ex, "Exception starting Builtin Web Server");
+		}
+		return null;
+	}
+	
+	public class BuiltinWebSetup implements IScenarioSetup {
+		protected final ExecHandle handle;
+		
+		public BuiltinWebSetup(AHost host, PhpBuild build) throws Exception {
+			String listen_address = host.getLocalhostListenAddress();
+			int port = 80;
+			
+			handle = host.execThread(build.getPhpExe()+" -S "+listen_address+":"+port);	
+		}
+		
+		@Override
+		public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
+			
+		}
+
+		@Override
+		public void close(ConsoleManager cm) {
+			handle.close(cm);
+		}
+
+		@Override
+		public String getNameWithVersionInfo() {
+			return getName();
+		}
+
+		@Override
+		public String getName() {
+			return "Builtin-Web";
+		}
+		
 	}
 
 	@Override
@@ -106,11 +164,6 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 	@Override
 	public String getDefaultDocroot(Host host, PhpBuild build) {
 		return build.getBuildPath();
-	}
-
-	@Override
-	public String getNameWithVersionInfo() {
-		return getName();
 	}
 
 } // end public class BuiltinWebServerManager

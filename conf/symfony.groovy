@@ -1,4 +1,8 @@
 
+def describe() {
+	"Load Symfony Framework"
+}
+
 /**
  *
  * @see http://symfony.com/download

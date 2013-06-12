@@ -1,7 +1,6 @@
 package com.mostc.pftt.model.sapi;
 
 import java.util.Map;
-
 import javax.annotation.concurrent.ThreadSafe;
 
 import com.github.mattficken.io.StringUtil;
@@ -12,6 +11,7 @@ import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
+import com.mostc.pftt.scenario.IScenarioSetup;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.ErrorUtil;
 
@@ -204,6 +204,11 @@ public class IISManager extends WebServerManager {
 		}
 		
 		@Override
+		public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
+			
+		}
+		
+		@Override
 		public String toString() {
 			return hostname+":"+port;
 		}
@@ -262,26 +267,36 @@ public class IISManager extends WebServerManager {
 
 		@Override
 		public boolean isDebuggerAttached() {
-			// TODO Auto-generated method stub
 			return false;
 		}
 
 		@Override
 		public String getDocroot() {
-			// TODO Auto-generated method stub
-			return null;
+			return null; // TODO
 		}
 
 		@Override
 		public String getSAPIConfig() {
-			// TODO Auto-generated method stub
-			return null;
+			return null; // TODO
 		}
 
 		@Override
 		public boolean isCrashedAndDebugged() {
-			// TODO Auto-generated method stub
 			return false;
+		}
+
+		@Override
+		public String getNameWithVersionInfo() {
+			return getName();
+		}
+
+		@Override
+		public String getName() {
+			return "IIS";
+		}
+
+		@Override
+		public void close(ConsoleManager cm) {
 		}
 		
 	} // end public class IISWebServerInstance
@@ -297,43 +312,62 @@ public class IISManager extends WebServerManager {
 	}
 
 	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build) {
+	public IISScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build) {
 		if (!host.isWindows()) {
 			cm.println(EPrintType.SKIP_OPERATION, IISManager.class, "Only supported OS is Windows");
-			return false;
+			return null;
 		} else if (host.isBeforeVista()) {
 			cm.println(EPrintType.SKIP_OPERATION, IISManager.class, "Only Windows Vista/2008/7/2008r2/8/2012+ are supported. Upgrade Windows and try again.");
-			return false;
+			return null;
 		} else {
 			if (host.exists(appcmd_path(host))) {
 				cm.println(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "IIS already installed");
 				
-				return true;
+				return new IISScenarioSetup();
 			}
 			
 			try {
 				if (host.execElevated(cm, getClass(), "pkgmgr /iu:IIS-WebServerRole;IIS-WebServer;IIS-StaticContent;IIS-WebServerManagementTools;IIS-ManagementConsole;IIS-CGI", AHost.HALF_HOUR)) {
 					cm.println(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "IIS installed");
 					
-					return true;
+					return new IISScenarioSetup();
 				} else {
 					cm.println(EPrintType.CANT_CONTINUE, getClass(), "IIS install failed");
 				}
 			} catch ( Exception ex ) {
 				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "setup", ex, "exception during IIS install.", host);
 			}
-			return false;
+			return null;
 		}
-	} // end public boolean setup
+	} // end public IISScenarioSetup setup
+
+	public class IISScenarioSetup implements IScenarioSetup {
+
+		@Override
+		public void close(ConsoleManager cm) {
+			
+		}
+		
+		@Override
+		public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
+			
+		}
+
+		@Override
+		public String getNameWithVersionInfo() {
+			return getName();
+		}
+
+		@Override
+		public String getName() {
+			return "IIS";
+		}
+		
+	} // end public class IISScenarioSetup
 
 	@Override
 	public String getDefaultDocroot(Host host, PhpBuild build) {
 		return host.getSystemDrive() + "\\inetpub\\wwwroot";
-	}
-
-	@Override
-	public String getNameWithVersionInfo() {
-		return "IIS";
 	}
 
 } // end public class IISManager

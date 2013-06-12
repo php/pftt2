@@ -2,12 +2,10 @@ package com.mostc.pftt.ui;
 
 import javax.swing.JTabbedPane;
 
-import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
 import com.mostc.pftt.results.PhpResultPackWriter;
 import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner;
-import com.mostc.pftt.scenario.ScenarioSet;
 
 @SuppressWarnings("serial")
 public class PhpUnitDebuggerFrame extends JTabbedPane {
@@ -18,7 +16,7 @@ public class PhpUnitDebuggerFrame extends JTabbedPane {
 				test_pack_runner,
 				test_pack_runner.getRunnerHost(),
 				test_pack,
-				test_pack_runner.getScenarioSet()
+				test_pack_runner.getScenarioSetSetup()
 			));
 	}
 

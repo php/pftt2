@@ -29,6 +29,7 @@ import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 import com.mostc.pftt.scenario.AbstractSAPIScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.ErrorUtil;
 import com.mostc.pftt.util.GZIPOutputStreamLevel;
 import com.mostc.pftt.util.StringUtil2.LengthLimitStringWriter;
@@ -40,7 +41,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	protected final PhpBuild build;
 	protected final PhptSourceTestPack src_test_pack;
 	protected final PhptTestCase test_case;
-	protected final ScenarioSet scenario_set;
+	protected final ScenarioSetSetup scenario_set;
 	protected final PhptThread thread;
 	protected final AbstractSAPIScenario sapi_scenario;
 	protected final PhptActiveTestPack active_test_pack;
@@ -117,7 +118,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		}
 	}
 	
-	public AbstractPhptTestCaseRunner2(AbstractSAPIScenario sapi_scenario, PhpIni ini, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+	public AbstractPhptTestCaseRunner2(AbstractSAPIScenario sapi_scenario, PhpIni ini, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
 		this.sapi_scenario = sapi_scenario;
 		this.ini = ini;
 		this.thread = thread;
@@ -233,6 +234,11 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		return false;
 	} // end protected void evalSkipIf
 	
+	protected String preparePhptTestCode(String php_code) {
+		// TODO "<? xdebug_() ?>";
+		return php_code;
+	}
+	
 	static final Pattern PATTERN_CONTENT_TYPE = Pattern.compile("Content-Type:(.*)");
 	/** prepares to execute the test after the SKIPIF section is executed (if any)
 	 * #prepare prepares only up to that, this does the rest.
@@ -253,7 +259,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			host.copy(src_file, test_file);
 			
 		} else {
-			host.saveTextFile(test_file, test_case.get(EPhptSection.FILE), test_case.getCommonCharsetEncoder());
+			host.saveTextFile(test_file, preparePhptTestCode(test_case.get(EPhptSection.FILE)), test_case.getCommonCharsetEncoder());
 		}
 		//
 		

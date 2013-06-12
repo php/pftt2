@@ -19,8 +19,8 @@ public class NoDebugScenario extends AbstractDebugScenario {
 	}
 	
 	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
-		return false;
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
+		return null;
 	}
 
 	@Override

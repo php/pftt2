@@ -115,7 +115,7 @@ public abstract class AbstractRemoteTestPackRunner<A extends ActiveTestPack, S e
 				if (tag_name.equals("phptTestResult")) {
 					result = PhptTestResult.parse(parser);
 					
-					tmgr.addResult(remote_host, scenario_set, result);
+					// TODO tmgr.addResult(remote_host, scenario_set, result);
 				} else if (tag_name.equals("println")) {
 					type = parser.getAttributeValue(null, "type");
 					ctx = parser.getAttributeValue(null, "ctx");

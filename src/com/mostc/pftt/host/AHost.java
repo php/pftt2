@@ -36,7 +36,7 @@ import com.mostc.pftt.util.NTStatus;
  *
  */
 
-public abstract class AHost extends Host {
+public abstract class AHost extends Host implements IProgramRunner {
 	protected String sys_info, os_name, tmp_dir, system_drive, home_dir, php_sdk_dir;
 	
 	@Override

@@ -12,8 +12,8 @@ public class PhpBuildInfo {
 	protected EBuildType build_type;
 	protected ECompiler compiler;
 	protected ECPUArch cpu_arch;
-	protected EOSType os_type;
-	
+	protected EOSType os_type; 
+	 
 	static PhpBuildInfo open(File file) {
 		def root = new XmlSlurper().parse(file);
 		for ( def e : root.depthFirst().findAll { it.name() == 'build_info' } ) {

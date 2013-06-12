@@ -1,8 +1,10 @@
 package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.RemoteHost;
 import com.mostc.pftt.host.TempFileExecOutput;
+import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
 
@@ -25,7 +27,7 @@ public class SMBCAScenario extends AbstractSMBScenario {
 	}
 	
 	@Override
-	public SMBStorageDir createStorageDir(ConsoleManager cm, AHost local_host) {
+	public ITestPackStorageDir setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		// check that its win8
 		if (!remote_host.isWin8OrLater()) {
 			cm.println(EPrintType.XSKIP_OPERATION, getClass(), "Scenario can only be run against a Windows 2012+ Server");
@@ -34,7 +36,7 @@ public class SMBCAScenario extends AbstractSMBScenario {
 			cm.println(EPrintType.XSKIP_OPERATION, getClass(), "Scenario can only be run against a Windows Server, not a Windows client. "+remote_host.getOSNameLong()+" "+remote_host);
 			return null;
 		} else {
-			return super.createStorageDir(cm, local_host);
+			return super.setup(cm, host, build, scenario_set);
 		}
 	}
 	

@@ -22,7 +22,9 @@ import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
+import com.mostc.pftt.scenario.IScenarioSetup;
 import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.VisualStudioUtil;
 
 /** manages and monitors Apache HTTPD web server
@@ -77,10 +79,10 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		}
 	}
 	
-	public static boolean isSupported(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptTestCase test_case) {
+	public static boolean isSupported(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptTestCase test_case) {
 		if (build.isNTS(host)) {
 			cm.println(EPrintType.SKIP_OPERATION, ApacheManager.class, "Error Apache requires TS Php Build. NTS Php Builds aren't supported with Apache mod_php.");
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "NTS Build not supported", null, null, null, null, null, null, null, null, null, null, null));
+			twriter.addResult(host, scenario_set_setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "NTS Build not supported", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return false;
 		} else {
@@ -109,7 +111,6 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		PreparedApache prep = new PreparedApache();
 		prep.ini = ini;
 		prep.httpd = apache.httpd;
-		this.version = apache.version;
 		
 		String dll;
 		if (host.isWindows()) {
@@ -263,6 +264,11 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		}
 		
 		@Override
+		public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
+			
+		}
+		
+		@Override
 		public String getSAPIOutput() {
 			if (StringUtil.isNotEmpty(error_log)) {
 				// try to include server's error log
@@ -325,6 +331,16 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		@Override
 		public String getSAPIConfig() {
 			return conf_str;
+		}
+
+		@Override
+		public String getNameWithVersionInfo() {
+			return "Apache-ModPHP-"+apache_version.toString();
+		}
+
+		@Override
+		public String getName() {
+			return "Apache-ModPHP";
 		}
 		
 	} // end public class ApacheWebServerInstance
@@ -420,24 +436,64 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 	} // end public String writeConfigurationFile
 
 	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build) {
+	public ApacheSetup setup(ConsoleManager cm, Host host, PhpBuild build) {
 		EApacheVersion apache_version = decideApacheVersion(cm, host, build, this._apache_version);
 		
 		String httpd = apache_version.getHttpdPath(cm, host, build);
 		if (!host.exists(httpd))
-			return false;
+			return null;
 		else if (!host.isWindows())
-			return true; // don't need to do `-k install` on Linux
+			return null; // don't need to do `-k install` on Linux
 		
 		try {
 			// install Windows service
 			host.exec(httpd+" -k install", Host.ONE_MINUTE);
-			return true;
+			return new ApacheSetup(apache_version, host, httpd);
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "setup", ex, "Couldn't install Apache as a Windows service");
 		}
-		return false;
+		return null;
 	}
+	
+	public class ApacheSetup implements IScenarioSetup {
+		protected final Host host;
+		protected final String httpd;
+		protected final EApacheVersion apache_version;
+		
+		protected ApacheSetup(EApacheVersion apache_version, Host host, String httpd) {
+			this.apache_version = apache_version;
+			this.host = host;
+			this.httpd = httpd;
+		}
+		
+		@Override
+		public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
+			
+		}
+		
+		@Override
+		public void close(ConsoleManager cm) {
+			try {
+				host.exec(httpd+" -k stop", Host.ONE_MINUTE);
+			} catch ( Exception ex ) {
+				if (cm==null)
+					ex.printStackTrace();
+				else
+					cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "close", ex, "Exception stopping Apache");
+			}
+		}
+
+		@Override
+		public String getNameWithVersionInfo() {
+			return "Apache-ModPHP-"+apache_version.toString();
+		}
+
+		@Override
+		public String getName() {
+			return "Apache-ModPHP";
+		}
+		
+	} // end public class ApacheSetup
 	
 	@Override
 	public boolean start(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
@@ -505,12 +561,6 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		EApacheVersion apache_version = decideApacheVersion(null, host, build, _apache_version);
 		
 		return host.isWindows() ? host.joinIntoOnePath(apache_version.getApacheRoot(null, host, build), "htdocs") : "/var/www/localhost/htdocs";
-	}
-
-	String version;
-	@Override
-	public String getNameWithVersionInfo() {
-		return "Apache-ModPHP" + (version==null?"":"-"+version);
 	}
 
 	public void addToDebugPath(ConsoleManager cm, AHost host, PhpBuild build, Collection<String> debug_path) {

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
 import org.apache.http.Header;
@@ -31,7 +32,7 @@ import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
 import com.mostc.pftt.scenario.AbstractSAPIScenario;
-import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.ErrorUtil;
 import com.mostc.pftt.util.TimerUtil;
 import com.mostc.pftt.util.TimerUtil.TimerThread;
@@ -42,7 +43,7 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	protected WebServerInstance web = null;
 	protected boolean is_replacement = false;
 	protected String cookie_str;
-	protected DebuggingHttpClientConnection conn;
+	protected final AtomicReference<DebuggingHttpClientConnection> conn;
 	protected final HttpParams params;
 	protected final HttpProcessor httpproc;
 	protected final HttpRequestExecutor httpexecutor;
@@ -50,14 +51,16 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 
 	public HttpPhpUnitTestCaseRunner(AbstractSAPIScenario sapi_scenario, PhpUnitThread thread, ITestResultReceiver tmgr,
 			HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web,
-			Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build,
+			Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build,
 			PhpUnitTestCase test_case, String my_temp_dir, Map<String, String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
-		super(sapi_scenario, thread, tmgr, globals, env, cm, host, scenario_set, build, test_case, my_temp_dir, constants, include_path, include_files, ini, reflection_only);
+		super(sapi_scenario, thread, tmgr, globals, env, cm, host, scenario_set_setup, build, test_case, my_temp_dir, constants, include_path, include_files, ini, reflection_only);
 		this.params = params;
 		this.httpproc = httpproc;
 		this.httpexecutor = httpexecutor;
 		this.smgr = smgr;
 		this.web = web;
+		
+		conn = new AtomicReference<DebuggingHttpClientConnection>();
 		
 		// don't need request_bytes, just doing a really basic HTTP GET
 		this.response_bytes = new ByteArrayOutputStream();
@@ -160,7 +163,7 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 		try {
 			if (web!=null) {
 				synchronized(web) {
-					WebServerInstance _web = smgr.getWebServerInstance(cm, host, scenario_set, build, ini, env, my_temp_dir, web, false, test_case);
+					WebServerInstance _web = smgr.getWebServerInstance(cm, host, scenario_set.getScenarioSet(), build, ini, env, my_temp_dir, web, false, test_case);
 					if (_web!=this.web) {
 						this.web = _web;
 						is_replacement = true;
@@ -179,7 +182,7 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 			if (web==null) {
 				// test should be a FAIL or CRASH
 				// its certainly the fault of a test (not PFTT) if not this test
-				web = smgr.getWebServerInstance(cm, host, scenario_set, build, ini, env, my_temp_dir, web, false, test_case);
+				web = smgr.getWebServerInstance(cm, host, scenario_set.getScenarioSet(), build, ini, env, my_temp_dir, web, false, test_case);
 				
 				if (web==null||web.isCrashedOrDebuggedAndClosed()) {
 					markTestAsCrash();
@@ -252,11 +255,13 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 		HttpContext context = new BasicHttpContext(null);
 		HttpHost http_host = new HttpHost(web.hostname(), web.port());
 		
+		DebuggingHttpClientConnection conn = this.conn.get();
 		if (conn!=null) {
 			conn.close();
 			conn = null;
 		}
 		conn = new DebuggingHttpClientConnection(null, response_bytes);
+		this.conn.set(conn);
 		test_socket = null;
 		final TimerThread timeout_task = TimerUtil.waitSeconds(
 				sapi_scenario.getSlowTestTimeSeconds(), 
@@ -276,11 +281,12 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 				},
 				new Runnable() {
 					public void run() {
+						DebuggingHttpClientConnection conn = HttpPhpUnitTestCaseRunner.this.conn.get();
 						if (conn!=null) {
 							try {
 							conn.close();
 							} catch ( Exception ex ) {}
-							conn = null;
+							HttpPhpUnitTestCaseRunner.this.conn.set(null);
 						}
 						if (test_socket!=null) {
 							try {

@@ -32,7 +32,7 @@ public class NoCodeCacheScenario extends AbstractCodeCacheScenario {
 	}
 	
 	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
 		// assume SO is in same directory as PHP extensions
 		try {
 			// seems that PHP will load O+ if dll is there even though its not in INI
@@ -63,16 +63,16 @@ public class NoCodeCacheScenario extends AbstractCodeCacheScenario {
 				}
 			}
 			
-			return true;
+			return SETUP_SUCCESS;
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CLUE, "setup", ex, "couldn't make sure OptimizerPlus was disabled");
 		}
-		return false;
+		return null;
 	} // end public boolean setup
 
 	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
-		return true;
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		return SETUP_SUCCESS;
 	}
 
 	@Override

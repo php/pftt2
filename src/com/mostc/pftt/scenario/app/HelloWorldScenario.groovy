@@ -4,6 +4,7 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.scenario.ApplicationScenario;
+import com.mostc.pftt.scenario.IScenarioSetup;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 /** Simple PHP script that just prints 'Hello World'
@@ -15,7 +16,7 @@ import com.mostc.pftt.scenario.ScenarioSet;
 public class HelloWorldScenario extends ApplicationScenario {
 
 	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		def php_code = """
 <?php
 
@@ -26,7 +27,7 @@ echo "Hello World";
 		
 		host.saveTextFile("helloworld.php", php_code)
 		
-		return true;
+		return SETUP_SUCCESS;
 	}
 
 	@Override

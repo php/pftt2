@@ -31,6 +31,7 @@ import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.ErrorUtil;
 
 /**
@@ -178,22 +179,22 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 	}
 	
 	@Override
-	public void notifyStart(AHost this_host, ScenarioSet this_scenario_set, PhptTestCase test_case) {
+	public void notifyStart(AHost this_host, ScenarioSetSetup this_scenario_set, PhptTestCase test_case) {
 		// TODO Auto-generated method stub
 	}
 
 	@Override
-	public void notifyStart(AHost host, ScenarioSet scenario_set, PhpUnitSourceTestPack src_test_pack, PhpUnitTestCase test_case) {
+	public void notifyStart(AHost host, ScenarioSetSetup scenario_set, PhpUnitSourceTestPack src_test_pack, PhpUnitTestCase test_case) {
 		// TODO Auto-generated method stub
 	}
 
 	@Override
-	public void notifyStart(AHost host, ScenarioSet scenario_set, UITestPack test_pack, String web_browser_name_and_version, String test_name) {
+	public void notifyStart(AHost host, ScenarioSetSetup scenario_set, UITestPack test_pack, String web_browser_name_and_version, String test_name) {
 		// TODO Auto-generated method stub
 	}
 	
 	@Override
-	public void addResult(AHost this_host, ScenarioSet this_scenario_set, PhptTestResult result) {
+	public void addResult(AHost this_host, ScenarioSetSetup this_scenario_set, PhptTestResult result) {
 		try {
 			sendResult(result);
 		} catch ( Exception ex ) {
@@ -204,7 +205,7 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 	}
 	
 	@Override
-	public void addResult(AHost host, ScenarioSet scenario_set, PhpUnitTestResult phpUnitTestResult) {
+	public void addResult(AHost host, ScenarioSetSetup setup, PhpUnitTestResult phpUnitTestResult) {
 		
 	}
 	
@@ -460,11 +461,11 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 		// TODO
 	}
 	@Override
-	public void addTestException(AHost this_host, ScenarioSet this_scenario_set, TestCase test_file, Throwable ex, Object a) {
+	public void addTestException(AHost this_host, ScenarioSetSetup this_scenario_set, TestCase test_file, Throwable ex, Object a) {
 		addTestException(this_host, this_scenario_set, test_file, ex, a, null);
 	}
 	@Override
-	public void addTestException(AHost this_host, ScenarioSet this_scenario_set, TestCase test_case, Throwable ex, Object a, Object b) {
+	public void addTestException(AHost this_host, ScenarioSetSetup this_scenario_set, TestCase test_case, Throwable ex, Object a, Object b) {
 		String ex_str = ErrorUtil.toString(ex);
 		if (a!=null)
 			ex_str += " a="+a;
@@ -497,7 +498,7 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 		this.parser.setInput(parser_in, "utf-8");
 	}
 	
-	protected void generateSimulation(AHost host, ScenarioSet scenario_set) throws IOException {
+	protected void generateSimulation(AHost host, ScenarioSetSetup scenario_set) throws IOException {
 		final PrintStream orig_ps = System.out;
 		ByteArrayOutputStream out = new ByteArrayOutputStream(4096);
 		try {

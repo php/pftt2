@@ -69,20 +69,15 @@ public class SMBDFSScenario extends AbstractSMBScenario {
 	}
 	
 	@Override
-	public boolean setup(ConsoleManager cm, Host local_host, PhpBuild build, ScenarioSet scenario_set) {
-		return installDFSFeature(cm, local_host) && super.setup(cm, local_host, build, scenario_set);
-	}
-	
-	@Override
-	public DFSSMBStorageDir createStorageDir(ConsoleManager cm, AHost local_host) {
+	public ITestPackStorageDir setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		if (!remote_host.isWindows()) {
 			cm.println(EPrintType.XSKIP_OPERATION, getClass(), "Scenario can only be run against a Windows Server: "+remote_host);
 			return null;
 		} else if (!remote_host.isWindowsServer()) {
 			cm.println(EPrintType.XSKIP_OPERATION, getClass(), "Scenario can only be run against a Windows Server, not a Windows client. "+remote_host.getOSNameLong()+" "+remote_host);
 			return null;
-		} else if (installDFSFeature(cm, local_host)) {
-			DFSSMBStorageDir dir = (DFSSMBStorageDir) super.createStorageDir(cm, local_host);
+		} else if (installDFSFeature(cm, host)) {
+			DFSSMBStorageDir dir = (DFSSMBStorageDir) super.setup(cm, host, build, scenario_set);
 			if (dir==null)
 				return dir; // already would've done error msg
 			
@@ -96,7 +91,7 @@ public class SMBDFSScenario extends AbstractSMBScenario {
 	} // end public DFSSMBStorageDir createStorageDir
 	
 	@Override
-	protected DFSSMBStorageDir newSMBStorageDir() {
+	protected DFSSMBStorageDir createSMBStorageDir() {
 		return new DFSSMBStorageDir();
 	}
 	
@@ -116,7 +111,7 @@ public class SMBDFSScenario extends AbstractSMBScenario {
 		private boolean disposed;
 		
 		@Override
-		public boolean disposeForce(ConsoleManager cm, AHost local_host, ActiveTestPack active_test_pack) {
+		public boolean closeForce(ConsoleManager cm, AHost local_host, ActiveTestPack active_test_pack) {
 			if (disposed)
 				return true;
 			

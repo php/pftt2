@@ -95,32 +95,10 @@ public class ScenarioSet extends ArrayList<Scenario> {
 		return getName();
 	}
 	
-	/** returns this ScenarioSet's name and important version info (mainly just for reports)
-	 * 
-	 * Note: MUST be safe to use as part of a filename!
-	 * 
-	 * @see #getName - normally, use getName, its shorter. 
-	 * @return
-	 */
-	public String getNameWithVersionInfo() {
-		StringBuilder sb = new StringBuilder(50);
-		String str;
-		for ( Scenario s : this ) {
-			if (s.isPlaceholder())
-				continue;
-			else if (sb.length()>0)
-				sb.append('_');
-			str = s.getNameWithVersionInfo();
-			sb.append(str);
-		}
-		return sb.toString();
-	}
-	
 	/** returns the name of this ScenarioSet (the names of the contained Scenarios) as a String
 	 * 
 	 * Note: MUST be safe to use as part of a filename!
 	 * 
-	 * @see #getNameWithVersionInfo - returns a longer string with version info, etc...
 	 * @return
 	 */
 	public String getName() {

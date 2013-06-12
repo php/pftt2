@@ -1,4 +1,8 @@
 
+def describe() {
+	" "
+}
+
 def processConsoleOptions(List options) {
 	options.add("-no_thread_safety")
 	options.add("-thread_count")

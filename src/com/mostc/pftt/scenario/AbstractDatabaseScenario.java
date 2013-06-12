@@ -4,7 +4,6 @@ import java.util.Map;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
-import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 
 /** A Scenario that sets up a database service for (an) extension(s) to test.
@@ -61,14 +60,11 @@ public abstract class AbstractDatabaseScenario extends AbstractNetworkedServiceS
 		return true;
 	}
 	
-	@Override
-	public abstract EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhpIni _ini);
-	
 	protected String generate_database_name() {
 		return "pftt_1";
 	}
 	protected abstract void name_exists(String name);
 	
 	@Override
-	public abstract boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set);
+	public abstract IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set);
 }

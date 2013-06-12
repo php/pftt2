@@ -1,9 +1,9 @@
 package com.mostc.pftt.scenario;
 
-import java.io.IOException;
-
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.ActiveTestPack;
+import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
 
@@ -15,7 +15,7 @@ import com.mostc.pftt.results.EPrintType;
  */
 
 public class LocalFileSystemScenario extends AbstractFileSystemScenario {
-	protected static ITestPackStorageDir LOCAL_DIR = new ITestPackStorageDir() {
+	protected ITestPackStorageDir LOCAL_DIR = new AbstractTestPackStorageDir() {
 			@Override
 			public boolean notifyTestPackInstalled(ConsoleManager cm, AHost host) {
 				return true;
@@ -29,7 +29,7 @@ public class LocalFileSystemScenario extends AbstractFileSystemScenario {
 				return host.getPhpSdkDir();
 			}
 			@Override
-			public boolean disposeIfEmpty(ConsoleManager cm, AHost local_host, ActiveTestPack active_test_pack) {
+			public boolean closeIfEmpty(ConsoleManager cm, AHost local_host, ActiveTestPack active_test_pack) {
 				try {
 					return active_test_pack==null?false:local_host.deleteElevated(active_test_pack.getStorageDirectory());
 				} catch (Exception ex) {
@@ -38,8 +38,16 @@ public class LocalFileSystemScenario extends AbstractFileSystemScenario {
 				}
 			}
 			@Override
-			public boolean disposeForce(ConsoleManager cm, AHost local_host, ActiveTestPack active_test_pack) {
+			public boolean closeForce(ConsoleManager cm, AHost local_host, ActiveTestPack active_test_pack) {
 				return active_test_pack==null?false:local_host.deleteIfExistsElevated(active_test_pack.getStorageDirectory());
+			}
+			@Override
+			public String getNameWithVersionInfo() {
+				return getName();
+			}
+			@Override
+			public String getName() {
+				return LocalFileSystemScenario.this.getName();
 			}
 		};
 	
@@ -65,7 +73,7 @@ public class LocalFileSystemScenario extends AbstractFileSystemScenario {
 	}
 
 	@Override
-	public ITestPackStorageDir createStorageDir(ConsoleManager cm, AHost host) {
+	public ITestPackStorageDir setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		try {
 			host.mkdirs(host.getPhpSdkDir());
 			return LOCAL_DIR;

@@ -23,9 +23,9 @@ public class SSLSocketScenario extends AbstractSocketScenario {
 	}
 
 	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		// TODO configure HttpPhptTestCaseRunner and HttpPhpUnitTestCaseRunner to use SSL
-		return false;
+		return SETUP_FAILED;
 	}
 	
 	@Override

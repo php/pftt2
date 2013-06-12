@@ -23,6 +23,16 @@ public abstract class AbstractTestPackRunner<S extends SourceTestPack<?, T>, T e
 		this.runner_host = runner_host;
 	}
 	
+	public AHost getRunnerHost() {
+		return runner_host;
+	}
+	public AHost getStorageHost() {
+		return storage_host;
+	}
+	public ScenarioSet getScenarioSet() {
+		return scenario_set;
+	}
+	
 	public abstract void runAllTests(S test_pack) throws FileNotFoundException, IOException, Exception;
 	public abstract void runTestList(S test_pack, List<T> test_cases) throws Exception;
 	

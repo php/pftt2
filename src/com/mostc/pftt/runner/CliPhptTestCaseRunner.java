@@ -27,7 +27,7 @@ import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 import com.mostc.pftt.scenario.CliScenario;
-import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.NTStatus;
 
 /** one of the core classes. runs a PhptTestCase.
@@ -44,8 +44,8 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected ExecOutput output;
 	protected String query_string, shell_script, test_cmd, shell_file;
 	
-	public CliPhptTestCaseRunner(CliScenario sapi_scenario, CliSAPIInstance sapi, PhpIni ini, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
-		super(sapi_scenario, ini, thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
+	public CliPhptTestCaseRunner(CliScenario sapi_scenario, CliSAPIInstance sapi, PhpIni ini, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+		super(sapi_scenario, ini, thread, test_case, cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack);
 		this.sapi = sapi;
 	}
 	
@@ -63,7 +63,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				}
 			}
 			
-			env = generateENVForTestCase(cm, host, build, scenario_set, test_case);
+			env = generateENVForTestCase(cm, host, build, scenario_set.getScenarioSet(), test_case);
 			
 			return true;
 		}

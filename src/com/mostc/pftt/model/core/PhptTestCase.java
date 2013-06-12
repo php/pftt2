@@ -31,6 +31,7 @@ import com.mostc.pftt.model.core.PhpBuild.PHPOutput;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.apache.regexp.RE;
 import com.mostc.pftt.util.apache.regexp.RECompiler;
 import com.mostc.pftt.util.apache.regexp.REDebugCompiler;
@@ -47,6 +48,10 @@ import com.mostc.pftt.util.apache.regexp.REProgram;
  * A PHPT can check $_ENV['PFTT_IS'] to tell if its running under PFTT.
  * A PHPT can check $_ENV['PFTT_SCENARIO_SET'] to tell what scenarios its running under
  * 
+ * 
+ * Often, `repro scripts` from bug reports are turned into PHPTs. The body of PHPTs has been under development
+ * from many different people over many years. For those reasons, PHPT tests represent not only the best
+ * and most thorough way to test PHP Core, but they define what it is and what should do (and not do).
  * 
  * @see #hasBorkInfo()
  * @see #hasUnsupportedInfo()
@@ -365,7 +370,7 @@ public class PhptTestCase extends TestCase {
 	 * @param  
 	 * @return
 	 */
-	public RE getExpectedCompiled(AHost host, ScenarioSet scenario_set, ITestResultReceiver twriter) {
+	public RE getExpectedCompiled(AHost host, ScenarioSetSetup scenario_set, ITestResultReceiver twriter) {
 		return getExpectedCompiled(host, scenario_set, twriter, false);
 	}
 	
@@ -398,7 +403,7 @@ public class PhptTestCase extends TestCase {
 		return sb.toString().trim();
 	}
 	
-	public RE getExpectedCompiled(AHost host, ScenarioSet scenario_set, ITestResultReceiver twriter, boolean remove_warning_and_error) {
+	public RE getExpectedCompiled(AHost host, ScenarioSetSetup scenario_set, ITestResultReceiver twriter, boolean remove_warning_and_error) {
 		RE expected_re;
 		if (!remove_warning_and_error && this.expected_re!=null) {
 			expected_re = this.expected_re.get();
@@ -456,7 +461,7 @@ public class PhptTestCase extends TestCase {
 	 * @param dump_pw
 	 * @param output_pw
 	 */
-	public void debugExpectedRegularExpression(AHost host, ScenarioSet scenario_set, ITestResultReceiver twriter, String actual_str, PrintWriter dump_pw, PrintWriter output_pw) {
+	public void debugExpectedRegularExpression(AHost host, ScenarioSetSetup scenario_set, ITestResultReceiver twriter, String actual_str, PrintWriter dump_pw, PrintWriter output_pw) {
 		String expected_str;		
 		if (containsSection(EPhptSection.EXPECTREGEX)) {
 			expected_str = getTrim(EPhptSection.EXPECTREGEX);

@@ -38,9 +38,9 @@ import com.mostc.pftt.scenario.AbstractFileSystemScenario;
 import com.mostc.pftt.scenario.AbstractRemoteFileSystemScenario;
 import com.mostc.pftt.scenario.AbstractSAPIScenario;
 import com.mostc.pftt.scenario.AbstractWebServerScenario;
-import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.AbstractFileSystemScenario.ITestPackStorageDir;
+import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.ErrorUtil;
 
 /**
@@ -64,6 +64,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 	protected HashMap<String[],NonThreadSafeExt<T>> non_thread_safe_tests = new HashMap<String[],NonThreadSafeExt<T>>();
 	protected AbstractSAPIScenario sapi_scenario;
 	protected AbstractFileSystemScenario file_scenario;
+	protected ScenarioSetSetup scenario_set_setup;
 	protected LinkedBlockingQueue<NonThreadSafeExt<T>> non_thread_safe_exts = new LinkedBlockingQueue<NonThreadSafeExt<T>>();
 	protected LinkedBlockingQueue<TestCaseGroup<T>> thread_safe_groups = new LinkedBlockingQueue<TestCaseGroup<T>>();
 	
@@ -78,20 +79,14 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		}
 	}
 	
-	public AHost getRunnerHost() {
-		return runner_host;
-	}
-	public AHost getStorageHost() {
-		return storage_host;
+	public A getActiveTestPack() {
+		return active_test_pack;
 	}
 	public S getSourceTestPack() {
 		return src_test_pack;
 	}
-	public A getActiveTestPack() {
-		return active_test_pack;
-	}
-	public ScenarioSet getScenarioSet() {
-		return scenario_set;
+	public ScenarioSetSetup getScenarioSetSetup() {
+		return scenario_set_setup;
 	}
 	
 	
@@ -170,7 +165,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		ensureFileSystemScenario();
 		
 		// prepare storage
-		ITestPackStorageDir storage_dir = file_scenario.createStorageDir(cm, runner_host);
+		ITestPackStorageDir storage_dir = file_scenario.setup(cm, runner_host, build, scenario_set);
 		if (storage_dir == null) {
 			cm.println(EPrintType.CANT_CONTINUE, getClass(), "unable to prepare storage for test-pack, giving up!");
 			close();
@@ -178,7 +173,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			return null;
 		}
 		//
-		cm.println(EPrintType.CLUE, getClass(), "Scenario Set: "+scenario_set.getNameWithVersionInfo());
+		cm.println(EPrintType.CLUE, getClass(), "Scenario Set: "+scenario_set.getName());
 		setupStorageAndTestPack(storage_dir, test_cases);
 		
 		return storage_dir;
@@ -200,7 +195,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		//
 		// ensure all scenarios are implemented
 		if (!scenario_set.isImplemented()) {
-			cm.println(EPrintType.SKIP_OPERATION, getClass(), "Scenario Set not implemented: "+scenario_set.getNameWithVersionInfo());
+			cm.println(EPrintType.SKIP_OPERATION, getClass(), "Scenario Set not implemented: "+scenario_set_setup.getNameWithVersionInfo());
 			close();
 			return false;
 		} else if (!scenario_set.isSupported(cm, runner_host, build)) {
@@ -220,7 +215,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 				cm.println(EPrintType.COMPLETED_OPERATION, getClass(), "no test cases to run. did nothing.");
 			close();
 			if (storage_dir!=null)
-				storage_dir.disposeForce(cm, storage_host, active_test_pack);
+				storage_dir.closeForce(cm, storage_host, active_test_pack);
 			return;
 		}
 		
@@ -236,6 +231,9 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		checkHost(storage_host);
 		checkHost(runner_host);
 		
+		scenario_set_setup = ScenarioSetSetup.setupScenarioSet(cm, runner_host, build, scenario_set);
+		if (scenario_set_setup==null)
+			return;
 		
 		
 		
@@ -249,18 +247,6 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			storage_dir = doSetupStorageAndTestPack(true, test_cases);
 		if (storage_dir==null)
 			return;
-		//
-		
-		//
-		for ( Scenario scenario : scenario_set ) {
-			if (scenario!=file_scenario) {
-				if (!scenario.setup(cm, runner_host, build, scenario_set)) {
-					cm.println(EPrintType.CANT_CONTINUE, getClass(), "Scenario setup failed: "+scenario);
-					// don't close(); - leave setup for user to diagnose
-					return;
-				}
-			}
-		}
 		//
 		
 		/////////////////// installed test-pack, ready to go
@@ -287,7 +273,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 				cm.println(EPrintType.IN_PROGRESS, getClass(), "deleting/cleaning-up active test-pack: "+this.active_test_pack);
 				
 				// cleanup, delete test-pack, disconnect storage, etc...
-				storage_dir.disposeForce(cm, runner_host, this.active_test_pack); 
+				storage_dir.closeForce(cm, runner_host, this.active_test_pack); 
 			}
 			//
 		} finally {
@@ -295,7 +281,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			// closed by end of testing (otherwise `php.exe -S` will keep on running)
 			close();
 			if (storage_dir!=null)
-				storage_dir.disposeForce(cm, storage_host, active_test_pack);
+				storage_dir.closeForce(cm, storage_host, active_test_pack);
 		}
 	} // end public void runTestList
 	
@@ -305,6 +291,9 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		if (sapi_scenario!=null) {
 			// don't kill procs we're debugging
 			sapi_scenario.close(cm, cm.isDebugAll() || cm.isDebugList());
+		}
+		if (scenario_set_setup!=null) {
+			scenario_set_setup.close(cm);
 		}
 	}
 	
@@ -830,7 +819,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 							ex.printStackTrace();
 						// ignore
 					} catch ( Throwable ex ) {
-						twriter.addTestException(storage_host, scenario_set, test_case, ex, thread_wsi);
+						twriter.addTestException(storage_host, scenario_set_setup, test_case, ex, thread_wsi);
 					}
 					
 					try {

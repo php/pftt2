@@ -1,8 +1,7 @@
-import com.mostc.pftt.host.AHost;
-import com.mostc.pftt.model.core.PhpBuild;
-import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.scenario.ScenarioSet;
 
+def describe() {
+	"Load Joomla-CMS and Joomla-Platform"
+}
 
 def scenarios() {
 	// install Joomla CMS

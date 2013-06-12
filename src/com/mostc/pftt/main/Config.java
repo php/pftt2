@@ -141,6 +141,12 @@ public final class Config implements IENVINIFilter {
 		return hosts;
 	}
 	
+	public void showHelpMessages() {
+		// TODO get helpMsg() from config files
+		//      ex: list_builtin_functions
+		//      ex: internal_examples - copy to internal
+	}
+	
 	@Override
 	public void prepareEnv(ConsoleManager cm, Map<String,String> env) {
 		if (prepare_env_methods.isEmpty())
@@ -162,11 +168,20 @@ public final class Config implements IENVINIFilter {
 	public boolean processConsoleOptions(ConsoleManager cm, List<String> options) {
 		if (process_console_options_methods.isEmpty())
 			return false;
-		List<String> _options = ArrayUtil.clone(options);
+		final List<String> first_options = new ArrayList<String>(4);
+		@SuppressWarnings("serial")
+		List<String> _options = new ArrayList<String>(options.size()) {
+				public boolean add(String option) {
+					return first_options.add(option) && super.add(option);
+				}
+			};
+		_options.addAll(options);
 		for ( GroovyObject go : process_console_options_methods ) {
-			invokeMethod(null, cm, go, PROCESS_CONSOLE_OPTIONS_METHOD_NAME, options, null);
+			invokeMethod(null, cm, go, PROCESS_CONSOLE_OPTIONS_METHOD_NAME, _options, null);
 		}
-		return !_options.equals(options);
+		final boolean change = _options.equals(options);
+		options.addAll(0, first_options);
+		return !change;
 	}
 	
 	public static List<ScenarioSet> not(List<String> not_scenarios, List<ScenarioSet> scenario_sets) {
@@ -175,7 +190,7 @@ public final class Config implements IENVINIFilter {
 		Iterator<ScenarioSet> it = scenario_sets.iterator();
 		String nv;
 		while (it.hasNext()) {
-			nv = it.next().getNameWithVersionInfo().toLowerCase();
+			nv = it.next().getName().toLowerCase();
 			for ( String str : not_scenarios ) {
 				if (nv.contains(str.toLowerCase())) {
 					// match, remove it
@@ -250,7 +265,7 @@ public final class Config implements IENVINIFilter {
 		if (cm != null && this_scenario_sets.size()>0) {
 			String ss_str = "";
 			for ( ScenarioSet scenario_set : this_scenario_sets )
-				ss_str += scenario_set.getNameWithVersionInfo() + ", ";
+				ss_str += scenario_set.getName() + ", ";
 			cm.println(EPrintType.CLUE, Config.class, "Loaded "+this_scenario_sets.size()+" Scenario-Sets: "+ss_str);
 			
 		}

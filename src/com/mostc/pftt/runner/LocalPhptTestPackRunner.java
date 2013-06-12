@@ -100,14 +100,6 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 				return;
 			}
 			
-			for ( Scenario scenario : scenario_set ) {
-				if (!scenario.prepare(cm, runner_host, build, scenario_set, active_test_pack)) {
-					cm.println(EPrintType.CANT_CONTINUE, getClass(), "Scenario "+scenario.getNameWithVersionInfo()+" failed to prepare test-pack. See: "+scenario.getClass().getSimpleName());
-					close();
-					return;	
-				}
-			}
-			
 			cm.println(EPrintType.IN_PROGRESS, getClass(), "installed tests("+test_cases.size()+") from test-pack onto storage: local="+local_test_pack_dir+" remote="+remote_test_pack_dir);
 		}
 	} // end protected void setupStorageAndTestPack
@@ -135,14 +127,14 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 		String name = test_case.getName();
 		if (name.contains("svsvmsg")||name.contains("sysvshm")||name.contains("posix")||name.contains("sql")||name.contains("curl")||name.contains("ftp")||name.contains("dba")||name.contains("sybase")||name.contains("interbase")||name.contains("ldap")||name.contains("imap")||name.contains("oci")||name.contains("soap")||name.contains("xmlrpc")||name.contains("pcntl")||name.contains("odbc")||name.contains("snmp")||name.contains("pdo")) {
 			// TODO temp 5/29
-			twriter.addResult(runner_host, scenario_set, new PhptTestResult(runner_host, EPhptTestStatus.SKIP, test_case, "Skip", null, null, null, null, null, null, null, null, null, null, null));
+			twriter.addResult(runner_host, scenario_set_setup, new PhptTestResult(runner_host, EPhptTestStatus.SKIP, test_case, "Skip", null, null, null, null, null, null, null, null, null, null, null));
 			return null;
 		}
 		
 		final ESAPIType sapi_type = sapi_scenario.getSAPIType();
 		for ( Scenario scenario : scenario_set ) {
 			// usually just asking sapi_scenario, sometimes file system scenario
-			if (scenario.willSkip(cm, twriter, runner_host, scenario_set, sapi_type, build, test_case)) {
+			if (scenario.willSkip(cm, twriter, runner_host, scenario_set_setup, sapi_type, build, test_case)) {
 				// #willSkip will record the PhptTestResult explaining why it was skipped
 				//
 				// do some checking before making a PhpIni (part of group_key) below
@@ -153,12 +145,12 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 		
 		
 		//
-		group_key = sapi_scenario.createTestGroupKey(cm, runner_host, build, scenario_set, active_test_pack, test_case, filter, group_key);
+		group_key = sapi_scenario.createTestGroupKey(cm, runner_host, build, scenario_set_setup, active_test_pack, test_case, filter, group_key);
 		
 		//
 		// now that PhpIni is generated, we know which extensions will be loaded
 		//  so we can now skip tests of extensions that aren't loaded (faster than running every test's SKIPIF section)
-		if (sapi_scenario.willSkip(cm, twriter, runner_host, scenario_set, sapi_scenario.getSAPIType(), group_key.getPhpIni(), build, test_case)) {
+		if (sapi_scenario.willSkip(cm, twriter, runner_host, scenario_set_setup, sapi_scenario.getSAPIType(), group_key.getPhpIni(), build, test_case)) {
 			// #willSkip will record the PhptTestResult explaining why it was skipped
 			return null;
 		}
@@ -212,8 +204,8 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 
 		@Override
 		protected void runTest(TestCaseGroupKey group_key, PhptTestCase test_case) throws IOException, Exception, Throwable {
-			r = sapi_scenario.createPhptTestCaseRunner(this, group_key, test_case, cm, twriter, runner_host, scenario_set, build, src_test_pack, active_test_pack);
-			twriter.notifyStart(runner_host, scenario_set, test_case);
+			r = sapi_scenario.createPhptTestCaseRunner(this, group_key, test_case, cm, twriter, runner_host, scenario_set_setup, build, src_test_pack, active_test_pack);
+			twriter.notifyStart(runner_host, scenario_set_setup, test_case);
 			r.runTest(cm, this, LocalPhptTestPackRunner.this);
 		}
 
@@ -230,7 +222,7 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 
 		@Override
 		protected void recordSkipped(PhptTestCase test_case) {
-			twriter.addResult(runner_host, scenario_set, new PhptTestResult(runner_host, EPhptTestStatus.SKIP, test_case, "test timed out", null, null, null, null, null, null, null, null, null, null, null));
+			twriter.addResult(runner_host, scenario_set_setup, new PhptTestResult(runner_host, EPhptTestStatus.SKIP, test_case, "test timed out", null, null, null, null, null, null, null, null, null, null, null));
 		}
 		
 	} // end public class PhptThread

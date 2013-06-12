@@ -75,13 +75,13 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 	 * @param cm
 	 * @param twriter
 	 * @param host
-	 * @param scenario_set
+	 * @param scenario_set_setup
 	 * @param build
 	 * @param src_test_pack
 	 * @param active_test_pack
 	 * @return
 	 */
-	public abstract AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack);
+	public abstract AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack);
 	
 	public void close(ConsoleManager cm, boolean debug) {
 		
@@ -101,7 +101,7 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 	 * @param cm
 	 * @param host
 	 * @param build
-	 * @param scenario_set
+	 * @param scenario_set_setup
 	 * @param active_test_pack
 	 * @param test_case
 	 * @param filter
@@ -109,11 +109,11 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 	 * @return
 	 * @throws Exception
 	 */
-	public abstract TestCaseGroupKey createTestGroupKey(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack active_test_pack, PhptTestCase test_case, IENVINIFilter filter, TestCaseGroupKey group_key) throws Exception;
+	public abstract TestCaseGroupKey createTestGroupKey(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSetSetup scenario_set_setup, PhptActiveTestPack active_test_pack, PhptTestCase test_case, IENVINIFilter filter, TestCaseGroupKey group_key) throws Exception;
 	
-	public abstract PhpIni createIniForTest(ConsoleManager cm, AHost host, PhpBuild build, PhptActiveTestPack active_test_pack, ScenarioSet scenario_set);
+	public abstract PhpIni createIniForTest(ConsoleManager cm, AHost host, PhpBuild build, PhptActiveTestPack active_test_pack, ScenarioSetSetup scenario_set_setup);
 
-	public abstract AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(PhpUnitThread thread, TestCaseGroupKey group_key, ConsoleManager cm, ITestResultReceiver twriter, Map<String,String> globals, Map<String,String> env, AHost runner_host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only);
+	public abstract AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(PhpUnitThread thread, TestCaseGroupKey group_key, ConsoleManager cm, ITestResultReceiver twriter, Map<String,String> globals, Map<String,String> env, AHost runner_host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only);
 	
 	public static Trie TESTS53 = PhptTestCase.createNamed(
 			"ext/filter/tests/bug39763.phpt", 
@@ -186,11 +186,11 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 	public static Trie SCENARIO_EXTS = PhptTestCase.createExtensions("dba", "sybase", "snmp", "interbase", "ldap", "imap", "oci8", "pcntl", "soap", "xmlrpc", "pdo", "odbc", "pdo_mysql", "pdo_mssql", "mssql", "pdo_pgsql", "sybase_ct", "mysqli", "ftp", "curl");
 
 	@Override
-	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup setup, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
 		if (host.isWindows()) {
 			if (test_case.isExtension(NON_WINDOWS_EXTS)) {
 				// extensions not supported on Windows
-				twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "OS not supported", null, null, null, null, null, null, null, null, null, null, null));
+				twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "OS not supported", null, null, null, null, null, null, null, null, null, null, null));
 				
 				return true;
 			}
@@ -199,36 +199,36 @@ public abstract class AbstractSAPIScenario extends AbstractSerialScenario {
 			// skip windows specific tests if host is not windows
 			// do an early quick check... also fixes problem with sapi/cli/tests/021.phpt
 			
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "OS not supported", null, null, null, null, null, null, null, null, null, null, null));
+			twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "OS not supported", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return true;
 		}
 		if (build.is53(cm, host)) {
 			if (test_case.isNamed(TESTS53)) {
-				twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null, null));
+				twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null, null));
 				
 				return true;	
 			}
 		}
 		// TODO || ?
 		if (test_case.containsSection(EPhptSection.REQUEST)||test_case.isNamed(RANDOMLY_FAIL)) {
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null, null));
+			twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return true;
 		} else if (test_case.isExtension(SCENARIO_EXTS)) {
 			// TODO don't run these SKIPIFs without the scenario loaded
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.SKIP, test_case, "test would've been skipped", null, null, null, null, null, null, null, null, null, null, null));
+			twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.SKIP, test_case, "test would've been skipped", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return true;
 		}
 		return false;
 	} // end public boolean willSkip
 	
-	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpIni ini, PhpBuild build, PhptTestCase test_case) throws Exception {
+	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, ESAPIType type, PhpIni ini, PhpBuild build, PhptTestCase test_case) throws Exception {
 		if (test_case.isExtensionTest() && !build.isExtensionEnabled(cm, host, type, ini, test_case.getExtensionName())) {
 			// if extension-under-test is not loaded, don't bother running test since it'll just be skipped (or false fail)
 			
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.SKIP, test_case, "Extension not loaded", null, null, null, ini, null, null, null, null, null, null, null));
+			twriter.addResult(host, scenario_set_setup, new PhptTestResult(host, EPhptTestStatus.SKIP, test_case, "Extension not loaded", null, null, null, ini, null, null, null, null, null, null, null));
 			
 			return true;
 		}

@@ -15,22 +15,17 @@ import com.mostc.pftt.results.ConsoleManager;
 public class APCScenario extends AbstractCodeCacheScenario {
 
 	@Override
-	public String getNameWithVersionInfo() {
-		return "APC-3.1.13";
-	}
-	
-	@Override
 	public String getName() {
 		return "APC";
 	}
 	
 	@Override
 	public boolean isImplemented() {
-		return true;
+		return false;
 	}
 
 	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
 		// TODO download and install APC.dll
 		
 		ini.putSingle("apc.enable", 1);
@@ -38,7 +33,7 @@ public class APCScenario extends AbstractCodeCacheScenario {
 		// add php_apc.dll (or apc.so) extension
 		ini.addExtension(host, build, "apc");
 		
-		return true;
+		return SETUP_FAILED;
 	}
 
 	@Override
@@ -49,6 +44,11 @@ public class APCScenario extends AbstractCodeCacheScenario {
 	@Override
 	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		return true;
+	}
+
+	@Override
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		return SETUP_FAILED;
 	}
 
 } // end public class APCScenario

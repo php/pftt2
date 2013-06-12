@@ -1,0 +1,21 @@
+--- a/core/vendor/composer/autoload_classmap.php	Wed Jun 05 07:58:21 2013
++++ b/core/vendor/composer/autoload_classmap.php	Tue Jun 11 23:10:22 2013
+@@ -9,7 +9,8 @@
+     'File_Iterator' => $vendorDir . '/phpunit/php-file-iterator/File/Iterator.php',
+     'File_Iterator_Facade' => $vendorDir . '/phpunit/php-file-iterator/File/Iterator/Facade.php',
+     'File_Iterator_Factory' => $vendorDir . '/phpunit/php-file-iterator/File/Iterator/Factory.php',
+-    'PHPUnit_Extensions_GroupTestSuite' => $vendorDir . '/phpunit/phpunit/PHPUnit/Extensions/GroupTestSuite.php',
++	// PFTT: use PFTT's copy of PhpUnit instead of Drupal's
++/*    'PHPUnit_Extensions_GroupTestSuite' => $vendorDir . '/phpunit/phpunit/PHPUnit/Extensions/GroupTestSuite.php',
+     'PHPUnit_Extensions_PhptTestCase' => $vendorDir . '/phpunit/phpunit/PHPUnit/Extensions/PhptTestCase.php',
+     'PHPUnit_Extensions_PhptTestCase_Logger' => $vendorDir . '/phpunit/phpunit/PHPUnit/Extensions/PhptTestCase/Logger.php',
+     'PHPUnit_Extensions_PhptTestSuite' => $vendorDir . '/phpunit/phpunit/PHPUnit/Extensions/PhptTestSuite.php',
+@@ -183,7 +184,7 @@
+     'PHP_CodeCoverage_Report_Text' => $vendorDir . '/phpunit/php-code-coverage/PHP/CodeCoverage/Report/Text.php',
+     'PHP_CodeCoverage_Util' => $vendorDir . '/phpunit/php-code-coverage/PHP/CodeCoverage/Util.php',
+     'PHP_CodeCoverage_Util_InvalidArgumentHelper' => $vendorDir . '/phpunit/php-code-coverage/PHP/CodeCoverage/Util/InvalidArgumentHelper.php',
+-    'PHP_CodeCoverage_Version' => $vendorDir . '/phpunit/php-code-coverage/PHP/CodeCoverage/Version.php',
++    'PHP_CodeCoverage_Version' => $vendorDir . '/phpunit/php-code-coverage/PHP/CodeCoverage/Version.php', */
+     'PHP_Timer' => $vendorDir . '/phpunit/php-timer/PHP/Timer.php',
+     'PHP_Token' => $vendorDir . '/phpunit/php-token-stream/PHP/Token.php',
+     'PHP_TokenWithScope' => $vendorDir . '/phpunit/php-token-stream/PHP/Token.php',

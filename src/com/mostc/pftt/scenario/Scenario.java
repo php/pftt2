@@ -14,7 +14,6 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.ESAPIType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
-import com.mostc.pftt.model.core.PhptActiveTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
@@ -41,10 +40,11 @@ import com.mostc.pftt.results.ITestResultReceiver;
 public abstract class Scenario {
 
 	@Overridable
-	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup setup, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
 		return false;
 	}
 	
+	@Overridable
 	public Class<?> getSerialKey(EScenarioSetPermutationLayer layer) {
 		return getClass();
 	}
@@ -58,76 +58,64 @@ public abstract class Scenario {
 	 * @param build
 	 * @param debug_path
 	 */
+	@Overridable
 	public void addToDebugPath(ConsoleManager cm, AHost host, PhpBuild build, Collection<String> debug_path) {
 		
 	}
 	
-	public boolean prepare(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhptActiveTestPack test_pack) {
-		return true;
-	}
-	
+	@Overridable
 	public boolean setupRequired() {
 		return !isPlaceholder();
 	}
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
-		return true;
+	
+	@Overridable
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		return SETUP_SUCCESS;
 	}
-	public static enum EScenarioStartState {
-		STARTED,
-		FAILED_TO_START,
-		SKIP
-	}
-	/** not called if #isPlaceholder is true
-	 * 
-	 * @param cm
-	 * @param host
-	 * @param build
-	 * @param scenario_set
-	 * @param _ini
-	 * @return
-	 */
-	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhpIni _ini) {
-		return EScenarioStartState.STARTED;
-	}
-	/** not called if #isPlaceholder is true
-	 * 
-	 * @param cm
-	 * @param host
-	 * @param build
-	 * @param scenario_set
-	 * @param _ini
-	 * @return
-	 */
-	public boolean stop(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhpIni _ini) {
-		return true;
-	}
+	public static final IScenarioSetup SETUP_SUCCESS = new IScenarioSetup() {
+			@Override
+			public void close(ConsoleManager cm) {
+				
+			}
+			@Override
+			public String getNameWithVersionInfo() {
+				return getName();
+			}
+			@Override
+			public String getName() {
+				return "Success";
+			}
+			@Override
+			public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
+				
+			}
+		};
+	public static final IScenarioSetup SETUP_FAILED = null;
+	
 	public abstract String getName();
 	public abstract boolean isImplemented();
-	
-	/**
-	 * 
-	 * @return
-	 */
-	public String getNameWithVersionInfo() {
-		return getName();
-	}
-	
+		
 	/** @see ScenarioSet#getENV
 	 * 
+	 * @see #hasENV
 	 * @param env
 	 */
+	@Overridable
 	public void getENV(Map<String, String> env) {
-		
+		// TODO move to IScenarioSetup
 	}
 	
+	@Overridable
 	public boolean isPlaceholder() {
 		return false;
 	}
 	
+	@Overridable
 	public boolean ignoreForShortName() {
 		return isPlaceholder();
 	}
 
+	@Overridable
 	public boolean hasENV() {
 		return false;
 	}
@@ -138,14 +126,17 @@ public abstract class Scenario {
 	 * #start
 	 * @return
 	 */
+	@Overridable
 	public boolean isUACRequiredForStart() {
 		return false;
 	}
 	
+	@Overridable
 	public boolean isUACRequiredForSetup() {
 		return false;
 	}
 	
+	@Overridable
 	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		return true;
 	}

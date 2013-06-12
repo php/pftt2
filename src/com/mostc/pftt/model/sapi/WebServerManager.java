@@ -14,6 +14,7 @@ import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
+import com.mostc.pftt.scenario.IScenarioSetup;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 /** Manages a certain type of web server, such as PHP's builtin web server.
@@ -39,7 +40,7 @@ public abstract class WebServerManager extends SAPIManager {
 	 * @param build
 	 * @return TRUE if web server was setup ok, or if already setup. FALSE only if web server is NOT setup
 	 */
-	public abstract boolean setup(ConsoleManager cm, Host host, PhpBuild build);
+	public abstract IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build);
 	
 	public abstract boolean start(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini);
 	
@@ -48,7 +49,7 @@ public abstract class WebServerManager extends SAPIManager {
 	public abstract String getName();
 	
 	/** closes all web servers this managed
-	 * @param cm TODO
+	 * @param cm 
 	 * @param debug - TRUE if you might want to debug a web server that has crashed
 	 */
 	public void close(ConsoleManager cm, boolean debug) {
@@ -149,7 +150,7 @@ public abstract class WebServerManager extends SAPIManager {
 		// for some phpunits
 		env.put(AbstractPhptTestCaseRunner.ENV_PHP_PATH, build.getPhpCgiExe());
 		//
-		env.put(AbstractPhptTestCaseRunner.ENV_PFTT_SCENARIO_SET, scenario_set.getNameWithVersionInfo());
+		env.put(AbstractPhptTestCaseRunner.ENV_PFTT_SCENARIO_SET, scenario_set.getName());
 		env.put(AbstractPhptTestCaseRunner.ENV_PFTT_IS, "1");
 		return env;
 	}
@@ -185,7 +186,5 @@ public abstract class WebServerManager extends SAPIManager {
 			return false;
 		}
 	}
-
-	public abstract String getNameWithVersionInfo();
 	
 } // end public abstract class WebServerManager

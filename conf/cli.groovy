@@ -1,5 +1,7 @@
 
-import com.mostc.pftt.scenario.Scenario;
+def describe() {
+	"Run PHP on Command Line"
+}
 
 def scenarios() {
 	Scenario.CLI_SCENARIO;

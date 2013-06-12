@@ -17,7 +17,7 @@ import com.mostc.pftt.results.PhpResultPackWriter;
 import com.mostc.pftt.results.PhpUnitResultWriter;
 import com.mostc.pftt.runner.AbstractTestPackRunner.ETestPackRunnerState;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner;
-import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.scenario.ScenarioSetSetup;
 
 import se.datadosen.component.RiverLayout;
 
@@ -25,7 +25,7 @@ import se.datadosen.component.RiverLayout;
 public class PhpUnitHostTab extends JPanel {
 	protected final AHost host;
 	protected final PhpUnitSourceTestPack test_pack;
-	protected final ScenarioSet scenario_set;
+	protected final ScenarioSetSetup scenario_set_setup;
 	protected PhpUnitResultWriter writer;
 	//
 	protected JLabel pass_label, failure_label, error_label, warning_label, notice_label,
@@ -38,11 +38,11 @@ public class PhpUnitHostTab extends JPanel {
 	protected PhpUnitByTest by_test;
 	protected JPanel workarea;
 
-	public PhpUnitHostTab(final LocalPhpUnitTestPackRunner test_pack_runner, AHost host, PhpUnitSourceTestPack test_pack, ScenarioSet scenario_set) {
+	public PhpUnitHostTab(final LocalPhpUnitTestPackRunner test_pack_runner, AHost host, PhpUnitSourceTestPack test_pack, ScenarioSetSetup scenario_set) {
 		super(new RiverLayout());
 		this.host = host;
 		this.test_pack = test_pack;
-		this.scenario_set = scenario_set;
+		this.scenario_set_setup = scenario_set;
 		add("p left", stop_button = new JButton("Stop"));
 		stop_button.addActionListener(new ActionListener() {
 				@Override
@@ -118,7 +118,7 @@ public class PhpUnitHostTab extends JPanel {
 	}
 	
 	public void setPhpResultPackWriter(PhpResultPackWriter result_pack) {
-		writer = (PhpUnitResultWriter) result_pack.getPhpUnit(host, test_pack, scenario_set);
+		writer = (PhpUnitResultWriter) result_pack.getPhpUnit(host, test_pack, scenario_set_setup);
 	}
 	
 	public void setStatus(EPhpUnitTestStatus status) {

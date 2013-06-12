@@ -23,7 +23,6 @@ import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.scenario.AbstractCodeCacheScenario;
 import com.mostc.pftt.scenario.AbstractFileSystemScenario.ITestPackStorageDir;
 import com.mostc.pftt.scenario.AbstractSMBScenario.SMBStorageDir;
-import com.mostc.pftt.scenario.AbstractINIScenario;
 import com.mostc.pftt.scenario.AbstractWebServerScenario;
 import com.mostc.pftt.scenario.PhpUnitReflectionOnlyScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
@@ -128,7 +127,7 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 		// CRITICAL: provide the INI to run all PhpUnitTestCases
 		//           unlike PhptTestCases all PhpUnitTestCases share the same INI and environment variables
 		PhpIni ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, runner_host, build);
-		AbstractINIScenario.setupScenarios(cm, runner_host, scenario_set, build, ini);
+		scenario_set_setup.prepareINI(cm, runner_host, build, ini);
 		src_test_pack.prepareINI(cm, runner_host, scenario_set, build, ini);
 				
 		return new TestCaseGroupKey(ini, null);
@@ -188,7 +187,7 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 					globals,
 					env,
 					runner_host,
-					scenario_set,
+					scenario_set_setup,
 					build,
 					test_case,
 					my_temp_dir,
@@ -198,7 +197,7 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 					group_key.getPhpIni(),
 					reflection_only
 				);
-			twriter.notifyStart(runner_host, scenario_set, src_test_pack, test_case);
+			twriter.notifyStart(runner_host, scenario_set_setup, src_test_pack, test_case);
 			r.runTest(cm, this, LocalPhpUnitTestPackRunner.this);
 		}
 
@@ -215,7 +214,7 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 
 		@Override
 		protected void recordSkipped(PhpUnitTestCase test_case) {
-			twriter.addResult(runner_host, scenario_set, new PhpUnitTestResult(test_case, EPhpUnitTestStatus.SKIP, scenario_set, runner_host, null, null, 0, "PFTT: Test Timed Out", null));
+			twriter.addResult(runner_host, scenario_set_setup, new PhpUnitTestResult(test_case, EPhpUnitTestStatus.SKIP, scenario_set_setup, runner_host, null, null, 0, "PFTT: Test Timed Out", null));
 		}
 		
 	} // end public class PhpUnitThread

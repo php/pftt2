@@ -24,6 +24,7 @@ import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
 import com.mostc.pftt.model.core.PhpBuildInfo;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.scenario.ScenarioSetSetup;
 
 /** Writes PhpUnitTestResults from a single test run with a single scenario set on a single host with a single build.
  * 
@@ -48,7 +49,7 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 	protected final PrintWriter all_csv_pw, started_pw;
 	protected final HashMap<EPhpUnitTestStatus,StatusListEntry> status_list_map;
 	protected HashMap<String,String> output_by_name;
-	protected final ScenarioSet scenario_set;
+	protected final ScenarioSetSetup scenario_set_setup;
 	protected final AHost host;
 	protected final PhpBuildInfo build_info;
 	protected final String test_pack_name_and_version;
@@ -57,10 +58,10 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 	private String last_test_suite_name;
 	protected int test_count;
 	
-	public PhpUnitResultWriter(File dir, PhpBuildInfo build_info, AHost host, ScenarioSet scenario_set, PhpUnitSourceTestPack test_pack) throws FileNotFoundException, IOException {
+	public PhpUnitResultWriter(File dir, PhpBuildInfo build_info, AHost host, ScenarioSetSetup scenario_set_setup, PhpUnitSourceTestPack test_pack) throws FileNotFoundException, IOException {
 		this.build_info = build_info;
 		this.host = host;
-		this.scenario_set = scenario_set;
+		this.scenario_set_setup = scenario_set_setup;
 		this.test_pack_name_and_version = test_pack.getNameAndVersionString().intern();
 		
 		this.dir = dir;
@@ -72,7 +73,7 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 		output_by_name = new HashMap<String,String>(800);
 		
 		// include scenario-set in file name to make it easier to view a bunch of them in Notepad++ or other MDIs
-		File file = new File(dir+"/"+StringUtil.max("phpunit_"+test_pack.getName()+"_"+scenario_set.getNameWithVersionInfo(), 80)+".xml");
+		File file = new File(dir+"/"+StringUtil.max("phpunit_"+test_pack.getName()+"_"+scenario_set_setup.getNameWithVersionInfo(), 40)+".xml");
 		
 		// XXX write host, scenario_set and build to file (do in #writeTally or #close)
 		serial  = new KXmlSerializer();
@@ -127,6 +128,10 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 			
 			journal_writer = null;
 			test_names = null;
+			
+			if (test_count==0) {
+				dir.delete();
+			}
 		}
 	} // end protected class StatusListEntry
 	
@@ -286,10 +291,13 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 	}
 	@Override
 	public String getScenarioSetNameWithVersionInfo() {
-		return scenario_set.getNameWithVersionInfo();
+		return scenario_set_setup.getNameWithVersionInfo();
 	}
 	public ScenarioSet getScenarioSet() {
-		return scenario_set;
+		return scenario_set_setup.getScenarioSet();
+	}
+	public ScenarioSetSetup getScenarioSetSetup() {
+		return scenario_set_setup;
 	}
 	@Override
 	public int count(EPhpUnitTestStatus status) {

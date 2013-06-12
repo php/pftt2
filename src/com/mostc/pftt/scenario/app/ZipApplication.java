@@ -7,6 +7,7 @@ import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.scenario.AbstractWebServerScenario;
 import com.mostc.pftt.scenario.ApplicationScenario;
+import com.mostc.pftt.scenario.IScenarioSetup;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 public abstract class ZipApplication extends ApplicationScenario {
@@ -14,13 +15,13 @@ public abstract class ZipApplication extends ApplicationScenario {
 	protected String app_dir;
 	
 	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		if (true)
-			return true; // TODO
+			return SETUP_SUCCESS; // TODO
 		AbstractWebServerScenario web = AbstractWebServerScenario.getWebServerScenario(scenario_set);
 		if (web == null) {
 			cm.println(EPrintType.SKIP_OPERATION, getClass(), "add a web server (ex: apache) to -config console option and try again");
-			return false;
+			return SETUP_FAILED;
 		}
 		
 		String zip_file = getZipAppFileName();
@@ -30,16 +31,16 @@ public abstract class ZipApplication extends ApplicationScenario {
 		if (!host.exists(app_dir)) {
 			//
 			if (!host.unzip(cm, zip_file, app_dir))
-				return false;
+				return SETUP_FAILED;
 			
 		}
 		
 		if (!configure(cm, host, build, scenario_set, app_dir))
-			return false;
+			return SETUP_FAILED;
 		
 		//web.start(cm, host, build, scenario_set, web.getDefaultDocroot(host, build));
 		
-		return true;
+		return SETUP_FAILED;
 	} // end public boolean setup
 
 	protected abstract String getZipAppFileName();

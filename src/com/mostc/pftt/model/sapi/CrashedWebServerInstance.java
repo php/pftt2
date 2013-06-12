@@ -2,8 +2,11 @@ package com.mostc.pftt.model.sapi;
 
 import java.util.Map;
 
+import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.scenario.ScenarioSet;
 
 /** special marker for WebServerInstances that crashed on startup/couldn't be started.
  * 
@@ -26,6 +29,11 @@ public class CrashedWebServerInstance extends WebServerInstance {
 		super(ws_mgr, null, ini, env);
 		this.sapi_output = sapi_output;
 		this.instance_info = instance_info;
+	}
+	
+	@Override
+	public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
+		
 	}
 	
 	@Override
@@ -90,6 +98,16 @@ public class CrashedWebServerInstance extends WebServerInstance {
 	@Override
 	public boolean isCrashedAndDebugged() {
 		return false;
+	}
+
+	@Override
+	public String getNameWithVersionInfo() {
+		return getName();
+	}
+
+	@Override
+	public String getName() {
+		return "Crashed";
 	}
 
 } // end public class CrashedWebServerInstance

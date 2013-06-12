@@ -1,7 +1,10 @@
 package com.mostc.pftt.scenario;
 
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.ActiveTestPack;
+import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 
 /** 
@@ -21,7 +24,7 @@ public abstract class AbstractFileSystemScenario extends AbstractSerialScenario 
 		return AbstractFileSystemScenario.class;
 	}
 	
-	public interface ITestPackStorageDir {
+	public interface ITestPackStorageDir extends IScenarioSetup {
 		/** called once test pack is copied/installed to storage dir.
 		 * 
 		 * returns FALSE if shouldn't proceed with using test-pack on storage dir
@@ -62,7 +65,7 @@ public abstract class AbstractFileSystemScenario extends AbstractSerialScenario 
 		 * @param active_test_pack
 		 * @return
 		 */
-		boolean disposeIfEmpty(ConsoleManager cm, AHost local_host, ActiveTestPack active_test_pack);
+		boolean closeIfEmpty(ConsoleManager cm, AHost local_host, ActiveTestPack active_test_pack);
 		
 		/** disposes of the directory, deleting all files, shares, namespaces, etc... that
 		 * back this StorageDirectory
@@ -73,10 +76,21 @@ public abstract class AbstractFileSystemScenario extends AbstractSerialScenario 
 		 * @param active_test_pack 
 		 * @return
 		 */
-		boolean disposeForce(ConsoleManager cm, AHost local_host, ActiveTestPack active_test_pack);
+		boolean closeForce(ConsoleManager cm, AHost local_host, ActiveTestPack active_test_pack);
 	} // end public interface ITestPackStorageDir
 	
-	public abstract ITestPackStorageDir createStorageDir(ConsoleManager cm, AHost host);
+	public static abstract class AbstractTestPackStorageDir implements ITestPackStorageDir {
+		@Override
+		public void close(ConsoleManager cm) {
+			
+		}
+		@Override
+		public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
+			
+		}
+	}
+	
+	public abstract ITestPackStorageDir setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set);
 	
 	/** checks if -phpt-in-place console option can be ignored or not
 	 * 

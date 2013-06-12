@@ -19,9 +19,9 @@ public class NormalPathsScenario extends PathsScenario {
 	}
 
 	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		// TODO Auto-generated method stub
-		return true;
+		return SETUP_FAILED;
 	}
 
 	@Override

@@ -7,6 +7,6 @@ import com.mostc.pftt.results.ConsoleManager;
 public abstract class AbstractOptionScenario extends AbstractSerialScenario {
 
 	@Override
-	public abstract boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set);
+	public abstract IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set);
 	
 }

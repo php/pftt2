@@ -31,9 +31,15 @@ import com.mostc.pftt.results.ConsoleManager;
 public class XDebugScenario extends AbstractDebugScenario {
 
 	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
-		// TODO Auto-generated method stub
-		return false;
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
+		ini.putSingle("xdebug.default_enable", "1");
+		ini.putSingle("xdebug.coverage_enable", "1");
+		ini.putSingle("xdebug.collect_params", "1");
+		ini.putSingle("xdebug.collect_assignments", "1");
+		ini.putSingle("xdebug.collect_includes", "1");
+		ini.putSingle("xdebug.collect_return", "1");
+		ini.putSingle("xdebug.auto_trace", "1");
+		return SETUP_SUCCESS;
 	}
 
 	@Override
@@ -43,7 +49,7 @@ public class XDebugScenario extends AbstractDebugScenario {
 
 	@Override
 	public boolean isImplemented() {
-		return false;
+		return true;
 	}
 	
 }

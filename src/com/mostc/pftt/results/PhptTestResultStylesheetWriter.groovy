@@ -1,7 +1,7 @@
 package com.mostc.pftt.results
 
 final class PhptTestResultStylesheetWriter {
-	static def writeStylesheet(String file_path) {
+	static def writeStylesheet(String file_path) {  
 		FileWriter fw = new FileWriter(file_path)
 		fw.write("""
 <?xml version="1.0" encoding="UTF-8"?>

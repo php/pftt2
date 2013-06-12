@@ -1,3 +1,3 @@
 @ECHO OFF
 REM windows doesn't do aliases, so have to make a batch script. see `pftt_shell` on *nix
-list_config %*
+pftt -ignore_unknown_option %* list_config %*

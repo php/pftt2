@@ -50,10 +50,6 @@ public class MySQLScenario extends AbstractDatabaseScenario {
 			return;
 		// TODO mysql.exec("DROP DATABASE $db_name");
 	}
-	@Override
-	public EScenarioStartState start(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, PhpIni _ini) {
-		return EScenarioStartState.SKIP;
-	}
 	void start(Object host) {
 		// already started?
 		// TODO host.exec_pw("/etc/init.d/mysql start", "net start mysql");
@@ -99,9 +95,9 @@ public class MySQLScenario extends AbstractDatabaseScenario {
 		return "MySQL";
 	}
 	@Override
-	public boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		// TODO Auto-generated method stub
-		return true;
+		return SETUP_SUCCESS;
 	}
 	@Override
 	public void getENV(Map<String, String> env) {
@@ -112,8 +108,5 @@ public class MySQLScenario extends AbstractDatabaseScenario {
 	public void setGlobals(Map<String, String> globals) {
 		AbstractPhpUnitTestCaseRunner.addDatabaseConnection(dsn, username, password, database, globals);
 	}
-	@Override
-	public String getNameWithVersionInfo() {
-		return "MySQL-5.6"; // XXX -[server implementation and server version]
-	}	
+	
 } // end class MySQLScenario

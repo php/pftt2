@@ -9,6 +9,7 @@ import com.mostc.pftt.model.app.EPhpUnitTestStatus;
 import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.scenario.ScenarioSetSetup;
 
 /** result of running a PhpUnitTestCase
  * 
@@ -19,7 +20,7 @@ import com.mostc.pftt.scenario.ScenarioSet;
 public class PhpUnitTestResult {
 	public final PhpUnitTestCase test_case;
 	public final EPhpUnitTestStatus status;
-	public final ScenarioSet scenario_set;
+	public final ScenarioSetSetup scenario_set;
 	public final Host host;
 	public final String output;
 	public String http_response;
@@ -27,7 +28,7 @@ public class PhpUnitTestResult {
 	public PhpIni ini;
 	public final float run_time_micros;
 	
-	public PhpUnitTestResult(PhpUnitTestCase test_case, EPhpUnitTestStatus status, ScenarioSet scenario_set, Host host, String output, float run_time_micros) {
+	public PhpUnitTestResult(PhpUnitTestCase test_case, EPhpUnitTestStatus status, ScenarioSetSetup scenario_set, Host host, String output, float run_time_micros) {
 		if (output!=null&&(output.contains("Missing argume")||output.contains("Argument 1 passed")))
 			status = EPhpUnitTestStatus.SKIP; // TODO temp
 		
@@ -39,7 +40,7 @@ public class PhpUnitTestResult {
 		this.run_time_micros = run_time_micros;
 	}
 	
-	public PhpUnitTestResult(PhpUnitTestCase test_case, EPhpUnitTestStatus status, ScenarioSet scenario_set, Host host, String output, PhpIni ini, float run_time_micros, String sapi_output, String sapi_config) {
+	public PhpUnitTestResult(PhpUnitTestCase test_case, EPhpUnitTestStatus status, ScenarioSetSetup scenario_set, Host host, String output, PhpIni ini, float run_time_micros, String sapi_output, String sapi_config) {
 		this(test_case, status, scenario_set, host, output, run_time_micros);
 		this.sapi_output = sapi_output;
 		this.sapi_config = sapi_config;

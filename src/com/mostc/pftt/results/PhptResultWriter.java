@@ -21,6 +21,7 @@ import com.mostc.pftt.model.core.EPhptSection;
 import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.PhpBuildInfo;
 import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.scenario.ScenarioSetSetup;
 
 public class PhptResultWriter extends AbstractPhptRW {
 	protected final File dir;
@@ -28,15 +29,15 @@ public class PhptResultWriter extends AbstractPhptRW {
 	protected final HashMap<EPhptTestStatus,StatusListEntry> status_list_map;
 	protected final KXmlSerializer serial;
 	protected final AHost host;
-	protected final ScenarioSet scenario_set;
+	protected final ScenarioSetSetup scenario_set_setup;
 	protected final PhpBuildInfo build_info;
 	protected final EBuildBranch test_pack_branch;
 	protected final String test_pack_version;
 	
-	public PhptResultWriter(File dir, AHost host, ScenarioSet scenario_set, PhpBuildInfo build_info, EBuildBranch test_pack_branch, String test_pack_version) throws IOException {
+	public PhptResultWriter(File dir, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuildInfo build_info, EBuildBranch test_pack_branch, String test_pack_version) throws IOException {
 		this.dir = dir;
 		this.host = host;
-		this.scenario_set = scenario_set;
+		this.scenario_set_setup = scenario_set_setup;
 		this.build_info = build_info;
 		this.test_pack_branch = test_pack_branch;
 		this.test_pack_version = test_pack_version;
@@ -146,6 +147,10 @@ public class PhptResultWriter extends AbstractPhptRW {
 		
 		for ( StatusListEntry e : status_list_map.values() )
 			e.close();
+		
+		if (test_count==0) {
+			dir.delete();
+		}
 	} // end public void close
 	
 	public void notifyStart(String test_name) {
@@ -153,7 +158,7 @@ public class PhptResultWriter extends AbstractPhptRW {
 	}
 	
 	int count; // TODO
-	public void writeResult(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhptTestResult result) throws IllegalStateException {
+	public void writeResult(ConsoleManager cm, AHost host, ScenarioSetSetup scenario_set, PhptTestResult result) throws IllegalStateException {
 		if (closed)
 			throw new IllegalStateException("can not write to closed PhptResultWriter. it is closed");
 		
@@ -236,10 +241,13 @@ public class PhptResultWriter extends AbstractPhptRW {
 	}
 	@Override
 	public String getScenarioSetNameWithVersionInfo() {
-		return scenario_set.getNameWithVersionInfo();
+		return scenario_set_setup.getNameWithVersionInfo();
+	}
+	public ScenarioSetSetup getScenarioSetSetup() {
+		return scenario_set_setup;
 	}
 	public ScenarioSet getScenarioSet() {
-		return scenario_set;
+		return scenario_set_setup.getScenarioSet();
 	}
 	@Override
 	public PhpBuildInfo getBuildInfo() {

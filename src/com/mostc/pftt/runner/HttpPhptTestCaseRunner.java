@@ -7,6 +7,7 @@ import java.net.Socket;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
@@ -38,7 +39,7 @@ import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 import com.mostc.pftt.scenario.AbstractWebServerScenario;
-import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.ErrorUtil;
 import com.mostc.pftt.util.TimerUtil;
 import com.mostc.pftt.util.TimerUtil.TimerThread;
@@ -55,13 +56,13 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected WebServerInstance web = null;
 	protected boolean is_replacement = false;
 	protected String cookie_str;
-	protected DebuggingHttpClientConnection conn;
+	protected final AtomicReference<DebuggingHttpClientConnection> conn;
 	protected final HttpParams params;
 	protected final HttpProcessor httpproc;
 	protected final HttpRequestExecutor httpexecutor;
 	protected Socket test_socket;
 
-	public HttpPhptTestCaseRunner(AbstractWebServerScenario sapi_scenario, PhpIni ini, Map<String,String> env, HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+	public HttpPhptTestCaseRunner(AbstractWebServerScenario sapi_scenario, PhpIni ini, Map<String,String> env, HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
 		super(sapi_scenario, ini, thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 		this.params = params;
 		this.httpproc = httpproc;
@@ -80,6 +81,8 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			this.env = env;
 		}
 		//
+		
+		conn = new AtomicReference<DebuggingHttpClientConnection>();
 		
 		this.request_bytes = new ByteArrayOutputStream(256);
 		this.response_bytes = new ByteArrayOutputStream(4096);
@@ -223,7 +226,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		try {
 			if (web!=null) {
 				synchronized(web) {
-					WebServerInstance _web = smgr.getWebServerInstance(cm, host, scenario_set, build, ini, env, active_test_pack.getStorageDirectory(), web, false, test_case);
+					WebServerInstance _web = smgr.getWebServerInstance(cm, host, scenario_set.getScenarioSet(), build, ini, env, active_test_pack.getStorageDirectory(), web, false, test_case);
 					if (_web!=this.web) {
 						this.web = _web;
 						is_replacement = true;
@@ -242,7 +245,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			if (web==null) {
 				// test should be a FAIL or CRASH
 				// its certainly the fault of a test (not PFTT) if not this test
-				this.web = smgr.getWebServerInstance(cm, host, scenario_set, build, ini, env, active_test_pack.getStorageDirectory(), web, false, test_case);
+				this.web = smgr.getWebServerInstance(cm, host, scenario_set.getScenarioSet(), build, ini, env, active_test_pack.getStorageDirectory(), web, false, test_case);
 				
 				if (web==null||web.isCrashedOrDebuggedAndClosed()) {
 					markTestAsCrash();
@@ -327,11 +330,13 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		HttpContext context = new BasicHttpContext(null);
 		HttpHost http_host = new HttpHost(web.hostname(), web.port());
 		
+		DebuggingHttpClientConnection conn = this.conn.get();
 		if (conn!=null) {
 			conn.close();
 			conn = null;
 		}
 		conn = new DebuggingHttpClientConnection(request_bytes, response_bytes);
+		this.conn.set(conn);
 		test_socket = null;
 		final TimerThread timeout_task = TimerUtil.waitSeconds(
 				sapi_scenario.getSlowTestTimeSeconds(), 
@@ -343,19 +348,14 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 					},
 				// 60 seconds from start (not 60 from 20)
 				PhptTestCase.MAX_TEST_TIME_SECONDS,
-				/*new Runnable() {
-						public void run() {
-							if (web!=null)
-								web.close();
-						}
-					},*/
 				new Runnable() {
 						public void run() {
+							DebuggingHttpClientConnection conn = HttpPhptTestCaseRunner.this.conn.get();
 							if (conn!=null) {
 								try {
 								conn.close();
 								} catch ( Exception ex ) {}
-								conn = null;
+								HttpPhptTestCaseRunner.this.conn.set(null);	
 							}
 							if (test_socket!=null) {
 								try {
@@ -438,11 +438,13 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		HttpContext context = new BasicHttpContext(null);
 		HttpHost http_host = new HttpHost(web.hostname(), web.port());
 		
+		DebuggingHttpClientConnection conn = this.conn.get();
 		if (conn!=null) {
 			conn.close();
 			conn = null;
 		}
 		conn = new DebuggingHttpClientConnection(request_bytes, response_bytes);
+		this.conn.set(conn);
 		final TimerThread timeout_task = TimerUtil.waitSeconds(
 				sapi_scenario.getSlowTestTimeSeconds(), 
 				new Runnable() {
@@ -453,19 +455,14 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 					},
 				// 60 seconds from start
 				PhptTestCase.MAX_TEST_TIME_SECONDS,
-				/*new Runnable() {
-					public void run() {
-						if (web!=null)
-							web.close();
-					}
-				},*/
 				new Runnable() {
 					public void run() {
+						DebuggingHttpClientConnection conn = HttpPhptTestCaseRunner.this.conn.get();
 						if (conn!=null) {
 							try {
 							conn.close();
 							} catch ( Exception ex ) {}
-							conn = null;
+							HttpPhptTestCaseRunner.this.conn.set(null);
 						}
 						if (test_socket!=null) {
 							try {

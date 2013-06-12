@@ -1,6 +1,7 @@
 package com.mostc.pftt.model.sapi;
 
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.scenario.IScenarioSetup;
 
 /** Running instance of a SAPI like a web server
  * 
@@ -8,9 +9,8 @@ import com.mostc.pftt.results.ConsoleManager;
  *
  */
 
-public abstract class SAPIInstance {
+public abstract class SAPIInstance implements IScenarioSetup {
 	public abstract String getSAPIOutput();
-	public abstract void close(ConsoleManager cm);
 	public abstract boolean isRunning();
 	public abstract String getInstanceInfo(ConsoleManager cm);
 	public abstract boolean isCrashedOrDebuggedAndClosed();

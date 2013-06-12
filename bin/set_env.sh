@@ -15,6 +15,9 @@ fi
 
 source `dirname $PWD/$BASH_SOURCE`/set_path.sh
 
+function parse() {
+	pftt -ignore_unknown_option $* parse $*
+}
 function app_list() {
 	pftt -ignore_unknown_option $* app_list $*
 }

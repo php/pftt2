@@ -53,12 +53,7 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 		super(remote_host, base_share_path, base_share_name);
 		this.volume = AHost.drive(base_share_path);
 	}
-	
-	@Override
-	public boolean setup(ConsoleManager cm, Host local_host, PhpBuild build, ScenarioSet scenario_set) {
-		return installDeduplicationFeature(cm, local_host) && super.setup(cm, local_host, build, scenario_set);
-	}
-	
+		
 	/** installs and enables deduplication on a remote disk Volume and creates a file share and connects to it.
 	 * 
 	 * test-pack can then be installed on that file share.
@@ -68,7 +63,7 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 	 * @return
 	 */
 	@Override
-	public DeduplicatedSMBStorageDir createStorageDir(ConsoleManager cm, AHost local_host) {
+	public ITestPackStorageDir setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		// check that its win8
 		if (!remote_host.isWin8OrLater()) {
 			cm.println(EPrintType.XSKIP_OPERATION, getClass(), "Scenario can only be run against a Windows 2012+ Server");
@@ -81,9 +76,9 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 			return null;
 		}
 		
-		if (installDeduplicationFeature(cm, local_host)) {
+		if (installDeduplicationFeature(cm, host)) {
 			// create share on deduplicated volume
-			DeduplicatedSMBStorageDir dir = (DeduplicatedSMBStorageDir) super.createStorageDir(cm, local_host);
+			DeduplicatedSMBStorageDir dir = (DeduplicatedSMBStorageDir) super.setup(cm, host, build, scenario_set);
 			if (dir!=null) {
 				
 				cm.println(EPrintType.COMPLETED_OPERATION, getClass(), "Deduplication enabled for Share: unc="+dir.unc_path+" local="+dir.local_path+" url="+dir.url_path);
@@ -94,7 +89,7 @@ public class SMBDeduplicationScenario extends AbstractSMBScenario {
 		return null;
 	} // end public DeduplicatedSMBStorageDir createStorageDir
 	
-	protected DeduplicatedSMBStorageDir newSMBStorageDir() {
+	protected DeduplicatedSMBStorageDir createSMBStorageDir() {
 		return new DeduplicatedSMBStorageDir();
 	}
 	

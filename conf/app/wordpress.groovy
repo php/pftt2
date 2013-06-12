@@ -1,4 +1,8 @@
 
+def describe() {
+	"Load Wordpress Application"
+}
+
 def scenarios() {
 	// WordpressScenario looks for MySQLScenario to get database configuration
 	new WordpressScenario()
@@ -8,22 +12,19 @@ def getUITestPack() {
 	return new WordpressTestPack();
 }
 
+/** see wordpress-tests.patch.txt for patch to wordpress-tests required to make this work
+ * 
+ */
 class WordpressPhpUnitTestPack extends PhpUnitSourceTestPack {
 	
 	@Override
 	public String getNameAndVersionString() {
-		return "Wordpress-Tests-1277";
+		return "Wordpress-3.5.1-Tests-1277";
 	}
 	
 	@Override
 	protected String getSourceRoot(AHost host) {
 		return host.getPfttDir()+"/cache/working/wordpress-tests";
-	}
-	// TODO is #clone needed?
-	@Override
-	protected Object clone() throws CloneNotSupportedException {
-		// TODO Auto-generated method stub
-		return super.clone();
 	}
 	
 	@Override

@@ -12,7 +12,12 @@ import com.mostc.pftt.model.core.EPhptTestStatus;
  * @see EPhptTestStatus - statuses for PHPTs, the Core test format.
  * @author Matt Ficken
  * 
- * @see PhpUnitTemplate and @see PhpUnitResultWriter - to see how PFTT translates to/from PhpUnit's original statuses and this modified set 
+ * @see PhpUnitTemplate and @see PhpUnitResultWriter - to see how PFTT translates to/from PhpUnit's original statuses and this modified set
+ * 
+ * PFTT adds these 4 statuses to the PhpUnit standard, to convert to standard:
+ * XSKIP - add XSKIP count to SKIP count
+ * CRASH - add CRASH count to FAILURE count
+ * BORK, TEST_EXCEPTION - add TEST_EXCEPTION count and BORK to UNSUPPORTED count
  *
  */
 

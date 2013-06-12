@@ -15,7 +15,7 @@
  */
 
 package org.codehaus.groovy.tools.shell.commands
-
+ 
 import groovy.inspect.swingui.ObjectBrowser
 
 import java.awt.HeadlessException
@@ -31,7 +31,7 @@ import org.codehaus.groovy.tools.shell.util.SimpleCompletor
  * @version $Id$
  * @author <a href="mailto:jason@planet57.com">Jason Dillon</a>
  */
-class InspectCommand
+class InspectCommand 
     extends CommandSupport
 {
     InspectCommand(final Shell shell) {

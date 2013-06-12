@@ -14,9 +14,6 @@ import com.mostc.pftt.results.PhptTestResult;
 public abstract class AbstractRemoteFileSystemScenario extends AbstractFileSystemScenario {
 
 	@Override
-	public abstract boolean setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set);
-	
-	@Override
 	public boolean isUACRequiredForStart() {
 		return true;
 	}
@@ -38,9 +35,9 @@ public abstract class AbstractRemoteFileSystemScenario extends AbstractFileSyste
 				"ext/standard/tests/file/windows_links/bug48746_3.phpt"
 			);
 	@Override
-	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSet scenario_set, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup setup, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
 		if (test_case.isNamed(LOCAL_FS_ONLY_TESTS)) {
-			twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "Not supported on Remote File Systems", null, null, null, null, null, null, null, null, null, null, null));
+			twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "Not supported on Remote File Systems", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return true;
 		}

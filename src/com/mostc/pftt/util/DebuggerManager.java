@@ -1,17 +1,22 @@
 package com.mostc.pftt.util;
 
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Map;
 
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.AHost.ExecHandle;
+import com.mostc.pftt.host.IProgramRunner;
 import com.mostc.pftt.host.LocalHost.LocalExecHandle;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
+import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 
@@ -187,10 +192,41 @@ public abstract class DebuggerManager {
 		}
 	}
 
-	public static abstract class Debugger {
+	public static abstract class Debugger implements IProgramRunner {
 
 		public abstract void close(ConsoleManager cm);
 		public abstract boolean isRunning();
+		
+		/*
+		@Override
+		public boolean exec(ConsoleManager cm, String ctx_str, String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_post, Charset charset, String current_dir) throws IllegalStateException, Exception {
+			return execOut(cmd, timeout_sec, env, stdin_post, charset, current_dir).printOutputIfCrash(ctx_str, cm).isSuccess();
+		}
+		@Override
+		public boolean exec(ConsoleManager cm, String ctx_str, String commandline, int timeout, Map<String, String> env, byte[] stdin, Charset charset, String chdir, TestPackRunnerThread thread, int thread_slow_sec) throws Exception {
+			return execOut(commandline, timeout, env, stdin, charset, chdir, thread, thread_slow_sec).printOutputIfCrash(ctx_str, cm).isSuccess();
+		}
+		public ExecHandle execThread(String commandline) throws Exception {
+			return execThread(commandline, null, null, null);
+		}
+		public ExecHandle execThread(String commandline, byte[] stdin_data) throws Exception {
+			return execThread(commandline, null, null, stdin_data);
+		}
+		public ExecHandle execThread(String commandline, String chdir) throws Exception {
+			return execThread(commandline, null, chdir, null);
+		}
+		public ExecHandle execThread(String commandline, String chdir, byte[] stdin_data) throws Exception {
+			return execThread(commandline, null, chdir, stdin_data);
+		}
+		public ExecHandle execThread(String commandline, Map<String,String> env, byte[] stdin_data) throws Exception {
+			return execThread(commandline, env, null, stdin_data);
+		}
+		public ExecHandle execThread(String commandline, Map<String,String> env, String chdir) throws Exception {
+			return execThread(commandline, env, chdir, null);
+		}
+		public ExecOutput execOut(String cmd, int timeout_sec, Map<String,String> object, byte[] stdin_post, Charset charset) throws IllegalStateException, Exception {
+			return execOut(cmd, timeout_sec, object, stdin_post, charset, (String)null);
+		}*/
 		
 	}
 	

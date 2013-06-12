@@ -88,7 +88,7 @@ public class PfttAgentMain extends PSCAgentServer {
 				agent.simulate();
 			} else if (args[0].equals("generate")) {
 				//
-				agent.generateSimulation(new LocalHost(), ScenarioSet.getDefaultScenarioSets().get(0));
+				//agent.generateSimulation(new LocalHost(), ScenarioSet.getDefaultScenarioSets().get(0));
 				
 				System.exit(0);
 			}
