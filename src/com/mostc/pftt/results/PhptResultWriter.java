@@ -148,7 +148,7 @@ public class PhptResultWriter extends AbstractPhptRW {
 		for ( StatusListEntry e : status_list_map.values() )
 			e.close();
 		
-		if (test_count==0) {
+		if (count==0) {
 			dir.delete();
 		}
 	} // end public void close

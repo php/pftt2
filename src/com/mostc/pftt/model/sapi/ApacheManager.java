@@ -508,7 +508,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		EApacheVersion apache_version = decideApacheVersion(cm, host, build, this._apache_version);
 		final String listen_address = "0.0.0.0";
 		final int port = 80;
-		CouldConnect could = canConnect(listen_address, port); 
+		CouldConnect could = canConnect(listen_address, port, false); 
 		if (could.connect) {
 			cm.println(EPrintType.CLUE, "ApacheManager", "A web server is already running");
 			cm.println(EPrintType.TIP, "ApacheManager", "Try `stop -c apache "+build.getBuildPath()+"` to stop Apache");
@@ -532,7 +532,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "start", ex, "Unable to Start Apache after setup", prep.httpd, prep.apache_conf_file);
 			return false;
 		}
-		if (canConnect(listen_address, port).connect) {
+		if (canConnect(listen_address, port, false).connect) {
 			cm.println(EPrintType.CLUE, "ApacheManager", "Apache running\nDocument Root: "+docroot+"\nURL: http://"+listen_address+":"+port+"/");
 			return true;
 		} else {

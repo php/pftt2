@@ -124,12 +124,12 @@ public abstract class WebServerManager extends SAPIManager {
 				}
 			}
 			
-			assigned.replacement = sapi = createWebServerInstance(cm, host, scenario_set, build, ini, env, docroot, debugger_attached, server_name);
+			assigned.replacement = sapi = createWebServerInstance(cm, host, scenario_set, build, ini, env, docroot, debugger_attached, server_name, true);
 			synchronized(assigned.active_test_cases) {
 				sapi.active_test_cases.addAll(assigned.active_test_cases);
 			}
 		} else {
-			sapi = createWebServerInstance(cm, host, scenario_set, build, ini, env, docroot, debugger_attached, server_name);
+			sapi = createWebServerInstance(cm, host, scenario_set, build, ini, env, docroot, debugger_attached, server_name, false);
 		}
 		if (sapi.isRunning()) {
 			synchronized(instances) {
@@ -155,7 +155,7 @@ public abstract class WebServerManager extends SAPIManager {
 		return env;
 	}
 	
-	protected abstract WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, boolean debugger_attached, Object server_name);
+	protected abstract WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, boolean debugger_attached, Object server_name, boolean is_replacement);
 	
 	/** some web servers can only have one active instance at any one time
 	 * 

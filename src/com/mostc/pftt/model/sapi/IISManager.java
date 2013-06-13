@@ -165,7 +165,7 @@ public class IISManager extends WebServerManager {
 	}
 	
 	@Override
-	protected WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String,String> env, String doc_root, boolean debugger_attached, Object server_name) {
+	protected WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String,String> env, String doc_root, boolean debugger_attached, Object server_name, boolean is_replacement) {
 		final String listen_address = host.getLocalhostListenAddress();
 		final int listen_port = 80;
 		

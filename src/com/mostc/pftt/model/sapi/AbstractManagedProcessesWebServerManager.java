@@ -1,13 +1,17 @@
 package com.mostc.pftt.model.sapi;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.github.mattficken.Overridable;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.host.AHost.ExecHandle;
@@ -60,26 +64,62 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 		public int attempts;
 	}
 	
-	public static CouldConnect canConnect(String listen_address, int port) {
+	/** makes sure the web server is running and accepting connections.
+	 * 
+	 * @param listen_address
+	 * @param port
+	 * @param double_sure - if TRUE, sends HTTP request, if FALSE just does TCP socket.
+	 * 	                TCP (!double_sure) is much faster, HTTP is much slower (only use HTTP when you think it might not work)
+	 * @return
+	 */
+	public static CouldConnect canConnect(String listen_address, int port, boolean double_sure) {
 		Socket sock = null;
 		CouldConnect could = new CouldConnect();
 		could.start_time = System.currentTimeMillis();
-		// builtin web server needs many attempts and large timeouts
-		for ( could.attempts=0 ; could.attempts < 10 ; could.attempts++ ) {
-			could.connect = false;
-			try {
-				sock = new Socket();
-				sock.setSoTimeout(Math.max(200, Math.min(60000, 100*((int)(Math.pow(could.attempts+1, could.attempts+1))))));
-				sock.connect(new InetSocketAddress(listen_address, port));
-				if (sock.isConnected()) {
+		
+		if (double_sure) {
+			for ( could.attempts=0 ; could.attempts < 10 ; could.attempts++ ) {
+				could.connect = false;
+				
+				try {
+					final int timeout = Math.max(200, Math.min(60000, 100*((int)(Math.pow(could.attempts+1, could.attempts+1)))));
+					
+					URL url = new URL("http://"+listen_address+":"+port+"/");
+					URLConnection uc = url.openConnection();
+					uc.setConnectTimeout(timeout);
+					uc.setReadTimeout(timeout);
+					uc.connect();
+					uc.getInputStream();
+						
 					could.connect = true;
 					return could;
+				} catch ( FileNotFoundException ex ) {
+					// got HTTP 404 response from web server - which means its up and responding to HTTP requests
+					// (regardless of whether or not that page actually exists)
+					could.connect = true;
+					return could;
+				} catch ( IOException ex ) {
+					// did not get HTTP response (may not have been able to do TCP connect/accept even)
 				}
-			} catch ( IOException ex ) {
-			} finally {
+			}
+		} else {
+			// builtin web server needs many attempts and large timeouts
+			for ( could.attempts=0 ; could.attempts < 10 ; could.attempts++ ) {
+				could.connect = false;
 				try {
-					sock.close();
-				} catch (IOException e) {
+					sock = new Socket();
+					sock.setSoTimeout(Math.max(200, Math.min(60000, 100*((int)(Math.pow(could.attempts+1, could.attempts+1))))));
+					sock.connect(new InetSocketAddress(listen_address, port));
+					if (sock.isConnected()) {
+						could.connect = true;
+						return could;
+					}
+				} catch ( IOException ex ) {
+				} finally {
+					try {
+						sock.close();
+					} catch (IOException e) {
+					}
 				}
 			}
 		}
@@ -89,7 +129,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 	
 	static final int MAX_TOTAL_ATTEMPTS = 3;
 	@Override
-	protected WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String,String> env, final String docroot, final boolean debugger_attached, final Object server_name) {
+	protected WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String,String> env, final String docroot, final boolean debugger_attached, final Object server_name, boolean is_replacement) {
 		String sapi_output = "";
 		int port_attempts;
 		boolean found_port;
@@ -137,7 +177,12 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 				final AHost.ExecHandle handlef = handle;
 								
 				// ensure server can be connected to
-				CouldConnect could = canConnect(listen_address, port); 
+				//
+				// only use HTTP to check, if its a replacement web server
+				// this makes a real difference in test speed: use TCP only for the first web server
+				//    (since most of the time it will work, web servers that have to be replaced are the ones
+				//     to likely have a problem)
+				CouldConnect could = _canConnect(listen_address, port, is_replacement); 
 				if (!could.connect) {
 					// kill server and try again
 					throw new IOException("Could not socket to web server after it was started. Web server did not respond to socket. Tried "+could.attempts+" times, waiting "+(System.currentTimeMillis()-could.start_time)+" millis total.");
@@ -207,6 +252,11 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 		return new CrashedWebServerInstance(this, ini, env, sapi_output);
 	} // end protected WebServerInstance createWebServerInstance
 	
+	@Overridable
+	protected CouldConnect _canConnect(String listen_address, int port, boolean is_replacement) {
+		return canConnect(listen_address, port, is_replacement);
+	}
+
 	protected abstract ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String, String> env, String docroot, String listen_address, int port);
 	
 	public abstract class ManagedProcessWebServerInstance extends WebServerInstance {

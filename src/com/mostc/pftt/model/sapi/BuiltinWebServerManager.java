@@ -34,6 +34,22 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 	}
 	
 	@Override
+	protected CouldConnect _canConnect(String listen_address, int port, boolean is_replacement) {
+		// process startup is slow (especially on Windows)
+		// and builtin_web is kind of buggy
+		// 
+		// give it extra time before we have to give up and try again (kill process and start another)start another process)
+		CouldConnect c = super._canConnect(listen_address, port, is_replacement);
+		if (c.connect)
+			return c;
+		CouldConnect c2 = super._canConnect(listen_address, port, is_replacement);
+		if (c2.connect)
+			return c2;
+		c.attempts += c2.attempts; // merge time and number of attempts from both for result-pack
+		return c;
+	}
+	
+	@Override
 	protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String, String> env, String docroot, String listen_address, int port) {
 		// run `php.exe -S listen_address:NNNN` in docroot
 		String ini_dir;

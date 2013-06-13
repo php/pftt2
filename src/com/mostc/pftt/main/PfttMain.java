@@ -79,7 +79,11 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 // doesn't resort to brittle shell scripts
 
 // TODO http request to web server to make sure its running (instead of just tcp socket)
+// TODO for SKIP and XSKIP tests, include output and sapi-output in result-pack
 // TODO mysql, postgresql scenario
+// TODO create TIMEOUT status for PHPT and phpunit tests
+//      modify evaluation critieria to mark those tests as TIMEOUT
+//      add TIMEOUT status to report pages (list at end of report ; highlight summary in yellow if TIMEOUT > 0)
 // TODO valgrind gdb?
 // TODO linux installer
  

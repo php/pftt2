@@ -170,12 +170,14 @@ public class PhpUnitResultReader extends AbstractPhpUnitRW {
 
 	@Override
 	public int count(EPhpUnitTestStatus status) {
-		return status_list_map.get(status).count;
+		StatusListEntry e = status_list_map.get(status);
+		return e==null ? 0 : e.count;
 	}
 
 	@Override
 	public List<String> getTestNames(EPhpUnitTestStatus status) {
-		return status_list_map.get(status).test_names;
+		StatusListEntry e = status_list_map.get(status);
+		return e==null ? new java.util.ArrayList<String>(0) : e.test_names;
 	}
 
 	@Override
