@@ -265,7 +265,7 @@ public class LocalHost extends AHost {
 		protected InputStream stdout, stderr;
 		protected String image_name;
 		protected Charset charset;
-		protected final AtomicBoolean run = new AtomicBoolean(true), wait = new AtomicBoolean(true);
+		protected final AtomicBoolean run = new AtomicBoolean(true), wait = new AtomicBoolean(true), timedout = new AtomicBoolean(false);
 		
 		public LocalExecHandle(Process process, OutputStream stdin, InputStream stdout, InputStream stderr, String[] cmd_array) {
 			this.process = new AtomicReference<Process>(process);
@@ -580,6 +580,11 @@ public class LocalHost extends AHost {
 			if (b!=null)
 				b.cancel();
 		}
+
+		@Override
+		public boolean isTimedOut() {
+			return timedout.get();
+		}
 		
 	} // end public class LocalExecHandle
 	
@@ -748,6 +753,7 @@ public class LocalHost extends AHost {
 			// go further trying to kill the process
 			//
 			// LocalHostExecHandle#close checks for WerFault.exe blocking on Windows
+			h.timedout.set(true);
 			h.close(cm, true);
 		}
 		

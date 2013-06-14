@@ -10,7 +10,7 @@ public abstract class AbstractPhptRW extends AbstractTestResultRW {
 	public abstract String getTestPackVersion();
 	@Override
 	public float passRate() {
-		return 100.0f * ((float)count(EPhptTestStatus.PASS)) / ((float)(count(EPhptTestStatus.PASS) + count(EPhptTestStatus.CRASH) + count(EPhptTestStatus.FAIL)));
+		return 100.0f * ((float)count(EPhptTestStatus.PASS)) / ((float)(count(EPhptTestStatus.PASS) + count(EPhptTestStatus.CRASH) + count(EPhptTestStatus.FAIL) + count(EPhptTestStatus.TIMEOUT)));
 	}
 	public abstract int count(EPhptTestStatus status);
 	public abstract List<String> getTestNames(EPhptTestStatus status);

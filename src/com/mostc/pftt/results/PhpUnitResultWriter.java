@@ -252,6 +252,7 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 		serial.attribute(null, "percent_total", Integer.toString( getTestCount() ));
 		serial.attribute(null, "pass", Integer.toString(count(EPhpUnitTestStatus.PASS)));
 		serial.attribute(null, "pass_percent", Float.toString( passRate() ));
+		serial.attribute(null, "timeout", Integer.toString(count(EPhpUnitTestStatus.TIMEOUT)));
 		serial.attribute(null, "failure", Integer.toString(count(EPhpUnitTestStatus.FAILURE)));
 		serial.attribute(null, "failure_percent", Float.toString( 100.0f * (((float)count(EPhpUnitTestStatus.FAILURE))/((float)getTestCount()))));
 		serial.attribute(null, "error", Integer.toString(count(EPhpUnitTestStatus.ERROR)));

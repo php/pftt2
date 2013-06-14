@@ -226,7 +226,7 @@ public class PhptTestResult {
 	}
 	
 	public void serialize(XmlSerializer serial) throws IllegalArgumentException, IllegalStateException, IOException {
-		serialize(serial, shouldStoreAllInfo(status), null);
+		serialize(serial, shouldStoreAllInfo(status)||status==EPhptTestStatus.SKIP, null);
 	}
 	
 	public void serialize(XmlSerializer serial, boolean include_all, String stylesheet) throws IllegalArgumentException, IllegalStateException, IOException {

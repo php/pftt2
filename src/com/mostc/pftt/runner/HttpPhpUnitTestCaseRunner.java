@@ -275,6 +275,7 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 				getMaxTestRuntimeSeconds(),
 				new Runnable() {
 					public void run() {
+						is_timeout = true;
 						if (web!=null)
 							web.close(cm);
 					}

@@ -13,6 +13,7 @@ public abstract class AbstractPhpUnitRW extends AbstractTestResultRW {
 				count(EPhpUnitTestStatus.ERROR) +
 				count(EPhpUnitTestStatus.WARNING) +
 				count(EPhpUnitTestStatus.NOTICE) +
+				count(EPhpUnitTestStatus.TIMEOUT) +
 				count(EPhpUnitTestStatus.DEPRECATED) +
 				count(EPhpUnitTestStatus.CRASH);
 	}

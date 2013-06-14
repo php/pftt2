@@ -350,6 +350,8 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				PhptTestCase.MAX_TEST_TIME_SECONDS,
 				new Runnable() {
 						public void run() {
+							is_timeout = true;
+							
 							DebuggingHttpClientConnection conn = HttpPhptTestCaseRunner.this.conn.get();
 							if (conn!=null) {
 								try {
@@ -457,6 +459,8 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				PhptTestCase.MAX_TEST_TIME_SECONDS,
 				new Runnable() {
 					public void run() {
+						is_timeout = true;
+						
 						DebuggingHttpClientConnection conn = HttpPhptTestCaseRunner.this.conn.get();
 						if (conn!=null) {
 							try {

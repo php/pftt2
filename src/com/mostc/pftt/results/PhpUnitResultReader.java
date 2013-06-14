@@ -59,7 +59,7 @@ public class PhpUnitResultReader extends AbstractPhpUnitRW {
 		try {
 			parser.setInput(fr);
 			
-			
+				
 			String tag_name = "";
 			main_loop:
 			while(true) {
@@ -79,6 +79,9 @@ public class PhpUnitResultReader extends AbstractPhpUnitRW {
 						test_pack_name_and_version = parser.getAttributeValue(null, "test_pack_name_and_version");
 						
 						status_list_map.put(EPhpUnitTestStatus.PASS, new StatusListEntry(Integer.parseInt(parser.getAttributeValue(null, "pass"))));
+						if (parser.getAttributeValue(null, "timeout")!=null) {
+							status_list_map.put(EPhpUnitTestStatus.TIMEOUT, new StatusListEntry(Integer.parseInt(parser.getAttributeValue(null, "timeout"))));
+						}
 						status_list_map.put(EPhpUnitTestStatus.FAILURE, new StatusListEntry(Integer.parseInt(parser.getAttributeValue(null, "failure"))));
 						status_list_map.put(EPhpUnitTestStatus.ERROR, new StatusListEntry(Integer.parseInt(parser.getAttributeValue(null, "error"))));
 						status_list_map.put(EPhpUnitTestStatus.CRASH, new StatusListEntry(Integer.parseInt(parser.getAttributeValue(null, "crash"))));

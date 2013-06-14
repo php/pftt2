@@ -32,6 +32,7 @@ public class PhptResultReader extends AbstractPhptRW {
 		PhptTallyFile tally = PhptTallyFile.open(new File(dir+"/tally.xml"));
 		this.os_name = tally.os_name; 
 		status_list_map.put(EPhptTestStatus.PASS, new StatusListEntry(tally.pass));
+		status_list_map.put(EPhptTestStatus.TIMEOUT, new StatusListEntry(tally.timeout));
 		status_list_map.put(EPhptTestStatus.FAIL, new StatusListEntry(tally.fail));
 		status_list_map.put(EPhptTestStatus.CRASH, new StatusListEntry(tally.crash));
 		status_list_map.put(EPhptTestStatus.SKIP, new StatusListEntry(tally.skip));
@@ -117,12 +118,14 @@ public class PhptResultReader extends AbstractPhptRW {
 
 	@Override
 	public int count(EPhptTestStatus status) {
-		return status_list_map.get(status).count;
+		StatusListEntry e = status_list_map.get(status); 
+		return e == null ? 0 : e.count;
 	}
 
 	@Override
 	public List<String> getTestNames(EPhptTestStatus status) {
-		return status_list_map.get(status).test_names;
+		StatusListEntry e = status_list_map.get(status); 
+		return e == null ? new java.util.ArrayList<String>(0) : e.test_names;
 	}
 
 	@Override

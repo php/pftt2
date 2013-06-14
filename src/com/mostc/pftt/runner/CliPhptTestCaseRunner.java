@@ -248,7 +248,10 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			output_str = doExecuteTest();
 		}
 		
-		if (running_test_handle.isCrashed()) {
+		if (running_test_handle.isTimedOut()) {
+			is_timeout = true;
+			
+		} else if (running_test_handle.isCrashed()) {
 			not_crashed = false; // @see #runTest
 			
 			int exit_code = running_test_handle.getExitCode();

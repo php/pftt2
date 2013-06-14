@@ -25,7 +25,6 @@ import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
 import com.mostc.pftt.scenario.AbstractSAPIScenario;
-import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 
 /** runs a single PhpUnitTestCase
@@ -64,7 +63,7 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 	protected final PhpUnitTestCase test_case;
 	protected final String my_temp_dir;
 	protected final PhpIni ini;
-	protected boolean is_crashed;
+	protected boolean is_crashed, is_timeout;
 	protected final boolean reflection_only;
 
 	public AbstractPhpUnitTestCaseRunner(AbstractSAPIScenario sapi_scenario, PhpUnitThread thread, ITestResultReceiver tmgr, Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSetSetup scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
@@ -173,7 +172,7 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 			status = EPhpUnitTestStatus.TEST_EXCEPTION;
 			
 			tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, run_time_micros, getSAPIOutput(), getSAPIConfig()));
-		} else if (is_crashed) {
+		} else if (is_crashed&&!is_timeout) {
 			if (PAT_CLASS_NOT_FOUND.matcher(output).find()) {
 				status = EPhpUnitTestStatus.UNSUPPORTED;
 				
@@ -257,7 +256,7 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 			}
 			//
 			
-			if (status==null) {
+			if (status==null||is_timeout) {
 				// if test had a 'Fatal Error', it might not have been able to print the status code at all
 				// (otherwise it should always have a status code)
 				status = EPhpUnitTestStatus.ERROR;

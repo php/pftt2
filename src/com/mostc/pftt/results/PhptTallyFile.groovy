@@ -2,7 +2,7 @@ package com.mostc.pftt.results
 
 class PhptTallyFile {
 	public String os_name
-	public int pass, fail, crash, skip, xskip, xfail, xfail_works, unsupported, bork, exception
+	public int pass, fail, crash, skip, xskip, xfail, xfail_works, unsupported, bork, exception, timeout
 	  
 	static PhptTallyFile open(File file) {
 		def root = new XmlSlurper().parse(file);
@@ -10,6 +10,8 @@ class PhptTallyFile {
 			def tally = new PhptTallyFile()
 			tally.os_name = e['@os_name']
 			tally.pass = Integer.parseInt(e['@pass'].text())
+			if (e['@timeout'].text()!=null&&e['@timeout'].text().length()>0)
+				tally.timeout = Integer.parseInt(e['@timeout'].text())
 			tally.fail = Integer.parseInt(e['@fail'].text())
 			tally.crash = Integer.parseInt(e['@crash'].text())
 			tally.skip = Integer.parseInt(e['@skip'].text())

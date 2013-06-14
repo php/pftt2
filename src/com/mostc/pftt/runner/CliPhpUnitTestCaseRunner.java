@@ -12,7 +12,6 @@ import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
 import com.mostc.pftt.scenario.CliScenario;
-import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.NTStatus;
 
@@ -52,6 +51,7 @@ public class CliPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 		output_str = output_sb.toString();
 		
 		is_crashed = running_test_handle.isCrashed();
+		is_timeout = running_test_handle.isTimedOut();
 	}
 	
 	@Override

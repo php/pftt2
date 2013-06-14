@@ -381,6 +381,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 			close(cm, false);
 		}
 		public abstract boolean isRunning();
+		public abstract boolean isTimedOut();
 		/** returns if process crashed.
 		 * 
 		 * if debugger was attached to process and debugger closed, then

@@ -419,6 +419,7 @@ public class SSHHost extends RemoteHost {
 	protected class SSHExecHandle extends ExecHandle {
 		protected final SessionChannelClient session;
 		protected final ByteArrayOutputStream out;
+		protected final AtomicBoolean timedout = new AtomicBoolean(false);
 		
 		protected SSHExecHandle(SessionChannelClient session, ByteArrayOutputStream out) {
 			this.session = session;
@@ -465,8 +466,13 @@ public class SSHHost extends RemoteHost {
 
 		@Override
 		public void run(ConsoleManager cm, StringBuilder output_sb, Charset charset, int timeout_sec, final TestPackRunnerThread thread, int slow_sec, int suspend_seconds) throws IOException, InterruptedException {
-			do_run(session, charset, timeout_sec, thread, slow_sec);
+			do_run(this, session, charset, timeout_sec, thread, slow_sec);
 			output_sb.append(out.toString());
+		}
+
+		@Override
+		public boolean isTimedOut() {
+			return timedout.get();
 		}
 		
 	} // end protected class SSHExecHandle
@@ -480,7 +486,7 @@ public class SSHHost extends RemoteHost {
 		//
 		final SessionChannelClient session = createSessionChannelClient(cmd, env, chdir, stdin_post, out);
 		
-		do_run(session, charset, timeout_sec, thread, slow_sec);
+		do_run(null, session, charset, timeout_sec, thread, slow_sec);
 		
 		
 		//
@@ -494,12 +500,14 @@ public class SSHHost extends RemoteHost {
 		return eo;
 	} // end public ExecOutput execOut
 	
-	protected void do_run(final SessionChannelClient session, Charset charset, int timeout_sec, final TestPackRunnerThread thread, int slow_sec) throws InvalidStateException, InterruptedException {
+	protected void do_run(final SSHExecHandle h, final SessionChannelClient session, Charset charset, int timeout_sec, final TestPackRunnerThread thread, int slow_sec) throws InvalidStateException, InterruptedException {
 		final AtomicBoolean run = new AtomicBoolean(true);
 		if (timeout_sec>NO_TIMEOUT) {
 			timer.schedule(new TimerTask() {
 					public void run() {
 						try {
+							if (h!=null)
+								h.timedout.set(true);
 							run.set(false);
 							
 							session.close();

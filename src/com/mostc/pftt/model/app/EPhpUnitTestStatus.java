@@ -14,9 +14,9 @@ import com.mostc.pftt.model.core.EPhptTestStatus;
  * 
  * @see PhpUnitTemplate and @see PhpUnitResultWriter - to see how PFTT translates to/from PhpUnit's original statuses and this modified set
  * 
- * PFTT adds these 4 statuses to the PhpUnit standard, to convert to standard:
+ * PFTT adds these 5 statuses to the PhpUnit standard, to convert to standard:
  * XSKIP - add XSKIP count to SKIP count
- * CRASH - add CRASH count to FAILURE count
+ * CRASH, TIMEOUT - add CRASH count and TIMEOUT count to FAILURE count
  * BORK, TEST_EXCEPTION - add TEST_EXCEPTION count and BORK to UNSUPPORTED count
  *
  */
@@ -211,6 +211,21 @@ public enum EPhpUnitTestStatus {
 		@Override
 		public EPhptTestStatus toPhptStatus() {
 			return EPhptTestStatus.XSKIP;
+		}
+	},
+	/** PFTT PhpUnit Extension: test failed to respond with the maximum amount of time.
+	 * 
+	 * This keeps those tests from being counted as an ordinary FAILURE or CRASH, so they can be counted separately as TIMEIMOUT.
+	 * 
+	 */
+	TIMEOUT {
+		@Override
+		public boolean isNotPass() {
+			return true;
+		}
+		@Override
+		public EPhptTestStatus toPhptStatus() {
+			return EPhptTestStatus.TIMEOUT;
 		}
 	};
 	

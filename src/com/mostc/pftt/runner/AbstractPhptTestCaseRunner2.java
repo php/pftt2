@@ -28,7 +28,6 @@ import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 import com.mostc.pftt.scenario.AbstractSAPIScenario;
-import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.ErrorUtil;
 import com.mostc.pftt.util.GZIPOutputStreamLevel;
@@ -50,6 +49,9 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	protected String skipif_file, test_dir, base_file_name, test_file, test_clean, content_type;
 	protected PhpIni ini;
 	protected boolean not_crashed = true; // @see HttpTestCaseRunner
+	// if is_timeout, test output is still processed the same, only marked as TIMEOUT if it would have normally been marked FAIL
+	// (so its possible a test could timeout but still be marked PASS)
+	protected boolean is_timeout = false;
 	
 	public abstract String getIniActual() throws Exception;
 	
@@ -76,7 +78,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			return;
 		
 		current_section = EPhptSection.SKIPIF; // @see #getSAPIOutput
-		if (skipif_file == null || ( !evalSkipIf(executeSkipIf()) && not_crashed) ) {
+		if (skipif_file == null || ( !evalSkipIf(executeSkipIf()) && not_crashed && !is_timeout) ) {
 			current_section = EPhptSection.TEST; // @see #getSAPIOutput
 			// no SKIPIF section or executed SKIPIF says to execute the TEST section
 			prepareTest();
@@ -215,15 +217,15 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			if (host.isWindows()) {
 				if ( (lc_output.contains("only ")&&(lc_output.contains(" linux")||lc_output.contains(" non windows")||lc_output.contains(" non-windows")))||(lc_output.contains("not ")&&lc_output.contains(" windows")))
 					// can"t run this test on this OS
-					twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, output, null, null, null, ini, null, null, null, null, null, null, null));
+					twriter.addResult(host, scenario_set, new PhptTestResult(host, is_timeout?EPhptTestStatus.TIMEOUT:EPhptTestStatus.XSKIP, test_case, output, null, null, null, ini, null, null, null, null, null, null, null));
 				else
-					twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.SKIP, test_case, output, null, null, null, ini, null, null, null, null, null, null, null));
+					twriter.addResult(host, scenario_set, new PhptTestResult(host, is_timeout?EPhptTestStatus.TIMEOUT:EPhptTestStatus.SKIP, test_case, output, null, null, null, ini, null, null, null, null, null, null, null));
 			} else {
 				if ( (lc_output.contains("only ")&&lc_output.contains(" windows"))||(lc_output.contains("not ")&&lc_output.contains(" linux")))
 					// can"t run this test on this OS
-					twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, output, null, null, null, ini, null, null, null, null, null, null, null));
+					twriter.addResult(host, scenario_set, new PhptTestResult(host, is_timeout?EPhptTestStatus.TIMEOUT:EPhptTestStatus.XSKIP, test_case, output, null, null, null, ini, null, null, null, null, null, null, null));
 				else
-					twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.SKIP, test_case, output, null, null, null, ini, null, null, null, null, null, null, null));
+					twriter.addResult(host, scenario_set, new PhptTestResult(host, is_timeout?EPhptTestStatus.TIMEOUT:EPhptTestStatus.SKIP, test_case, output, null, null, null, ini, null, null, null, null, null, null, null));
 			}
 			
 			// skip this test
@@ -562,14 +564,14 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 
 		PhptTestResult result;
 		if (test_case.isXFail()) {
-			result = notifyNotPass(new PhptTestResult(host, EPhptTestStatus.XFAIL_WORKS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual));
+			result = notifyNotPass(new PhptTestResult(host, is_timeout?EPhptTestStatus.TIMEOUT:EPhptTestStatus.XFAIL_WORKS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual));
 		} else {
-			result = notifyNotPass(notifyFail(new PhptTestResult(host, EPhptTestStatus.FAIL, test_case, output, actual_lines, expected_lines, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), diff, expectf, preoverride_actual, getSAPIOutput(), getSAPIConfig())));
+			result = notifyNotPass(notifyFail(new PhptTestResult(host, is_timeout?EPhptTestStatus.TIMEOUT:EPhptTestStatus.FAIL, test_case, output, actual_lines, expected_lines, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), diff, expectf, preoverride_actual, getSAPIOutput(), getSAPIConfig())));
 		}
 		
 		//
 		// set result#regex_compiler_dump and result#regex_output dump if test result is FAIL or XFAIL_WORKS and test has an EXPECTF or EXPECTREGEX section
-		if (test_case.containsSection(EPhptSection.EXPECTF) || test_case.containsSection(EPhptSection.EXPECTREGEX)) {
+		if (!is_timeout && (test_case.containsSection(EPhptSection.EXPECTF) || test_case.containsSection(EPhptSection.EXPECTREGEX))) {
 			// test may be failing due to a bad regular expression in test or bug in regular expression engine
 			//
 			// get a debug dump from the regular expression engine to save with the result

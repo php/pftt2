@@ -78,12 +78,8 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 // the php test tool that you'd actually want to use
 // doesn't resort to brittle shell scripts
 
-// TODO http request to web server to make sure its running (instead of just tcp socket)
-// TODO for SKIP and XSKIP tests, include output and sapi-output in result-pack
-// TODO mysql, postgresql scenario
-// TODO create TIMEOUT status for PHPT and phpunit tests
-//      modify evaluation critieria to mark those tests as TIMEOUT
-//      add TIMEOUT status to report pages (list at end of report ; highlight summary in yellow if TIMEOUT > 0)
+// TODO mysql, postgresql, curl scenario
+// TODO conf/ini/no_dynamic_extensions
 // TODO valgrind gdb?
 // TODO linux installer
  
@@ -111,9 +107,6 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //                     cache/working/dev instead of cache/working
 //            aa -c dev/symfony-2.3
 //                  dev/ indicates conf/dev for config file
-//       rctest should have an rc_hosts config file
-//          -store example in conf/internal_examples
-//              -so rctest will just use that unless/until user creates one in conf/internal
 // TODO include Selenium WebDriver in javadoc
 // TODO WincacheUScenario 
 //     -and APCUScenario
@@ -128,7 +121,7 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //          -as big as wordpress +INTERNATIONALIZATION
 //          -note: ui tests from joomla may be BRITTLE (maybe thats why they're just run by 1 guy on his laptop once in a while)
 //               not suited to our purposes => compatibility
-//                 not atomic/small -a few really big tests that test lots of options
+//                 not atomic/small -a few really big tests that test lots of actions
 //
 // TODO progress indicator for `release_get`
 // TODO iis and iis-express
