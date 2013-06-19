@@ -71,6 +71,12 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 	}
 	
 	/** cleans up this test-pack from previous runs of PFTT or run-test.php that were interrupted
+	 * or that otherwise failed to cleanup after themselves (deleting temporary directories, etc...)
+	 * 
+	 * This is important. Otherwise tests that create temporary directories, etc... but fail to delete
+	 * them (can happen because of several reasons), can cause future test runs to fail if the
+	 * test pack is run in place (its faster to cleanup than to copy the test pack, which is only really
+	 * needed for remote file system scenarios).
 	 * 
 	 */
 	@Override
@@ -103,11 +109,89 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		host.deleteIfExists(test_pack+"/tests/security/globtest2");
 		host.deleteIfExists(test_pack+"/ext/zip/tests/51353_unpack");
 		
+		// clean out these files from the test-pack so they don't have to be stored or copied (to other hosts), etc...
+		// (when installing test-pack on another host, it should just copy all files so its identical, less variability.
+		//  also this improves performance for the installation process)
 		host.deleteFileExtension(test_pack, ".skip.php");
 		host.deleteFileExtension(test_pack, ".cmd");
 		host.deleteFileExtension(test_pack, ".sh");
 		// don't delete .php (specifically run-test.php) in root of test-pack (user may want it later)
-		host.deleteFileExtension(test_pack+"/ext", ".php");
+		host.deleteFileExtension(test_pack+"/ext/bcmath", ".php");
+		host.deleteFileExtension(test_pack+"/ext/bz2", ".php");
+		host.deleteFileExtension(test_pack+"/ext/calendar", ".php");
+		host.deleteFileExtension(test_pack+"/ext/com_dotnet", ".php");
+		host.deleteFileExtension(test_pack+"/ext/ctype", ".php");
+		host.deleteFileExtension(test_pack+"/ext/curl", ".php");
+		host.deleteFileExtension(test_pack+"/ext/date", ".php");
+		host.deleteFileExtension(test_pack+"/ext/dba", ".php");
+		host.deleteFileExtension(test_pack+"/ext/dom", ".php");
+		host.deleteFileExtension(test_pack+"/ext/enchant", ".php");
+		host.deleteFileExtension(test_pack+"/ext/ereg", ".php");
+		host.deleteFileExtension(test_pack+"/ext/exif", ".php");
+		host.deleteFileExtension(test_pack+"/ext/fileinfo", ".php");
+		host.deleteFileExtension(test_pack+"/ext/filter", ".php");
+		host.deleteFileExtension(test_pack+"/ext/ftp", ".php");
+		host.deleteFileExtension(test_pack+"/ext/gd", ".php");
+		host.deleteFileExtension(test_pack+"/ext/gettext", ".php");
+		host.deleteFileExtension(test_pack+"/ext/gmp", ".php");
+		host.deleteFileExtension(test_pack+"/ext/hash", ".php");
+		host.deleteFileExtension(test_pack+"/ext/iconv", ".php");
+		host.deleteFileExtension(test_pack+"/ext/imap", ".php");
+		host.deleteFileExtension(test_pack+"/ext/interbase", ".php");
+		host.deleteFileExtension(test_pack+"/ext/intl", ".php");
+		host.deleteFileExtension(test_pack+"/ext/json", ".php");
+		host.deleteFileExtension(test_pack+"/ext/ldap", ".php");
+		host.deleteFileExtension(test_pack+"/ext/libxml", ".php");
+		host.deleteFileExtension(test_pack+"/ext/mbstring", ".php");
+		host.deleteFileExtension(test_pack+"/ext/mcrypt", ".php");
+		host.deleteFileExtension(test_pack+"/ext/mysql", ".php");
+		host.deleteFileExtension(test_pack+"/ext/mysqli", ".php");
+		host.deleteFileExtension(test_pack+"/ext/oci8", ".php");
+		host.deleteFileExtension(test_pack+"/ext/odbc", ".php");
+		host.deleteFileExtension(test_pack+"/ext/opcache", ".php");
+		host.deleteFileExtension(test_pack+"/ext/openssl", ".php");
+		host.deleteFileExtension(test_pack+"/ext/pcntl", ".php");
+		host.deleteFileExtension(test_pack+"/ext/pcre", ".php");
+		host.deleteFileExtension(test_pack+"/ext/pdo", ".php");
+		host.deleteFileExtension(test_pack+"/ext/pdo_dblib", ".php");
+		host.deleteFileExtension(test_pack+"/ext/pdo_firebird", ".php");
+		host.deleteFileExtension(test_pack+"/ext/pdo_mysql", ".php");
+		host.deleteFileExtension(test_pack+"/ext/pdo_oci", ".php");
+		host.deleteFileExtension(test_pack+"/ext/pdo_odbc", ".php");
+		host.deleteFileExtension(test_pack+"/ext/pdo_pgsql", ".php");
+		host.deleteFileExtension(test_pack+"/ext/pdo_sqlite", ".php");
+		host.deleteFileExtension(test_pack+"/ext/pgsql", ".php");
+		// CRITICAL: don't delete .php inside phar. it uses those files for tests (especially in ext/phar/tests/files/)
+		//    @see ext/phar/tests/fatal_error_web_phar
+		//host.deleteFileExtension(test_pack+"/ext/phar", ".php");
+		host.deleteFileExtension(test_pack+"/ext/posix", ".php");
+		host.deleteFileExtension(test_pack+"/ext/pspell", ".php");
+		host.deleteFileExtension(test_pack+"/ext/readline", ".php");
+		host.deleteFileExtension(test_pack+"/ext/reflection", ".php");
+		host.deleteFileExtension(test_pack+"/ext/session", ".php");
+		host.deleteFileExtension(test_pack+"/ext/shmop", ".php");
+		host.deleteFileExtension(test_pack+"/ext/simplexml", ".php");
+		host.deleteFileExtension(test_pack+"/ext/skeleton", ".php");
+		host.deleteFileExtension(test_pack+"/ext/snmp", ".php");
+		host.deleteFileExtension(test_pack+"/ext/soap", ".php");
+		host.deleteFileExtension(test_pack+"/ext/sockets", ".php");
+		host.deleteFileExtension(test_pack+"/ext/spl", ".php");
+		host.deleteFileExtension(test_pack+"/ext/sqlite3", ".php");
+		host.deleteFileExtension(test_pack+"/ext/standard", ".php");
+		host.deleteFileExtension(test_pack+"/ext/sybase_ct", ".php");
+		host.deleteFileExtension(test_pack+"/ext/sysvmsg", ".php");
+		host.deleteFileExtension(test_pack+"/ext/sysvsem", ".php");
+		host.deleteFileExtension(test_pack+"/ext/sysvshm", ".php");
+		host.deleteFileExtension(test_pack+"/ext/tidy", ".php");
+		host.deleteFileExtension(test_pack+"/ext/tokenizer", ".php");
+		host.deleteFileExtension(test_pack+"/ext/wddx", ".php");
+		host.deleteFileExtension(test_pack+"/ext/xml", ".php");
+		host.deleteFileExtension(test_pack+"/ext/xmlreader", ".php");
+		host.deleteFileExtension(test_pack+"/ext/xmlrpc", ".php");
+		host.deleteFileExtension(test_pack+"/ext/xmlwriter", ".php");
+		host.deleteFileExtension(test_pack+"/ext/xsl", ".php");
+		host.deleteFileExtension(test_pack+"/ext/zip", ".php");
+		host.deleteFileExtension(test_pack+"/ext/zlib", ".php");
 		host.deleteFileExtension(test_pack+"/tests", ".php");
 		host.deleteFileExtension(test_pack+"/zend", ".php");
 		host.deleteFileExtension(test_pack+"/sapi", ".php");
@@ -129,6 +213,14 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 			}
 		}
 		//
+		
+		// normalize name fragments
+		if (names.size()>0){
+			ArrayList<String> normal_names = new ArrayList<String>(names.size());
+			for ( String name : names )
+				normal_names.add(PhptTestCase.normalizeTestCaseName(name));
+			names = normal_names;
+		}
 		
 		// TODO should only return test cases matching names, but load and cache all of them
 		//     (if no names, return all test cases)
@@ -221,7 +313,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 				if (names!=null) {
 					boolean match = false;
 					for(String name: names) {
-						if (f.getPath().toLowerCase().contains(name)) {
+						if (PhptTestCase.normalizeTestCaseName(f.getPath()).contains(name)) {
 							match = true;
 							break;
 						}
