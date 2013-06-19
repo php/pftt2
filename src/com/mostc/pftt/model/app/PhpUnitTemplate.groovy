@@ -152,6 +152,7 @@ function __phpunit_run_isolated_test()
 	\$status = PHPUnit_Runner_BaseTestRunner::STATUS_SKIPPED;
 	\$status_msg = NULL;
 	\$output = NULL;
+	\$start_time = 0;
 	\$run_time = 0;
 	try {
 		if (!class_exists('$test_case.className')) {
@@ -181,7 +182,20 @@ pw.println("""
 		\$test->run(\$result);
 		\$run_time = microtime(TRUE) - \$start_time;
 		\$status = \$test->getStatus();
-		\$status_msg = \$test->getStatusMessage();""");
+		\$status_msg = \$test->getStatusMessage();
+	} catch ( Exception \$e ) {
+		\$output = ob_get_clean();
+		echo 'ERROR'; echo PHP_EOL;
+		echo '$test_case.className'; echo PHP_EOL;
+		echo \$e->getTraceAsString(); echo PHP_EOL;
+		echo \$e->getMessage(); echo PHP_EOL;
+		echo \$output;
+		dump_info();
+
+		\$GLOBALS['ignore_exit'] = TRUE;
+		return;
+	}
+""");
 	} else {
 		// @see PhpUnit_Framework_TestCase::runBare
 		//
@@ -199,39 +213,26 @@ pw.println("""clearstatcache();
 		} catch ( Exception \$e2 ) {}
 		\$output = ob_get_clean();
 		\$status = PHPUnit_Runner_BaseTestRunner::STATUS_PASSED;
-	} catch (PHPUnit_Framework_IncompleteTest \$e) {
-		\$run_time = microtime(TRUE) - \$start_time;
-		\$status     = PHPUnit_Runner_BaseTestRunner::STATUS_INCOMPLETE;
-		\$status_msg = \$e->getTraceAsString();
-	} catch (PHPUnit_Framework_SkippedTest \$e) {
-		\$run_time = microtime(TRUE) - \$start_time;
-		\$status     = PHPUnit_Runner_BaseTestRunner::STATUS_SKIPPED;
-		\$status_msg = \$e->getTraceAsString();
-	} catch (PHPUnit_Framework_AssertionFailedError \$e) {
-		\$run_time = microtime(TRUE) - \$start_time;
-		\$status     = PHPUnit_Runner_BaseTestRunner::STATUS_FAILURE;
-		\$status_msg = \$e->getTraceAsString();
 	} catch (Exception \$e) {
 		\$run_time = microtime(TRUE) - \$start_time;
-		\$status     = PHPUnit_Runner_BaseTestRunner::STATUS_ERROR;
-		\$status_msg = \$e->getTraceAsString();""");
+		if (\$e instanceof PHPUnit_Framework_SkippedTest) { 
+			\$status = PHPUnit_Runner_BaseTestRunner::STATUS_SKIPPED;
+		} else if (\$e instanceof PHPUnit_Framework_IncompleteTest) {
+			\$status = PHPUnit_Runner_BaseTestRunner::STATUS_ERROR;
+		} else if (\$e instanceof PHPUnit_Framework_AssertionFailedError) {
+			\$status = PHPUnit_Runner_BaseTestRunner::STATUS_FAILURE;
+		} else {
+			\$status = PHPUnit_Runner_BaseTestRunner::STATUS_INCOMPLETE;
+		}
+		\$status_msg = \$e->getTraceAsString() . \$e->getMessage();
+	}
+""");
 	} // end if (reflection_only)
 	// PFTT Extension: use Exception#getTraceAsString to get the message instead of
 	//                 Exception#getMessage. this provides a stack trace to
 	//                 the exact part of the test that throws the exception
 	//
-pw.println("""	} catch ( Exception \$e ) {
-		\$output = ob_get_clean();
-		echo 'ERROR'; echo PHP_EOL;
-		echo '$test_case.className'; echo PHP_EOL;
-		echo \$e->getTraceAsString(); echo PHP_EOL;
-		echo \$output;
-		dump_info();
-
-		\$GLOBALS['ignore_exit'] = TRUE;
-		return;
-	}
-
+pw.println("""	
 	// PFTT
 	switch(\$status) {
 	case PHPUnit_Runner_BaseTestRunner::STATUS_PASSED:
