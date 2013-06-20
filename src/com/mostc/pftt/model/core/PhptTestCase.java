@@ -30,7 +30,6 @@ import com.mostc.pftt.model.TestCase;
 import com.mostc.pftt.model.core.PhpBuild.PHPOutput;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
-import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.apache.regexp.RE;
 import com.mostc.pftt.util.apache.regexp.RECompiler;
@@ -86,12 +85,9 @@ public class PhptTestCase extends TestCase {
 			new String[]{"ext/standard/tests/streams/stream_set_"},
 			new String[]{"ext/standard/tests/streams/"},
 			new String[]{"ext/standard/tests/sockets/", "ext/sockets/"},
-			// the bug38450* tests fail randomly under apache if run on apache instance
-			// with other tests - run them (serially) on their own apache instance
-			// TODO new String[]{"ext/standard/tests/file/bug38450"},
-			// TODO new String[]{"ext/standard/tests/network/"},
-			new String[]{"ext/mysql/", "ext/pdo_mysql/", "ext/mysqli/"},
-			new String[]{"ext/pgsql/", "ext/pdo_pgsql/"},
+			new String[]{"ext/mysqli/tests/0"},
+			new String[]{"ext/pgsql/"},
+			new String[]{"ext/pdo_pgsql/"},
 			// several 61367 tests that aren't thread-safe (temp files)
 			new String[]{"ext/libxml/tests/bug61367"},
 			new String[]{"sapi/cli/tests/php_cli_server_"},
@@ -1020,6 +1016,7 @@ public class PhptTestCase extends TestCase {
 			"ext/intl/tests/locale_get_display_region2.phpt",
 			"ext/intl/tests/locale_get_display_variant2.phpt",
 			"ext/intl/tests/symfony_format_type_int32_intl1.phpt",
+			"tests/basic/022.phpt",
 		};
 	/** SPEC: PHPT tests are given 60 seconds to execute. If they have not finished by then,
 	 * they are killed and whatever output (if any) they returned is used to evalute for PASS/FAIL.
