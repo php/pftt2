@@ -28,7 +28,7 @@ import com.mostc.pftt.results.ConsoleManager;
  *
  */
 
-public class XDebugScenario extends AbstractDebugScenario {
+public class XDebugScenario extends DebugScenario {
 
 	@Override
 	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {

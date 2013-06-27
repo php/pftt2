@@ -27,7 +27,7 @@ import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
-import com.mostc.pftt.scenario.AbstractSAPIScenario;
+import com.mostc.pftt.scenario.SAPIScenario;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.ErrorUtil;
 import com.mostc.pftt.util.GZIPOutputStreamLevel;
@@ -42,7 +42,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	protected final PhptTestCase test_case;
 	protected final ScenarioSetSetup scenario_set;
 	protected final PhptThread thread;
-	protected final AbstractSAPIScenario sapi_scenario;
+	protected final SAPIScenario sapi_scenario;
 	protected final PhptActiveTestPack active_test_pack;
 	protected Map<String, String> env;
 	protected byte[] stdin_post;
@@ -120,7 +120,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		}
 	}
 	
-	public AbstractPhptTestCaseRunner2(AbstractSAPIScenario sapi_scenario, PhpIni ini, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+	public AbstractPhptTestCaseRunner2(SAPIScenario sapi_scenario, PhpIni ini, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
 		this.sapi_scenario = sapi_scenario;
 		this.ini = ini;
 		this.thread = thread;

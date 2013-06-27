@@ -8,7 +8,7 @@ def scenarios() {
 }
 
 // MediaWiki PhpUnit Code Coverage: https://integration.wikimedia.org/cover/mediawiki-core/master/php/
-class MediaWikiPhpUnitTestPack extends PhpUnitSourceTestPack {
+class MediaWikiPhpUnitTestPack extends DatabasePhpUnitSourceTestPack {
 	
 	@Override
 	public String getNameAndVersionString() {
@@ -51,9 +51,12 @@ class MediaWikiPhpUnitTestPack extends PhpUnitSourceTestPack {
 		//
 		// TODO support different database scenarios for the backend database:
 		//        mysql postgresql sqlite mssql??
-		
 		return true;
 	} // end public boolean openAfterInstall
+	
+	protected void configureDatabaseServer() {
+		database.createDatabaseWithUserReplaceOk("my_wiki", "wikiuser", "password01!");
+	}
 	
 	@Override
 	public String getPreBootstrapCode(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build) {

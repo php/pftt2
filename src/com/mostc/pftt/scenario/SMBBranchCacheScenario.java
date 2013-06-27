@@ -11,7 +11,7 @@ import com.mostc.pftt.host.RemoteHost;
  *
  */
 
-public class SMBBranchCacheScenario extends AbstractSMBScenario {
+public class SMBBranchCacheScenario extends SMBScenario {
 
 	public SMBBranchCacheScenario(RemoteHost remote_host, String base_file_path, String base_share_name) {
 		super(remote_host, base_file_path, base_share_name);

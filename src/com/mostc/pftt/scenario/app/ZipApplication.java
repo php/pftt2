@@ -5,7 +5,7 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
-import com.mostc.pftt.scenario.AbstractWebServerScenario;
+import com.mostc.pftt.scenario.WebServerScenario;
 import com.mostc.pftt.scenario.ApplicationScenario;
 import com.mostc.pftt.scenario.IScenarioSetup;
 import com.mostc.pftt.scenario.ScenarioSet;
@@ -18,7 +18,7 @@ public abstract class ZipApplication extends ApplicationScenario {
 	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		if (true)
 			return SETUP_SUCCESS; // TODO
-		AbstractWebServerScenario web = AbstractWebServerScenario.getWebServerScenario(scenario_set);
+		WebServerScenario web = WebServerScenario.getWebServerScenario(scenario_set);
 		if (web == null) {
 			cm.println(EPrintType.SKIP_OPERATION, getClass(), "add a web server (ex: apache) to -config console option and try again");
 			return SETUP_FAILED;

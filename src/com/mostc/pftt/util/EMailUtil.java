@@ -3,7 +3,6 @@ package com.mostc.pftt.util;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
-import java.net.Socket;
 import java.nio.charset.Charset;
 import java.util.Collection;
 
@@ -118,6 +117,7 @@ public final class EMailUtil {
 		NONE,
 		PLAIN,
 		LOGIN,
+		NTLM,
 		DIGEST_MD5 {
 			@Override
 			public String toString() {

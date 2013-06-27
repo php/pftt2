@@ -16,22 +16,25 @@ import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
+import com.mostc.pftt.results.AbstractPhpUnitRW;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.ITestResultReceiver;
+import com.mostc.pftt.results.PhpResultPackWriter;
 import com.mostc.pftt.results.PhpUnitTestResult;
-import com.mostc.pftt.scenario.AbstractCodeCacheScenario;
-import com.mostc.pftt.scenario.AbstractFileSystemScenario.ITestPackStorageDir;
-import com.mostc.pftt.scenario.AbstractSMBScenario.SMBStorageDir;
-import com.mostc.pftt.scenario.AbstractWebServerScenario;
+import com.mostc.pftt.scenario.CodeCacheScenario;
+import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
+import com.mostc.pftt.scenario.FileSystemScenario.ITestPackStorageDir;
+import com.mostc.pftt.scenario.SMBScenario.SMBStorageDir;
+import com.mostc.pftt.scenario.WebServerScenario;
 import com.mostc.pftt.scenario.PhpUnitReflectionOnlyScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpUnitActiveTestPack, PhpUnitSourceTestPack, PhpUnitTestCase> {
-	final Map<String,String> globals = new HashMap<String,String>();
-	final Map<String, String> env = new HashMap<String,String>();
-	final Map<String, String> constants = new HashMap<String,String>();
-	String[][] nts_file_names;
+	protected final Map<String,String> globals = new HashMap<String,String>();
+	protected final Map<String, String> env = new HashMap<String,String>();
+	protected final Map<String, String> constants = new HashMap<String,String>();
+	protected String[][] nts_file_names;
 	
 	public LocalPhpUnitTestPackRunner(ConsoleManager cm, ITestResultReceiver twriter, ScenarioSet scenario_set, PhpBuild build, AHost storage_host, AHost runner_host) {
 		super(cm, twriter, scenario_set, build, storage_host, runner_host);
@@ -60,8 +63,8 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 		reflection_only =
 				// if test-pack is under development, don't use PhpUnit/reflection so exceptions will be traceable (@see PhpUnitTemplate)
 				!src_test_pack.isDevelopment() &&
-				!(scenario_set.contains(AbstractWebServerScenario.class) &&
-				scenario_set.contains(AbstractCodeCacheScenario.class) &&
+				!(scenario_set.contains(WebServerScenario.class) &&
+				scenario_set.contains(CodeCacheScenario.class) &&
 				!scenario_set.contains(PhpUnitReflectionOnlyScenario.class));
 		
 		if (!(storage_dir instanceof SMBStorageDir)) { // TODO generalize
@@ -149,8 +152,13 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 	
 	@Override
 	protected void executeTestCases(boolean parallel) throws InterruptedException, IllegalStateException, IOException {
-		src_test_pack.startRun(cm, runner_host, scenario_set, build);
-		super.executeTestCases(parallel);
+		// get database configuration, etc...
+		scenario_set_setup.setGlobals(globals);
+		src_test_pack.prepareGlobals(cm, runner_host, scenario_set, build, globals);
+		
+		if (src_test_pack.startRun(cm, runner_host, scenario_set, build)) {
+			super.executeTestCases(parallel);
+		}
 		src_test_pack.stopRun(cm, runner_host, scenario_set, build);
 	}
 
@@ -218,5 +226,18 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 		}
 		
 	} // end public class PhpUnitThread
+
+	@Override
+	protected void showTally() {
+		AbstractPhpUnitRW phpunit = ((PhpResultPackWriter)twriter).getPhpUnit(runner_host, src_test_pack, scenario_set_setup);
+		for ( EPhpUnitTestStatus status : EPhpUnitTestStatus.values() ) {
+			cm.println(EPrintType.CLUE, getClass(),  status+" "+phpunit.count(status)+" tests");
+		}
+	}
+
+	@Override
+	public EScenarioSetPermutationLayer getScenarioSetPermutationLayer() {
+		return EScenarioSetPermutationLayer.WEB_APPLICATION;
+	}
 
 } // end public class LocalPhpUnitTestPackRunner

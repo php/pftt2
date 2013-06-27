@@ -35,7 +35,7 @@ import com.mostc.pftt.results.EPrintType;
  *
  */
 
-public class SMBDFSScenario extends AbstractSMBScenario {
+public class SMBDFSScenario extends SMBScenario {
 	protected final String base_namespace, base_remote_namespace, base_folder;
 	
 	public SMBDFSScenario(RemoteHost remote_host) {

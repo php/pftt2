@@ -6,7 +6,7 @@ package com.mostc.pftt.scenario;
  *
  */
 
-public class IISExpressFastCGIScenario extends AbstractIISFastCGIScenario {
+public class IISExpressFastCGIScenario extends IISFastCGIScenario {
 
 	@Override
 	public String getName() {

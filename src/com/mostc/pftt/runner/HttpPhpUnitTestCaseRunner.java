@@ -31,7 +31,7 @@ import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
-import com.mostc.pftt.scenario.AbstractSAPIScenario;
+import com.mostc.pftt.scenario.SAPIScenario;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.ErrorUtil;
 import com.mostc.pftt.util.TimerUtil;
@@ -49,7 +49,7 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	protected final HttpRequestExecutor httpexecutor;
 	protected Socket test_socket;
 
-	public HttpPhpUnitTestCaseRunner(AbstractSAPIScenario sapi_scenario, PhpUnitThread thread, ITestResultReceiver tmgr,
+	public HttpPhpUnitTestCaseRunner(SAPIScenario sapi_scenario, PhpUnitThread thread, ITestResultReceiver tmgr,
 			HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web,
 			Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build,
 			PhpUnitTestCase test_case, String my_temp_dir, Map<String, String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
@@ -69,14 +69,6 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	@Override
 	protected String execute(String template_file) throws IOException, Exception {
 		// Note: INI for test case provided in TestCaseGroupKey created in LocalPhpUnitTestPackRunner#createGroupKey
-		if (!host.exists(template_file)) {
-			for ( int i=0 ; i < 30 ; i++) {
-				Thread.sleep(1000); // wait a moment for file to exist
-				if (host.exists(template_file))
-					break;
-			}
-		}
-		
 		return http_execute("/test.php");
 	}
 	
@@ -91,6 +83,14 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	}
 	
 	protected String http_execute(String path) throws Exception {
+		// ensure file exists before sending HTTP request for it
+		if (!host.exists(path)) {
+			for ( int i=0 ; i < 20 ; i++ ) {
+				Thread.sleep(200);
+				if (host.exists(path))
+					break;
+			}
+		}
 		try {
 			try {
 				this.is_replacement = false;
@@ -101,7 +101,8 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 				}
 				
 				// notify of crash so it gets reported everywhere
-				web.notifyCrash("PFTT: timeout during test: "+test_case.getName()+"\n"+ErrorUtil.toString(ex1), 0);
+				//web.notifyCrash("PFTT: timeout during test: "+test_case.getName()+"\n"+ErrorUtil.toString(ex1), 0);
+				this.is_timeout = true;
 				
 				if (cm.isNoRestartAll()) {
 					// don't close or replace web server
@@ -133,7 +134,8 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 			String ex_str = ErrorUtil.toString(ioe);
 			
 			// notify web server that it crashed. it will record this, which will be accessible
-			web.notifyCrash("PFTT: IOException during test: "+test_case.getName()+"\n"+ex_str, 0);
+			//web.notifyCrash("PFTT: IOException during test: "+test_case.getName()+"\n"+ex_str, 0);
+			this.is_timeout = true;
 			
 			// if web server didn't actually crash, test will probably be marked as failure: let superclass check it
 			
@@ -163,7 +165,7 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 		try {
 			if (web!=null) {
 				synchronized(web) {
-					WebServerInstance _web = smgr.getWebServerInstance(cm, host, scenario_set.getScenarioSet(), build, ini, env, my_temp_dir, web, false, test_case);
+					WebServerInstance _web = smgr.getWebServerInstance(cm, host, scenario_set.getScenarioSet(), build, ini, env, web.getDocroot(), web, false, test_case);
 					if (_web!=this.web) {
 						this.web = _web;
 						is_replacement = true;
@@ -253,7 +255,7 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	
 	protected String do_http_get(String path, int i) throws Exception {
 		HttpContext context = new BasicHttpContext(null);
-		HttpHost http_host = new HttpHost(web.hostname(), web.port());
+		HttpHost http_host = new HttpHost(web.getHostname(), web.getPort());
 		
 		DebuggingHttpClientConnection conn = this.conn.get();
 		if (conn!=null) {
@@ -339,10 +341,15 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 			}
 			//
 			
-			if (response.getStatusLine().getStatusCode()==500) {
+			switch (response.getStatusLine().getStatusCode()) {
+			case 500:
 				is_crashed = true;
 				web.notifyCrash("HTTP 500", 500);
-				throw new RuntimeException("HTTP 500 Error");
+				throw new IOException("HTTP 500 Error");
+			case 404:
+				is_timeout = true;
+				break;
+			default:
 			}
 			
 			return IOUtil.toString(response.getEntity().getContent(), IOUtil.HALF_MEGABYTE);

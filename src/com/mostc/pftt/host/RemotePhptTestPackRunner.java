@@ -35,7 +35,7 @@ public class RemotePhptTestPackRunner extends AbstractRemoteTestPackRunner<PhptA
 		try {
 			System.setOut(new PrintStream(out));
 			
-			runAllTests(test_pack);
+			runAllTests(null, test_pack);
 		} finally {
 			System.setOut(orig_ps);
 		}
@@ -76,7 +76,7 @@ public class RemotePhptTestPackRunner extends AbstractRemoteTestPackRunner<PhptA
 				runner.generateSimulation(test_pack);
 			}
 		} else {
-			runner.runAllTests(test_pack);
+			runner.runAllTests(null, test_pack);
 		}
 	} // end public static void main
 	

@@ -1,31 +1,68 @@
 package com.mostc.pftt.scenario;
 
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.Map;
 
-import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.runner.AbstractPhpUnitTestCaseRunner;
 
-/** Tests postgres and pdo_postgres (NOT IMPLEMENTED)
+/** Tests postgres and pdo_postgres
  * 
  * @author Matt Ficken
  *
  */
 
-public class PostgresSQLScenario extends AbstractDatabaseScenario {
-	String dsn, username, password, database;
-	
+public class PostgresSQLScenario extends DatabaseScenario {
+
+	public PostgresSQLScenario(AHost host, int port, String default_username, String default_password) {
+		super(host, port, default_username, default_password);
+	}
+
 	@Override
-	protected void name_exists(String name) {
-		// TODO Auto-generated method stub
+	protected DatabaseScenarioSetup createScenarioSetup() {
+		return new PostgresSQLScenarioSetup();
+	}
+	
+	public class PostgresSQLScenarioSetup extends DefaultDatabaseScenarioSetup {
+
+		@Override
+		public String getNameWithVersionInfo() {
+			return getName(); // TODO
+		}
+
+		@Override
+		public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void getENV(Map<String, String> env) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public String getDataSourceName() {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		protected Connection createConnection() throws SQLException {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public String getPdoDbType() {
+			return "pdo_pgsql";
+		}
 		
-	}
-	
-	@Override
-	public boolean isImplemented() {
-		return false;
-	}
+	} // end public class PostgresSQLScenarioSetup
 
 	@Override
 	public String getName() {
@@ -33,20 +70,25 @@ public class PostgresSQLScenario extends AbstractDatabaseScenario {
 	}
 
 	@Override
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
-		// TODO Auto-generated method stub
-		return SETUP_FAILED;
+	public boolean isImplemented() {
+		return false;
 	}
 
 	@Override
-	public void getENV(Map<String, String> env) {
-		// TODO Auto-generated method stub
-		
+	protected String getDriverClassName() {
+		return "org.postgres.JDriver";
 	}
-	
+
 	@Override
-	public void setGlobals(Map<String, String> globals) {
-		AbstractPhpUnitTestCaseRunner.addDatabaseConnection(dsn, username, password, database, globals);
+	protected boolean startServer() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	protected boolean stopServer() {
+		// TODO Auto-generated method stub
+		return false;
 	}
 
 } // end public class PostgresSQLScenario

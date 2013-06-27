@@ -5,3 +5,4 @@ src/com/sshtools/*
 hostkeys.txt
 ssh_server.jar
 cache/working/*
+jre/*

@@ -63,7 +63,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				}
 			}
 			
-			env = generateENVForTestCase(cm, host, build, scenario_set.getScenarioSet(), test_case);
+			env = generateENVForTestCase(cm, host, build, scenario_set, test_case);
 			
 			return true;
 		}

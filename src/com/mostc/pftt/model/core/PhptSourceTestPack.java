@@ -15,6 +15,7 @@ import java.util.List;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
+import com.mostc.pftt.main.Config;
 import com.mostc.pftt.model.SourceTestPack;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
@@ -197,12 +198,12 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		host.deleteFileExtension(test_pack+"/sapi", ".php");
 	}
 	
-	public void read(List<PhptTestCase> test_cases, List<String> names, ConsoleManager cm, PhpResultPackWriter twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {
-		read(test_cases, names, cm, twriter, build, false);
+	public void read(Config config, List<PhptTestCase> test_cases, List<String> names, ConsoleManager cm, PhpResultPackWriter twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {
+		read(config, test_cases, names, cm, twriter, build, false);
 	}
 	
 	
-	public void read(List<PhptTestCase> test_cases, List<String> names, ConsoleManager cm, PhpResultPackWriter twriter, PhpBuild build, boolean ignore_missing) throws FileNotFoundException, IOException, Exception {
+	public void read(Config config, List<PhptTestCase> test_cases, List<String> names, ConsoleManager cm, PhpResultPackWriter twriter, PhpBuild build, boolean ignore_missing) throws FileNotFoundException, IOException, Exception {
 		//
 		ArrayList<PhptTestCase> _test_cases;
 		if (_ref_test_cases!=null) {
@@ -213,7 +214,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 			}
 		}
 		//
-		
+		config.processPHPTTestPack(this, twriter, build);
 		// normalize name fragments
 		if (names.size()>0){
 			ArrayList<String> normal_names = new ArrayList<String>(names.size());
@@ -241,7 +242,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 					
 					test_case = PhptTestCase.load(host, this, name, twriter);
 					
-					add_test_case(test_case, test_cases, names, cm, twriter, build, null, redirect_targets);
+					add_test_case(config, test_case, test_cases, names, cm, twriter, build, null, redirect_targets);
 					
 					// don't need to search for it
 					name_it.remove();
@@ -252,7 +253,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		if (names.size() > 0) {
 			// assume any remaining names are name fragments and search for tests with matching names
 			
-			add_test_files(test_pack_file.listFiles(), test_cases, names, cm, twriter, build, null, redirect_targets);
+			add_test_files(config, test_pack_file.listFiles(), test_cases, names, cm, twriter, build, null, redirect_targets);
 		}
 		
 		if (!ignore_missing && names.size() > 0) {
@@ -278,7 +279,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 	} // end public void read
 
 	@Override
-	public void read(List<PhptTestCase> test_cases, ConsoleManager cm, ITestResultReceiver twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {
+	public void read(Config config, List<PhptTestCase> test_cases, ConsoleManager cm, ITestResultReceiver twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {
 		//
 		ArrayList<PhptTestCase> _test_cases;
 		if (_ref_test_cases!=null) {
@@ -290,9 +291,11 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		}
 		//
 		
+		config.processPHPTTestPack(this, (PhpResultPackWriter)twriter, build);
+		
 		test_pack_file = new File(test_pack);
 		test_pack = test_pack_file.getAbsolutePath(); // normalize path
-		add_test_files(test_pack_file.listFiles(), test_cases, null, cm, twriter, build, null, new LinkedList<PhptTestCase>());
+		add_test_files(config, test_pack_file.listFiles(), test_cases, null, cm, twriter, build, null, new LinkedList<PhptTestCase>());
 		twriter.setTotalCount(test_cases.size());
 		
 		//
@@ -304,7 +307,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		twriter.setTotalCount(test_cases.size());
 	}
 	
-	private void add_test_files(File[] files, List<PhptTestCase> test_files, List<String> names, ConsoleManager cm, ITestResultReceiver twriter, PhpBuild build, PhptTestCase redirect_parent, List<PhptTestCase> redirect_targets) throws FileNotFoundException, IOException, Exception {
+	private void add_test_files(Config config, File[] files, List<PhptTestCase> test_files, List<String> names, ConsoleManager cm, ITestResultReceiver twriter, PhpBuild build, PhptTestCase redirect_parent, List<PhptTestCase> redirect_targets) throws FileNotFoundException, IOException, Exception {
 		if (files==null)
 			return;
 		main_loop:
@@ -329,7 +332,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 				
 				PhptTestCase test_case = PhptTestCase.load(host, this, false, test_name, twriter, redirect_parent);
 				
-				add_test_case(test_case, test_files, names, cm, twriter, build, redirect_parent, redirect_targets);
+				add_test_case(config, test_case, test_files, names, cm, twriter, build, redirect_parent, redirect_targets);
 			} else if (f.isFile()) {
 				String n = f.getName().toLowerCase();
 				if (!(n.endsWith(".sh") && n.endsWith(".php") && n.endsWith(".diff") && n.endsWith(".out") && n.endsWith(".exp") && n.endsWith(".cmd") && n.endsWith(".stdin"))) {
@@ -341,11 +344,11 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 						non_phpt_files.add(f);
 				}
 			}
-			add_test_files(f.listFiles(), test_files, names, cm, twriter, build, redirect_parent, redirect_targets);
+			add_test_files(config, f.listFiles(), test_files, names, cm, twriter, build, redirect_parent, redirect_targets);
 		}
 	}
 	
-	private void add_test_case(PhptTestCase test_case, List<PhptTestCase> test_cases, List<String> names, ConsoleManager cm, ITestResultReceiver twriter, PhpBuild build, PhptTestCase redirect_parent, List<PhptTestCase> redirect_targets) throws FileNotFoundException, IOException, Exception {
+	private void add_test_case(Config config, PhptTestCase test_case, List<PhptTestCase> test_cases, List<String> names, ConsoleManager cm, ITestResultReceiver twriter, PhpBuild build, PhptTestCase redirect_parent, List<PhptTestCase> redirect_targets) throws FileNotFoundException, IOException, Exception {
 		if (cm.getMaxTestReadCount() > 0 && test_cases_by_name.size() >= cm.getMaxTestReadCount())
 			return;
 		
@@ -362,7 +365,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 					File dir = new File(test_pack+host.dirSeparator()+target_test_name);
 					if (dir.isDirectory()) {
 						// add all PHPTs in directory 
-						add_test_files(dir.listFiles(), test_cases, names, cm, twriter, build, redirect_parent, redirect_targets);
+						add_test_files(config, dir.listFiles(), test_cases, names, cm, twriter, build, redirect_parent, redirect_targets);
 						
 					} else {
 						// test refers to a specific test, load it
@@ -380,6 +383,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 						
 						redirect_targets.add(test_case);
 						
+						config.processPHPT(test_case);
 						test_cases.add(test_case);
 						
 						if (cm.getMaxTestReadCount() > 0 && test_cases_by_name.size() >= cm.getMaxTestReadCount())
@@ -395,6 +399,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 				redirect_targets.add(test_case);
 			}
 			
+			config.processPHPT(test_case);
 			test_cases.add(test_case);
 		}
 	}

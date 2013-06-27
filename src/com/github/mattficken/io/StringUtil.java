@@ -21,7 +21,44 @@ import com.mostc.pftt.util.apache.regexp.REProgram;
 
 public final class StringUtil {
 	public static final String EMPTY = "";
-		
+	public static final int NOT_FOUND = -1;
+	
+	public static int indexOfCS(String[] strings, String a) {
+		for ( int i=0 ; i < strings.length ; i++ ) {
+			if (strings[i].equals(a))
+				return i;
+		}
+		return NOT_FOUND;
+	}
+	
+	public static int indexOfCS(List<String> strings, String a) {
+		int i=0;
+		for ( String b : strings ) {
+			if (b.equals(a))
+				return i;
+			i++;
+		}
+		return NOT_FOUND;
+	}
+	
+	public static int indexOfIC(String[] strings, String a) {
+		for ( int i=0 ; i < strings.length ; i++ ) {
+			if (strings[i].equalsIgnoreCase(a))
+				return i;
+		}
+		return NOT_FOUND;
+	}
+	
+	public static int indexOfIC(List<String> strings, String a) {
+		int i=0;
+		for ( String b : strings ) {
+			if (b.equalsIgnoreCase(a))
+				return i;
+			i++;
+		}
+		return NOT_FOUND;
+	}
+	
 	public static void intern(List<String> in) {
 		intern(in.listIterator());
 	}

@@ -486,6 +486,7 @@ abstract class PHPUnit_Framework_TestCase extends PHPUnit_Framework_Assert imple
     }
 	
 	public function pftt_step1() {
+		$this->setUpBeforeClass();
 		$this->setExpectedExceptionFromAnnotation();
         $this->setUp();
         $this->checkRequirements();

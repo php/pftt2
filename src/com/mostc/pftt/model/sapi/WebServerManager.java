@@ -81,6 +81,7 @@ public abstract class WebServerManager extends SAPIManager {
 				return true;
 			if (c.getEnv()!=null&&env!=null&&c.getEnv().equals(env))
 				return true;
+			//return true;
 		}
 		return false;
 	}

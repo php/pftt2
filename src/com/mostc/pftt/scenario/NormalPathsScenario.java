@@ -14,7 +14,7 @@ import com.mostc.pftt.results.ConsoleManager;
 public class NormalPathsScenario extends PathsScenario {
 	
 	@Override
-	public boolean isPlaceholder() {
+	public boolean isPlaceholder(EScenarioSetPermutationLayer layer) {
 		return true;
 	}
 

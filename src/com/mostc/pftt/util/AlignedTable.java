@@ -61,6 +61,9 @@ public class AlignedTable {
 								sb.append(cell.substring(j));
 						}
 					}
+					
+					// add extra blank line to separate multi-line rows
+					sb.append("\n");
 				} else {
 					line_len += cell.length();
 					sb.append(cell);

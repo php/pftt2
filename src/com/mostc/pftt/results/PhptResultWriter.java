@@ -9,8 +9,11 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import org.kxml2.io.KXmlSerializer;
 
@@ -20,6 +23,10 @@ import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.EPhptSection;
 import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.PhpBuildInfo;
+import com.mostc.pftt.model.core.PhpIni;
+import com.mostc.pftt.model.core.PhptTestCase;
+import com.mostc.pftt.runner.AbstractLocalTestPackRunner.NonThreadSafeExt;
+import com.mostc.pftt.runner.AbstractLocalTestPackRunner.TestCaseGroup;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 
@@ -269,5 +276,77 @@ public class PhptResultWriter extends AbstractPhptRW {
 	public List<String> getTestNames(EPhptTestStatus status) {
 		return status_list_map.get(status).test_names;
 	}
+
+	public void reportGroups(LinkedBlockingQueue<TestCaseGroup<PhptTestCase>> thread_safe_groups, LinkedBlockingQueue<NonThreadSafeExt<PhptTestCase>> non_thread_safe_exts) {
+		try {
+			reportGroupsEx(thread_safe_groups, non_thread_safe_exts);
+		} catch ( IOException ex ) {
+			ex.printStackTrace();
+		}
+	}
+	
+	protected void reportGroupsEx(LinkedBlockingQueue<TestCaseGroup<PhptTestCase>> thread_safe_groups, LinkedBlockingQueue<NonThreadSafeExt<PhptTestCase>> non_thread_safe_exts) throws IOException {
+		File groups_file = new File(dir+"/GROUPS.xml");
+		FileWriter fw = new FileWriter(groups_file);
+		serial.setOutput(fw);
+		
+		serial.startDocument("utf-8", null);
+		Iterator<NonThreadSafeExt<PhptTestCase>> ext_it = non_thread_safe_exts.iterator();
+		NonThreadSafeExt<PhptTestCase> ext;
+		while ( ext_it.hasNext() ) {
+			ext = ext_it.next();
+			
+			serial.startTag(null, "extension");
+			for ( String ext_name : ext.ext_names ) {
+				serial.startTag(null, "name");
+				serial.text(ext_name);
+				serial.endTag(null, "name");
+			}	
+			reportGroups(ext.test_groups);
+			serial.endTag(null, "extension");
+		}
+		
+		serial.startTag(null, "threadSafe");
+		reportGroups(thread_safe_groups);
+		serial.endTag(null, "threadSafe");
+		serial.endDocument();
+		
+		fw.close();
+	}
+
+	protected void reportGroups(LinkedBlockingQueue<TestCaseGroup<PhptTestCase>> test_groups) throws IOException {
+		for ( TestCaseGroup<PhptTestCase> group : test_groups ) {
+			serial.startTag(null, "group");
+			
+			serial.startTag(null, "groupKey");
+			Map<String,String> env = group.group_key.getEnv();
+			if (env!=null) {
+				for ( String env_name : env.keySet() ) {
+					serial.startTag(null, "env");
+					serial.attribute(null, "name", env_name);
+					serial.text(env.get(env_name));
+					serial.endTag(null, "env");
+				}
+			}
+			PhpIni ini = group.group_key.getPhpIni();
+			if (ini!=null) {
+				serial.startTag(null, "ini");
+				serial.text(ini.toString());
+				serial.endTag(null, "ini");
+			}
+			serial.endTag(null, "groupKey");
+			
+			Iterator<PhptTestCase> it = group.test_cases.iterator();
+			while (it.hasNext()) {
+				serial.startTag(null, "testCase");
+				serial.attribute(null, "name", it.next().getName());
+				serial.endTag(null, "testCase");
+			}
+			
+			serial.endTag(null, "group");
+		}
+	}
+	
+	
 	
 } // end public class PhptResultWriter

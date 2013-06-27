@@ -7,9 +7,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-
-import javax.annotation.Nullable;
 
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
@@ -57,7 +54,7 @@ public class ScenarioSet extends ArrayList<Scenario> {
 				return a.getSerialKey(EScenarioSetPermutationLayer.PHP_CORE).getName().compareTo(b.getSerialKey(EScenarioSetPermutationLayer.PHP_CORE).getName());
 			}
 		};
-	private synchronized void sort() {
+	private synchronized void sort(EScenarioSetPermutationLayer layer) {
 		if (sorting)
 			return;
 		sorting = true;
@@ -68,7 +65,7 @@ public class ScenarioSet extends ArrayList<Scenario> {
 		StringBuilder sb = new StringBuilder(40);
 		String str;
 		for ( Scenario s : this ) {
-			if (s.isPlaceholder())
+			if (s.isPlaceholder(layer))
 				continue;
 			else if (sb.length()>0)
 				sb.append('_');
@@ -81,13 +78,15 @@ public class ScenarioSet extends ArrayList<Scenario> {
 	protected void forceSort() {
 		if (sorting)
 			return;
-		sort();
+		sort(last_sort_layer);
 	}
 	
-	protected void ensureSorted() {
+	private EScenarioSetPermutationLayer last_sort_layer;
+	protected void ensureSorted(EScenarioSetPermutationLayer layer) {
 		if (sorted)
 			return;
-		sort();
+		last_sort_layer = layer;
+		sort(layer);
 	}
 	
 	@Override
@@ -101,17 +100,21 @@ public class ScenarioSet extends ArrayList<Scenario> {
 	 * 
 	 * @return
 	 */
-	public String getName() {
+	public String getName(EScenarioSetPermutationLayer layer) {
 		// used by #toString, so this has to be fast
 		// whereas #getNameWithVersionInfo isn't used much
-		ensureSorted();
+		ensureSorted(layer);
 		return str; // @see #sort
 	}
 	
-	public String getShortName() {
+	public String getName() {
+		return getName(last_sort_layer);
+	}
+	
+	public String getShortName(EScenarioSetPermutationLayer layer) {
 		StringBuilder sb = new StringBuilder();
 		for ( Scenario s : this ) {
-			if (s.ignoreForShortName())
+			if (s.ignoreForShortName(layer==null?last_sort_layer:layer))
 				continue;
 			else if (sb.length()>0)
 				sb.append('_');
@@ -129,40 +132,16 @@ public class ScenarioSet extends ArrayList<Scenario> {
 	
 	@Override
 	public boolean equals(Object o) {
-		ensureSorted();
+		ensureSorted(last_sort_layer);
 		return super.equals(o);
 	}
 	
 	@Override
 	public int hashCode() {
-		ensureSorted();
+		ensureSorted(last_sort_layer);
 		return super.hashCode();
 	}
-	
-	/** returns any special ENV vars for this scenario or NULL if not are needed.
-	 * 
-	 * this is mainly used for PHPTs that need to receive database configuration
-	 * 
-	 * @see Scenario#hasENV - Scenario#getENV only called if Scenario#hasENV returns true
-	 * @return
-	 */
-	@Nullable
-	public Map<String, String> getENV() {
-		HashMap<String,String> env = null;
-		for ( Scenario scenario : this ) {
-			if (scenario.hasENV()) {
-				env = new HashMap<String,String>(5);
-				break;
-			}	
-		}
-		if (env==null)
-			return null;
-		for ( Scenario scenario : this )
-			scenario.getENV(env);
 		
-		return env;
-	}
-	
 	public boolean isUACRequiredForStart() {
 		for ( Scenario scenario : this ) {
 			if (scenario.isUACRequiredForStart())
@@ -333,6 +312,12 @@ public class ScenarioSet extends ArrayList<Scenario> {
 	}
 	static {
 		scenario_sets = permuteScenarioSets(EScenarioSetPermutationLayer.PHP_CORE, Arrays.asList(Scenario.getAllDefaultScenarios()));
+	}
+	
+	protected String processNameAndVersionInfo(String name) {
+		for ( Scenario s : this )
+			name = s.processNameAndVersionInfo(name);
+		return name;
 	}
 	
 } // end public class ScenarioSet

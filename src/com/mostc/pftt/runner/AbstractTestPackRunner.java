@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.List;
 
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.main.Config;
 import com.mostc.pftt.model.SourceTestPack;
 import com.mostc.pftt.model.TestCase;
 import com.mostc.pftt.model.core.PhpBuild;
@@ -33,7 +34,7 @@ public abstract class AbstractTestPackRunner<S extends SourceTestPack<?, T>, T e
 		return scenario_set;
 	}
 	
-	public abstract void runAllTests(S test_pack) throws FileNotFoundException, IOException, Exception;
+	public abstract void runAllTests(Config config, S test_pack) throws FileNotFoundException, IOException, Exception;
 	public abstract void runTestList(S test_pack, List<T> test_cases) throws Exception;
 	
 	public static enum ETestPackRunnerState {

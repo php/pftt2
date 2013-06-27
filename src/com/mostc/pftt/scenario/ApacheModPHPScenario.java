@@ -12,7 +12,7 @@ import com.mostc.pftt.results.EPrintType;
  *
  */
 
-public class ApacheModPHPScenario extends AbstractApacheScenario {
+public class ApacheModPHPScenario extends ApacheScenario {
 	
 	@Override
 	public String getName() {

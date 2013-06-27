@@ -1,5 +1,7 @@
 package com.mostc.pftt.scenario;
 
+import java.util.Map;
+
 import com.github.mattficken.Overridable;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.AHost.ExecHandle;
@@ -20,14 +22,16 @@ import com.mostc.pftt.util.DllVersion;
  * 
  * 5.5+ PHP builds include Opcache. This Scenario installs Opcache on 5.3 and 5.4 builds. 
  * 
- * Formerly known as Optimizer+, Zend Optimizer+, often abbreviated as o+ or zo+ or Optimizer Plus
+ * Formerly known as Optimizer+, Zend Optimizer+, often abbreviated as o+ or zo+ or Optimizer Plus.
+ * 
+ * Opcache provides only code caching, so it can be used alongside APCU or WincacheU.
  * 
  * @see http://windows.php.net/downloads/pecl/releases/opcache/7.0.2/
  * @see https://github.com/zend-dev/ZendOptimizerPlus
  *
  */
 
-public class OpcacheScenario extends AbstractCodeCacheScenario {
+public class OpcacheScenario extends CodeCacheScenario {
 	
 	@Overridable 
 	public void prepareINI(PhpIni ini, String dll_path) {
@@ -170,7 +174,7 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 		return getDllPath(cm, host, build) != null;
 	}
 
-	public class OpcacheSetup implements IScenarioSetup {
+	public class OpcacheSetup extends SimpleScenarioSetup {
 		protected final DllVersion dll;
 		protected final Host host;
 		protected final ConsoleManager cm;
@@ -214,6 +218,19 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 		public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
 			OpcacheScenario.this.prepareINI(ini, dll.getPath());
 		}
+
+		@Override
+		public void getENV(Map<String, String> env) {
+		}
+
+		@Override
+		public void setGlobals(Map<String, String> globals) {
+		}
+
+		@Override
+		public boolean hasENV() {
+			return false;
+		}
 		
 	} // end public class OpcacheSetup
 	
@@ -245,7 +262,7 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 		}
 		
 		//
-		if (setup != null && host.isWindows()) {
+		if (setup != null && shouldUseStartupProcess(host)) {
 			// need to start a process to startup Opcache and leave it running
 			// to ensure that the SharedMemoryArea is never closed
 			//
@@ -277,6 +294,10 @@ public class OpcacheScenario extends AbstractCodeCacheScenario {
 		return setup;
 	} // end public OpcacheSetup setup
 	
+	protected boolean shouldUseStartupProcess(Host host) {
+		return host.isWindows();
+	}
+
 	// @see Optimizer/zend_optimizer.h
 	public static final int ZEND_OPTIMIZER_PASS_1 = (1<<0); /* CSE, STRING construction */
 	public static final int ZEND_OPTIMIZER_PASS_2 = (1<<1); /* Constant conversion and jums */

@@ -11,10 +11,10 @@ import com.mostc.pftt.results.ConsoleManager;
  *
  */
 
-public class NoDebugScenario extends AbstractDebugScenario {
-
+public class NoDebugScenario extends DebugScenario {
+	
 	@Override
-	public boolean isPlaceholder() {
+	public boolean isPlaceholder(EScenarioSetPermutationLayer layer) {
 		return true;
 	}
 	

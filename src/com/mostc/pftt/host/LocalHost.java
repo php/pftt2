@@ -108,6 +108,28 @@ public class LocalHost extends AHost {
 		return File.separator;
 	}
 	
+	private boolean checked_elevate, found_elevate;
+	@Override
+	public ExecOutput execElevatedOut(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread test_thread, int slow_timeout_sec) throws Exception {
+		if (isWindows() && StringUtil.isEmpty(getEnvValue("PFTT_SHELL"))) {
+			// check if %PFTT_SHELL% is defined then PFTT is running in the
+			// PFTT shell which is already elevated, so don't run elevate.exe
+			//
+			//
+			if (!checked_elevate) {
+				found_elevate = exists(getPfttDir()+"\\bin\\elevate.exe");
+				
+				checked_elevate = true;
+			}
+			if (found_elevate) {
+				// execute command with this utility that will elevate the program using Windows UAC
+				cmd = getPfttDir() + "\\bin\\elevate "+cmd;
+			}
+		}
+		
+		return execOut(cmd, timeout_sec, env, stdin_data, charset, chdir, test_thread, slow_timeout_sec);
+	}
+	
 	@Override
 	public ByLineReader readFile(String file) throws FileNotFoundException, IOException {
 		return new NoCharsetByLineReader(new FileInputStream(file));
@@ -983,6 +1005,19 @@ public class LocalHost extends AHost {
 	@Override
 	protected boolean deleteSingleFile(String path) {
 		return new File(path).delete();
+	}
+	
+	public static String ensureAbsolutePathCWD(String path) {
+		if (isLocalhostWindows() &&	StringUtil.isNotEmpty(AHost.drive(path)))
+			return path;
+		else if (path.startsWith("/"))
+			return path;
+		else
+			return new File(new File(cwd()), path).getAbsolutePath();
+	}
+	
+	public static String cwd() {
+		return System.getenv("user.dir");
 	}
 	
 } // end public class Host

@@ -380,7 +380,7 @@ pw.print("""
 				
 				value = StringUtil.cslashes(value);
 				
-				pw.println("\$GLOBALS['$name'] = $value;");
+				pw.println("\$GLOBALS['$name'] = '$value';");
 			}
 		}
 		

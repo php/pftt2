@@ -18,13 +18,17 @@ import com.mostc.pftt.model.core.PhptActiveTestPack;
 import com.mostc.pftt.model.core.PhptSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
+import com.mostc.pftt.results.AbstractPhptRW;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.ITestResultReceiver;
+import com.mostc.pftt.results.PhpResultPackWriter;
+import com.mostc.pftt.results.PhptResultWriter;
 import com.mostc.pftt.results.PhptTestResult;
+import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
-import com.mostc.pftt.scenario.AbstractFileSystemScenario.ITestPackStorageDir;
+import com.mostc.pftt.scenario.FileSystemScenario.ITestPackStorageDir;
 
 /** Runs PHPTs from a given PhptTestPack.
  * 
@@ -106,26 +110,13 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 
 	@Override
 	protected void preGroup(List<PhptTestCase> test_cases) {
-		// evenly/randomly distribute SLOOOooow test cases throughout the list
-		// will get faster usage with the dynamic thread pool
-		//    -rather than having slow tests all clustered together
-		Collections.sort(test_cases, SLOW_FIRST);
-		//
+		sapi_scenario.sortTestCases(test_cases);
 	}
-	
-	protected Comparator<PhptTestCase> SLOW_FIRST = new Comparator<PhptTestCase>() {
-			@Override
-			public int compare(PhptTestCase a, PhptTestCase b) {
-				final boolean as = !sapi_scenario.isSlowTest(a);
-				final boolean bs = !sapi_scenario.isSlowTest(b);
-				return ( as ^ bs ) ? ( as ^ true  ? -1 : 1 ) : 0;
-			}
-		};
 	
 	@Override
 	protected TestCaseGroupKey createGroupKey(PhptTestCase test_case, TestCaseGroupKey group_key) throws Exception {
 		String name = test_case.getName();
-		if (name.contains("svsvmsg")||name.contains("sysvshm")||name.contains("posix")||name.contains("sql")||name.contains("curl")||name.contains("ftp")||name.contains("dba")||name.contains("sybase")||name.contains("interbase")||name.contains("ldap")||name.contains("imap")||name.contains("oci")||name.contains("soap")||name.contains("xmlrpc")||name.contains("pcntl")||name.contains("odbc")||name.contains("snmp")||name.contains("pdo")) {
+		if (name.contains("svsvmsg")||name.contains("sysvshm")||name.contains("posix")||name.contains("ftp")||name.contains("dba")||name.contains("sybase")||name.contains("interbase")||name.contains("ldap")||name.contains("imap")||name.contains("oci")||name.contains("soap")||name.contains("xmlrpc")||name.contains("pcntl")||name.contains("odbc")||name.contains("snmp")) {
 			// TODO temp 5/29
 			twriter.addResult(runner_host, scenario_set_setup, new PhptTestResult(runner_host, EPhptTestStatus.SKIP, test_case, "Skip", null, null, null, null, null, null, null, null, null, null, null));
 			return null;
@@ -183,12 +174,17 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 		for ( TestCaseGroup<PhptTestCase> a : thread_safe_list ) {
 			buf = new ArrayList<PhptTestCase>(a.test_cases.size());
 			buf.addAll(a.test_cases);
-			Collections.sort(buf, SLOW_FIRST);
+			sapi_scenario.sortTestCases(buf);
 			a.test_cases.clear();
 			for ( PhptTestCase t : buf )
 				a.test_cases.add(t);
 		}
 	} // end protected void postGroup
+	
+	protected void reportGroups() {
+		PhptResultWriter phpt = (PhptResultWriter) ((PhpResultPackWriter)twriter).getPHPT(runner_host, scenario_set_setup);
+		phpt.reportGroups(thread_safe_groups, non_thread_safe_exts);
+	} 
 	
 	@Override
 	protected TestPackThread<PhptTestCase> createTestPackThread(boolean parallel) {
@@ -226,5 +222,18 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 		}
 		
 	} // end public class PhptThread
+
+	@Override
+	protected void showTally() {
+		AbstractPhptRW phpt = ((PhpResultPackWriter)twriter).getPHPT(runner_host, scenario_set_setup);
+		for ( EPhptTestStatus status : EPhptTestStatus.values() ) {
+			cm.println(EPrintType.CLUE, getClass(),  status+" "+phpt.count(status)+" tests");
+		}
+	}
+
+	@Override
+	public EScenarioSetPermutationLayer getScenarioSetPermutationLayer() {
+		return EScenarioSetPermutationLayer.PHP_CORE;
+	}
 	
 } // end public class LocalPhptTestPackRunner

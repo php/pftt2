@@ -5,7 +5,7 @@ import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
 
-public abstract class SMBCSCOptionScenario extends AbstractOptionScenario {
+public abstract class SMBCSCOptionScenario extends OptionScenario {
 
 	@Override
 	public Class<?> getSerialKey(EScenarioSetPermutationLayer layer) {

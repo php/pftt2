@@ -26,6 +26,7 @@ import com.github.mattficken.Overridable;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.LocalHost;
+import com.mostc.pftt.main.Config;
 import com.mostc.pftt.model.SourceTestPack;
 import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.PhpBuild;
@@ -51,6 +52,9 @@ import com.mostc.pftt.scenario.ScenarioSet;
  *    To speed test running, making testing more convenient and thus done more frequently and thoroughly,
  *    test running is threaded, so multiple tests are run at the same time except for NTS tests.
  * 6. you may provide some additional info to PhpUnitSourceTestPack (optional; mainly, its just doing steps 3 and 4)
+ * 7. optionally, add pre-bootstrap and post-bootstrap php code that will be run before or after the bootstrap file is loaded
+ *      NOTE: what `phpunit` calls 'preamble' code, is post-bootstrap in PFTT.
+ * 8. optionally, add globals to #prepareGlobals. optionally, add INI directives to #prepareINI
  * 
  *  While your test-pack is in development, you should override #isDevelopment and have it return true. You'll get more stack traces and other
  *  information to help during the develop-test cycle you'll be in developing your test-pack.
@@ -77,8 +81,6 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 		
 		// add default entries to include_path
 		addIncludeDirectory(".");
-		// TODO PFTT_DIR for path
-		addIncludeDirectory("C:\\php-sdk\\PFTT\\current\\cache\\util\\PEAR\\pear");
 	}
 	
 	/** TRUE if test-pack is 'under development'. FALSE if its stable.
@@ -130,6 +132,8 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 		PhpUnitDist dist = new PhpUnitDist(this, path, bootstrap_file, include_files);
 		
 		php_unit_dists.add(dist);
+		
+		addIncludeDirectory(path);
 		
 		return dist;
 	}
@@ -194,11 +198,12 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	
 	/** reads all the PhpUnitTestCases from this test-pack
 	 * 
+	 * @param config
 	 * @param test_cases
 	 * @throws IOException
 	 * @throws Exception
 	 */
-	public void read(ConsoleManager cm, List<PhpUnitTestCase> test_cases) throws IOException, Exception {
+	public void read(Config config, ConsoleManager cm, List<PhpUnitTestCase> test_cases) throws IOException, Exception {
 		// TODO if subdir used, only search within that
 		
 		//
@@ -213,10 +218,9 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 		}
 		//
 		
-		
 		final int max_read_count = cm.getMaxTestReadCount();
 		for (PhpUnitDist php_unit_dist : php_unit_dists) {
-			readDir(max_read_count, test_cases, php_unit_dist, php_unit_dist.path);
+			readDir(config, max_read_count, test_cases, php_unit_dist, php_unit_dist.path);
 		}
 		
 		// alphabetize
@@ -241,13 +245,14 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	
 	/** scans for *Test.php files and reads PhpUnitTestCase(s) from them
 	 * 
+	 * @param config
 	 * @param max_read_count - max number of test cases to read (0=unlimited)
 	 * @param test_cases
 	 * @param php_unit_dist
 	 * @param dir
 	 * @throws IOException
 	 */
-	protected void readDir(final int max_read_count, List<PhpUnitTestCase> test_cases, PhpUnitDist php_unit_dist, File dir) throws IOException {
+	protected void readDir(Config config, final int max_read_count, List<PhpUnitTestCase> test_cases, PhpUnitDist php_unit_dist, File dir) throws IOException {
 		if (max_read_count > 0 && test_cases.size() >= max_read_count)
 			return;
 		
@@ -259,7 +264,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 			if (file.isDirectory()) {
 				if (max_read_count > 0 && test_cases.size() >= max_read_count)
 					return;
-				readDir(max_read_count, test_cases, php_unit_dist, file);
+				readDir(config, max_read_count, test_cases, php_unit_dist, file);
 				if (max_read_count > 0 && test_cases.size() >= max_read_count)
 					return;
 			} else if (isFileNameATest(file.getName())) {
@@ -274,7 +279,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 					continue;
 				
 				try {
-					readTestFile(max_read_count, rel_file_name, abs_file_name, php_unit_dist, test_cases, file);
+					readTestFile(config, max_read_count, rel_file_name, abs_file_name, php_unit_dist, test_cases, file);
 				} catch ( QuercusParseException ex ) {
 					ex.printStackTrace();
 				}
@@ -288,6 +293,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	
 	/** reads PhpUnitTestCase(s) from given PHP file
 	 * 
+	 * @param config 
 	 * @param max_read_count
 	 * @param rel_test_file_name
 	 * @param abs_test_file_name
@@ -296,7 +302,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	 * @param file
 	 * @throws IOException
 	 */
-	protected void readTestFile(final int max_read_count, String rel_test_file_name, String abs_test_file_name, PhpUnitDist php_unit_dist, List<PhpUnitTestCase> test_cases, File file) throws IOException {
+	protected void readTestFile(Config config, final int max_read_count, String rel_test_file_name, String abs_test_file_name, PhpUnitDist php_unit_dist, List<PhpUnitTestCase> test_cases, File file) throws IOException {
 		FileInputStream fin = new FileInputStream(file);
 		//
 		// with all the `non-technical` obstacles around developing PFTT, there isn't time to develop a simple
@@ -319,7 +325,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 				// search class for functions that start with 'test'
 				if (e.getValue().getName().startsWith("test")) {
 					// this is a test case
-					test_cases.add(new PhpUnitTestCase(
+					PhpUnitTestCase test_case = new PhpUnitTestCase(
 							php_unit_dist,
 							abs_test_file_name,
 							rel_test_file_name,
@@ -330,7 +336,9 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 							// name of method within the class
 							e.getValue().getName(),
 							e.getValue().getArgs().length
-						));
+						);
+					config.processPhpUnit(test_case);
+					test_cases.add(test_case);
 					
 					if (max_read_count > 0 && test_cases.size() >= max_read_count)
 						return;
@@ -353,17 +361,17 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	}
 
 	@Override
-	public void read(List<PhpUnitTestCase> test_cases, ConsoleManager cm,
-			ITestResultReceiver twriter, PhpBuild build)
+	public void read(Config config, List<PhpUnitTestCase> test_cases,
+			ConsoleManager cm, ITestResultReceiver twriter, PhpBuild build)
 			throws FileNotFoundException, IOException, Exception {
-		// TODO Auto-generated method stub
-		
-		read(cm, test_cases);
+		config.processPhpUnitTestPack(this, twriter, build);
+		read(config, cm, test_cases);
 	}
 
 	@Override
 	public PhpUnitActiveTestPack installInPlace(ConsoleManager cm, AHost host) throws Exception {
 		final String src_root = getSourceRoot(new LocalHost());
+		addIncludeDirectory(src_root);
 		if (!new File(src_root).isDirectory()) {
 			throw new IOException("source-test-pack not found: "+src_root);
 		}
@@ -388,6 +396,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 			throws IllegalStateException, IOException, Exception {
 		LocalHost local_host = new LocalHost();
 		final String src_root = getSourceRoot(local_host);
+		addIncludeDirectory(src_root);
 		if (!new File(src_root).isDirectory()) {
 			throw new IOException("source-test-pack not found: "+src_root);
 		}
@@ -508,10 +517,11 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	 * @param scenario_set
 	 * @param build
 	 * @param test_case
+	 * @return TRUE to run the test
 	 */
 	@Overridable
-	public void startTest(ConsoleManager cm, AHost runner_host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case) {
-		
+	public boolean startTest(ConsoleManager cm, AHost runner_host, ScenarioSet scenario_set, PhpBuild build, PhpUnitTestCase test_case) {
+		return true;
 	}
 
 	/** called just before test-run starts
@@ -520,9 +530,11 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	 * @param runner_host
 	 * @param scenario_set
 	 * @param build
+	 * @return FALSE to not run
 	 */
 	@Overridable
-	public void startRun(ConsoleManager cm, AHost runner_host, ScenarioSet scenario_set, PhpBuild build) {
+	public boolean startRun(ConsoleManager cm, AHost runner_host, ScenarioSet scenario_set, PhpBuild build) {
+		return true;
 	}
 	
 	/** called just after test-run stops
@@ -534,6 +546,19 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	 */
 	@Overridable
 	public void stopRun(ConsoleManager cm, AHost runner_host, ScenarioSet scenario_set, PhpBuild build) {
+	}
+
+	/** add to PhpUnit's globals
+	 * 
+	 * @param cm
+	 * @param runner_host
+	 * @param scenario_set
+	 * @param build
+	 * @param globals
+	 */
+	@Overridable
+	public void prepareGlobals(ConsoleManager cm, AHost runner_host, ScenarioSet scenario_set, PhpBuild build, Map<String, String> globals) {
+		
 	}
 	
 } // end public abstract class PhpUnitSourceTestPack

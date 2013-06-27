@@ -30,6 +30,7 @@ public class PhpIni {
 	// directives
 	public static final String INCLUDE_PATH = "include_path";
 	public static final String EXTENSION = "extension";
+	public static final String ZEND_EXTENSION = "zend_extension";
 	public static final String EXTENSION_DIR = "extension_dir";
 	public static final String OUTPUT_HANDLER = "output_handler";
 	public static final String OPEN_BASEDIR = "open_basedir";
@@ -311,11 +312,30 @@ public class PhpIni {
 		}
 		is_default = false;
 	}
-	
+
+	/** removes all values of directive from this ini.
+	 * 
+	 * @param directive
+	 */
 	public void remove(String directive) {
 		ini_map.remove(directive);
 		cli_arg = ini_str = null;
 		is_default = false;
+	}
+	
+	/** removes value from directive if present (other values for directive are not affected)
+	 * 
+	 * @param directive
+	 * @param value
+	 */
+	public void removeValue(String directive, String value) {
+		ArrayList<String> values = ini_map.get(directive);
+		if (values!=null) {
+			cli_arg = ini_str = null;
+			is_default = false;
+			
+			while (values.remove(value)) {};
+		}
 	}
 	
 	@Nullable

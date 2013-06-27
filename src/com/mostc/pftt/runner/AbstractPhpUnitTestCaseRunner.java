@@ -24,7 +24,7 @@ import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
-import com.mostc.pftt.scenario.AbstractSAPIScenario;
+import com.mostc.pftt.scenario.SAPIScenario;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 
 /** runs a single PhpUnitTestCase
@@ -44,11 +44,7 @@ import com.mostc.pftt.scenario.ScenarioSetSetup;
 //   -accurate crash detection
 //
 public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunner<LocalPhpUnitTestPackRunner.PhpUnitThread,LocalPhpUnitTestPackRunner> {
-	public static final String DB_DSN = "DB_DSN";
-	public static final String DB_USER = "DB_USER";
-	public static final String DB_PASSWD = "DB_PASSWD";
-	public static final String DB_DBNAME = "DB_DBNAME";
-	protected final AbstractSAPIScenario sapi_scenario;
+	protected final SAPIScenario sapi_scenario;
 	protected final PhpUnitThread thread;
 	protected final ITestResultReceiver tmgr;
 	protected final Map<String, String> globals;
@@ -66,7 +62,7 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 	protected boolean is_crashed, is_timeout;
 	protected final boolean reflection_only;
 
-	public AbstractPhpUnitTestCaseRunner(AbstractSAPIScenario sapi_scenario, PhpUnitThread thread, ITestResultReceiver tmgr, Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSetSetup scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
+	public AbstractPhpUnitTestCaseRunner(SAPIScenario sapi_scenario, PhpUnitThread thread, ITestResultReceiver tmgr, Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSetSetup scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
 		this.sapi_scenario = sapi_scenario;
 		this.thread = thread;
 		this.tmgr = tmgr;
@@ -141,7 +137,8 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 		
 		//
 		try {
-			test_case.getPhpUnitDist().getSourceTestPack().startTest(cm, host, scenario_set.getScenarioSet(), build, test_case);
+			if (!test_case.getPhpUnitDist().getSourceTestPack().startTest(cm, host, scenario_set.getScenarioSet(), build, test_case))
+				return;
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CLUE, getClass(), "runTest", ex, "test-pack notification exception");
 		}
@@ -253,6 +250,8 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 					} 
 				}
 				output_str = StringUtil.join(lines, "\n");
+				if (output_str.contains("Missing arg")||output_str.contains("Argument 1 passed"))
+					status = EPhpUnitTestStatus.SKIP; // TODO temp
 			}
 			//
 			
@@ -307,16 +306,36 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 	 * 
 	 * @see http://www.phpunit.de/manual/current/en/database.html
 	 * @param dsn
+	 * @param hostname
+	 * @param port
 	 * @param username
 	 * @param password
 	 * @param database
+	 * @param pdo_db_type
 	 * @param globals
 	 */
-	public static void addDatabaseConnection(String dsn, String username, String password, String database, Map<String, String> globals) {
-		globals.put(DB_DSN, dsn);
-		globals.put(DB_USER, username);
-		globals.put(DB_PASSWD, password);
-		globals.put(DB_DBNAME, database);
+	public static void addDatabaseConnection(String dsn, String hostname, int port, String username, String password, String database, String pdo_db_type, Map<String, String> globals) {
+		String port_str = Integer.toString(port);
+		
+		globals.put("DB_DSN", dsn);
+		globals.put("DB_USER", username);
+		globals.put("DB_PASSWD", password);
+		globals.put("DB_DBNAME", database);
+		globals.put("db_dsn", dsn);
+		globals.put("db_user", username);
+		globals.put("db_passwd", password);
+		globals.put("db_dbname", database);
+		// @see vendor/symfony/symfony/vendor/doctrine/dbal/tests/Doctrine/Tests/TestUtil.php
+		globals.put("db_type", pdo_db_type);
+		globals.put("db_username", username);
+		globals.put("db_password", password);
+		globals.put("db_host", hostname);
+		globals.put("db_port", port_str);
+		globals.put("tmpdb_type", pdo_db_type);
+		globals.put("tmpdb_username", username);
+		globals.put("tmpdb_password", password);
+		globals.put("tmpdb_host", hostname);
+		globals.put("tmpdb_port", port_str);
 	}
 
 } // end public abstract class AbstractPhpUnitTestCaseRunner

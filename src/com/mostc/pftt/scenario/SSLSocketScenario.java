@@ -10,7 +10,7 @@ import com.mostc.pftt.results.ConsoleManager;
  * 
  */
 
-public class SSLSocketScenario extends AbstractSocketScenario {
+public class SSLSocketScenario extends SocketScenario {
 
 	@Override
 	public String getName() {
@@ -31,7 +31,7 @@ public class SSLSocketScenario extends AbstractSocketScenario {
 	@Override
 	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		// only work with AbstractWebServerScenario
-		return AbstractWebServerScenario.getWebServerScenario(scenario_set) != null;
+		return WebServerScenario.getWebServerScenario(scenario_set) != null;
 	}
 
 }

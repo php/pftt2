@@ -19,6 +19,7 @@ import javax.annotation.Nullable;
 
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.RemoteHost;
+import com.mostc.pftt.main.Config;
 import com.mostc.pftt.model.ActiveTestPack;
 import com.mostc.pftt.model.SourceTestPack;
 import com.mostc.pftt.model.TestCase;
@@ -34,12 +35,13 @@ import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhpResultPackWriter;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
-import com.mostc.pftt.scenario.AbstractFileSystemScenario;
-import com.mostc.pftt.scenario.AbstractRemoteFileSystemScenario;
-import com.mostc.pftt.scenario.AbstractSAPIScenario;
-import com.mostc.pftt.scenario.AbstractWebServerScenario;
+import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
+import com.mostc.pftt.scenario.FileSystemScenario;
+import com.mostc.pftt.scenario.RemoteFileSystemScenario;
+import com.mostc.pftt.scenario.SAPIScenario;
+import com.mostc.pftt.scenario.WebServerScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
-import com.mostc.pftt.scenario.AbstractFileSystemScenario.ITestPackStorageDir;
+import com.mostc.pftt.scenario.FileSystemScenario.ITestPackStorageDir;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.ErrorUtil;
 
@@ -62,16 +64,16 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 	protected LinkedBlockingQueue<TestPackThread<T>> threads; 
 	protected HashMap<TestCaseGroupKey,TestCaseGroup<T>> thread_safe_tests = new HashMap<TestCaseGroupKey,TestCaseGroup<T>>();
 	protected HashMap<String[],NonThreadSafeExt<T>> non_thread_safe_tests = new HashMap<String[],NonThreadSafeExt<T>>();
-	protected AbstractSAPIScenario sapi_scenario;
-	protected AbstractFileSystemScenario file_scenario;
+	protected SAPIScenario sapi_scenario;
+	protected FileSystemScenario file_scenario;
 	protected ScenarioSetSetup scenario_set_setup;
 	protected LinkedBlockingQueue<NonThreadSafeExt<T>> non_thread_safe_exts = new LinkedBlockingQueue<NonThreadSafeExt<T>>();
 	protected LinkedBlockingQueue<TestCaseGroup<T>> thread_safe_groups = new LinkedBlockingQueue<TestCaseGroup<T>>();
 	
-	protected static class NonThreadSafeExt<T extends TestCase> {
-		protected String[] ext_names;
-		protected LinkedBlockingQueue<TestCaseGroup<T>> test_groups;
-		protected HashMap<TestCaseGroupKey,TestCaseGroup<T>> test_groups_by_key = new HashMap<TestCaseGroupKey,TestCaseGroup<T>>();
+	public static class NonThreadSafeExt<T extends TestCase> {
+		public String[] ext_names;
+		public LinkedBlockingQueue<TestCaseGroup<T>> test_groups;
+		public HashMap<TestCaseGroupKey,TestCaseGroup<T>> test_groups_by_key = new HashMap<TestCaseGroupKey,TestCaseGroup<T>>();
 		
 		protected NonThreadSafeExt(String[] ext_names) {
 			this.ext_names = ext_names;
@@ -90,9 +92,9 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 	}
 	
 	
-	protected static class TestCaseGroup<T extends TestCase> {
-		protected TestCaseGroupKey group_key;
-		protected LinkedBlockingQueue<T> test_cases;
+	public static class TestCaseGroup<T extends TestCase> {
+		public TestCaseGroupKey group_key;
+		public LinkedBlockingQueue<T> test_cases;
 		
 		protected TestCaseGroup(TestCaseGroupKey group_key) {
 			this.group_key = group_key;
@@ -147,9 +149,9 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 	
 	protected void ensureFileSystemScenario() {
 		if (file_scenario==null)
-			file_scenario = AbstractFileSystemScenario.getFileSystemScenario(scenario_set);
-		if (file_scenario instanceof AbstractRemoteFileSystemScenario) {
-			storage_host = ((AbstractRemoteFileSystemScenario)file_scenario).getRemoteHost();
+			file_scenario = FileSystemScenario.getFileSystemScenario(scenario_set);
+		if (file_scenario instanceof RemoteFileSystemScenario) {
+			storage_host = ((RemoteFileSystemScenario)file_scenario).getRemoteHost();
 		}
 	}
 	
@@ -181,8 +183,8 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 	
 	protected boolean checkWebServer() {
 		//
-		if (sapi_scenario instanceof AbstractWebServerScenario) { // TODO temp
-			SAPIInstance sa = ((AbstractWebServerScenario)sapi_scenario).smgr.getWebServerInstance(cm, runner_host, scenario_set, build, new PhpIni(), null, null, null, false, null);
+		if (sapi_scenario instanceof WebServerScenario) { // TODO temp
+			SAPIInstance sa = ((WebServerScenario)sapi_scenario).smgr.getWebServerInstance(cm, runner_host, scenario_set, build, new PhpIni(), null, null, null, false, null);
 			
 			if (sa==null) {
 				cm.println(EPrintType.CANT_CONTINUE, getClass(), "SAPIInstance failed smoke tests... can't test (use -skip_smoke_tests to override)");
@@ -226,12 +228,12 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		//
 		
 		runner_state.set(ETestPackRunnerState.RUNNING);
-		sapi_scenario = AbstractSAPIScenario.getSAPIScenario(scenario_set);
+		sapi_scenario = SAPIScenario.getSAPIScenario(scenario_set);
 		ensureFileSystemScenario();
 		checkHost(storage_host);
 		checkHost(runner_host);
 		
-		scenario_set_setup = ScenarioSetSetup.setupScenarioSet(cm, runner_host, build, scenario_set);
+		scenario_set_setup = ScenarioSetSetup.setupScenarioSet(cm, runner_host, build, scenario_set, getScenarioSetPermutationLayer());
 		if (scenario_set_setup==null)
 			return;
 		
@@ -276,6 +278,8 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 				storage_dir.closeForce(cm, runner_host, this.active_test_pack); 
 			}
 			//
+			
+			showTally();
 		} finally {
 			// be sure all running WebServerInstances, or other SAPIInstances are
 			// closed by end of testing (otherwise `php.exe -S` will keep on running)
@@ -284,6 +288,10 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 				storage_dir.closeForce(cm, storage_host, active_test_pack);
 		}
 	} // end public void runTestList
+	
+	protected abstract void showTally();
+	
+	public abstract EScenarioSetPermutationLayer getScenarioSetPermutationLayer();
 	
 	protected abstract void setupStorageAndTestPack(ITestPackStorageDir storage_dir, List<T> test_cases) throws IOException, Exception;
 	
@@ -392,7 +400,10 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		}
 		
 		// finally, test cases are all grouped
+		reportGroups();
 	} // end protected void groupTestCases
+	
+	protected void reportGroups() {}
 	
 	// @see -run_group_times_list support
 	private int runGroupTimes(int run_group_times_all, TestCaseGroup<T> group) {
@@ -751,7 +762,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 							// @see HttpTestCaseRunner#http_execute which calls #notifyCrash
 							// make sure a WebServerInstance is still running here, so it will be shared with each
 							// test runner instance (otherwise each test runner will create its own instance, which is slow)
-							if (sapi_scenario instanceof AbstractWebServerScenario) { // TODO temp
+							if (sapi_scenario instanceof WebServerScenario) { // TODO temp
 								
 								if (thread_wsi != null && test_case instanceof PhptTestCase && sapi_scenario.isExpectedCrash((PhptTestCase)test_case) && !cm.isNoRestartAll()) {
 									// if this test is expected to timeout the first try, restart the web server
@@ -761,16 +772,37 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 									thread_wsi = null;
 								}
 								
+								String name = test_case.getName();
+								if (name.equals("ext/filter/tests/004.phpt")
+									|| name.equals("ext/standard/tests/strings/htmlentities05.phpt")
+									|| name.equals("ext/wddx/tests/004.phpt")
+									|| name.equals("ext/wddx/tests/005.phpt")
+									|| name.equals("ext/standard/tests/strings/htmlentities12.phpt")
+									|| name.equals("ext/mbstring/tests/mb_ereg_replace_variation1.phpt")
+									|| name.equals("ext/mbstring/tests/mb_ereg_replace_variation1.phpt")
+									|| name.equals("ext/phar/tests/phar_dotted_path.phpt")
+									|| name.equals("ext/session/tests/027.phpt")
+									|| name.equals("ext/mbstring/tests/mb_ereg_replace_variation1.phpt")
+									|| name.equals("ext/phar/tests/cache_list/frontcontroller13.phpt")
+									|| name.equals("ext/phar/tests/frontcontroller29.phpt")
+									|| name.equals("zend/tests/multibyte/multibyte_encoding_001.phpt")
+									|| name.equals("ext/session/tests/009.phpt")) {
+									if(thread_wsi!=null)
+										thread_wsi.close(cm);
+									thread_wsi = null;
+								}
+								
 								if (thread_wsi==null ||
+										
 										( !cm.isNoRestartAll()
 										 && ( cm.isRestartEachTestAll() || !thread_wsi.isRunning() )
 										 && ( !thread_wsi.isCrashedAndDebugged() || cm.isDisableDebugPrompt() )
 												)) {
 									WebServerInstance new_wsi = null;
 									try {
-										new_wsi = ((AbstractWebServerScenario)sapi_scenario).smgr.getWebServerInstance(cm, runner_host, scenario_set, build, group_key.getPhpIni(), 
+										new_wsi = ((WebServerScenario)sapi_scenario).smgr.getWebServerInstance(cm, runner_host, scenario_set, build, group_key.getPhpIni(), 
 												group_key.getEnv(),
-												this instanceof PhpUnitThread ? ((PhpUnitThread)this).my_temp_dir // TODO temp phpunit 
+												this instanceof PhpUnitThread ? src_test_pack.getSourceDirectory()//((PhpUnitThread)this).my_temp_dir // TODO temp phpunit 
 														:
 												active_test_pack.getStorageDirectory(),
 												thread_wsi, debugger_attached, completed_tests);
@@ -902,7 +934,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 	}
 
 	@Override
-	public void runAllTests(S test_pack) throws FileNotFoundException, IOException, Exception {
+	public void runAllTests(Config config, S test_pack) throws FileNotFoundException, IOException, Exception {
 		this.src_test_pack = test_pack;
 		if (!checkWebServer())
 			return;
@@ -922,7 +954,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		
 		cm.println(EPrintType.IN_PROGRESS, getClass(), "enumerating test cases from test-pack...");
 		
-		test_pack.read(test_cases, cm, twriter, build);
+		test_pack.read(config, test_cases, cm, twriter, build);
 		
 		cm.println(EPrintType.IN_PROGRESS, getClass(), "enumerated test cases.");
 		

@@ -12,7 +12,7 @@ import com.mostc.pftt.results.ConsoleManager;
  *
  */
 
-public class APCScenario extends AbstractCodeCacheScenario {
+public class APCScenario extends CodeCacheScenario {
 
 	@Override
 	public String getName() {

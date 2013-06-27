@@ -11,10 +11,10 @@ import com.mostc.pftt.results.ConsoleManager;
  *
  */
 
-public class PlainSocketScenario extends AbstractSocketScenario {
+public class PlainSocketScenario extends SocketScenario {
 
 	@Override
-	public boolean isPlaceholder() {
+	public boolean isPlaceholder(EScenarioSetPermutationLayer layer) {
 		return true;
 	}
 	

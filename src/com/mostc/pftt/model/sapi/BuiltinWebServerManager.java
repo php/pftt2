@@ -13,7 +13,6 @@ import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
-import com.mostc.pftt.scenario.IScenarioSetup;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 /** manages local instances of PHP's builtin web server
@@ -78,11 +77,6 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 		}
 		
 		@Override
-		public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
-			
-		}
-
-		@Override
 		public String getInstanceInfo(ConsoleManager cm) {
 			try {
 				return build.getPhpInfo(cm, host);
@@ -135,10 +129,12 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 		return null;
 	}
 	
-	public class BuiltinWebSetup implements IScenarioSetup {
+	public class BuiltinWebSetup extends SimpleWebServerSetup {
 		protected final ExecHandle handle;
+		protected final AHost host;
 		
 		public BuiltinWebSetup(AHost host, PhpBuild build) throws Exception {
+			this.host = host;
 			String listen_address = host.getLocalhostListenAddress();
 			int port = 80;
 			
@@ -146,8 +142,13 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 		}
 		
 		@Override
-		public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
-			
+		public String getHostname() {
+			return host.getAddress();
+		}
+
+		@Override
+		public int getPort() {
+			return 80;
 		}
 
 		@Override
@@ -164,7 +165,7 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 		public String getName() {
 			return "Builtin-Web";
 		}
-		
+
 	}
 
 	@Override

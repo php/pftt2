@@ -13,7 +13,7 @@ import com.mostc.pftt.results.EPrintType;
  *
  */
 
-public class EnchantScenario extends AbstractINIScenario {
+public class EnchantScenario extends INIScenario {
 
 	@Override
 	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
@@ -42,7 +42,7 @@ public class EnchantScenario extends AbstractINIScenario {
 	}
 	
 	@Override
-	public boolean isPlaceholder() {
+	public boolean isPlaceholder(EScenarioSetPermutationLayer layer) {
 		return true;
 	}
 

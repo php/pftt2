@@ -4,17 +4,22 @@ def describe() {
 }
 
 def processConsoleOptions(List options) {
+	// don't specify a file system here(fe `localfs`) so user can do `snap_test` only on `dfs` etc... if they want
+	//
 	options.add("-c")
 	// test these SAPIs
-	// TODO builtin_web only without opcache, apcu, wincacheu
-	options.add("apache,cli") // TODO iis
+	options.add("apache,cli,builtin_web")
 	options.add("-c")
 	// test with and without opcache
-	options.add("opcache,no_code_cache")
+	options.add("opcache,no_code_cache,not_opcache_cli,not_opcache_builtin_web")
 	options.add("-c")
 	// test with these Applications (to make sure new PHP build doesn't break them)
-	options.add("symfony,wordpress,mysql")
+	options.add("symfony,wordpress,local_mysql")
 	
-	// TODO wincacheu apcu mysql mssql postgresql sqlite3 curl ftp xmlrpc soap
+	options.add("-c")
+	// load up mysql and http(curl) scenarios
+	options.add("local_mysql,http")
+	
+	// TODO wincacheu apcu mssql postgresql sqlite3 ftp xmlrpc soap
 	// TODO mediawiki drupal joomla typo3 cake_php zend semantic_mediawiki tiki fengoffice phpbb squirelmail
 }

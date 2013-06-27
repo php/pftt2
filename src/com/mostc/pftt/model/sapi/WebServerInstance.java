@@ -21,7 +21,7 @@ import com.mostc.pftt.results.ConsoleManager;
  */
 
 @ThreadSafe
-public abstract class WebServerInstance extends SAPIInstance {
+public abstract class WebServerInstance extends SAPIInstance implements IWebServerSetup {
 	protected final List<TestCase> active_test_cases, all_test_cases;
 	private boolean crashed = false;
 	private String sapi_output = "";
@@ -48,7 +48,7 @@ public abstract class WebServerInstance extends SAPIInstance {
 	
 	@Override
 	public int hashCode() {
-		return this.port() + StringUtil.hashCode(this.hostname());
+		return this.getPort() + StringUtil.hashCode(this.getHostname());
 	}
 	
 	@Override
@@ -57,7 +57,7 @@ public abstract class WebServerInstance extends SAPIInstance {
 			return true;
 		if (o instanceof WebServerInstance) {
 			WebServerInstance wsio = (WebServerInstance) o;
-			return wsio.port() == this.port() && StringUtil.equalsIC(wsio.hostname(), this.hostname());
+			return wsio.getPort() == this.getPort() && StringUtil.equalsIC(wsio.getHostname(), this.getHostname());
 		}
 		return false;
 	}
@@ -190,11 +190,11 @@ public abstract class WebServerInstance extends SAPIInstance {
 	 */
 	public abstract boolean isCrashedAndDebugged();
 	
-	public abstract String hostname();
-	public abstract int port();
+	public abstract String getHostname();
+	public abstract int getPort();
 	
 	public String getRootURL() {
-		return "http://"+hostname()+":"+port()+"/";
+		return "http://"+getHostname()+":"+getPort()+"/";
 	}
 
 	/** PhpIni set for this web server

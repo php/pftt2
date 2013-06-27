@@ -28,7 +28,7 @@ import com.mostc.pftt.results.EPrintType;
  *
  */
 
-public class SMBDeduplicationScenario extends AbstractSMBScenario {
+public class SMBDeduplicationScenario extends SMBScenario {
 	protected final String volume; // E:
 
 	/** 

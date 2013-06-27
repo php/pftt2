@@ -1,11 +1,6 @@
 package com.mostc.pftt.scenario;
 
-import java.util.Map;
-
-import com.mostc.pftt.host.Host;
-import com.mostc.pftt.model.core.PhpBuild;
-import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.runner.AbstractPhpUnitTestCaseRunner;
+import com.mostc.pftt.host.AHost;
 
 /** Tests the pdo_odbc and odbc extensions against a Microsoft SQL Server. (NOT IMPLEMENTED)
  * 
@@ -19,46 +14,43 @@ import com.mostc.pftt.runner.AbstractPhpUnitTestCaseRunner;
  *
  */
 
-public class MSSQLODBCScenario extends AbstractODBCScenario {
-	String dsn, username, password, database;
+public class MSSQLODBCScenario extends ODBCScenario {
+
+	public MSSQLODBCScenario(AHost host, int port, String default_username, String default_password) {
+		super(host, port, default_username, default_password);
+	}
 
 	@Override
-	protected void name_exists(String name) {
-		// TODO Auto-generated method stub
-		
-		
+	protected DatabaseScenarioSetup createScenarioSetup() {
+		return null;
 	}
-	
+
 	@Override
-	public boolean isUACRequiredForStart() {
-		return true;
+	public String getName() {
+		return "MSSQL-ODBC";
 	}
-	
+
 	@Override
 	public boolean isImplemented() {
 		return false;
 	}
 
 	@Override
-	public String getName() {
-		return "ODBC-MSSQL";
-	}
-	
-	@Override
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	protected String getDriverClassName() {
 		// TODO Auto-generated method stub
-		return SETUP_FAILED;
+		return null;
 	}
 
 	@Override
-	public void getENV(Map<String, String> env) {
+	protected boolean startServer() {
 		// TODO Auto-generated method stub
-		
+		return false;
 	}
 
 	@Override
-	public void setGlobals(Map<String, String> globals) {
-		AbstractPhpUnitTestCaseRunner.addDatabaseConnection(dsn, username, password, database, globals);
+	protected boolean stopServer() {
+		// TODO Auto-generated method stub
+		return false;
 	}
 
-} // end public class MSSQLODBCScenario
+}

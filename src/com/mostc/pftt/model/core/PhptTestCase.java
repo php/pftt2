@@ -371,7 +371,7 @@ public class PhptTestCase extends TestCase {
 	}
 	
 	public static boolean hasWarningOrFatalError(String input) {
-		return input.contains("Warning") || input.contains("Fatal Error") || input.contains("Deprecated") || input.contains("Strict Standards:");
+		return input.contains("Warning") || input.contains("Notice") || input.contains("Fatal Error") || input.contains("Deprecated") || input.contains("Strict Standards:");
 	}
 	
 	public boolean expectsWarningOrFatalError() {
@@ -391,7 +391,7 @@ public class PhptTestCase extends TestCase {
 	public static String removeWarningAndFatalError(String input) {
 		StringBuilder sb = new StringBuilder(input.length());
 		for ( String line : StringUtil.splitLines(input)) {
-			if (!(line.startsWith("Warning")||line.startsWith("Fatal Error")||line.startsWith("Deprecated")||line.startsWith("Strict Standards:"))) {
+			if (!(line.startsWith("Warning")||line.startsWith("Notice")||line.startsWith("Fatal Error")||line.startsWith("Deprecated")||line.startsWith("Strict Standards:"))) {
 				sb.append(line);
 				sb.append("\n");
 			}

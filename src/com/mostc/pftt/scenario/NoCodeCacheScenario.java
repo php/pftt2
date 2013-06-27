@@ -14,10 +14,10 @@ import com.mostc.pftt.results.EPrintType;
  *
  */
 
-public class NoCodeCacheScenario extends AbstractCodeCacheScenario {
+public class NoCodeCacheScenario extends CodeCacheScenario {
 
 	@Override
-	public boolean isPlaceholder() {
+	public boolean isPlaceholder(EScenarioSetPermutationLayer layer) {
 		return true;
 	}
 	

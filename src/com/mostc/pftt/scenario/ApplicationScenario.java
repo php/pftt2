@@ -5,6 +5,17 @@ import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 
 public abstract class ApplicationScenario extends AbstractSerialScenario {
+	
+	@Override
+	public boolean isPlaceholder(EScenarioSetPermutationLayer layer) {
+		if (layer==null)
+			return true;
+		else if (layer==EScenarioSetPermutationLayer.WEB_APPLICATION||layer==EScenarioSetPermutationLayer.WEB_SERVER||layer==EScenarioSetPermutationLayer.USER_INTERFACE)
+			return false;
+		else
+			return true;
+	}
+	
 	@Override
 	public Class<?> getSerialKey(EScenarioSetPermutationLayer layer) {
 		return ApplicationScenario.class;

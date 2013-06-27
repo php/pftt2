@@ -11,7 +11,6 @@ import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
-import com.mostc.pftt.scenario.IScenarioSetup;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.ErrorUtil;
 
@@ -202,24 +201,19 @@ public class IISManager extends WebServerManager {
 			this.hostname = hostname;
 			this.port = port;
 		}
-		
-		@Override
-		public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
-			
-		}
-		
+				
 		@Override
 		public String toString() {
 			return hostname+":"+port;
 		}
 
 		@Override
-		public String hostname() {
+		public String getHostname() {
 			return hostname;
 		}
 
 		@Override
-		public int port() {
+		public int getPort() {
 			return port;
 		}
 
@@ -341,18 +335,13 @@ public class IISManager extends WebServerManager {
 		}
 	} // end public IISScenarioSetup setup
 
-	public class IISScenarioSetup implements IScenarioSetup {
+	public class IISScenarioSetup extends SimpleWebServerSetup {
 
 		@Override
 		public void close(ConsoleManager cm) {
 			
 		}
 		
-		@Override
-		public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
-			
-		}
-
 		@Override
 		public String getNameWithVersionInfo() {
 			return getName();
@@ -362,7 +351,17 @@ public class IISManager extends WebServerManager {
 		public String getName() {
 			return "IIS";
 		}
-		
+
+		@Override
+		public String getHostname() {
+			return "127.0.0.1";
+		}
+
+		@Override
+		public int getPort() {
+			return 80;
+		}
+
 	} // end public class IISScenarioSetup
 
 	@Override

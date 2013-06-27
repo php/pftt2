@@ -1,3 +1,5 @@
+import java.util.logging.FileHandler.InitializationErrorManager;
+
 
 def describe() {
 	"Load Symfony Framework"
@@ -100,6 +102,8 @@ class SymfonyPhpUnitTestPack extends PhpUnitSourceTestPack {
 	
 	@Override
 	public void prepareINI(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini) {
+		ini.putSingle("intl.default_locale", "en");
+		ini.putSingle("intl.error_level", "0");
 		if (scenario_set.contains(OpcacheScenario.class)) {
 			// when using OpcacheScenario
 			//

@@ -4,7 +4,7 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 
-public class PhpUnitInlineReferencesScenario extends AbstractPhpUnitReflectionScenario {
+public class PhpUnitInlineReferencesScenario extends PhpUnitReflectionScenario {
 
 	@Override
 	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
@@ -22,7 +22,7 @@ public class PhpUnitInlineReferencesScenario extends AbstractPhpUnitReflectionSc
 	}
 	
 	@Override
-	public boolean isPlaceholder() {
+	public boolean isPlaceholder(EScenarioSetPermutationLayer layer) {
 		return true;
 	}
 

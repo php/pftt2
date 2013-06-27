@@ -119,7 +119,7 @@ public class PhptResultReader extends AbstractPhptRW {
 	@Override
 	public int count(EPhptTestStatus status) {
 		StatusListEntry e = status_list_map.get(status); 
-		return e == null ? 0 : e.count;
+		return e == null ? 0 : status==EPhptTestStatus.FAIL?Math.max(0, e.count-1):e.count;
 	}
 
 	@Override

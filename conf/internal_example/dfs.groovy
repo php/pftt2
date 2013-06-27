@@ -4,7 +4,7 @@ def describe() {
 }
 
 def scenarios() {
-	evaluate(new File("conf/internal/CommonConfig.groovy"));
+	evaluate(new File("$__DIR__/CommonConfig.groovy"));
 	
 	new SMBDFSScenario(CommonConfig.getFileServerHost())
 }

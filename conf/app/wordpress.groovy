@@ -15,7 +15,7 @@ def getUITestPack() {
 /** see wordpress-tests.patch.txt for patch to wordpress-tests required to make this work
  * 
  */
-class WordpressPhpUnitTestPack extends PhpUnitSourceTestPack {
+class WordpressPhpUnitTestPack extends DatabasePhpUnitSourceTestPack {
 	
 	@Override
 	public String getNameAndVersionString() {
@@ -91,12 +91,7 @@ class WordpressPhpUnitTestPack extends PhpUnitSourceTestPack {
 		//
 		// drop and recreate it from the previous test
 		// (in case previous test messed up the database ... happens using a single database and different table prefixes too)
-		def con = java.sql.DriverManager.getConnection("jdbc:mysql://localhost/?user=root&password=password01!")
-		con.createStatement().execute("DROP DATABASE IF EXISTS $db_name");
-		con.createStatement().execute("CREATE DATABASE $db_name");
-		con.createStatement().execute("GRANT ALL ON $db_name.* TO `wp_test`@`localhost` IDENTIFIED BY 'password01!'");
-		con.createStatement().execute("GRANT ALL ON $db_name.* TO `wp_test` IDENTIFIED BY 'password01!'");
-		con.close();
+		database.createDatabaseWithUserReplaceOk(db_name, "wp_test", "password01!");
 		
 		
 		def build_path = build.getPhpExe();
@@ -111,17 +106,11 @@ define( 'WP_PHP_BINARY', '$build_path' );
 """
 	}
 	@Override
-	public void startRun(ConsoleManager cm, AHost runner_host, ScenarioSet scenario_set, PhpBuild build) {
-		cm.println(EPrintType.IN_PROGRESS, getClass(), "Configuring MySQL and Wordpress");
-		
-		Class.forName("com.mysql.jdbc.Driver");
-		def con = java.sql.DriverManager.getConnection("jdbc:mysql://localhost/?user=root&password=password01!")
-
+	protected void configureDatabaseServer() {
 		// may need this to handle default column values
-		con.createStatement().execute("SET GLOBAL sql_mode='MYSQL40'");
+		database.execute("SET GLOBAL sql_mode='MYSQL40'");
 		// need this to handle extra threads
-		con.createStatement().execute("SET GLOBAL max_connections=500");
-		con.close();
+		database.execute("SET GLOBAL max_connections=500");
 	}
 	
 } // end class WordpressPhpUnitTestPack

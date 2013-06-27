@@ -20,7 +20,7 @@ import com.mostc.pftt.results.EPrintType;
  * 
  */
 
-public class SMBCAScenario extends AbstractSMBScenario {
+public class SMBCAScenario extends SMBScenario {
 
 	public SMBCAScenario(RemoteHost remote_host, String base_file_path, String base_share_name) {
 		super(remote_host, base_file_path, base_share_name);

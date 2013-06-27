@@ -22,7 +22,6 @@ import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
-import com.mostc.pftt.scenario.IScenarioSetup;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.VisualStudioUtil;
@@ -104,13 +103,14 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 	
 	protected static class PreparedApache {
 		protected PhpIni ini;
-		protected String apache_conf_file, php_conf_file, error_log, httpd, conf_dir, conf_str;
+		protected String apache_conf_file, php_conf_file, error_log, httpd, conf_dir, conf_str, apache_version_str;
 	}
 		
 	protected PreparedApache prepareApache(String temp_file_ctx, PhpIni ini, ApacheHttpdAndVersion apache, ConsoleManager cm, EApacheVersion apache_version, AHost host, PhpBuild build, String listen_address, int port, String docroot) {
 		PreparedApache prep = new PreparedApache();
 		prep.ini = ini;
 		prep.httpd = apache.httpd;
+		prep.apache_version_str = apache.version;
 		
 		String dll;
 		if (host.isWindows()) {
@@ -242,17 +242,17 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		final String cmdline = prep.httpd+" -X -f "+host.fixPath(prep.apache_conf_file);
 		
 		// @see #createWebServerInstance for where command is executed to create httpd.exe process
-		return new ApacheWebServerInstance(apache_version, build, this, docroot, cmdline, ini, env, listen_address, port, host, prep.conf_dir, prep.apache_conf_file, prep.error_log, prep.conf_str);
+		return new ApacheWebServerInstance(apache_version, build, this, docroot, cmdline, ini, env, listen_address, port, host, prep.conf_dir, prep.apache_conf_file, prep.error_log, prep.conf_str, prep.apache_version_str);
 	} // end protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance
 	
 	public class ApacheWebServerInstance extends ManagedProcessWebServerInstance {
-		protected final String conf_dir, apache_conf_file, conf_str, error_log;
+		protected final String conf_dir, apache_conf_file, conf_str, error_log, apache_version_str;
 		protected final AHost host;
 		protected final PhpBuild build;
 		protected final EApacheVersion apache_version;
 		protected SoftReference<String> log_ref;
 		
-		public ApacheWebServerInstance(EApacheVersion apache_version, PhpBuild build, ApacheManager ws_mgr, String docroot, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port, AHost host, String conf_dir, String apache_conf_file, String error_log, String conf_str) {
+		public ApacheWebServerInstance(EApacheVersion apache_version, PhpBuild build, ApacheManager ws_mgr, String docroot, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port, AHost host, String conf_dir, String apache_conf_file, String error_log, String conf_str, String apache_version_str) {
 			super(ws_mgr, docroot, cmd, ini, env, hostname, port);
 			this.build = build;
 			this.apache_version = apache_version;
@@ -261,11 +261,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			this.apache_conf_file = apache_conf_file;
 			this.error_log = error_log;
 			this.conf_str = conf_str;
-		}
-		
-		@Override
-		public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
-			
+			this.apache_version_str = apache_version_str;
 		}
 		
 		@Override
@@ -335,7 +331,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 
 		@Override
 		public String getNameWithVersionInfo() {
-			return "Apache-ModPHP-"+apache_version.toString();
+			return "Apache-ModPHP-"+apache_version_str;
 		}
 
 		@Override
@@ -439,38 +435,44 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 	public ApacheSetup setup(ConsoleManager cm, Host host, PhpBuild build) {
 		EApacheVersion apache_version = decideApacheVersion(cm, host, build, this._apache_version);
 		
-		String httpd = apache_version.getHttpdPath(cm, host, build);
-		if (!host.exists(httpd))
+		EApacheVersion.ApacheHttpdAndVersion httpd = apache_version.getHttpd(cm, host, build);
+		if (!host.exists(httpd.httpd))
 			return null;
 		else if (!host.isWindows())
 			return null; // don't need to do `-k install` on Linux
 		
 		try {
 			// install Windows service
-			host.exec(httpd+" -k install", Host.ONE_MINUTE);
-			return new ApacheSetup(apache_version, host, httpd);
+			host.exec(httpd.httpd+" -k install", Host.ONE_MINUTE);
+			return new ApacheSetup(apache_version, host, httpd.httpd, httpd.version);
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "setup", ex, "Couldn't install Apache as a Windows service");
 		}
 		return null;
 	}
 	
-	public class ApacheSetup implements IScenarioSetup {
+	public class ApacheSetup extends SimpleWebServerSetup {
 		protected final Host host;
-		protected final String httpd;
+		protected final String httpd, apache_version_str;
 		protected final EApacheVersion apache_version;
 		
-		protected ApacheSetup(EApacheVersion apache_version, Host host, String httpd) {
+		protected ApacheSetup(EApacheVersion apache_version, Host host, String httpd, String apache_version_str) {
 			this.apache_version = apache_version;
 			this.host = host;
 			this.httpd = httpd;
+			this.apache_version_str = apache_version_str;
 		}
 		
 		@Override
-		public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
-			
+		public String getHostname() {
+			return ((AHost)host).getAddress();
 		}
-		
+
+		@Override
+		public int getPort() {
+			return 80;
+		}
+
 		@Override
 		public void close(ConsoleManager cm) {
 			try {
@@ -485,7 +487,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 
 		@Override
 		public String getNameWithVersionInfo() {
-			return "Apache-ModPHP-"+apache_version.toString();
+			return "Apache-ModPHP-"+apache_version_str;
 		}
 
 		@Override

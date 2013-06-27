@@ -1,6 +1,6 @@
 
 def describe() {
-	" "
+	"run each test 1000 times with 16 threads"
 }
 
 def processConsoleOptions(List options) {

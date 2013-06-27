@@ -8,7 +8,6 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.app.EPhpUnitTestStatus;
 import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.PhpIni;
-import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 
 /** result of running a PhpUnitTestCase
@@ -29,9 +28,6 @@ public class PhpUnitTestResult {
 	public final float run_time_micros;
 	
 	public PhpUnitTestResult(PhpUnitTestCase test_case, EPhpUnitTestStatus status, ScenarioSetSetup scenario_set, Host host, String output, float run_time_micros) {
-		if (output!=null&&(output.contains("Missing argume")||output.contains("Argument 1 passed")))
-			status = EPhpUnitTestStatus.SKIP; // TODO temp
-		
 		this.test_case = test_case;
 		this.status = status;
 		this.scenario_set = scenario_set;
@@ -104,12 +100,16 @@ public class PhpUnitTestResult {
 			case SKIP:
 			case XSKIP:
 			case CRASH:
-			case ERROR:
 			case DEPRECATED:
 			case WARNING:
 			case NOTICE:
 			case BORK:
 			case UNSUPPORTED:
+				serial.startTag("pftt", "output");
+				serial.text(output);
+				serial.endTag("pftt", "output");
+				break;
+			case ERROR:
 				// @see #addIncompleteTest and #addSkippedTest and #addError
 				serial.startTag(null, "error");
 				serial.text(output);

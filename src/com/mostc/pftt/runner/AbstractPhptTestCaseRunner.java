@@ -8,7 +8,7 @@ import com.mostc.pftt.model.core.EPhptSection;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.scenario.ScenarioSetSetup;
 
 public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner<LocalPhptTestPackRunner.PhptThread,LocalPhptTestPackRunner> {
 	public static final String ENV_PHPRC = "PHPRC";
@@ -42,7 +42,7 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner<
 		return 60;
 	}
 	
-	public static Map<String, String> generateENVForTestCase(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhptTestCase test_case) throws Exception {
+	public static Map<String, String> generateENVForTestCase(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSetSetup scenario_set_setup, PhptTestCase test_case) throws Exception {
 		// read ENV vars from test, from its parent (if a test redirected to this test), and merge from scenario
 		//
 		// NOTE: for HTTP tests, this will be done for each group_key by AbstractWebServerScenario
@@ -52,7 +52,7 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner<
 		Map<String,String> env = test_case.getENV(cm, host, build);
 		
 		// some scenario sets will need to provide custom ENV vars
-		Map<String,String> s_env = scenario_set.getENV();
+		Map<String,String> s_env = scenario_set_setup.getENV();
 		if (s_env!=null)
 			env.putAll(s_env);
 		

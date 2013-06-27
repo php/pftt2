@@ -45,7 +45,7 @@ function is_ssl() {
 	return false;
 }
 define('DB_USER', '$mysql.user');
-define('DB_PASSWORD', '$mysql.password');
+define('DB_PASSWORD', '$mysql.default_password');
 define('DB_HOST', '$mysql.host');
 define('DB_CHARSET', 'utf8');
 define('DB_COLLATE', '');

@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.codehaus.groovy.control.MultipleCompilationErrorsException;
 import org.codehaus.groovy.tools.shell.Groovysh;
 import org.codehaus.groovy.tools.shell.IO;
 
@@ -48,8 +49,8 @@ import com.mostc.pftt.results.LocalConsoleManager;
 import com.mostc.pftt.results.PhpResultPackWriter;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner;
-import com.mostc.pftt.scenario.AbstractINIScenario;
-import com.mostc.pftt.scenario.AbstractSAPIScenario;
+import com.mostc.pftt.scenario.INIScenario;
+import com.mostc.pftt.scenario.SAPIScenario;
 import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
@@ -78,12 +79,11 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 // the php test tool that you'd actually want to use
 // doesn't resort to brittle shell scripts
 
-// TODO mysql, postgresql, curl scenario
-// TODO conf/ini/no_dynamic_extensions
 // TODO valgrind gdb?
 // TODO linux installer
- 
-  
+//       -note: windows install doesn't work correctly if SYSTEMDRIVE!=C:
+
+
 // TODO UI testing
 //        no Anon-Logout
 // TODO code coverage analysis
@@ -99,6 +99,12 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //        can get CCA data from XDebug, but what to do with it???
 //         -look at the data needed to generate a CCA report
 //         -look at the data needed to generate a CCA summary report
+// TODO joomla ui test
+//       https://github.com/joomla/joomla-cms/tree/master/tests/system
+//         -as big as wordpress +INTERNATIONALIZATION
+//         -note: ui tests from joomla may be BRITTLE (maybe thats why they're just run by 1 guy on his laptop once in a while)
+//           not suited to our purposes => compatibility
+//                not atomic/small -a few really big tests that test lots of actions
 // TODO need way to enter development versions of application tests and UI tests
 //       could have conf/dev folder
 //          -what about the phpunit tests themselves (Where stored?)
@@ -116,17 +122,18 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //           -makes a major performance difference
 //           -make it a point to unit test that!
 //
-// TODO joomla ui test
-//          https://github.com/joomla/joomla-cms/tree/master/tests/system
-//          -as big as wordpress +INTERNATIONALIZATION
-//          -note: ui tests from joomla may be BRITTLE (maybe thats why they're just run by 1 guy on his laptop once in a while)
-//               not suited to our purposes => compatibility
-//                 not atomic/small -a few really big tests that test lots of actions
-//
 // TODO progress indicator for `release_get`
 // TODO iis and iis-express
 // TODO mysql* postgresql curl ftp - including symfony, joomla, phpt
 //       pdo odbc (to mssql??)
+
+// TODO PEAR extension tests
+//     Console_GetArgs (PhpUnit)
+//     File_SearchReplace (PHPT)
+//     File (PHPT)
+//     Mail_Mime (PHPT)
+//     Mail (PHPT)
+
 // TODO http PECL extension 
 //     -by this point PFTT will cover at least some of every part of the PHP ecosystem
 // TODO pftt explain
@@ -134,7 +141,7 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //           -if you need it for debug, use it from explain
 //                -ie force people to do it at least partially the efficient PFTT way
 //           -if you need it to setup, use setup cmd
-// TODO filesystem tests w/ non-english locales
+// TODO filesystem tests w/ non-european locales
 //        see bug #64699
 // 
 // improve documentation
@@ -148,7 +155,7 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 // Better-PFTT
 //    get actual version of apache, wordpress, symfony, etc... instead of assuming hardcoded value
 //    if WinDebug isn't found, register VS as the `default postmortem debugger`
-//    optimized for long-term saving of dev-time
+//    optimized for long-term time savings
 //        -optimizing for the SIMPLEST WAY led to jscript-pftt and ruby-pftt disasters
 //        -whereas pftt actually works
 //        -SLA
@@ -187,8 +194,9 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //        -character encoding (byte==char in php)
 //        -phpt output eval
 //        -phpt preparation
+//        -scenario management
 //        -test scheduling (which test goes with which thread, thread safety, etc...)
-//        -configuration minutae and special cases (fe copying DLLs and changing stack size with Apache scenario)
+//        -configuration minutiae and special cases (fe copying DLLs and changing stack size with Apache scenario)
 //        -ssh
 //
 //    console option to remove scenarios from permutations
@@ -300,7 +308,7 @@ public class PfttMain {
 		System.out.println("Usage: pftt [options] <command[,command2]>");
 		System.out.println();
 		System.out.println(" == Commands ==");
-		table = new AlignedTable(2, 104)
+		table = new AlignedTable(2, 85)
 			.addRow("core_all <build[,build2]> <test-pack>", "runs all tests in given test pack")
 			.addRow("core_named <build> <test-pack> <test name fragment>", "runs named tests or tests matching name pattern")
 			.addRow("core_list <build[,build2]> <test-pack> <file>", "runs list of tests stored in file")
@@ -331,7 +339,7 @@ public class PfttMain {
 				.addRow("-skip_smoke_tests", "skips smoke tests and runs tests anyway (BE CAREFUL. RESULTS MAY BE INVALID or INACCURATE)"));
 		System.out.println();
 		System.out.println("   === UI Options ===");
-		System.out.println(new AlignedTable(2, 104)
+		System.out.println(new AlignedTable(2, 85)
 				.addRow("-gui", "show gui for certain commands")
 				.addRow("-pause", "after everything is done, PFTT will wait for user to press any key")
 				.addRow("-results_only", "displays only test results and no other information (for automation).")
@@ -339,14 +347,14 @@ public class PfttMain {
 		if (LocalHost.isLocalhostWindows()) {
 			System.out.println();
 			System.out.println("   === Release Options ===");
-			System.out.println(new AlignedTable(2, 104)
+			System.out.println(new AlignedTable(2, 85)
 				.addRow("-bo", "download build only")
 				.addRow("-tpo", "download test-pack only")
 				.addRow("-dpo", "download debug-pack only"));
 		}
 		System.out.println();
 		System.out.println("   === Unattended Options ===");
-		table = new AlignedTable(2, 104)
+		table = new AlignedTable(2, 85)
 			.addRow("-no_result_file_for_pass_xskip_skip(-q)", "doesn't store all result data for PASS, SKIP or XSKIP tests")
 			.addRow("-disable_debug_prompt", "disables asking you if you want to debug PHP crashes (for automation. default=enabled) (alias: -debug_none)")
 			.addRow("-auto", "changes default options for automated testing (-uac -disable_debug_prompt -phpt_not_in_place)");
@@ -356,13 +364,13 @@ public class PfttMain {
 		System.out.println(table);
 		System.out.println();
 		System.out.println("   === Temporary Files ===");
-		System.out.println(new AlignedTable(2, 104)
+		System.out.println(new AlignedTable(2, 85)
 			.addRow("-phpt_not_in_place", "copies PHPTs to a temporary dir and runs PHPTs from there (default=disabled, test in-place)")
 			.addRow("-dont_cleanup_test_pack", "doesn't delete temp dir created by -phpt_not_in_place or SMB scenario (default=delete)")
 			.addRow("-overwrite", "overwrites files without prompting (confirmation prompt by default)"));
 		System.out.println();
 		System.out.println("   === Crash Debugging ===");
-		System.out.println(new AlignedTable(2, 104)
+		System.out.println(new AlignedTable(2, 85)
 			.addRow("-debug_all", "runs all tests in Debugger")
 			.addRow("-debug_list <list files>", "runs tests in list in Debugger (exact name)")
 			.addRow("-src_pack <path>", "folder with the source code")
@@ -373,33 +381,33 @@ public class PfttMain {
 	protected static void help_all() {
 		help_both();
 		System.out.println("   === Test Enumeration ===");
-		System.out.println(new AlignedTable(2, 104)
+		System.out.println(new AlignedTable(2, 85)
 			.addRow("-randomize_order", "randomizes test case run order")
 			.addRow("-skip_list <list files>", "skip tests in list (exact name)")
 			.addRow("-max_test_read_count <N>", "maximum number of tests to read (without other options, this will be the number of tests run also... tests are normally only run once)")
 			.addRow("-skip_name <test name,name 2, name 3>", "skip tests in COMMA separated list"));
 		System.out.println();
 		System.out.println("   === Test Times ===");
-		System.out.println(new AlignedTable(2, 104)
+		System.out.println(new AlignedTable(2, 85)
 			.addRow("-run_group_times_all <N>", "runs all groups of tests N times (in same order every time, unless -randomize used)")
 			.addRow("-run_group_times_list <N> <list file>", "just like run_group_times_all and run_test_times_list (but for groups of tests)")
 			.addRow("-run_test_times_all <N>", "runs each test N times in a row/consecutively")
 			.addRow("-run_test_times_list <N> <list file>", "runs tests in that list N times. if used with -run_test_times_all, tests not in list can be run different number of times from tests in list (ex: run listed tests 5 times, run all other tests 2 times)."));
 		System.out.println();		
 		System.out.println("   === SAPI Restarting ===");
-		System.out.println(new AlignedTable(2, 104)
+		System.out.println(new AlignedTable(2, 85)
 			.addRow("-restart_each_test_all", "restart web server between each test (slow, default=no)")
 			.addRow("-no_restart_all", "will not restart any web server unless it crashes (be careful, this will INVALIDATE FUNCTIONAL TESTING results because configuration won't be changed for tests)"));
 		System.out.println();
 		System.out.println("   === Debugging ===");
-		System.out.println(new AlignedTable(2, 104)
+		System.out.println(new AlignedTable(2, 85)
 			.addRow("-ini_actual_all", "includes INI for all tests (default=only for failures)... SLOW but helps verify")
 			.addRow("-suspend_seconds <seconds>", "suspends test process for <seconds> before running test so you can check the process first (1 minute timeout after resume)")
 			.addRow("-run_count <N>", "runs N number of tests. does not count early SKIPped tests (whereas -max_test_read_count does)")
 			.addRow("-mem_check", "runs tests with Valgrind or other memory checker (OS dependent). Slow, typically use this with `*_list` or `*_named` NOT `*_all`."));
 		System.out.println();
 		System.out.println("   === Threading Options ===");
-		System.out.println(new AlignedTable(2, 104)
+		System.out.println(new AlignedTable(2, 85)
 			.addRow("-no_thread_safety", "runs tests in any thread, regardless of thread-safety. This can increase load/stress, but may lead to false FAILS/ERRORs, especially in file or database tests.")
 			.addRow("-thread_count <N>", "sets number of threads to run tests in. running in multiple threads is usually a performance boost. by default, will run with multiple threads and automatically decide the best number of threads to use")
 			.addRow("-thread_count cpu", "sets number of threads == number of CPUs on (each) host"));
@@ -510,7 +518,7 @@ public class PfttMain {
 				AHost host = hosts.isEmpty()?this.host:hosts.get(0);
 				LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, host, host);
 				cm.showGUI(r, test_pack);
-				r.runAllTests(test_pack);
+				r.runAllTests(config, test_pack);
 				tmgr.notifyPhpUnitFinished(host, r.getScenarioSetSetup(), test_pack);
 			}
 		}
@@ -533,7 +541,7 @@ public class PfttMain {
 					// on Windows, missing .DLLs from a php build will cause a blocking winpop dialog msg to appear
 					// in such a case, the test will timeout after 1 minute and then fail (stopping at that point is important)
 					// @see PhpBuild#getExtensionList
-					if (test.test(build, cm, host, AbstractSAPIScenario.getSAPIScenario(scenario_set).getSAPIType())==ESmokeTestStatus.FAIL) {
+					if (test.test(build, cm, host, SAPIScenario.getSAPIScenario(scenario_set).getSAPIType())==ESmokeTestStatus.FAIL) {
 						// if this test fails, RequiredFeaturesSmokeTest will fail for sure
 						cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
 						break;
@@ -553,7 +561,7 @@ public class PfttMain {
 				LocalPhptTestPackRunner test_pack_runner = new LocalPhptTestPackRunner(tmgr.getConsoleManager(), tmgr, scenario_set, build, storage_host, host, config);
 				cm.showGUI(test_pack_runner);
 				
-				test_pack_runner.runAllTests(test_pack);
+				test_pack_runner.runAllTests(config, test_pack);
 			
 				tmgr.notifyPhptFinished(host, test_pack_runner.getScenarioSetSetup());
 			}
@@ -586,7 +594,7 @@ public class PfttMain {
 			if (!cm.isSkipSmokeTests()) {
 				{
 					RequiredExtensionsSmokeTest test = new RequiredExtensionsSmokeTest();
-					if (test.test(build, cm, host, AbstractSAPIScenario.getSAPIScenario(scenario_set).getSAPIType())==ESmokeTestStatus.FAIL) {
+					if (test.test(build, cm, host, SAPIScenario.getSAPIScenario(scenario_set).getSAPIType())==ESmokeTestStatus.FAIL) {
 						cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
 						break;
 					}
@@ -606,7 +614,7 @@ public class PfttMain {
 			cm.println(EPrintType.CLUE, getClass(), "Writing Result-Pack: "+tmgr.getResultPackPath());
 			test_pack.cleanup(cm);
 			cm.println(EPrintType.IN_PROGRESS, "PhptSourceTestPack", "enumerating test cases from test-pack...");
-			test_pack.read(test_cases, names, tmgr.getConsoleManager(), tmgr, build, true); // TODO true?
+			test_pack.read(config, test_cases, names, tmgr.getConsoleManager(), tmgr, build, true); // TODO true?
 			cm.println(EPrintType.IN_PROGRESS, "PhptSourceTestPack", "enumerated test cases.");
 			
 			for ( AHost storage_host : hosts ) {
@@ -1100,11 +1108,14 @@ public class PfttMain {
 	protected static void walkConfDir(File conf_base, File dir, boolean nonempty_description) {
 		String description;
 		boolean first = true;
-		AlignedTable table = new AlignedTable(2, 104);
+		AlignedTable table = new AlignedTable(2, 85);
 		for ( File f : dir.listFiles() ) {
 			if (f.isFile() && StringUtil.endsWithIC(f.getName(), ".groovy")) {
 				try {
 					description = Config.getConfigDescription(f);
+				} catch ( MultipleCompilationErrorsException ex ) {
+					ex.printStackTrace();
+					description = "";
 				} catch ( Exception ex ) {
 					description = "";
 				}
@@ -1188,9 +1199,11 @@ public class PfttMain {
 		}
 		
 		// have config files process console args (add to them, remove, etc...)
+		boolean config_args = false;
 		if (args.length > 0) {
 			List<String> args_list = ArrayUtil.toList(args);
 			if (config.processConsoleOptions(cm, args_list)) {
+				config_args = true;
 				// config file(s) changed console options. show the console options PFTT will now be run with.
 				System.out.println("PFTT: Console Options: "+args_list);
 			}
@@ -1366,6 +1379,13 @@ public class PfttMain {
 		}
 		//
 		
+		if (config_args && config_files.size()>0) {
+			config = Config.loadConfigFromFiles(cm, (String[])config_files.toArray(new String[config_files.size()]));
+			if (config==null)
+				System.exit(-255);
+			System.out.println("PFTT: Config: loaded(2) "+config_files);
+		}
+		
 		
 		cm = new LocalConsoleManager(source_pack, debug_pack, overwrite, debug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug, no_result_file_for_pass_xskip_skip, randomize_order, run_test_times_all, 
 				thread_safety, run_test_times_list_times, run_group_times_all, run_group_times_list_times, debug_list, run_test_times_list, run_group_times_list, skip_list,
@@ -1389,8 +1409,10 @@ public class PfttMain {
 					
 					// read name fragments from CLI arguments
 					ArrayList<String> names = new ArrayList<String>(args.length-args_i);
-					for ( ; args_i < args.length ; args_i++) 
-						names.add(args[args_i]);
+					for ( ; args_i < args.length ; args_i++) {
+						for ( String name : args[args_i].split(","))
+							names.add(name);
+					}
 					
 					for ( PhpBuild build : builds )
 						p.appList(build, config, p.getWriter(build), names);
@@ -1452,8 +1474,11 @@ public class PfttMain {
 					
 					// read name fragments from CLI arguments
 					ArrayList<String> names = new ArrayList<String>(args.length-args_i);
-					for ( ; args_i < args.length ; args_i++) 
-						names.add(args[args_i]);
+					// split names by spaces OR ,
+					for ( ; args_i < args.length ; args_i++) {
+						for ( String name : args[args_i].split(","))
+							names.add(name);
+					}
 					
 					for ( PhpBuild build : builds )
 						p.coreList(build, test_pack, config, p.getWriter(build, test_pack), names);
@@ -1599,9 +1624,9 @@ public class PfttMain {
 					ScenarioSetSetup scenario_set_setup;
 					for ( ScenarioSet set : getScenarioSets(config, EScenarioSetPermutationLayer.WEB_SERVER) ) {
 						ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, p.host, build);
-						AbstractINIScenario.setupScenarios(cm, p.host, set, build, ini);
+						INIScenario.setupScenarios(cm, p.host, set, build, ini);
 						
-						scenario_set_setup = ScenarioSetSetup.setupScenarioSet(cm, p.host, build, set);
+						scenario_set_setup = ScenarioSetSetup.setupScenarioSet(cm, p.host, build, set, EScenarioSetPermutationLayer.WEB_SERVER);
 						
 						if (scenario_set_setup==null) {
 							cm.println(EPrintType.CANT_CONTINUE, "Stop", "Error opening: "+set.getName());
@@ -1628,9 +1653,9 @@ public class PfttMain {
 					for ( ScenarioSet set : getScenarioSets(config, EScenarioSetPermutationLayer.WEB_SERVER) ) {
 						
 						ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, p.host, build);
-						AbstractINIScenario.setupScenarios(cm, p.host, set, build, ini);
+						INIScenario.setupScenarios(cm, p.host, set, build, ini);
 						
-						ScenarioSetSetup.setupScenarioSet(cm, p.host, build, set);
+						ScenarioSetSetup.setupScenarioSet(cm, p.host, build, set, EScenarioSetPermutationLayer.WEB_SERVER);
 						
 					}
 				} else if (command.equals("release_get")||command.equals("rgn")||command.equals("rgnew")||command.equals("rgnewest")||command.equals("rgp")||command.equals("rgprev")||command.equals("rgprevious")||command.equals("rg")||command.equals("rget")) {
@@ -1782,8 +1807,10 @@ public class PfttMain {
 					if (command.equals("ui_named")||command.equals("uinamed")||command.equals("uin")||command.equals("u_named")||command.equals("unamed")||command.equals("un")) {
 						// read name fragments from CLI arguments
 						test_names = new ArrayList<String>(args.length-args_i);
-						for ( ; args_i < args.length ; args_i++) 
-							test_names.add(args[args_i]);
+						for ( ; args_i < args.length ; args_i++) {
+							for ( String name : args[args_i].split(","))
+								test_names.add(name);
+						}
 					} else if (command.equals("ui_list")||command.equals("uilist")||command.equals("uil")||command.equals("u_list")||command.equals("ulist")||command.equals("ul")) {
 						test_names = new LinkedList<String>();
 						
@@ -1812,7 +1839,7 @@ public class PfttMain {
 							for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.WEB_APPLICATION) ) {
 								for ( AHost host : hosts ) {
 									// XXX move to separate class, method, etc...
-									ScenarioSetSetup scenario_set_setup = ScenarioSetSetup.setupScenarioSet(cm, host, build, scenario_set);
+									ScenarioSetSetup scenario_set_setup = ScenarioSetSetup.setupScenarioSet(cm, host, build, scenario_set, EScenarioSetPermutationLayer.WEB_APPLICATION);
 									if (scenario_set_setup==null)
 										continue;
 									

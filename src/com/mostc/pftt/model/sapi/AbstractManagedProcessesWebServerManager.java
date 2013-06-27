@@ -302,23 +302,23 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 		}
 
 		@Override
-		public String hostname() {
+		public String getHostname() {
 			return hostname;
 		}
 
 		@Override
-		public int port() {
+		public int getPort() {
 			return port;
 		}
 		
 		@Override
 		public boolean isCrashedOrDebuggedAndClosed() {
-			return false; // TODO temp 5/30 super.isCrashedOrDebuggedAndClosed() || process.isCrashedOrDebuggedAndClosed();
+			return super.isCrashedOrDebuggedAndClosed() || process.isCrashedOrDebuggedAndClosed();
 		}
 		
 		@Override
 		public boolean isCrashedAndDebugged() {
-			return false; // TODO temp 5/30 process.isCrashedAndDebugged();
+			return process.isCrashedAndDebugged();
 		}
 		
 		@Override

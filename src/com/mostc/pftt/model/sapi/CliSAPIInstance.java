@@ -9,7 +9,6 @@ import com.mostc.pftt.model.core.EExecutableType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.scenario.ScenarioSet;
 
 public class CliSAPIInstance extends SAPIInstance {
 	protected final AHost host;
@@ -21,11 +20,6 @@ public class CliSAPIInstance extends SAPIInstance {
 		this.host = host;
 		this.build = build;
 		this.ini = ini;
-	}
-	
-	@Override
-	public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
-		
 	}
 	
 	public void prepare() throws Exception {

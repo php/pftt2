@@ -9,7 +9,7 @@ package com.mostc.pftt.scenario;
  * @author Matt Ficken
  * 
  * @see ScenarioSet#permuteScenarioSets
- * @see AbstractDatabaseScenario#getSerialKey
+ * @see DatabaseScenario#getSerialKey
  * 
  *
  */

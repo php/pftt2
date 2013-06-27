@@ -14,6 +14,7 @@ import org.kxml2.io.KXmlSerializer;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
+import com.mostc.pftt.main.Config;
 import com.mostc.pftt.model.ActiveTestPack;
 import com.mostc.pftt.model.SourceTestPack;
 import com.mostc.pftt.model.TestCase;
@@ -151,7 +152,7 @@ public abstract class AbstractRemoteTestPackRunner<A extends ActiveTestPack, S e
 	}
 
 	@Override
-	public void runAllTests(S test_pack) throws FileNotFoundException, IOException, Exception {
+	public void runAllTests(Config config, S test_pack) throws FileNotFoundException, IOException, Exception {
 		// TODO
 		A active_test_pack = test_pack.install(tmgr.getConsoleManager(), this.storage_host, remote_host.getPhpSdkDir()+"/Remote", "");
 		

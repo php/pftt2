@@ -2,7 +2,6 @@ package com.mostc.pftt.scenario;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Map;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -13,7 +12,6 @@ import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.ESAPIType;
 import com.mostc.pftt.model.core.PhpBuild;
-import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
@@ -29,9 +27,9 @@ import com.mostc.pftt.results.ITestResultReceiver;
  * @see ScenarioSet
  * 
  * Important Scenario Types
- * @see AbstractSAPIScenario - provides the SAPI that a PhpBuild is run under (Apache-ModPHP, CLI, etc...)
- * @see AbstractINIScenario - edits/adds to the INI used to run a PhptTestCase
- * @see AbstractFileSystemScenario - provides the filesystem a PhpBuild is run on (local, remote, etc...)
+ * @see SAPIScenario - provides the SAPI that a PhpBuild is run under (Apache-ModPHP, CLI, etc...)
+ * @see INIScenario - edits/adds to the INI used to run a PhptTestCase
+ * @see FileSystemScenario - provides the filesystem a PhpBuild is run on (local, remote, etc...)
  * 
  * @author Matt Ficken
  *
@@ -64,15 +62,15 @@ public abstract class Scenario {
 	}
 	
 	@Overridable
-	public boolean setupRequired() {
-		return !isPlaceholder();
+	public boolean setupRequired(EScenarioSetPermutationLayer layer) {
+		return !isPlaceholder(layer);
 	}
 	
 	@Overridable
 	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		return SETUP_SUCCESS;
 	}
-	public static final IScenarioSetup SETUP_SUCCESS = new IScenarioSetup() {
+	public static final IScenarioSetup SETUP_SUCCESS = new SimpleScenarioSetup() {
 			@Override
 			public void close(ConsoleManager cm) {
 				
@@ -85,41 +83,27 @@ public abstract class Scenario {
 			public String getName() {
 				return "Success";
 			}
-			@Override
-			public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
-				
-			}
 		};
 	public static final IScenarioSetup SETUP_FAILED = null;
 	
 	public abstract String getName();
 	public abstract boolean isImplemented();
 		
-	/** @see ScenarioSet#getENV
-	 * 
-	 * @see #hasENV
-	 * @param env
-	 */
 	@Overridable
-	public void getENV(Map<String, String> env) {
-		// TODO move to IScenarioSetup
-	}
-	
-	@Overridable
-	public boolean isPlaceholder() {
+	public boolean isPlaceholder(EScenarioSetPermutationLayer layer) {
 		return false;
 	}
 	
 	@Overridable
-	public boolean ignoreForShortName() {
-		return isPlaceholder();
+	public boolean ignoreForShortName(EScenarioSetPermutationLayer layer) {
+		return isPlaceholder(layer);
+	}
+	
+	@Overridable
+	protected String processNameAndVersionInfo(String name) {
+		return name;
 	}
 
-	@Overridable
-	public boolean hasENV() {
-		return false;
-	}
-	
 	/** TRUE if UAC (Run As Administrator or Privilege Elevation) is required when
 	 * starting scenario on Windows
 	 * 
@@ -148,8 +132,8 @@ public abstract class Scenario {
 	
 	public static final CliScenario CLI_SCENARIO = new CliScenario();
 	public static final LocalFileSystemScenario LOCALFILESYSTEM_SCENARIO = new LocalFileSystemScenario();
-	public static final AbstractSAPIScenario DEFAULT_SAPI_SCENARIO = CLI_SCENARIO;
-	public static final AbstractFileSystemScenario DEFAULT_FILESYSTEM_SCENARIO = LOCALFILESYSTEM_SCENARIO;
+	public static final SAPIScenario DEFAULT_SAPI_SCENARIO = CLI_SCENARIO;
+	public static final FileSystemScenario DEFAULT_FILESYSTEM_SCENARIO = LOCALFILESYSTEM_SCENARIO;
 	
 	public static Scenario[] getAllDefaultScenarios() {
 		return new Scenario[]{
@@ -160,7 +144,6 @@ public abstract class Scenario {
 				// these database scenarios can be here because they don't require any special configuration
 				// (like connecting to a database server that the user would have to setup. those scenarios
 				//  have to be in configuration files (in the 'conf' directory))
-				new MSAccessScenario(), // ignored if MS-Access not installed
 				new SQLite3Scenario(),
 				new NormalPathsScenario(),
 				new EnchantScenario()
@@ -173,15 +156,15 @@ public abstract class Scenario {
 	 * @param scenario_set
 	 */
 	public static void ensureContainsCriticalScenarios(ScenarioSet scenario_set) {
-		if (!scenario_set.contains(AbstractCodeCacheScenario.class))
+		if (!scenario_set.contains(CodeCacheScenario.class))
 			scenario_set.add(new NoCodeCacheScenario());
 		if (!scenario_set.contains(PathsScenario.class))
 			scenario_set.add(new NormalPathsScenario());
-		if (!scenario_set.contains(AbstractSocketScenario.class))
+		if (!scenario_set.contains(SocketScenario.class))
 			scenario_set.add(new PlainSocketScenario());
-		if (!scenario_set.contains(AbstractFileSystemScenario.class))
+		if (!scenario_set.contains(FileSystemScenario.class))
 			scenario_set.add(LOCALFILESYSTEM_SCENARIO);
-		if (!scenario_set.contains(AbstractSAPIScenario.class))
+		if (!scenario_set.contains(SAPIScenario.class))
 			scenario_set.add(CLI_SCENARIO);
 		if (!scenario_set.contains(EnchantScenario.class))
 			scenario_set.add(new EnchantScenario());

@@ -1,5 +1,8 @@
 package com.mostc.pftt.scenario;
 
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 
 import com.github.mattficken.io.Trie;
@@ -33,7 +36,7 @@ import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
  *
  */
 
-public class CliScenario extends AbstractSAPIScenario {
+public class CliScenario extends SAPIScenario {
 
 	@Override
 	public String getName() {
@@ -191,7 +194,7 @@ public class CliScenario extends AbstractSAPIScenario {
 			"ext/standard/tests/mail/mail_basic4.phpt",
 			"ext/standard/tests/mail/mail_basic3.phpt"
 		);
-public static Trie RANDOMLY_FAIL = PhptTestCase.createNamed(
+	public static Trie RANDOMLY_FAIL = PhptTestCase.createNamed(
 			// uses both POST and GET
 			"tests/basic/003.phpt",
 			//
@@ -277,6 +280,19 @@ public static Trie RANDOMLY_FAIL = PhptTestCase.createNamed(
 	@Override
 	public long getFastTestTimeSeconds() {
 		return 7;
+	}
+
+	@Override
+	public void sortTestCases(List<PhptTestCase> test_cases) {
+		// fast tests first
+		Collections.sort(test_cases, new Comparator<PhptTestCase>() {
+				@Override
+				public int compare(PhptTestCase a, PhptTestCase b) {
+					final boolean as = !isSlowTest(a);
+					final boolean bs = !isSlowTest(b);
+					return ( as ^ bs ) ? ( as ^ true  ? -1 : 1 ) : 0;
+				}
+			});
 	}
 
 } // end public class CliScenario

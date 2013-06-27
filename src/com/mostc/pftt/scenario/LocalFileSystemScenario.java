@@ -14,7 +14,7 @@ import com.mostc.pftt.results.EPrintType;
  *
  */
 
-public class LocalFileSystemScenario extends AbstractFileSystemScenario {
+public class LocalFileSystemScenario extends FileSystemScenario {
 	protected ITestPackStorageDir LOCAL_DIR = new AbstractTestPackStorageDir() {
 			@Override
 			public boolean notifyTestPackInstalled(ConsoleManager cm, AHost host) {
@@ -52,7 +52,7 @@ public class LocalFileSystemScenario extends AbstractFileSystemScenario {
 		};
 	
 	@Override
-	public boolean setupRequired() {
+	public boolean setupRequired(EScenarioSetPermutationLayer layer) {
 		// not a placeholder, but no setup is needed
 		return false;
 	}

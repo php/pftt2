@@ -9,7 +9,7 @@ package com.mostc.pftt.scenario;
 public abstract class AbstractParallelScenario extends Scenario {
 	
 	@Override
-	public boolean ignoreForShortName() {
+	public boolean ignoreForShortName(EScenarioSetPermutationLayer layer) {
 		return true;
 	}
 	

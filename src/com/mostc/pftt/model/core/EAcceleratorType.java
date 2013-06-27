@@ -1,32 +1,32 @@
 package com.mostc.pftt.model.core;
 
-import com.mostc.pftt.scenario.AbstractCodeCacheScenario;
+import com.mostc.pftt.scenario.CodeCacheScenario;
 
 public enum EAcceleratorType {
 	APC {
 		@Override
-		public AbstractCodeCacheScenario getCodeCacheScenario() {
-			return AbstractCodeCacheScenario.APC;
+		public CodeCacheScenario getCodeCacheScenario() {
+			return CodeCacheScenario.APC;
 		}
 	},
 	WINCACHE {
 		@Override
-		public AbstractCodeCacheScenario getCodeCacheScenario() {
-			return AbstractCodeCacheScenario.WINCACHE;
+		public CodeCacheScenario getCodeCacheScenario() {
+			return CodeCacheScenario.WINCACHE;
 		}
 	},
 	NONE {
 		@Override
-		public AbstractCodeCacheScenario getCodeCacheScenario() {
-			return AbstractCodeCacheScenario.NO;
+		public CodeCacheScenario getCodeCacheScenario() {
+			return CodeCacheScenario.NO;
 		}
 	},
 	OPCACHE {
 		@Override
-		public AbstractCodeCacheScenario getCodeCacheScenario() {
-			return AbstractCodeCacheScenario.ZEND_OPTIMIZER_PLUS;
+		public CodeCacheScenario getCodeCacheScenario() {
+			return CodeCacheScenario.OPCACHE;
 		}
 	};
 	
-	public abstract AbstractCodeCacheScenario getCodeCacheScenario();
+	public abstract CodeCacheScenario getCodeCacheScenario();
 }

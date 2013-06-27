@@ -331,22 +331,23 @@ public abstract class AHost extends Host implements IProgramRunner {
 	public ExecOutput execElevatedOut(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String chdir) throws Exception {
 		return execElevatedOut(cmd, timeout_sec, env, stdin_data, charset, chdir, null, FOUR_HOURS);
 	}
-	private boolean checked_elevate, found_elevate;
-	public ExecOutput execElevatedOut(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread test_thread, int slow_timeout_sec) throws Exception {
-		if (isWindows()) {
-			if (!checked_elevate) {
-				found_elevate = exists(getPfttDir()+"\\bin\\elevate.exe");
-				
-				checked_elevate = true;
-			}
-			if (found_elevate) {
-				// execute command with this utility that will elevate the program using Windows UAC
-				cmd = getPfttDir() + "\\bin\\elevate "+cmd;
-			}
-		}
-		
-		return execOut(cmd, timeout_sec, env, stdin_data, charset, chdir, test_thread, slow_timeout_sec);
-	}
+	/** executes command with elevated Administrator privileges.
+	 * 
+	 * Windows BN: If PFTT not already running with elevated Administrator privileges,
+	 *             then calls to this are non-blocking.
+	 * 
+	 * @param cmd
+	 * @param timeout_sec
+	 * @param env
+	 * @param stdin_data
+	 * @param charset
+	 * @param chdir
+	 * @param test_thread
+	 * @param slow_timeout_sec
+	 * @return
+	 * @throws Exception
+	 */
+	public abstract ExecOutput execElevatedOut(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread test_thread, int slow_timeout_sec) throws Exception;
 	public ExecOutput execElevatedOut(String cmd, int timeout_sec, Map<String, String> env, Charset charset) throws Exception {
 		return execElevatedOut(cmd, timeout_sec, env, null, charset, null, null, FOUR_HOURS);
 	}
@@ -448,6 +449,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 		
 			switch(exit_code) {
 			case 0: // exited normally
+			case -1: // ignore (php-cgi file not found?)
 			case 1: // closed (~sigterm~)
 				return false;
 			case NTStatus.STATUS_DEBUGGER_INACTIVE: // 0xC0000354
@@ -685,8 +687,6 @@ public abstract class AHost extends Host implements IProgramRunner {
 			return;
 		}
 
-		System.out.println("src_7z_path "+src_7z_path);
-		System.out.println("dst_7z_path "+dst_7z_path);
 		try {
 			dst_host.upload(src_7z_path, dst_7z_path);
 			
@@ -1102,6 +1102,10 @@ public abstract class AHost extends Host implements IProgramRunner {
 	 */
 	public boolean isWindowsServer() {
 		return getOSNameLong().contains("Server");
+	}
+	
+	public String readFileAsString(String path) throws IllegalStateException, FileNotFoundException, IOException {
+		return IOUtil.toString(readFile(path), IOUtil.ONE_MEGABYTE);
 	}
 
 	protected abstract boolean deleteSingleFile(String path);

@@ -1,6 +1,6 @@
 
 def scenarios() {
-	evaluate(new File("conf/internal/CommonConfig.groovy"));
+	evaluate(new File("$__DIR__/CommonConfig.groovy"));
 	
 	new FTPScenario(CommonConfig.getFTPServerHost())
 }

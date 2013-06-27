@@ -1,9 +1,12 @@
 package com.mostc.pftt.host;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.Map;
 
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
+import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
 
 public abstract class RemoteHost extends AHost {
 	
@@ -12,6 +15,24 @@ public abstract class RemoteHost extends AHost {
 	
 	public boolean ensureConnected() {
 		return ensureConnected(null);
+	}
+	
+	private boolean checked_elevate, found_elevate;
+	@Override
+	public ExecOutput execElevatedOut(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread test_thread, int slow_timeout_sec) throws Exception {
+		if (isWindows()) {
+			if (!checked_elevate) {
+				found_elevate = exists(getPfttDir()+"\\bin\\elevate.exe");
+				
+				checked_elevate = true;
+			}
+			if (found_elevate) {
+				// execute command with this utility that will elevate the program using Windows UAC
+				cmd = getPfttDir() + "\\bin\\elevate "+cmd;
+			}
+		}
+		
+		return execOut(cmd, timeout_sec, env, stdin_data, charset, chdir, test_thread, slow_timeout_sec);
 	}
 	
 	@Override

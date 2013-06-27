@@ -15,7 +15,7 @@ import com.mostc.pftt.host.RemoteHost;
  *
  */
 
-public class SMBBasicScenario extends AbstractSMBScenario {
+public class SMBBasicScenario extends SMBScenario {
 	
 	public SMBBasicScenario(RemoteHost remote_host) {
 		this(remote_host, null, null);

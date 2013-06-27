@@ -1,5 +1,8 @@
 package com.mostc.pftt.scenario;
 
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 
 import com.github.mattficken.io.Trie;
@@ -35,7 +38,7 @@ import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
  *
  */
 
-public class BuiltinWebServerScenario extends AbstractWebServerScenario {
+public class BuiltinWebServerScenario extends WebServerScenario {
 
 	protected BuiltinWebServerScenario() {
 		super(new BuiltinWebServerManager());
@@ -67,7 +70,6 @@ public class BuiltinWebServerScenario extends AbstractWebServerScenario {
 	
 	@Override
 	public boolean isExpectedCrash(PhptTestCase test_case) {
-		// TODO temp 6/2 isSlowTest - test
 		return test_case.isNamed(BUILTIN_WEB_EXPECTED_CRASHES) || isSlowTest(test_case) || super.isExpectedCrash(test_case);
 	}
 	
@@ -253,6 +255,19 @@ public class BuiltinWebServerScenario extends AbstractWebServerScenario {
 	}
 	
 	@Override
+	public void sortTestCases(List<PhptTestCase> test_cases) {
+		// fast tests first
+		Collections.sort(test_cases, new Comparator<PhptTestCase>() {
+				@Override
+				public int compare(PhptTestCase a, PhptTestCase b) {
+					final boolean as = !isSlowTest(a);
+					final boolean bs = !isSlowTest(b);
+					return ( as ^ bs ) ? ( as ^ true  ? -1 : 1 ) : 0;
+				}
+			});
+	}
+	
+	@Override
 	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup setup, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
 		if (super.willSkip(cm, twriter, host, setup, type, build, test_case)) {
 			return true;
@@ -265,6 +280,7 @@ public class BuiltinWebServerScenario extends AbstractWebServerScenario {
 		}
 	}
 	
+	// TODO try re-enabling these and see which timeout
 	public static Trie NOT_ON_BUILTIN_WEB_SERVER = PhptTestCase.createNamed(
 				// XXX these don't work right on the builtin web server 
 				"ext/mbstring/tests/mb_ereg_search.phpt",
@@ -317,7 +333,7 @@ public class BuiltinWebServerScenario extends AbstractWebServerScenario {
 				"ext/phar/tests/bug45218_slowtest.phpt",
 				"ext/phar/tests/tar/tar_003.phpt",
 				"ext/standard/tests/strings/htmlentities05.phpt",
-				"ext/xsl/tests/bug26384.phpt",
+				/*"ext/xsl/tests/bug26384.phpt",
 				"ext/xsl/tests/xslt001.phpt",
 				"ext/xsl/tests/xslt002.phpt",
 				"ext/xsl/tests/xslt003.phpt",
@@ -331,10 +347,10 @@ public class BuiltinWebServerScenario extends AbstractWebServerScenario {
 				"ext/xsl/tests/xslt012.phpt",
 				"ext/xsl/tests/xsltprocessor_removeparameter-invalidparam.phpt",
 				"ext/xsl/tests/xsltprocessor_removeparameter.phpt",
-				"tests/basic/022.phpt",
+				//"tests/basic/022.phpt",
 				"tests/basic/023.phpt",
 				"tests/basic/bug29971.phpt",
-				"tests/lang/short_tags.002.phpt",
+				"tests/lang/short_tags.002.phpt",*/
 				"zend/tests/errmsg_021.phpt"
 			);
 

@@ -21,7 +21,6 @@ import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 import com.mostc.pftt.scenario.BuiltinWebServerScenario;
-import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 
 public class BuiltinWebHttpPhptTestCaseRunner extends HttpPhptTestCaseRunner {
@@ -36,6 +35,19 @@ public class BuiltinWebHttpPhptTestCaseRunner extends HttpPhptTestCaseRunner {
 			PhptActiveTestPack active_test_pack) {
 		super(sapi_scenario, ini, env, params, httpproc, httpexecutor, smgr, web, thread, test_case,
 				cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack);
+	}
+	
+	@Override
+	protected String http_execute(String path, EPhptSection section) throws Exception {
+		// ensure file exists before sending HTTP request for it
+		if (!host.exists(path)) {
+			for ( int i=0 ; i < 20 ; i++ ) {
+				Thread.sleep(200);
+				if (host.exists(path))
+					break;
+			}
+		}
+		return super.http_execute(path, section);
 	}
 	
 	@Override

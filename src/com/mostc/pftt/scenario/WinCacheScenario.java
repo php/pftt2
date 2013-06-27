@@ -12,7 +12,7 @@ import com.mostc.pftt.results.ConsoleManager;
  *
  */
 
-public class WinCacheScenario extends AbstractCodeCacheScenario {
+public class WinCacheScenario extends CodeCacheScenario {
 	
 	@Override
 	public String getName() {

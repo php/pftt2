@@ -38,7 +38,7 @@ import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
-import com.mostc.pftt.scenario.AbstractWebServerScenario;
+import com.mostc.pftt.scenario.WebServerScenario;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.ErrorUtil;
 import com.mostc.pftt.util.TimerUtil;
@@ -62,7 +62,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected final HttpRequestExecutor httpexecutor;
 	protected Socket test_socket;
 
-	public HttpPhptTestCaseRunner(AbstractWebServerScenario sapi_scenario, PhpIni ini, Map<String,String> env, HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+	public HttpPhptTestCaseRunner(WebServerScenario sapi_scenario, PhpIni ini, Map<String,String> env, HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
 		super(sapi_scenario, ini, thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 		this.params = params;
 		this.httpproc = httpproc;
@@ -109,7 +109,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	 * 
 	 * retries request if it times out and restarts web server if it crashes
 	 * 
-	 * @param path
+	 * @param path - storage path (including test-pack location, etc...) need to strip off left side of this to get remote path for HTTP request
 	 * @param section
 	 * @return
 	 * @throws Exception
@@ -125,7 +125,8 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				}
 				
 				// notify of crash so it gets reported everywhere
-				web.notifyCrash("PFTT: timeout during test("+section+" SECTION): "+test_case.getName()+"\n"+ErrorUtil.toString(ex1), 0);
+				//web.notifyCrash("PFTT: timeout during test("+section+" SECTION): "+test_case.getName()+"\n"+ErrorUtil.toString(ex1), 0);
+				this.is_timeout = true;
 				
 				if (cm.isNoRestartAll()) {
 					// don't close or replace web server
@@ -157,7 +158,8 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			
 			// notify web server that it crashed. it will record this, which will be accessible
 			// with WebServerInstance#getSAPIOutput (will be recorded by PhpResultPackWriter)
-			web.notifyCrash("PFTT: IOException during test("+section+" SECTION): "+test_case.getName()+"\n"+ex_str, 0);
+			//web.notifyCrash("PFTT: IOException during test("+section+" SECTION): "+test_case.getName()+"\n"+ex_str, 0);
+			this.is_timeout = true;
 			
 			// test will be marked as FAIL or CRASH depending on whether web server process crashed
 			
@@ -328,7 +330,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	
 	protected String do_http_get(String path, int i) throws Exception {
 		HttpContext context = new BasicHttpContext(null);
-		HttpHost http_host = new HttpHost(web.hostname(), web.port());
+		HttpHost http_host = new HttpHost(web.getHostname(), web.getPort());
 		
 		DebuggingHttpClientConnection conn = this.conn.get();
 		if (conn!=null) {
@@ -410,10 +412,15 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			}
 			//
 			
-			if (response.getStatusLine().getStatusCode()==500) {
+			switch (response.getStatusLine().getStatusCode()) {
+			case 500:
 				not_crashed = false;
 				web.notifyCrash("HTTP 500", 500);
-				throw new RuntimeException("HTTP 500 Error");
+				throw new IOException("HTTP 500 Error");
+			case 404:
+				is_timeout = true;
+				break;
+			default:
 			}
 			
 			return IOUtil.toString(response.getEntity().getContent(), IOUtil.HALF_MEGABYTE);
@@ -438,7 +445,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	
 	protected String do_http_post(String path, int i) throws Exception {
 		HttpContext context = new BasicHttpContext(null);
-		HttpHost http_host = new HttpHost(web.hostname(), web.port());
+		HttpHost http_host = new HttpHost(web.getHostname(), web.getPort());
 		
 		DebuggingHttpClientConnection conn = this.conn.get();
 		if (conn!=null) {
@@ -515,10 +522,15 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			}
 			//
 			
-			if (response.getStatusLine().getStatusCode()==500) {
+			switch(response.getStatusLine().getStatusCode()) {
+			case 500:
 				not_crashed = false;
 				web.notifyCrash("HTTP 500", 500);
-				throw new RuntimeException("HTTP 500 Error");
+				throw new IOException("HTTP 500 Error");
+			case 404:
+				is_timeout = true;
+				break;
+			default:
 			}
 			
 			return IOUtil.toString(response.getEntity().getContent(), IOUtil.HALF_MEGABYTE);
