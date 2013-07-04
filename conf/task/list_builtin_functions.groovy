@@ -15,9 +15,64 @@ def describe() {
 	"Adds list of the builtin functions test cases use to the result-pack (Static Analysis)"
 }
 
-String getBuiltinFunctionNamesAlphabetical() {
-		
+// TODO for performance comparison, WHAT ABOUT SIZE OF PHP CODE RUN? (maybe that differs on each OS)
+
+// TODO store output of these 2 functions for each test, in result-pack
+
+def storeTestResult() {
+	
 }
+
+//
+// tells: which functions were called OR which functions could be called (if test wasn't run (see `parse` command))
+String getBuiltinFunctionNamesAlphabetical() {
+	List func_names;
+	
+	TestCaseCodeCoverage test_coverage; // TODO
+	if (test_coverage==null) {
+		// called using `parse` command
+		
+		for ( Function f : parseAST(php_code).getFunctions() ) {
+			if (!func_names.contains(f.getName())) {
+				func_names.add(f.getName());
+			}
+		}
+	} else {
+		// called using `core_all`, `app_all`, etc...
+		
+		
+		for ( String file_name : test_coverage.getFileNames() ) {
+			String php_code = test_coverage.getPhpCode(file_name);
+			
+			for ( Function f : parseAST(php_code).getFunctions() ) {
+				if (test_coverage.isExecuted(file_name, f.getLineNum())) {
+					if (!func_names.contains(f.getName())) {
+						func_names.add(f.getName());
+					}
+				}
+			}
+		} // end for
+	} // end if
+	return func_names;
+}
+
+// tells: which functions were called and how frequently (and the order)
 String getBuiltinFunctionNamesInCallOrder() {
-	// need code coverage data for this		
+	// need code coverage data for this
+	TestCaseCodeCoverage test_coverage; // TODO
+	
+	List func_names;
+	
+	for ( String file_name : test_coverage.getFileNames() ) {
+		String php_code = test_coverage.getPhpCode(file_name);
+		
+		for ( Function f : parseAST(php_code).getFunctions() ) {
+			if (test_coverage.isExecuted(file_name, f.getLineNum())) {
+				func_names.add(f.getName());
+				
+			}
+		}
+	}
+	
+	return func_names;
 }

@@ -671,12 +671,15 @@ public final class Config implements IENVINIFilter {
 		try {
 			ret = go.invokeMethod(SCENARIOS_METHOD, null);
 			if (ret instanceof Scenario) {
+				checkImplemented(cm, (Scenario)ret);
 				scenarios.add((Scenario)ret);
 			} else if (ret instanceof List) {
 				for (Object o : (List<?>)ret) {
 					if (o instanceof Scenario) {
-						if (!scenarios.contains(o))
+						if (!scenarios.contains(o)) {
+							checkImplemented(cm, (Scenario)o);
 							scenarios.add((Scenario)o);
+						}
 					} else {
 						cm.println(EPrintType.OPERATION_FAILED_CONTINUING, "Config", "List returned by scenarios() must only contain Scenario objects, not: "+o.getClass()+" see: "+file_name);
 					}
@@ -709,6 +712,14 @@ public final class Config implements IENVINIFilter {
 		registerMethod(cm, config, go, PROCESS_PHPUNIT_TEST_PACK_METHOD_NAME, file_name);
 	} // end protected static void loadObjectToConfig
 	
+	private static void checkImplemented(ConsoleManager cm, Scenario o) {
+		if (!o.isImplemented()) {
+			if (cm!=null) {
+				cm.println(EPrintType.CLUE, Config.class, "Scenario not implemented "+o.getName());
+			}
+		}
+	}
+
 	protected static void addMethod(Config config, String method_name, GroovyObject go, String file_name) {
 		ArrayList<MethodImpl> methods = config.by_method_name.get(method_name);
 		if (methods==null) {

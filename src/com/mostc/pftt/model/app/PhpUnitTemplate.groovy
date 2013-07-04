@@ -50,6 +50,8 @@ public class PhpUnitTemplate {
 		
 		my_temp_dir = StringUtil.cslashes(host.fixPath(my_temp_dir));
 		
+		def use_xdebug = false;
+		
 		// PFTT mod: need to set date.timezone=UTC... for some reason,
 		//           ini file doesn't work, date_default_timezone_set() and ini_set() must both
 		//           be used to suppress related errors symfony phpunit tests
@@ -69,25 +71,40 @@ putenv('TEMP=$my_temp_dir');
 putenv('TMPDIR=$my_temp_dir');
 putenv('PFTT_IS=true');
 putenv('PFTT_SCENARIO_SET=$pftt_scenario_set');
-
-//xdebug_start_code_coverage( XDEBUG_CC_UNUSED | XDEBUG_CC_DEAD_CODE );
-
-function dump_coverage() {
-	/*	foreach ( xdebug_get_code_coverage() => \$filename, \$coverage ) {
-			echo "file=\$filename"; echo PHP_EOL;
-			foreach ( \$coverage => \$line_num, \$type ) {
-				if (\$type==1) {
-					echo "exe=\$line_num"; echo PHP_EOL;
-				} else if (\$type==-1) {
-					echo "didnt_exe=\$line_num"; echo PHP_EOL;
-				} else if (\$type==-2) {
-					echo "no_exe=\$line_num"; echo PHP_EOL;
-				}
-			}
-		}*/
-}
-
 """)
+		if (use_xdebug) {
+			// use both flags to get dead and unexecuted code 
+			pw.print(
+"""xdebug_start_code_coverage( XDEBUG_CC_UNUSED | XDEBUG_CC_DEAD_CODE );
+""");
+		} // end if (use_xdebug)
+		pw.print(
+"""
+function dump_coverage() {
+""");
+	if (use_xdebug) {
+		pw.print(
+"""	foreach ( xdebug_get_code_coverage() as \$filename => \$coverage ) {
+		echo "file=\$filename"; echo PHP_EOL;
+		foreach ( \$coverage as \$line_num => \$type ) {
+			if (\$type==1) {
+				echo "exe=\$line_num"; echo PHP_EOL;
+			} else if (\$type==-1) {
+				echo "didnt_exe=\$line_num"; echo PHP_EOL;
+			} else if (\$type==-2) {
+				echo "no_exe=\$line_num"; echo PHP_EOL;
+			}
+		}
+		xdebug_stop_code_coverage(TRUE);
+	}
+""") // end pw.print
+	} // end if (use_xdebug)
+	
+	pw.print(
+"""
+}
+""") // end pw.print (end function dump_coverage())
+	
 		if (StringUtil.isNotEmpty(prebootstrap_code)) {
 			pw.print(prebootstrap_code);
 		}

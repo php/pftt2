@@ -280,7 +280,7 @@ public class PhptResultWriter extends AbstractPhptRW {
 	public void reportGroups(LinkedBlockingQueue<TestCaseGroup<PhptTestCase>> thread_safe_groups, LinkedBlockingQueue<NonThreadSafeExt<PhptTestCase>> non_thread_safe_exts) {
 		try {
 			reportGroupsEx(thread_safe_groups, non_thread_safe_exts);
-		} catch ( IOException ex ) {
+		} catch ( Exception ex ) {
 			ex.printStackTrace();
 		}
 	}

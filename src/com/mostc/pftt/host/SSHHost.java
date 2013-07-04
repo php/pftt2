@@ -851,4 +851,22 @@ public class SSHHost extends RemoteHost {
 		return false;
 	}
 
+	@Override
+	public RunRequest createRunRequest(ConsoleManager cm, String ctx_str) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	
+	@Override
+	public ExecOutput execOut(RunRequest req) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public ExecHandle execThread(RunRequest req) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 } // end public class SSHHost

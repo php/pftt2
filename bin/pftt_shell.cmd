@@ -34,7 +34,7 @@ ECHO  Type `examples ^<enter^>` to get some examples for using PFTT.
 @ECHO.
 ECHO  Command Aliases:
 ECHO  core_all      core_named    core_list  ca cn cl  caaa  caaaua
-ECHO  app_all       all_named     app_list   aa an al  caua  lc
+ECHO  app_all       all_named     app_list   aa an al  caua  open
 ECHO  ui_all        ui_named      ui_list    ua un ul  aaua  smoke
 ECHO  release_get   release_list  rl    rg   rgn   rgp parse run-test
 @ECHO.

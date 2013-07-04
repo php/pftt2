@@ -42,13 +42,13 @@ public class APCScenario extends CodeCacheScenario {
 	}
 
 	@Override
-	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
-		return true;
-	}
-
-	@Override
 	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		return SETUP_FAILED;
+	}
+	
+	@Override
+	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		return !scenario_set.contains(IISScenario.class);
 	}
 
 } // end public class APCScenario

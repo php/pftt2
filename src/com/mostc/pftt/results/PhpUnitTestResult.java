@@ -26,18 +26,20 @@ public class PhpUnitTestResult {
 	protected String sapi_output, sapi_config;
 	public PhpIni ini;
 	public final float run_time_micros;
+	public final TestCaseCodeCoverage code_coverage;
 	
-	public PhpUnitTestResult(PhpUnitTestCase test_case, EPhpUnitTestStatus status, ScenarioSetSetup scenario_set, Host host, String output, float run_time_micros) {
+	public PhpUnitTestResult(PhpUnitTestCase test_case, EPhpUnitTestStatus status, ScenarioSetSetup scenario_set, Host host, String output, float run_time_micros, TestCaseCodeCoverage code_coverage) {
 		this.test_case = test_case;
 		this.status = status;
 		this.scenario_set = scenario_set;
 		this.host = host;
 		this.output = output;
 		this.run_time_micros = run_time_micros;
+		this.code_coverage = code_coverage;
 	}
 	
-	public PhpUnitTestResult(PhpUnitTestCase test_case, EPhpUnitTestStatus status, ScenarioSetSetup scenario_set, Host host, String output, PhpIni ini, float run_time_micros, String sapi_output, String sapi_config) {
-		this(test_case, status, scenario_set, host, output, run_time_micros);
+	public PhpUnitTestResult(PhpUnitTestCase test_case, EPhpUnitTestStatus status, ScenarioSetSetup scenario_set, Host host, String output, PhpIni ini, float run_time_micros, TestCaseCodeCoverage code_coverage, String sapi_output, String sapi_config) {
+		this(test_case, status, scenario_set, host, output, run_time_micros, code_coverage);
 		this.sapi_output = sapi_output;
 		this.sapi_config = sapi_config;
 		this.ini = ini;
@@ -159,6 +161,10 @@ public class PhpUnitTestResult {
 				serial.startTag(null, "SAPIConfig");
 				serial.text(sapi_config);
 				serial.endTag(null, "SAPIConfig");
+			}
+			
+			if (code_coverage!=null) {
+				code_coverage.serial(serial);
 			}
 		}
 		//

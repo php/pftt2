@@ -79,26 +79,39 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 // the php test tool that you'd actually want to use
 // doesn't resort to brittle shell scripts
 
-// TODO valgrind gdb?
-// TODO linux installer
-//       -note: windows install doesn't work correctly if SYSTEMDRIVE!=C:
-
-
+// TODO new nsis based installer for windows
+// TODO linux apache support
+// TODO linux .sh installer
+// TODO iis support
+// TODO -debug_all -debugger windbg
+// TODO -debug_all -debugger valgrind
+// TODO -debug_all -debugger gdb
+// TODO task/code_profile
+// TODO task/list_builtin_functions
+// TODO task/code_coverage
+// TODO get code coverage data of Symfony demo app (UI?)
+//      -get list of builtin functions
+//      -find phpunit tests that use same builtin functions
+//      -run those phpunit tests on windows and linux
+//          a-count # of classes, methods, lines executed on both
+//          b-count # of classes, methods, lines executABLE and not-executABLE
+//          c-get list of builtin functions run on both
+//          -compare both a, b, c
+//            -additional builtin functions and/or additional php code could be
+//             executed on Windows
 // TODO UI testing
-//        no Anon-Logout
-// TODO code coverage analysis
-//         see http://phpunit.de/manual/3.0/en/code-coverage-analysis.html
-//         CCA is a big ask from community see https://drupal.org/project/testing
-//         uses xdebug
-//       see http://xdebug.org/docs/code_coverage
-//       see http://xdebug.org/docs/basic
-//       for Application Unit testing
-//       for UI Testing
-//       for Core Testing??
-//
-//        can get CCA data from XDebug, but what to do with it???
-//         -look at the data needed to generate a CCA report
-//         -look at the data needed to generate a CCA summary report
+//      no Anon-Logout
+// TODO filesystem tests w/ non-european locales
+//      see bug #64699
+// TODO collect code coverage data for PHPT tests
+//      result-pack infrastructure already exists (for phpunit and ui)
+// TODO somebody should be running PFTT on machines after WebPI install of PHP and applications
+//        to ensure that it works right
+//       -some special tricks that have to be done for certain edge cases
+//             -such as? for iis?
+//       -advantage of webpi is both that it sets it up for you, but also that it sets it up right
+//             -advantage of webpi is that you don't have to troll forums and mailing lists
+//              to setup your php app and keep it running
 // TODO joomla ui test
 //       https://github.com/joomla/joomla-cms/tree/master/tests/system
 //         -as big as wordpress +INTERNATIONALIZATION
@@ -123,11 +136,16 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //           -make it a point to unit test that!
 //
 // TODO progress indicator for `release_get`
-// TODO iis and iis-express
-// TODO mysql* postgresql curl ftp - including symfony, joomla, phpt
-//       pdo odbc (to mssql??)
-
+// TODO soap xmlrpc ftp snmp ldap postgresql curl ftp - including symfony, joomla, phpt
+//       pdo_odbc odbc (to mssql??)
+//           -users do use odbc for ms-access databases
+// TODO linux installation
+//      rpm (especially for yum, when more stable) 
+//      dpkg (especially for apt-get, when more stable)
 // TODO PEAR extension tests
+//      -test running PEAR itself so users can run it
+//         -don't think it has PHPT or PhpUnit tests
+//             -make some
 //     Console_GetArgs (PhpUnit)
 //     File_SearchReplace (PHPT)
 //     File (PHPT)
@@ -141,16 +159,15 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //           -if you need it for debug, use it from explain
 //                -ie force people to do it at least partially the efficient PFTT way
 //           -if you need it to setup, use setup cmd
-// TODO filesystem tests w/ non-european locales
-//        see bug #64699
+// TODO parse test HTTP requests from PCAP capture
+//      repro real traffic against PHP application to repro
+//      thanks to Mark Miller @microsoft
 // 
 // improve documentation
 //     -including HOW TO run Php on Windows - on windows.php.net or wiki.php.net?
 //     -recommended configuration, etc... (for Apache, PHP, IIS, wordpress, mysql, etc...)
 // test MSIE and other web browsers with UI Tests
 // test UI of other applications
-// run phpunit tests of other applications
-// firebird mssql via odbc and pdo_odbc
 //
 // Better-PFTT
 //    get actual version of apache, wordpress, symfony, etc... instead of assuming hardcoded value
@@ -329,6 +346,7 @@ public class PfttMain {
 				.addRow("release_list <optional branch> <optional build-type>", "list snapshot build and test-pack releases");
 		}
 		table.addRow("parse", "parses PHP code for analysis by configuration tasks")
+			.addRow("open", "open result-pack(s) for analysis")
 			.addRow("stop <build>", "cleans up after setup, stops web server and other services")
 			.addRow("setup <build>", "sets up scenarios from -config -- installs IIS or Apache to run PHP, etc...");
 		System.out.println(table);
@@ -1195,7 +1213,7 @@ public class PfttMain {
 		} else {
 			File default_config_file = new File(p.host.getPfttDir()+"/conf/default.groovy");
 			config = Config.loadConfigFromFiles(cm, default_config_file);
-			System.out.println("PFTT: Config: no config files loaded... using defaults only ("+default_config_file+")");
+			System.out.println("PFTT: Config: no config files loaded... using default only ("+default_config_file+")");
 		}
 		
 		// have config files process console args (add to them, remove, etc...)
@@ -1401,6 +1419,9 @@ public class PfttMain {
 				if (command.equals("parse")) {
 					// TODO parse PHP code and give it to config files to handle
 					//       or serialize it as XML
+				
+				} else if (command.equals("open")) {
+					// TODO open result-packs and process them
 					
 				} else if (command.equals("app_named")||command.equals("appnamed")||command.equals("an")) {
 					checkUAC(is_uac, false, config, cm, EScenarioSetPermutationLayer.WEB_APPLICATION);
@@ -1822,7 +1843,7 @@ public class PfttMain {
 					List<UITestPack> test_packs = config.getUITestPacks(cm);
 					if (test_packs.isEmpty()) {
 						System.err.println("User error: provide a configuration that provides a UITestPack");
-						System.err.println("example: pftt -c wordpress,apache,mysql user_all php-5.5.0beta3-Win32-vc9-x86");
+						System.err.println("example: pftt -c wordpress,apache,local_mysql user_all php-5.5.0beta3-Win32-vc9-x86");
 						return;
 					}
 					

@@ -1,5 +1,10 @@
 
 def describe() {
-	"Monitor and report PHP code coverage (Application and UI testing) using XDebug (Dynamic Run-Time Analysis)."
+	"Monitor and report PHP code coverage using Xdebug (Dynamic Run-Time Analysis)."
 }
 
+def scenarios() {
+	new XDebugScenario()
+}
+
+// TODO note code coverage data stored in each test result

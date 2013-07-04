@@ -219,7 +219,7 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	protected void markTestAsCrash() {
 		is_crashed = true;
 		
-		tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, EPhpUnitTestStatus.CRASH, scenario_set, host, null, 0));
+		tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, EPhpUnitTestStatus.CRASH, scenario_set, host, null, 0f, null));
 	}
 	
 	@Override

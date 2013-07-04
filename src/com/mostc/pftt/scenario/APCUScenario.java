@@ -25,5 +25,10 @@ public class APCUScenario extends UserCacheScenario {
 	public boolean isImplemented() {
 		return false;
 	}
+	
+	@Override
+	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		return !scenario_set.contains(IISScenario.class);
+	}
 
 }

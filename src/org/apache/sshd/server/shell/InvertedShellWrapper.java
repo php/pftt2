@@ -149,6 +149,7 @@ public class InvertedShellWrapper implements Command, SessionAware {
         if (available > 0) {
             int len = in.read(buffer);
             if (len > 0) {
+            	System.out.println(new String(buffer, 0, len));
                 out.write(buffer, 0, len);
                 out.flush();
                 return true;

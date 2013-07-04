@@ -222,7 +222,7 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 
 		@Override
 		protected void recordSkipped(PhpUnitTestCase test_case) {
-			twriter.addResult(runner_host, scenario_set_setup, new PhpUnitTestResult(test_case, EPhpUnitTestStatus.SKIP, scenario_set_setup, runner_host, null, null, 0, "PFTT: Test Timed Out", null));
+			twriter.addResult(runner_host, scenario_set_setup, new PhpUnitTestResult(test_case, EPhpUnitTestStatus.SKIP, scenario_set_setup, runner_host, null, null, 0, null, "PFTT: Test Timed Out", null));
 		}
 		
 	} // end public class PhpUnitThread

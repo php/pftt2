@@ -8,7 +8,6 @@ import java.util.Map;
 
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
-import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.AHost.ExecHandle;
 import com.mostc.pftt.host.IProgramRunner;
 import com.mostc.pftt.host.LocalHost.LocalExecHandle;
@@ -16,7 +15,6 @@ import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
-import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 
@@ -197,36 +195,78 @@ public abstract class DebuggerManager {
 		public abstract void close(ConsoleManager cm);
 		public abstract boolean isRunning();
 		
-		/*
 		@Override
-		public boolean exec(ConsoleManager cm, String ctx_str, String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_post, Charset charset, String current_dir) throws IllegalStateException, Exception {
-			return execOut(cmd, timeout_sec, env, stdin_post, charset, current_dir).printOutputIfCrash(ctx_str, cm).isSuccess();
+		public boolean exec(ConsoleManager cm, String ctx_str, String cmd,
+				int timeout_sec, Map<String, String> env, byte[] stdin_post,
+				Charset charset, String current_dir)
+				throws IllegalStateException, Exception {
+			// TODO Auto-generated method stub
+			return false;
 		}
+		
 		@Override
-		public boolean exec(ConsoleManager cm, String ctx_str, String commandline, int timeout, Map<String, String> env, byte[] stdin, Charset charset, String chdir, TestPackRunnerThread thread, int thread_slow_sec) throws Exception {
-			return execOut(commandline, timeout, env, stdin, charset, chdir, thread, thread_slow_sec).printOutputIfCrash(ctx_str, cm).isSuccess();
-		}
 		public ExecHandle execThread(String commandline) throws Exception {
-			return execThread(commandline, null, null, null);
+			// TODO Auto-generated method stub
+			return null;
 		}
-		public ExecHandle execThread(String commandline, byte[] stdin_data) throws Exception {
-			return execThread(commandline, null, null, stdin_data);
+
+		@Override
+		public ExecHandle execThread(String commandline, byte[] stdin_data)
+				throws Exception {
+			// TODO Auto-generated method stub
+			return null;
 		}
-		public ExecHandle execThread(String commandline, String chdir) throws Exception {
-			return execThread(commandline, null, chdir, null);
+
+		@Override
+		public ExecHandle execThread(String commandline, String chdir)
+				throws Exception {
+			// TODO Auto-generated method stub
+			return null;
 		}
-		public ExecHandle execThread(String commandline, String chdir, byte[] stdin_data) throws Exception {
-			return execThread(commandline, null, chdir, stdin_data);
+
+		@Override
+		public ExecHandle execThread(String commandline, String chdir,
+				byte[] stdin_data) throws Exception {
+			// TODO Auto-generated method stub
+			return null;
 		}
-		public ExecHandle execThread(String commandline, Map<String,String> env, byte[] stdin_data) throws Exception {
-			return execThread(commandline, env, null, stdin_data);
+
+		@Override
+		public ExecHandle execThread(String commandline,
+				Map<String, String> env, byte[] stdin_data) throws Exception {
+			// TODO Auto-generated method stub
+			return null;
 		}
-		public ExecHandle execThread(String commandline, Map<String,String> env, String chdir) throws Exception {
-			return execThread(commandline, env, chdir, null);
+
+		@Override
+		public ExecHandle execThread(String commandline,
+				Map<String, String> env, String chdir) throws Exception {
+			// TODO Auto-generated method stub
+			return null;
 		}
-		public ExecOutput execOut(String cmd, int timeout_sec, Map<String,String> object, byte[] stdin_post, Charset charset) throws IllegalStateException, Exception {
-			return execOut(cmd, timeout_sec, object, stdin_post, charset, (String)null);
-		}*/
+
+		@Override
+		public ExecHandle execThread(String commandline,
+				Map<String, String> env, String chdir, byte[] stdin_data)
+				throws Exception {
+			// TODO Auto-generated method stub
+			return null;
+		}
+		
+		@Override
+		public boolean exec(RunRequest req) {
+			return execOut(req).isSuccess();
+		}
+		
+		@Override
+		public RunRequest createRunRequest() {
+			return createRunRequest(null, (String)null);
+		}
+		
+		@Override
+		public RunRequest createRunRequest(ConsoleManager cm, Class<?> ctx_clazz) {
+			return createRunRequest(cm, ctx_clazz==null?null:ctx_clazz.getSimpleName());
+		}
 		
 	}
 	

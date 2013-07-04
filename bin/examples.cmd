@@ -15,10 +15,10 @@
 @ECHO Run PHP Core PHPT tests against Apache ModPHP
 @ECHO core_all -c apache php-5.5.0beta1-Win32-VC11-x86 php-test-pack-5.5.0beta1
 @ECHO.
-@ECHO Again, with OpCache and disabling error popup messages
+@ECHO Again, with Opcache and disabling error popup messages
 @ECHO core_all -c opcache,apache -disable_debug_prompt php-5.5.0beta1-Win32-VC11-x86 php-test-pack-5.5.0beta1
 @ECHO.
-@ECHO Test twice, once with OpCache and once without any code cache
+@ECHO Test twice, once with Opcache and once without any code cache
 @ECHO core_all -c opcache,no_code_cache,apache -disable_debug_prompt php-5.5.0beta1-Win32-VC11-x86 php-test-pack-5.5.0beta1
 @ECHO.
 @ECHO.
@@ -36,3 +36,7 @@
 @ECHO Test Wordpress against Apache ModPHP, both with OpCache and without OpCache
 @ECHO ui_all -c wordpress,apache,opcache,no_code_cache php-5.5.0beta1-Win32-VC11-x86
 @ECHO.
+@ECHO Get task and other configuration files for -c
+@ECHO list_config
+@ECHO.
+

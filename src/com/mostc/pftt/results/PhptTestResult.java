@@ -81,6 +81,7 @@ public class PhptTestResult {
 	public String regex_output;
 	/** microseconds it took to run the test */
 	public float run_time_micros;
+	public TestCaseCodeCoverage code_coverage;
 	
 	protected PhptTestResult() {
 		
@@ -360,6 +361,8 @@ public class PhptTestResult {
 				serial.endTag(null, "regexOutput");
 			}
 			
+			if (code_coverage!=null)
+				code_coverage.serial(serial);
 		} else if (actual_ini!=null) {
 			// even if not supposed to store info (@see shouldStoreAll), if #actual_ini set, must need to store it
 			serial.startTag(null, "actualINI");

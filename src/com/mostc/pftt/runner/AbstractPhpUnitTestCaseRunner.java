@@ -17,11 +17,11 @@ import com.mostc.pftt.model.app.EPhpUnitTestStatus;
 import com.mostc.pftt.model.app.PhpUnitTemplate;
 import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.PhpBuild;
-import com.mostc.pftt.model.core.PhpCodeCoverage;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.ITestResultReceiver;
+import com.mostc.pftt.results.TestCaseCodeCoverage;
 import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
 import com.mostc.pftt.scenario.SAPIScenario;
@@ -168,16 +168,17 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 		if (checkRequireOnceError(output)) {
 			status = EPhpUnitTestStatus.TEST_EXCEPTION;
 			
-			tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, run_time_micros, getSAPIOutput(), getSAPIConfig()));
+			tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, run_time_micros, null, getSAPIOutput(), getSAPIConfig()));
 		} else if (is_crashed&&!is_timeout) {
 			if (PAT_CLASS_NOT_FOUND.matcher(output).find()) {
 				status = EPhpUnitTestStatus.UNSUPPORTED;
 				
-				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, run_time_micros, getSAPIOutput(), getSAPIConfig()));
+				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, run_time_micros, null, getSAPIOutput(), getSAPIConfig()));
 			} else if (PAT_FATAL_ERROR.matcher(output).find()) {
 				status = EPhpUnitTestStatus.ERROR;
 				
-				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, run_time_micros, getSAPIOutput(), getSAPIConfig()));
+				// (will not have been able to print out the code coverage data in this case)
+				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, run_time_micros, null, getSAPIOutput(), getSAPIConfig()));
 			} else {
 				// CRASH may really be a syntax error (BORK), check to make sure
 				final ExecOutput syntax_eo = host.execOut(
@@ -189,11 +190,11 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 					// its a syntax error - BORK, as test case can't run
 					status = EPhpUnitTestStatus.BORK;
 					
-					tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, syntax_eo.output, ini, run_time_micros, getSAPIOutput(), getSAPIConfig()));
+					tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, syntax_eo.output, ini, run_time_micros, null, getSAPIOutput(), getSAPIConfig()));
 				} else {
 					status = EPhpUnitTestStatus.CRASH;
 					
-					tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, run_time_micros, getSAPIOutput(), getSAPIConfig()));
+					tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, run_time_micros, null, getSAPIOutput(), getSAPIConfig()));
 				}
 			}
 		} else {
@@ -208,12 +209,12 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 			//
 			// @see PhpUnitTemplate#renderTemplate for the PHP script
 			//
+			TestCaseCodeCoverage code_coverage = new TestCaseCodeCoverage(host);
 			String output_str;
 			{
 				List<String> lines = ArrayUtil.toList(StringUtil.splitLines(output));
 				Iterator<String> line_it = lines.iterator();
 				String line, file = null;
-				PhpCodeCoverage cc = new PhpCodeCoverage();
 				while (line_it.hasNext()) {
 					line = line_it.next();
 					if (line.startsWith("file=")) {
@@ -221,15 +222,15 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 						
 						line_it.remove(); // remove this line from output_str
 					} else if (line.startsWith("exe=")) {
-						cc.addExecutedLine(file, Integer.parseInt(line.substring("no_exe=".length())));
+						code_coverage.addExecutedLine(file, Integer.parseInt(line.substring("exe=".length())));
 						
 						line_it.remove(); // remove this line from output_str
 					} else if (line.startsWith("didnt_exe=")) {
-						cc.addNotExecutedLine(file, Integer.parseInt(line.substring("no_exe=".length())));
+						code_coverage.addNotExecutedLine(file, Integer.parseInt(line.substring("didnt_exe=".length())));
 						
 						line_it.remove(); // remove this line from output_str
 					} else if (line.startsWith("no_exe=")) {
-						cc.addNonExecutableLine(file, Integer.parseInt(line.substring("no_exe=".length())));
+						code_coverage.addNonExecutableLine(file, Integer.parseInt(line.substring("no_exe=".length())));
 						
 						line_it.remove(); // remove this line from output_str
 					} else if (line.startsWith("status=")) {
@@ -273,9 +274,9 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 			}
 			
 			if (status.isNotPass()) {
-				tmgr.addResult(host, scenario_set, notifyNotPass(new PhpUnitTestResult(test_case, status, scenario_set, host, output_str, ini, run_time_micros, getSAPIOutput(), getSAPIConfig())));
+				tmgr.addResult(host, scenario_set, notifyNotPass(new PhpUnitTestResult(test_case, status, scenario_set, host, output_str, ini, run_time_micros, code_coverage, getSAPIOutput(), getSAPIConfig())));
 			} else {
-				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output_str, ini, run_time_micros, getSAPIOutput(), getSAPIConfig()));
+				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output_str, ini, run_time_micros, code_coverage, getSAPIOutput(), getSAPIConfig()));
 			}
 		}
 		

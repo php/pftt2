@@ -248,7 +248,10 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			output_str = doExecuteTest();
 		}
 		
-		if (running_test_handle.isTimedOut()) {
+		if (running_test_handle.isTimedOut() || (running_test_handle.getExitCode()==-1 && exe_type==EExecutableType.CGI)) {
+			// if test took longer than 1 minute, OR
+			// test is using php-cgi.exe and exited with -1
+			//    (which means file not found, but count it as a timeout)
 			is_timeout = true;
 			
 		} else if (running_test_handle.isCrashed()) {

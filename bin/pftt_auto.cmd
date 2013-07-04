@@ -48,25 +48,31 @@ REM find java.exe
 IF EXIST %JAVA_HOME%\lib\tools.jar (
 	SET JAVA_EXE=%JAVA_HOME%\bin\java.exe
 ) ELSE (
-	IF EXIST "%ProgramFiles%\java\jre6\bin\java.exe" (
-		SET JAVA_EXE="%ProgramFiles%\java\jre6\bin\java.exe"
-		SET JAVA_HOME="%ProgramFiles%\java\jre6"
-	) ELSE (
-		IF EXIST "%ProgramW6432%\java\jre6\bin\java.exe" (
-			SET JAVA_EXE="%ProgramW6432%\java\jre6\bin\java.exe"
-			SET JAVA_HOME="%ProgramW6432%\java\jre6"
+	REM prefer the JRE bundled with PFTT
+	IF EXIST "%PFTT_HOME%\jre\bin\java.exe" (
+		SET JAVA_EXE="%PFTT_HOME%\jre\bin\java.exe"
+		SET JAVA_HOME="%PFTT_HOME%\jre"
+	) ELSE ( 
+		IF EXIST "%ProgramFiles%\java\jre6\bin\java.exe" (
+			SET JAVA_EXE="%ProgramFiles%\java\jre6\bin\java.exe"
+			SET JAVA_HOME="%ProgramFiles%\java\jre6"
 		) ELSE (
-			IF EXIST "%ProgramFiles(x86)%\java\jre6\bin\java.exe" (
-				SET JAVA_EXE="%ProgramFiles(x86)%\java\jre6\bin\java.exe"
-				SET JAVA_HOME="%ProgramFiles(x86)%\java\jre6"
+			IF EXIST "%ProgramW6432%\java\jre6\bin\java.exe" (
+				SET JAVA_EXE="%ProgramW6432%\java\jre6\bin\java.exe"
+				SET JAVA_HOME="%ProgramW6432%\java\jre6"
 			) ELSE (
-				IF EXIST "%ProgramFiles%\java\jre7\bin\java.exe" (
-					SET JAVA_EXE="%ProgramFiles%\java\jre7\bin\java.exe"
-					SET JAVA_HOME="%ProgramFiles%\java\jre7"
+				IF EXIST "%ProgramFiles(x86)%\java\jre6\bin\java.exe" (
+					SET JAVA_EXE="%ProgramFiles(x86)%\java\jre6\bin\java.exe"
+					SET JAVA_HOME="%ProgramFiles(x86)%\java\jre6"
 				) ELSE (
-					IF EXIST "%ProgramFiles(x86)%\java\jre7\bin\java.exe" (
-						SET JAVA_EXE="%ProgramFiles(x86)%\java\jre7\bin\java.exe"
-						SET JAVA_HOME="%ProgramFiles(x86)%\java\jre7"
+					IF EXIST "%ProgramFiles%\java\jre7\bin\java.exe" (
+						SET JAVA_EXE="%ProgramFiles%\java\jre7\bin\java.exe"
+						SET JAVA_HOME="%ProgramFiles%\java\jre7"
+					) ELSE (
+						IF EXIST "%ProgramFiles(x86)%\java\jre7\bin\java.exe" (
+							SET JAVA_EXE="%ProgramFiles(x86)%\java\jre7\bin\java.exe"
+							SET JAVA_HOME="%ProgramFiles(x86)%\java\jre7"
+						)
 					)
 				)
 			)

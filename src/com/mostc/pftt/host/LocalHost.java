@@ -7,6 +7,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.Thread.UncaughtExceptionHandler;
 import java.lang.ref.SoftReference;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -686,6 +687,56 @@ public class LocalHost extends AHost {
 		return (String[])parts.toArray(new String[]{});
 	} // end public static String[] splitCmdString
 	
+	static final UncaughtExceptionHandler IGNORE = new UncaughtExceptionHandler() {
+			@Override
+			public void uncaughtException(Thread arg0, Throwable arg1) {
+			}
+		};
+	@SuppressWarnings("deprecation")
+	protected Process guardStart(final ProcessBuilder builder) throws IOException, InterruptedException {
+		if (!isWindows())
+			return builder.start();
+		
+		// Windows BN: ProcessBuilder#start can sometimes block forever, observed only with the builtin web server (usually)
+		//             and sometimes CLI
+		//
+		// call ProcessBuilder#start in separate thread to monitor it
+		final AtomicReference<IOException> ex_ref = new AtomicReference<IOException>();
+		final AtomicReference<Process> proc_ref = new AtomicReference<Process>();
+		final Thread start_thread = new Thread() {
+				public void run() {
+					try {
+						proc_ref.set(builder.start());
+						synchronized(proc_ref) {
+							proc_ref.notifyAll();
+						}
+					} catch ( IOException ex ) {
+						ex_ref.set(ex);
+					}
+				}
+			};
+		start_thread.setUncaughtExceptionHandler(IGNORE);
+		start_thread.setDaemon(true);
+		start_thread.setName("ProcessBuilder"+start_thread.getName());
+		start_thread.start();
+		// wait up to 120 seconds for ProcessBuilder#start
+		try {
+			synchronized(proc_ref) {
+				proc_ref.wait(120000);
+			}
+		} catch ( Exception ex ) {}
+		Process proc = proc_ref.get();
+		if (proc==null) {
+			// try to kill off the thread (ProcessBuilder#start is native code though)
+			start_thread.stop(new RuntimeException("ProcessBuilder#start timeout (Localhost)"));
+			
+			IOException ex = ex_ref.get();
+			if (ex!=null)
+				throw ex;
+		}
+		return proc;
+	} // end protected Process guardStart
+	
 	protected LocalExecHandle exec_impl(String[] cmd_array, Map<String,String> env, String chdir, byte[] stdin_data) throws IOException, InterruptedException {
 		Process process = null;
 		{
@@ -713,7 +764,7 @@ public class LocalHost extends AHost {
 				      
 			// start the process
 			try {
-				process = builder.start();
+				process = guardStart(builder);
 			} catch ( IOException ex ) {
 				if (isWindows() && ex.getMessage().contains("Not enough storage")) {
 					//
@@ -726,7 +777,7 @@ public class LocalHost extends AHost {
 						Thread.sleep(10000 * i); // 10 20 30 => 60 total
 					
 						try {
-							process = builder.start();
+							process = guardStart(builder);
 							break;
 						} catch ( IOException ex2 ) {
 							if (ex2.getMessage().contains("Not enough storage")) {
@@ -739,7 +790,7 @@ public class LocalHost extends AHost {
 				} else if (ex.getMessage().contains("file busy")) {
 					// randomly sometimes on Linux, get this problem (CLI scenario's shell scripts) ... wait and try again
 					Thread.sleep(100);
-					process = builder.start();
+					process = guardStart(builder);
 				} else {
 					throw ex;
 				}
@@ -1018,6 +1069,30 @@ public class LocalHost extends AHost {
 	
 	public static String cwd() {
 		return System.getenv("user.dir");
+	}
+
+	@Override
+	public RunRequest createRunRequest(ConsoleManager cm, String ctx_str) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public ExecOutput execOut(RunRequest req) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public ExecHandle execThread(RunRequest req) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public boolean exec(RunRequest req) {
+		// TODO Auto-generated method stub
+		return false;
 	}
 	
 } // end public class Host

@@ -203,7 +203,7 @@ also should test setting WP_LANG to other languages (multi-byte?) and FORCE_SSL 
 		testUserRole(EWordpressUserRole.AUTHOR, anon_branch, author_user, author_user_new_passwd);
 		testUserRole(EWordpressUserRole.CONTRIBUTOR, anon_branch, contributor_user, contributor_user_new_passwd);
 		boolean s = testUserRole(EWordpressUserRole.SUBSCRIBER, anon_branch, subscriber_user, subscriber_user_new_passwd);
-				
+		
 		anon_branch.test(admin_user, LoginTest, {
 				it.test(new UsersChangeRole(editor_user, EWordpressUserRole.SUBSCRIBER))
 					.test(LogoutTest)

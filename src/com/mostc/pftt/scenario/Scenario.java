@@ -141,10 +141,6 @@ public abstract class Scenario {
 				new NoCodeCacheScenario(),
 				CLI_SCENARIO,
 				LOCALFILESYSTEM_SCENARIO,
-				// these database scenarios can be here because they don't require any special configuration
-				// (like connecting to a database server that the user would have to setup. those scenarios
-				//  have to be in configuration files (in the 'conf' directory))
-				new SQLite3Scenario(),
 				new NormalPathsScenario(),
 				new EnchantScenario()
 			};

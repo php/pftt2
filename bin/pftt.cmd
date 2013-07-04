@@ -110,6 +110,8 @@ IF [%JAVA_EXE%] == [] (
 	DEL /Q pftt_cmd.tmp
 )
 REM finally execute PFTT
+REM
+REM run with yjp if -pftt_profile console option is used
 SET pftt_args="str %*"
 SET pftt_temp=%pftt_args:pftt_profile=%
 IF NOT %pftt_args% EQU %pftt_temp% ( 

@@ -32,6 +32,10 @@ public class XDebugScenario extends DebugScenario {
 
 	@Override
 	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
+		// TODO temp
+		//ini.putMulti("zend_extension", "C:/php-sdk/PFTT/current/cache/dep/xdebug/php_xdebug-2.2.3-5.5-ts-vc11-x86/php_xdebug-2.2.3-5.5-ts-vc11-x86.dll");
+		ini.putMulti("zend_extension", "C:/php-sdk/PFTT/current/cache/dep/xdebug/php_xdebug-2.2.3-5.4-ts-vc9-x86/php_xdebug-2.2.3-5.4-ts-vc9-x86.dll");
+		
 		ini.putSingle("xdebug.default_enable", "1");
 		ini.putSingle("xdebug.coverage_enable", "1");
 		ini.putSingle("xdebug.collect_params", "1");
@@ -39,6 +43,7 @@ public class XDebugScenario extends DebugScenario {
 		ini.putSingle("xdebug.collect_includes", "1");
 		ini.putSingle("xdebug.collect_return", "1");
 		ini.putSingle("xdebug.auto_trace", "1");
+		
 		return SETUP_SUCCESS;
 	}
 

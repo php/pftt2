@@ -10,6 +10,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -683,7 +684,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			TestPackThread.this.interrupt();
 		}
 		
-		protected void runNonThreadSafe() {
+		protected void runNonThreadSafe() throws InterruptedException {
 			while(shouldRun()) {
 				ext = non_thread_safe_exts.poll();
 				if (ext==null)
@@ -702,7 +703,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			ext = null;
 		} // end protected void runNonThreadSafe
 		
-		protected void runThreadSafe() {
+		protected void runThreadSafe() throws InterruptedException {
 			while (shouldRun()) {
 				// thread-safe can share groups between threads
 				// (this allows larger groups to be distributed  between threads)
@@ -736,9 +737,21 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			LinkedList<T> completed_tests = new LinkedList<T>();
 			this.jobs = jobs;
 			
-			while ( (test_case = jobs.poll()) != null && shouldRun() ) {
+			while (shouldRun()) {
+				//
+				test_case = null;
+				try {
+					test_case = jobs.poll(5, TimeUnit.SECONDS);
+				} catch ( InterruptedException ex ) {}
+				if (test_case==null && shouldRun()) {
+					if (jobs.isEmpty())
+						break;
+					else
+						continue;
+				}
 				completed_tests.add(test_case);
 				test_run_start_time.set(System.currentTimeMillis());
+				//
 				
 				int a = run_test_times_all;
 				
@@ -802,7 +815,10 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 									try {
 										new_wsi = ((WebServerScenario)sapi_scenario).smgr.getWebServerInstance(cm, runner_host, scenario_set, build, group_key.getPhpIni(), 
 												group_key.getEnv(),
-												this instanceof PhpUnitThread ? src_test_pack.getSourceDirectory()//((PhpUnitThread)this).my_temp_dir // TODO temp phpunit 
+												this instanceof PhpUnitThread ? //src_test_pack.getSourceDirectory()//
+														// yes definitely
+														// @see HttpPhpUnitTestCaseRunner#execute
+														((PhpUnitThread)this).my_temp_dir // TODO temp phpunit 
 														:
 												active_test_pack.getStorageDirectory(),
 												thread_wsi, debugger_attached, completed_tests);

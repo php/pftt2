@@ -12,11 +12,42 @@ import com.mostc.pftt.results.ConsoleManager;
  * 
  */
 
+// TODO http://us.php.net/manual/en/wincache.stats.php
+// TODO mediawiki support
 public class WinCacheUScenario extends UserCacheScenario {
 
+	// @see http://us.php.net/manual/en/wincache.configuration.php
 	@Override
 	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
-		return null;
+		// TODO temp
+		try {
+			host.copy("C:/php-sdk/PFTT/current/cache/dep/wincache/php_wincache-1.3-5.5-nts-vc11-x86/php_wincache.dll", build.getDefaultExtensionDir()+"/php_wincache.dll");
+		} catch ( Exception ex ) {
+			ex.printStackTrace();
+			return SETUP_FAILED;
+		}
+		
+		ini.putMulti(PhpIni.EXTENSION, "php_wincache.dll");
+		
+		//
+		ini.putSingle("wincache.enablecli", "1");
+		// enable file caching
+		ini.putSingle("wincache.fcenabled", "1");
+		// enable user caching
+		ini.putSingle("wincache.ucenabled", "1");
+		
+		// DISABLE opcode caching (required to use wincacheu with opcache scenarios)
+		ini.putSingle("wincache.ocenabled", "0");
+		
+		return SETUP_SUCCESS;
+	}
+	
+	@Override
+	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		// don't run WinCache on Apache-ModPHP (Apache CGI probably ok)
+		//
+		// not sure if its supported on scenarios other than CLI or IIS (so allow it)
+		return !scenario_set.contains(ApacheModPHPScenario.class);
 	}
 
 	@Override
@@ -26,7 +57,7 @@ public class WinCacheUScenario extends UserCacheScenario {
 
 	@Override
 	public boolean isImplemented() {
-		return false;
+		return true;
 	}
 
 }

@@ -15,6 +15,7 @@ import com.github.mattficken.io.ByLineReader;
 import com.github.mattficken.io.CharsetDeciderDecoder;
 import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.StringUtil;
+import com.mostc.pftt.host.IProgramRunner.RunRequest;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
@@ -1106,6 +1107,29 @@ public abstract class AHost extends Host implements IProgramRunner {
 	
 	public String readFileAsString(String path) throws IllegalStateException, FileNotFoundException, IOException {
 		return IOUtil.toString(readFile(path), IOUtil.ONE_MEGABYTE);
+	}
+	
+	public String readFileAsStringEx(String path) {
+		try {
+			return readFileAsString(path);
+		} catch ( Exception ex ) {
+			return null;
+		}
+	}
+	
+	@Override
+	public boolean exec(RunRequest req) {
+		return execOut(req).isSuccess();
+	}
+	
+	@Override
+	public RunRequest createRunRequest() {
+		return createRunRequest(null, (String)null);
+	}
+
+	@Override
+	public RunRequest createRunRequest(ConsoleManager cm, Class<?> ctx_clazz) {
+		return createRunRequest(cm, ctx_clazz == null ? null : ctx_clazz.getSimpleName());
 	}
 
 	protected abstract boolean deleteSingleFile(String path);
