@@ -85,7 +85,8 @@ public class PhptTestCase extends TestCase {
 			new String[]{"ext/standard/tests/streams/stream_set_"},
 			new String[]{"ext/standard/tests/streams/"},
 			new String[]{"ext/standard/tests/sockets/", "ext/sockets/"},
-			new String[]{"ext/mysqli/tests/0"},
+			new String[]{"ext/mysqli/tests/0", "ext/mysqli/tests/bug"},
+			new String[]{"ext/phar/tests/frontcontroller", "ext/phar/tests/cache_list/copyonwrite", "ext/phar/tests/zip/copyonwrite", "ext/phar/tests/tar/copyonwrite", "ext/phar/cache_list/frontcontroller", "ext/phar/zip/frontcontroller", "ext/phar/tar/frontcontroller"},
 			new String[]{"ext/pgsql/"},
 			new String[]{"ext/pdo_pgsql/"},
 			// several 61367 tests that aren't thread-safe (temp files)
