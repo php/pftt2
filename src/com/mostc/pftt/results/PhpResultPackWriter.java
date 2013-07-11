@@ -14,6 +14,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
+import com.mostc.pftt.main.Config;
 import com.mostc.pftt.model.TestCase;
 import com.mostc.pftt.model.app.EPhpUnitTestStatus;
 import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
@@ -53,6 +54,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	protected final String test_pack_version;
 	protected final Thread writer_thread;
 	protected final boolean first_for_build;
+	protected final Config config;
 	
 	protected class UITestScenarioSetGroup {
 		protected final HashMap<String,HashMap<ScenarioSetSetup,UITestWriter>> map;
@@ -101,12 +103,14 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		}
 	}
 	
-	public PhpResultPackWriter(LocalHost local_host, LocalConsoleManager cm, File telem_base_dir, PhpBuild build) throws Exception {
-		this(local_host, cm, telem_base_dir, build, null);
+	public PhpResultPackWriter(LocalHost local_host, LocalConsoleManager cm, File telem_base_dir, PhpBuild build, Config config) throws Exception {
+		this(local_host, cm, telem_base_dir, build, null, config);
 	}
 	
-	public PhpResultPackWriter(LocalHost local_host, LocalConsoleManager cm, File telem_base_dir, PhpBuild build, PhptSourceTestPack src_test_pack) throws Exception {
+	public PhpResultPackWriter(LocalHost local_host, LocalConsoleManager cm, File telem_base_dir, PhpBuild build, PhptSourceTestPack src_test_pack, Config config) throws Exception {
 		super(local_host);
+		
+		this.config = config;
 		
 		ui_test_writer_map = new HashMap<AHost,HashMap<String,UITestScenarioSetGroup>>(16);
 		phpt_writer_map = new HashMap<AHost,HashMap<ScenarioSetSetup,PhptResultWriter>>(16);
@@ -328,9 +332,12 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 
 		@Override
 		public void handle() throws IOException {
+			config.processPhptTestResult(cm, this_result);
 			PhptResultWriter w = getCreatePhptResultWriter(this_host, this_scenario_set_setup);
 			
 			w.writeResult(cm, this_host, this_scenario_set_setup, this_result);
+			this_result.extra = null;
+			this_result.code_coverage = null;
 			
 			// show on console
 			// TODO
@@ -374,6 +381,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 
 		@Override
 		public void handle() throws IllegalArgumentException, IllegalStateException, IOException {
+			config.processPhpUnitTestResult(cm, this_result);
 			PhpUnitScenarioSetGroup sg = getCreatePhpUnitResultWriter(
 					this_host,
 					this_scenario_set_setup,
@@ -385,6 +393,8 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 			PhpUnitResultWriter w = sg.getWriter(this_scenario_set_setup);
 			
 			w.writeResult(cm.phpunit_gui!=null, this_result);
+			this_result.extra = null;
+			this_result.code_coverage = null;
 			
 			// show on console
 			// TODO

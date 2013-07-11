@@ -1,6 +1,9 @@
 package com.mostc.pftt.results;
 
 import java.io.IOException;
+
+import javax.annotation.Nullable;
+
 import org.xmlpull.v1.XmlSerializer;
 
 import com.github.mattficken.io.StringUtil;
@@ -16,7 +19,7 @@ import com.mostc.pftt.scenario.ScenarioSetSetup;
  *
  */
 
-public class PhpUnitTestResult {
+public class PhpUnitTestResult implements ISerializer {
 	public final PhpUnitTestCase test_case;
 	public final EPhpUnitTestStatus status;
 	public final ScenarioSetSetup scenario_set;
@@ -26,7 +29,8 @@ public class PhpUnitTestResult {
 	protected String sapi_output, sapi_config;
 	public PhpIni ini;
 	public final float run_time_micros;
-	public final TestCaseCodeCoverage code_coverage;
+	public TestCaseCodeCoverage code_coverage;
+	@Nullable public ISerializer extra;
 	
 	public PhpUnitTestResult(PhpUnitTestCase test_case, EPhpUnitTestStatus status, ScenarioSetSetup scenario_set, Host host, String output, float run_time_micros, TestCaseCodeCoverage code_coverage) {
 		this.test_case = test_case;
@@ -80,6 +84,7 @@ public class PhpUnitTestResult {
 		}
 	}
 	
+	@Override
 	public void serial(XmlSerializer serial) throws IllegalArgumentException, IllegalStateException, IOException {
 		serial(serial, shouldStoreAllInfo(status));
 	}
@@ -166,8 +171,15 @@ public class PhpUnitTestResult {
 			if (code_coverage!=null) {
 				code_coverage.serial(serial);
 			}
+		} else {
+			if (code_coverage!=null) {
+				code_coverage.serial(serial);
+			}
 		}
 		//
+		
+		if (extra!=null)
+			extra.serial(serial);
 		
 		serial.endTag(null, "testcase");
 	} // end public void serial

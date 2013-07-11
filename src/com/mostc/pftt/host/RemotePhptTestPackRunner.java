@@ -53,7 +53,7 @@ public class RemotePhptTestPackRunner extends AbstractRemoteTestPackRunner<PhptA
 	public static void main(String[] args) throws Exception {
 		LocalHost host = new LocalHost();
 		
-		LocalConsoleManager cm = new LocalConsoleManager(null, null, false, false, false, false, true, false, true, false, false, false, 1, true, 1, 1, 1, null, null, null, null, false, 0, 0, false, false, 0, 0, 0, false);
+		LocalConsoleManager cm = new LocalConsoleManager(null, null, false, false, false, false, true, false, true, false, false, false, 1, 1, true, 1, 1, 1, null, null, null, null, false, 0, 0, false, false, 0, 0, 0, false);
 		
 		PhpBuild build = new PhpBuild("C:\\php-sdk\\php-5.5-ts-windows-vc11-x64-re3aeb6c");
 		build.open(cm, host);
@@ -61,7 +61,7 @@ public class RemotePhptTestPackRunner extends AbstractRemoteTestPackRunner<PhptA
 		PhptSourceTestPack test_pack = new PhptSourceTestPack("C:\\php-sdk\\php-test-pack-5.5-ts-windows-vc11-x86-r0704e4b");
 		test_pack.open(cm, host);
 		
-		PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, new File(host.getPhpSdkDir()), build, test_pack);
+		PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, new File(host.getPhpSdkDir()), build, test_pack, null);
 		
 		// TODO
 		ScenarioSet scenario_set = ScenarioSet.getDefaultScenarioSets().get(0);

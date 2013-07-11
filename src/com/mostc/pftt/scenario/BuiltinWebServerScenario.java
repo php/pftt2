@@ -70,7 +70,10 @@ public class BuiltinWebServerScenario extends WebServerScenario {
 	
 	@Override
 	public boolean isExpectedCrash(PhptTestCase test_case) {
-		return test_case.isNamed(BUILTIN_WEB_EXPECTED_CRASHES) || isSlowTest(test_case) || super.isExpectedCrash(test_case);
+		return test_case.isExtension("pdo") 
+				|| test_case.isNamed(BUILTIN_WEB_EXPECTED_CRASHES) 
+				|| isSlowTest(test_case)
+				|| super.isExpectedCrash(test_case);
 	}
 	
 	public static final Trie BUILTIN_WEB_EXPECTED_CRASHES = PhptTestCase.createNamed(
@@ -224,7 +227,8 @@ public class BuiltinWebServerScenario extends WebServerScenario {
 	
 	@Override
 	public boolean isSlowTest(PhptTestCase test_case) {
-		return test_case.isExtension(BUILTIN_WEB_SLOW_TESTS) || super.isSlowTest(test_case);
+		return test_case.isExtension(BUILTIN_WEB_SLOW_TESTS) 
+				|| super.isSlowTest(test_case);
 	}
 	
 	public static final Trie BUILTIN_WEB_SLOW_TESTS = PhptTestCase.createExtensions("mbstring",

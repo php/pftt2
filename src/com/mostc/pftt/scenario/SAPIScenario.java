@@ -164,6 +164,7 @@ public abstract class SAPIScenario extends AbstractSerialScenario {
 			"zend/tests/unset_cv10.phpt",
 			// TODO
 			//
+			"ext/pdo_mysql/tests/pdo_mysql___construct_ini.phpt",
 			"ext/pcre/tests/backtrack_limit.phpt",
 			"ext/pcre/tests/recursion_limit.phpt",
 			"ext/phar/tests/bug45218_slowtest.phpt",

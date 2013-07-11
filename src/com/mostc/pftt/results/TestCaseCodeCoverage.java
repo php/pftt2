@@ -2,13 +2,22 @@ package com.mostc.pftt.results;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Set;
 
 import org.xmlpull.v1.XmlSerializer;
 
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 
-public class TestCaseCodeCoverage {
+/** Stores information about what parts of the code were executed, etc...
+ * 
+ * @see PhpParser
+ * 
+ * @author Matt Ficken
+ *
+ */
+
+public class TestCaseCodeCoverage implements ISerializer {
 	
 	public static enum ELineState {
 			EXECUTED,
@@ -30,6 +39,10 @@ public class TestCaseCodeCoverage {
 	
 	public TestCaseCodeCoverage(AHost host) {
 		this(host, null);
+	}
+	
+	public Set<String> getFileNames() {
+		return file_map.keySet();
 	}
 	
 	public int getTotalClassCount() {
@@ -101,6 +114,7 @@ public class TestCaseCodeCoverage {
 		setLineState(filename, line_num, ELineState.NOT_EXECUTABLE);
 	}
 
+	@Override
 	public void serial(XmlSerializer serial) throws IllegalArgumentException, IllegalStateException, IOException {
 		// TODO XSL stylesheet
 		serial.startTag("pftt", "codeCoverage");
@@ -115,7 +129,7 @@ public class TestCaseCodeCoverage {
 		for ( String filename : file_map.keySet() ) {
 			FileInfo file_info = file_map.get(filename);
 			serial.startTag("pftt", "file");
-			serial.attribute("pft", "filename", filename);
+			serial.attribute("pftt", "filename", filename);
 			String[] lines = StringUtil.splitLines(file_info.php_code);
 			for ( int line_num : file_info.line_map.keySet() ) {
 				String line_tag;

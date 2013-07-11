@@ -296,7 +296,21 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 	
 	protected abstract void setupStorageAndTestPack(ITestPackStorageDir storage_dir, List<T> test_cases) throws IOException, Exception;
 	
+	public void forceClose() {
+		if (runner_state.get()==ETestPackRunnerState.NOT_RUNNING)
+			return; // already closed
+		close();
+		
+		for ( TestPackThread<?> t : threads ) {
+			t.stopThisThread();
+		}
+	}
+	
 	public void close() {
+		if (runner_state.get()==ETestPackRunnerState.NOT_RUNNING)
+			return; // already closed
+		runner_state.set(ETestPackRunnerState.NOT_RUNNING);
+		
 		if (sapi_scenario!=null) {
 			// don't kill procs we're debugging
 			sapi_scenario.close(cm, cm.isDebugAll() || cm.isDebugList());
@@ -728,26 +742,28 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		}
 		
 		protected void exec_jobs(TestCaseGroupKey group_key, LinkedBlockingQueue<T> jobs) {
-			if (cm.getRunCount() > 0 && test_count.get() > cm.getRunCount() ) {
-				// run maximum number of tests, don't run any more
-				return;
-			}
-			
 			this.group_key = group_key;
 			LinkedList<T> completed_tests = new LinkedList<T>();
 			this.jobs = jobs;
 			
 			while (shouldRun()) {
+				/*if (test_count.get() > 100 ) {//cm.getRunCount() > 0 && test_count.get() > cm.getRunCount() ) {
+					// run maximum number of tests, don't run any more
+					System.exit(0);
+					runner_state.set(ETestPackRunnerState.NOT_RUNNING);
+					break;
+				}*/
+				
 				//
 				test_case = null;
 				try {
 					test_case = jobs.poll(5, TimeUnit.SECONDS);
 				} catch ( InterruptedException ex ) {}
-				if (test_case==null && shouldRun()) {
-					if (jobs.isEmpty())
-						break;
-					else
+				if (test_case==null) {
+					if (shouldRun() && !jobs.isEmpty())
 						continue;
+					else
+						break;
 				}
 				completed_tests.add(test_case);
 				test_run_start_time.set(System.currentTimeMillis());
@@ -887,7 +903,11 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 				} // end for
 				
 				test_run_start_time.set(0);
-				test_count.incrementAndGet();
+				if (test_count.incrementAndGet() > cm.getRunCount() && cm.getRunCount() > 0 ) {
+					// run maximum number of tests, don't run any more
+					forceClose();
+					break;
+				}
 				Thread.yield();
 			} // end while
 		} // end protected void exec_jobs

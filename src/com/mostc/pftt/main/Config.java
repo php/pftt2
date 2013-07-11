@@ -17,7 +17,9 @@ import org.codehaus.groovy.control.CompilationFailedException;
 import org.codehaus.groovy.runtime.metaclass.MissingMethodExceptionNoStack;
 import org.codehaus.groovy.runtime.metaclass.MissingPropertyExceptionNoStack;
 import org.columba.ristretto.smtp.SMTPProtocol;
+import org.xmlpull.v1.XmlSerializer;
 
+import com.github.mattficken.io.ArrayUtil;
 import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
@@ -31,8 +33,11 @@ import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.model.ui.UITestPack;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
+import com.mostc.pftt.results.ISerializer;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhpResultPackWriter;
+import com.mostc.pftt.results.PhpUnitTestResult;
+import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
@@ -102,7 +107,8 @@ import groovy.lang.MetaMethod;
  * }
  * def processPHPTTestPack
  * def processPhpUnitTestPack
- * 
+ * def processPhptTestResult
+ * def processPhpUnitTestResult
  * 
  * @author Matt Ficken
  * 
@@ -125,6 +131,8 @@ public final class Config implements IENVINIFilter {
 	public static final String PROCESS_PHPUNIT_METHOD_NAME = "processPhpUnit";
 	public static final String PROCESS_PHPT_TEST_PACK_METHOD_NAME = "processPHPTTestPack";
 	public static final String PROCESS_PHPUNIT_TEST_PACK_METHOD_NAME = "processPhpUnitTestPack";
+	public static final String PROCESS_PHPT_TEST_RESULT_METHOD_NAME = "processPhptTestResult";
+	public static final String PROCESS_PHP_UNIT_TEST_RESULT_METHOD_NAME = "processPhpUnitTestResult";
 	//
 	protected final LinkedList<AHost> hosts;
 	protected final LinkedList<Scenario> scenarios;
@@ -168,6 +176,24 @@ public final class Config implements IENVINIFilter {
 			return;
 		for ( MethodImpl m : methods ) {
 			invokeMethod(null, null, m.go, PROCESS_PHPT_TEST_PACK_METHOD_NAME, new Object[]{test_pack, twriter, build}, null);
+		}
+	}
+	
+	public void processPhptTestResult(ConsoleManager cm, PhptTestResult result) {
+		ArrayList<MethodImpl> methods = by_method_name.get(PROCESS_PHPT_TEST_RESULT_METHOD_NAME);
+		if (methods==null)
+			return;
+		for ( MethodImpl m : methods ) {
+			invokeMethod(null, null, m.go, PROCESS_PHPT_TEST_RESULT_METHOD_NAME, new Object[]{cm, result}, null);
+		}
+	}
+	
+	public void processPhpUnitTestResult(ConsoleManager cm, PhpUnitTestResult result) {
+		ArrayList<MethodImpl> methods = by_method_name.get(PROCESS_PHP_UNIT_TEST_RESULT_METHOD_NAME);
+		if (methods==null)
+			return;
+		for ( MethodImpl m : methods ) {
+			invokeMethod(null, null, m.go, PROCESS_PHP_UNIT_TEST_RESULT_METHOD_NAME, new Object[]{cm, result}, null);
 		}
 	}
 	
@@ -578,14 +604,20 @@ public final class Config implements IENVINIFilter {
 		sb.append("import ");sb.append(UITestPack.class.getPackage().getName());sb.append(".*;\n");
 		sb.append("import ");sb.append(PhpUnitSourceTestPack.class.getPackage().getName());sb.append(".*;\n");
 		sb.append("import ");sb.append(PhptTestCase.class.getPackage().getName());sb.append(".*;\n");
+		sb.append("import ");sb.append(PhptTestResult.class.getPackage().getName());sb.append(".*;\n");
+		sb.append("import ");sb.append(PhpUnitTestResult.class.getPackage().getName());sb.append(".*;\n");
 		sb.append("import ");sb.append(JoomlaScenario.class.getPackage().getName());sb.append(".*;\n");
 		sb.append("import ");sb.append(Scenario.class.getPackage().getName());sb.append(".*;\n");
 		sb.append("import ");sb.append(AHost.class.getPackage().getName());sb.append(".*;\n");
 		sb.append("import ");sb.append(SMTPProtocol.class.getName());sb.append(";\n");
 		sb.append("import ");sb.append(FTPClient.class.getName());sb.append(";\n");
 		sb.append("import ");sb.append(StringUtil.class.getName());sb.append(";\n");
+		sb.append("import ");sb.append(ArrayUtil.class.getName());sb.append(";\n");
+		sb.append("import ");sb.append(ISerializer.class.getName());sb.append(";\n");
+		sb.append("import ");sb.append(XmlSerializer.class.getName());sb.append(";\n");
 		sb.append("import ");sb.append(ConsoleManager.class.getPackage().getName());sb.append(".*;\n");
 		sb.append("import ");sb.append(EPrintType.class.getName());sb.append(";\n");
+		
 		sb.append("import groovy.transform.Field;\n");
 		if (filename!=null) {
 			sb.append("@Field String __FILE__=\""+AHost.toUnixPath(filename)+"\";");
@@ -710,6 +742,8 @@ public final class Config implements IENVINIFilter {
 		registerMethod(cm, config, go, PROCESS_PHPUNIT_METHOD_NAME, file_name);
 		registerMethod(cm, config, go, PROCESS_PHPT_TEST_PACK_METHOD_NAME, file_name);
 		registerMethod(cm, config, go, PROCESS_PHPUNIT_TEST_PACK_METHOD_NAME, file_name);
+		registerMethod(cm, config, go, PROCESS_PHPT_TEST_RESULT_METHOD_NAME, file_name);
+		registerMethod(cm, config, go, PROCESS_PHP_UNIT_TEST_RESULT_METHOD_NAME, file_name);
 	} // end protected static void loadObjectToConfig
 	
 	private static void checkImplemented(ConsoleManager cm, Scenario o) {

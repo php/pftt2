@@ -22,7 +22,7 @@ public abstract class AbstractPhpUnitRW extends AbstractTestResultRW {
 	public abstract List<String> getTestNames(EPhpUnitTestStatus status);
 	@Override
 	public float passRate() {
-		return 100.0f * ((float)count(EPhpUnitTestStatus.PASS))/((float)getTestCount());
+		return PhpResultPack.round1(100.0f * ((float)count(EPhpUnitTestStatus.PASS))/((float)getTestCount()));
 	}
 	public abstract PhpIni getPhpIni();
 	

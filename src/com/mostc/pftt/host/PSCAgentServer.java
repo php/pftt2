@@ -30,7 +30,6 @@ import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.scenario.Scenario;
-import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.ErrorUtil;
 
@@ -46,7 +45,7 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 	protected InputStream parser_in;
 	protected OutputStream serial_out;
 	protected boolean no_result_file_for_pass_xskip_skip, randomize_order, thread_safety;
-	protected int run_test_times_all = 1, run_test_times_list_times = 1, run_group_times_list_times = 1, run_group_times = 1;
+	protected int run_test_times_all = 1, run_test_pack = 1, run_test_times_list_times = 1, run_group_times_list_times = 1, run_group_times = 1;
 	protected final LinkedList<String> run_test_times_list, run_group_times_list, skip_list;
 	
 	public PSCAgentServer() {
@@ -110,6 +109,7 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 					no_result_file_for_pass_xskip_skip = StringUtil.equalsCS("true", parser.getAttributeValue(null, "no_result_file_for_pass_xskip_skip"));
 					randomize_order = StringUtil.equalsCS("true", parser.getAttributeValue(null, "randomize_order"));
 					run_test_times_all = StringUtil.parseInt(parser.getAttributeValue(null, "run_test_times_all"));
+					run_test_pack = StringUtil.parseInt(parser.getAttributeValue(null, "run_test_pack"));
 					thread_safety = StringUtil.equalsCS("true", parser.getAttributeValue(null, "thread_safety"));
 					run_test_times_list_times = StringUtil.parseInt(parser.getAttributeValue(null, "run_test_times_list_times"));
 					run_group_times = StringUtil.parseInt(parser.getAttributeValue(null, "run_group_times"));
@@ -224,7 +224,7 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 		synchronized(serial_out) {
 			// don't do #startDocument -> all it does is print the <?xml header
 			//serial.startDocument("utf-8", Boolean.FALSE);
-			result.serialize(serial);// TODO , test_name);
+			result.serial(serial);// TODO , test_name);
 			// important: call #endDocument or all results will be buffered until last result sent
 			serial.endDocument();
 			serial_out.write('\n');
@@ -291,6 +291,11 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 	@Override
 	public int getRunTestTimesAll() {
 		return run_test_times_all;
+	}
+	
+	@Override
+	public int getRunTestPack() {
+		return run_test_pack;
 	}
 	
 	@Override

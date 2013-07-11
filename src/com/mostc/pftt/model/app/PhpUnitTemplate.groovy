@@ -5,6 +5,7 @@ import java.util.Map;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.scenario.XDebugScenario;
 
 /** Groovy implementation of PHPUnit's Process\TestCaseMethod template
  * 
@@ -50,7 +51,7 @@ public class PhpUnitTemplate {
 		
 		my_temp_dir = StringUtil.cslashes(host.fixPath(my_temp_dir));
 		
-		def use_xdebug = false;
+		def use_xdebug = scenario_set.contains(XDebugScenario.class);
 		
 		// PFTT mod: need to set date.timezone=UTC... for some reason,
 		//           ini file doesn't work, date_default_timezone_set() and ini_set() must both

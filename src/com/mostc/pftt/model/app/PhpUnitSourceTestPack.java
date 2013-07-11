@@ -1,7 +1,6 @@
 package com.mostc.pftt.model.app;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.ref.SoftReference;
@@ -13,15 +12,6 @@ import java.util.Map;
 
 import javax.annotation.Nullable;
 
-import com.caucho.quercus.QuercusContext;
-import com.caucho.quercus.function.AbstractFunction;
-import com.caucho.quercus.parser.QuercusParseException;
-import com.caucho.quercus.parser.QuercusParser;
-import com.caucho.quercus.program.InterpretedClassDef;
-import com.caucho.quercus.program.QuercusProgram;
-import com.caucho.vfs.FilePath;
-import com.caucho.vfs.FileReadStream;
-import com.caucho.vfs.ReadStream;
 import com.github.mattficken.Overridable;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
@@ -31,6 +21,10 @@ import com.mostc.pftt.model.SourceTestPack;
 import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
+import com.mostc.pftt.model.core.PhpParser;
+import com.mostc.pftt.model.core.PhpParser.ClassDefinition;
+import com.mostc.pftt.model.core.PhpParser.FunctionDefinition;
+import com.mostc.pftt.model.core.PhpParser.PhpScript;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.scenario.ScenarioSet;
@@ -67,7 +61,6 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	protected String test_pack_root;
 	protected final ArrayList<PhpUnitDist> php_unit_dists;
 	protected final ArrayList<String> blacklist_test_names, whitelist_test_names, include_dirs, include_files;
-	protected final QuercusContext qctx;
 	protected SoftReference<ArrayList<PhpUnitTestCase>> _ref_test_cases;
 	
 	public PhpUnitSourceTestPack() {
@@ -76,8 +69,6 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 		php_unit_dists = new ArrayList<PhpUnitDist>(3);
 		include_dirs = new ArrayList<String>(5);
 		include_files = new ArrayList<String>(3);
-		
-		qctx = new QuercusContext();
 		
 		// add default entries to include_path
 		addIncludeDirectory(".");
@@ -238,9 +229,29 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 		//
 	} // end public void read
 	
+	/** Many test-packs store their phpunit tests only in files that end with `Test.php`,
+	 * but some don't.
+	 * 
+	 * This checks for that. you can override that for custom checks.
+	 * 
+	 * @param file_name
+	 * @return
+	 */
 	@Overridable
-	protected boolean isFileNameATest(String file_name) {
+	public boolean isFileNameATest(String file_name) {
 		return file_name.endsWith("Test.php");
+	}
+	
+	/** PhpUnit tests are supposed to be stored functions with names beginning with `test`.
+	 * 
+	 * This allows for overridding that behavior.
+	 * 
+	 * @param function_name
+	 * @return
+	 */
+	@Overridable
+	public boolean isFunctionATest(String function_name) {
+		return function_name.startsWith("test");
 	}
 	
 	/** scans for *Test.php files and reads PhpUnitTestCase(s) from them
@@ -278,11 +289,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 				else if (!whitelist_test_names.isEmpty() && !whitelist_test_names.contains(lc_test_file_name))
 					continue;
 				
-				try {
-					readTestFile(config, max_read_count, rel_file_name, abs_file_name, php_unit_dist, test_cases, file);
-				} catch ( QuercusParseException ex ) {
-					ex.printStackTrace();
-				}
+				readTestFile(config, max_read_count, rel_file_name, abs_file_name, php_unit_dist, test_cases, file);
 				
 				if (max_read_count > 0 && test_cases.size() >= max_read_count)
 					return;
@@ -300,30 +307,17 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	 * @param php_unit_dist
 	 * @param test_cases
 	 * @param file
-	 * @throws IOException
 	 */
-	protected void readTestFile(Config config, final int max_read_count, String rel_test_file_name, String abs_test_file_name, PhpUnitDist php_unit_dist, List<PhpUnitTestCase> test_cases, File file) throws IOException {
-		FileInputStream fin = new FileInputStream(file);
-		//
-		// with all the `non-technical` obstacles around developing PFTT, there isn't time to develop a simple
-		// PHP parser here... have to use Quercus to get this done
-		//
-		QuercusParser p = new QuercusParser(qctx, new FilePath(file.getAbsolutePath()), new ReadStream(new FileReadStream(fin)));
-		QuercusProgram prog = p.parse();
+	protected void readTestFile(Config config, final int max_read_count, String rel_test_file_name, String abs_test_file_name, PhpUnitDist php_unit_dist, List<PhpUnitTestCase> test_cases, File file) {
+		PhpScript script = PhpParser.parseScript(file);
 		
-		// Expr that may be useful
-		// FunIncludeOnceExpr => PHP include_once require_once
-		// FunIncludeExpr => PHP include require
-		// ImportExpr => PHP import
-		
-		// search file for classes
-		for (InterpretedClassDef clazz : prog.getClasses() ) {
+		for ( ClassDefinition clazz : script.getClasses() ) {
 			if (clazz.isAbstract()||clazz.isInterface())
 				continue;
 			
-			for (Map.Entry<String, AbstractFunction> e : clazz.functionSet()) {
+			for ( FunctionDefinition func : clazz.getFunctions() ) {
 				// search class for functions that start with 'test'
-				if (e.getValue().getName().startsWith("test")) {
+				if (isFunctionATest(func.getName())) {
 					// this is a test case
 					PhpUnitTestCase test_case = new PhpUnitTestCase(
 							php_unit_dist,
@@ -334,8 +328,8 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 							// in such cases, so nothing special needs to be done here for them
 							clazz.getName(),
 							// name of method within the class
-							e.getValue().getName(),
-							e.getValue().getArgs().length
+							func.getName(),
+							func.getArgumentCount()
 						);
 					config.processPhpUnit(test_case);
 					test_cases.add(test_case);
@@ -345,8 +339,6 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 				}
 			}
 		}
-		
-		fin.close();
 	} // end protected void readTestFile
 
 	@Override

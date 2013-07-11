@@ -33,7 +33,7 @@ class WordpressPhpUnitTestPack extends DatabasePhpUnitSourceTestPack {
 	}
 	
 	@Override
-	protected boolean isFileNameATest(String file_name) {
+	public boolean isFileNameATest(String file_name) {
 		// many apps/frameworks name their test files Test*.php. 
 		// wordpress does not ... check all .php files for PhpUnit test case classes.
 		return file_name.endsWith(".php");

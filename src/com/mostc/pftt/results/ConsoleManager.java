@@ -62,6 +62,8 @@ public interface ConsoleManager {
 	 */
 	@Nonnegative
 	public int getRunTestTimesAll();
+	@Nonnegative
+	public int getRunTestPack();
 	/** should test cases be run in (TRUE) random order (different order every time) or normal order (FALSE) 
 	 * 
 	 * @see -randomize_order console option

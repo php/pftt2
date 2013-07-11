@@ -36,7 +36,7 @@ import com.mostc.pftt.model.core.PhptTestCase;
  *
  */
 
-public class PhptTestResult {
+public class PhptTestResult implements ISerializer {
 	public Charset actual_cs;
 	public AHost host;
 	/** the result of the test case */
@@ -82,6 +82,7 @@ public class PhptTestResult {
 	/** microseconds it took to run the test */
 	public float run_time_micros;
 	public TestCaseCodeCoverage code_coverage;
+	@Nullable public ISerializer extra;
 	
 	protected PhptTestResult() {
 		
@@ -226,11 +227,12 @@ public class PhptTestResult {
 		return c;
 	}
 	
-	public void serialize(XmlSerializer serial) throws IllegalArgumentException, IllegalStateException, IOException {
-		serialize(serial, shouldStoreAllInfo(status)||status==EPhptTestStatus.SKIP, null);
+	@Override
+	public void serial(XmlSerializer serial) throws IllegalArgumentException, IllegalStateException, IOException {
+		serial(serial, shouldStoreAllInfo(status)||status==EPhptTestStatus.SKIP, null);
 	}
 	
-	public void serialize(XmlSerializer serial, boolean include_all, String stylesheet) throws IllegalArgumentException, IllegalStateException, IOException {
+	public void serial(XmlSerializer serial, boolean include_all, String stylesheet) throws IllegalArgumentException, IllegalStateException, IOException {
 		if (StringUtil.isNotEmpty(stylesheet)) {
 			serial.processingInstruction("xml-stylesheet type=\"text/xsl\" href=\""+stylesheet+"\"");
 		}
@@ -374,8 +376,11 @@ public class PhptTestResult {
 		if (test_case!=null)
 			test_case.serialize(serial);
 		
+		if (extra!=null)
+			extra.serial(serial);
+		
 		serial.endTag(null, "phptResult");
-	} // end public void serialize
+	} // end public void serial
 	
 	public static boolean shouldStoreAllInfo(EPhptTestStatus status) {
 		return status==EPhptTestStatus.FAIL||status==EPhptTestStatus.XFAIL_WORKS||status==EPhptTestStatus.CRASH||status==EPhptTestStatus.BORK||status==EPhptTestStatus.UNSUPPORTED||status==EPhptTestStatus.TEST_EXCEPTION;

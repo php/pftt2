@@ -229,6 +229,7 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 		for ( EPhptTestStatus status : EPhptTestStatus.values() ) {
 			cm.println(EPrintType.CLUE, getClass(),  status+" "+phpt.count(status)+" tests");
 		}
+		cm.println(EPrintType.CLUE, getClass(), "Pass Rate(%): "+phpt.passRate());
 	}
 
 	@Override

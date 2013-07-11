@@ -2,7 +2,6 @@ package com.mostc.pftt.main;
 
 import java.util.ArrayList;
 
-import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.host.PSCAgentServer;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhptActiveTestPack;

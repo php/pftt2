@@ -10,7 +10,7 @@ import org.xmlpull.v1.XmlSerializer;
 
 import com.mostc.pftt.scenario.ScenarioSet;
 
-public class CodeCoverageSummary {
+public class CodeCoverageSummary implements ISerializer {
 	protected final HashMap<ScenarioSet,ScenarioSetCoverage> cov_map;
 	protected final String test_pack_name_and_version;
 
@@ -73,6 +73,7 @@ public class CodeCoverageSummary {
 		cov.add(cc);
 	}
 	
+	@Override
 	public void serial(XmlSerializer serial) throws IllegalArgumentException, IllegalStateException, IOException {
 		ScenarioSetCoverage cov;
 		serial.startTag("pftt", "codeCoverageSummary");

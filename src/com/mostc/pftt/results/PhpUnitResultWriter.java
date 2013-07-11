@@ -177,6 +177,7 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 		
 		// write result itself
 		result.serial(serial);
+		result.extra = null;
 		
 		// store name, status and run-time in CSV format
 		all_csv_pw.print("'");

@@ -48,6 +48,7 @@ public class ValgrindMemoryCheckManager extends DebuggerManager {
 	}
 	
 	public class ValgrindDebugger extends Debugger {
+		protected AHost host;
 		protected AHost.ExecHandle process;
 		
 		public ValgrindDebugger(AHost host, String command_line) throws Exception {
@@ -84,20 +85,17 @@ public class ValgrindMemoryCheckManager extends DebuggerManager {
 
 		@Override
 		public RunRequest createRunRequest(ConsoleManager cm, String ctx_str) {
-			// TODO Auto-generated method stub
-			return null;
+			return host.createRunRequest(cm, ctx_str);
 		}
 
 		@Override
 		public ExecOutput execOut(RunRequest req) {
-			// TODO Auto-generated method stub
-			return null;
+			req.setCommandline("valgrind --leak-check=yes "+req.getCommandline());
 		}
 
 		@Override
 		public ExecHandle execThread(RunRequest req) {
-			// TODO Auto-generated method stub
-			return null;
+			req.setCommandline("valgrind --leak-check=yes "+req.getCommandline());
 		}
 		
 	}

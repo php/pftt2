@@ -78,6 +78,11 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 // real unattended (automated) testing that actually works
 // the php test tool that you'd actually want to use
 // doesn't resort to brittle shell scripts
+/* -rename ostcpftt@ name to `OSTC PFTT Unattended Test System`
+	-name still clear who owns it
+		-plus database field would tell
+	-only `php` is missing from new name, but any 2nd/3rd party who saw the name wouldn't care about that
+		-just care about owner*/
 
 // TODO new nsis based installer for windows
 // TODO linux apache support
@@ -85,10 +90,11 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 // TODO iis support
 // TODO -debug_all -debugger windbg
 // TODO -debug_all -debugger valgrind
+//        so php cli and apache on linux can be compared to windows
+//           for any windows specific memory problems, etc...
 // TODO -debug_all -debugger gdb
-// TODO task/code_profile
-// TODO task/list_builtin_functions
-// TODO task/code_coverage
+// TODO xdebug only for 5.4-ts
+// TODO task/code_coverage store in result-pack
 // TODO get code coverage data of Symfony demo app (UI?)
 //      -get list of builtin functions
 //      -find phpunit tests that use same builtin functions
@@ -99,6 +105,10 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //          -compare both a, b, c
 //            -additional builtin functions and/or additional php code could be
 //             executed on Windows
+// TODO http fuzzing?
+//      focus on PHPTs with REQUEST, GET, POST, COOKIE sections
+//      that's data that can be fuzzed to hit different code paths
+//      fuzzing a GET request to just run some PHP code won't do that
 // TODO UI testing
 //      no Anon-Logout
 // TODO filesystem tests w/ non-european locales
@@ -170,6 +180,14 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 // test UI of other applications
 //
 // Better-PFTT
+//
+//    what about the times the build servers were down for week+
+//          -because you didn't use RAID5 or 6?
+//              -how hard is that?
+//          -just scripting VC11, nmake, etc...
+//             -scripts evolved over many years
+//                 -not really that much effort relative to PFTT
+//
 //    get actual version of apache, wordpress, symfony, etc... instead of assuming hardcoded value
 //    if WinDebug isn't found, register VS as the `default postmortem debugger`
 //    optimized for long-term time savings
@@ -261,15 +279,22 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //       (after ported to windows) drizzle weakref fpdf gnupg  xdebug? suhosin?? 
 
 public class PfttMain {
-	protected LocalHost host;
+	protected final LocalHost host;
 	protected LocalConsoleManager cm;
-	protected HashMap<PhpBuild,PhpResultPackWriter> writer_map;
+	protected final HashMap<PhpBuild,PhpResultPackWriter> writer_map;
+	protected final Config config;
 	
-	public PfttMain(LocalConsoleManager cm) {
+	public PfttMain(LocalConsoleManager cm, Config config) {
 		this.cm = cm;
+		this.config = config;
 		host = new LocalHost();
 		
 		writer_map = new HashMap<PhpBuild,PhpResultPackWriter>();
+	}
+	
+	public void closeWriter(PhpResultPackWriter tmgr) {
+		tmgr.close();
+		writer_map.remove(tmgr);
 	}
 	
 	public PhpResultPackWriter getWriter(PhpBuild build) throws Exception {
@@ -280,7 +305,7 @@ public class PfttMain {
 		PhpResultPackWriter writer = writer_map.get(build);
 		if (writer!=null)
 			return writer;
-		writer = new PhpResultPackWriter(host, cm, telem_dir(), build, test_pack);
+		writer = new PhpResultPackWriter(host, cm, telem_dir(), build, test_pack, config);
 		writer_map.put(build, writer);
 		return writer;
 	}
@@ -390,6 +415,8 @@ public class PfttMain {
 		System.out.println("   === Crash Debugging ===");
 		System.out.println(new AlignedTable(2, 85)
 			.addRow("-debug_all", "runs all tests in Debugger")
+			.addRow("-debugger <gdb|windbg|valgrind>", "specify which Debugger to use (optional, or PFTT will decide)")
+			// TODO support name fragments in -debug_list (more consistent with core_name, etc...)
 			.addRow("-debug_list <list files>", "runs tests in list in Debugger (exact name)")
 			.addRow("-src_pack <path>", "folder with the source code")
 			.addRow("-debug_pack <path>", "folder with debugger symbols (usually folder with .pdb files)"));
@@ -407,6 +434,7 @@ public class PfttMain {
 		System.out.println();
 		System.out.println("   === Test Times ===");
 		System.out.println(new AlignedTable(2, 85)
+			.addRow("-run_test_pack <N>", "runs entire test-pack N times")
 			.addRow("-run_group_times_all <N>", "runs all groups of tests N times (in same order every time, unless -randomize used)")
 			.addRow("-run_group_times_list <N> <list file>", "just like run_group_times_all and run_test_times_list (but for groups of tests)")
 			.addRow("-run_test_times_all <N>", "runs each test N times in a row/consecutively")
@@ -494,24 +522,28 @@ public class PfttMain {
 			cm.println(EPrintType.TIP, PfttMain.class, "Add test-pack configuration file to -c console option. For example `aa -c symfony`");
 			return;
 		}
-		for ( PhpUnitSourceTestPack test_pack : test_packs ) {
-			cm.println(EPrintType.CLUE, PfttMain.class, "Test-Pack: "+test_pack);
-			cm.println(EPrintType.CLUE, PfttMain.class, "Writing Result-Pack: "+tmgr.getResultPackPath());
-			
-			for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.WEB_APPLICATION)) {
-			
-				List<AHost> hosts = config.getHosts();
-				AHost host = hosts.isEmpty()?this.host:hosts.get(0);
-				LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, host, host);
-				cm.showGUI(r, test_pack);
+		for ( int i=0 ; i < cm.getRunTestPack() ; i++ ) {
+			for ( PhpUnitSourceTestPack test_pack : test_packs ) {
+				cm.println(EPrintType.CLUE, PfttMain.class, "Test-Pack: "+test_pack);
+				cm.println(EPrintType.CLUE, PfttMain.class, "Writing Result-Pack: "+tmgr.getResultPackPath());
 				
-				// TODO implement app_list
-				//test_pack.read(test_cases, cm, tmgr, build);
-				//r.runTestList(test_pack, test_cases);
+				for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.WEB_APPLICATION)) {
 				
-				tmgr.notifyPhpUnitFinished(host, r.getScenarioSetSetup(), test_pack);
-				
-			} // end for (scenario_set)
+					List<AHost> hosts = config.getHosts();
+					AHost host = hosts.isEmpty()?this.host:hosts.get(0);
+					LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, host, host);
+					cm.showGUI(r, test_pack);
+					
+					// TODO implement app_list
+					//test_pack.read(test_cases, cm, tmgr, build);
+					//r.runTestList(test_pack, test_cases);
+					
+					tmgr.notifyPhpUnitFinished(host, r.getScenarioSetSetup(), test_pack);
+					
+				} // end for (scenario_set)
+			}
+			if (cm.getRunTestPack()>1)
+				closeWriter(tmgr);
 		}
 	} // end public void appList
 	
@@ -526,19 +558,23 @@ public class PfttMain {
 			cm.println(EPrintType.CLUE, PfttMain.class, "No test-pack provided by configuration file(s)");
 			return;
 		}
-		for ( PhpUnitSourceTestPack test_pack : test_packs ) {
-			cm.println(EPrintType.CLUE, PfttMain.class, "Test-Pack: "+test_pack);
-			
-			cm.println(EPrintType.CLUE, PfttMain.class, "Writing Result-Pack: "+tmgr.getResultPackPath());
-			
-			for (ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.WEB_APPLICATION)) {
-				List<AHost> hosts = config.getHosts();
-				AHost host = hosts.isEmpty()?this.host:hosts.get(0);
-				LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, host, host);
-				cm.showGUI(r, test_pack);
-				r.runAllTests(config, test_pack);
-				tmgr.notifyPhpUnitFinished(host, r.getScenarioSetSetup(), test_pack);
+		for ( int i=0 ; i < cm.getRunTestPack() ; i++ ) {
+			for ( PhpUnitSourceTestPack test_pack : test_packs ) {
+				cm.println(EPrintType.CLUE, PfttMain.class, "Test-Pack: "+test_pack);
+				
+				cm.println(EPrintType.CLUE, PfttMain.class, "Writing Result-Pack: "+tmgr.getResultPackPath());
+				
+				for (ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.WEB_APPLICATION)) {
+					List<AHost> hosts = config.getHosts();
+					AHost host = hosts.isEmpty()?this.host:hosts.get(0);
+					LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, host, host);
+					cm.showGUI(r, test_pack);
+					r.runAllTests(config, test_pack);
+					tmgr.notifyPhpUnitFinished(host, r.getScenarioSetSetup(), test_pack);
+				}
 			}
+			if (cm.getRunTestPack()>1)
+				closeWriter(tmgr);
 		}
 	} // end public void appAll
 	
@@ -550,50 +586,55 @@ public class PfttMain {
 			hosts = new ArrayList<AHost>(1);
 			hosts.add(this.host);
 		}
-		for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.PHP_CORE) ) {
-			if (!cm.isSkipSmokeTests()) {
-				{
-					// TODO test running PHPTs on a build that is missing a DLL that is
-					RequiredExtensionsSmokeTest test = new RequiredExtensionsSmokeTest();
-					//
-					// on Windows, missing .DLLs from a php build will cause a blocking winpop dialog msg to appear
-					// in such a case, the test will timeout after 1 minute and then fail (stopping at that point is important)
-					// @see PhpBuild#getExtensionList
-					if (test.test(build, cm, host, SAPIScenario.getSAPIScenario(scenario_set).getSAPIType())==ESmokeTestStatus.FAIL) {
-						// if this test fails, RequiredFeaturesSmokeTest will fail for sure
-						cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
-						break;
+		for ( int i=0 ; i < cm.getRunTestPack() ; i++ ) {
+			for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.PHP_CORE) ) {
+				if (!cm.isSkipSmokeTests()) {
+					{
+						// TODO test running PHPTs on a build that is missing a DLL that is
+						RequiredExtensionsSmokeTest test = new RequiredExtensionsSmokeTest();
+						//
+						// on Windows, missing .DLLs from a php build will cause a blocking winpop dialog msg to appear
+						// in such a case, the test will timeout after 1 minute and then fail (stopping at that point is important)
+						// @see PhpBuild#getExtensionList
+						if (test.test(build, cm, host, SAPIScenario.getSAPIScenario(scenario_set).getSAPIType())==ESmokeTestStatus.FAIL) {
+							// if this test fails, RequiredFeaturesSmokeTest will fail for sure
+							cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+							break;
+						}
+					}
+					{
+						RequiredFeaturesSmokeTest test = new RequiredFeaturesSmokeTest();
+						if (test.test(build, cm, host)==ESmokeTestStatus.FAIL) {
+							cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+							break;
+						}
 					}
 				}
-				{
-					RequiredFeaturesSmokeTest test = new RequiredFeaturesSmokeTest();
-					if (test.test(build, cm, host)==ESmokeTestStatus.FAIL) {
-						cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
-						break;
-					}
-				}
-			}
-			
-			//
-			for ( AHost storage_host : hosts ) {
-				LocalPhptTestPackRunner test_pack_runner = new LocalPhptTestPackRunner(tmgr.getConsoleManager(), tmgr, scenario_set, build, storage_host, host, config);
-				cm.showGUI(test_pack_runner);
 				
-				test_pack_runner.runAllTests(config, test_pack);
-			
-				tmgr.notifyPhptFinished(host, test_pack_runner.getScenarioSetSetup());
-			}
-			
-			//
-			{
-				PhptTestCountsMatchSmokeTest test = new PhptTestCountsMatchSmokeTest();
-				if (test.test(tmgr)==ESmokeTestStatus.FAIL) {
-					cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+				//
+				for ( AHost storage_host : hosts ) {
+					LocalPhptTestPackRunner test_pack_runner = new LocalPhptTestPackRunner(tmgr.getConsoleManager(), tmgr, scenario_set, build, storage_host, host, config);
+					cm.showGUI(test_pack_runner);
+					
+					test_pack_runner.runAllTests(config, test_pack);
+				
+					tmgr.notifyPhptFinished(host, test_pack_runner.getScenarioSetSetup());
 				}
+				
+				//
+				{
+					PhptTestCountsMatchSmokeTest test = new PhptTestCountsMatchSmokeTest();
+					if (test.test(tmgr)==ESmokeTestStatus.FAIL) {
+						cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+					}
+				}
+				//
+				
+			} // end for
+			if (cm.getRunTestPack()>1) {
+				closeWriter(tmgr);
 			}
-			//
-			
-		} // end for
+		}
 	} // end public void coreAll
 	
 	public void coreList(PhpBuild build, PhptSourceTestPack test_pack, Config config, PhpResultPackWriter tmgr, List<String> names) throws FileNotFoundException, IOException, Exception {
@@ -607,53 +648,57 @@ public class PfttMain {
 			hosts = new ArrayList<AHost>(1);
 			hosts.add(this.host);
 		}
-		for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.PHP_CORE) ) {
-			//
-			if (!cm.isSkipSmokeTests()) {
-				{
-					RequiredExtensionsSmokeTest test = new RequiredExtensionsSmokeTest();
-					if (test.test(build, cm, host, SAPIScenario.getSAPIScenario(scenario_set).getSAPIType())==ESmokeTestStatus.FAIL) {
-						cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
-						break;
+		for ( int i=0 ; i < cm.getRunTestPack() ; i++ ) {
+			for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.PHP_CORE) ) {
+				//
+				if (!cm.isSkipSmokeTests()) {
+					{
+						RequiredExtensionsSmokeTest test = new RequiredExtensionsSmokeTest();
+						if (test.test(build, cm, host, SAPIScenario.getSAPIScenario(scenario_set).getSAPIType())==ESmokeTestStatus.FAIL) {
+							cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+							break;
+						}
+					}
+					{
+						RequiredFeaturesSmokeTest test = new RequiredFeaturesSmokeTest();
+						if (test.test(build, cm, host)==ESmokeTestStatus.FAIL) {
+							cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+							break;
+						}
 					}
 				}
-				{
-					RequiredFeaturesSmokeTest test = new RequiredFeaturesSmokeTest();
-					if (test.test(build, cm, host)==ESmokeTestStatus.FAIL) {
-						cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
-						break;
-					}
-				}
-			}
-			//
-			
-			LinkedList<PhptTestCase> test_cases = new LinkedList<PhptTestCase>();
-			
-			cm.println(EPrintType.CLUE, getClass(), "Writing Result-Pack: "+tmgr.getResultPackPath());
-			test_pack.cleanup(cm);
-			cm.println(EPrintType.IN_PROGRESS, "PhptSourceTestPack", "enumerating test cases from test-pack...");
-			test_pack.read(config, test_cases, names, tmgr.getConsoleManager(), tmgr, build, true); // TODO true?
-			cm.println(EPrintType.IN_PROGRESS, "PhptSourceTestPack", "enumerated test cases.");
-			
-			for ( AHost storage_host : hosts ) {
-				LocalPhptTestPackRunner test_pack_runner = new LocalPhptTestPackRunner(tmgr.getConsoleManager(), tmgr, scenario_set, build, storage_host, host, config);
-				cm.showGUI(test_pack_runner);
+				//
 				
-				test_pack_runner.runTestList(test_pack, test_cases);
-			
-				tmgr.notifyPhptFinished(host, test_pack_runner.getScenarioSetSetup());
-			}
-			
-			//
-			{
-				PhptTestCountsMatchSmokeTest test = new PhptTestCountsMatchSmokeTest();
-				if (test.test(tmgr)==ESmokeTestStatus.FAIL) {
-					cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+				LinkedList<PhptTestCase> test_cases = new LinkedList<PhptTestCase>();
+				
+				cm.println(EPrintType.CLUE, getClass(), "Writing Result-Pack: "+tmgr.getResultPackPath());
+				test_pack.cleanup(cm);
+				cm.println(EPrintType.IN_PROGRESS, "PhptSourceTestPack", "enumerating test cases from test-pack...");
+				test_pack.read(config, test_cases, names, tmgr.getConsoleManager(), tmgr, build, true); // TODO true?
+				cm.println(EPrintType.IN_PROGRESS, "PhptSourceTestPack", "enumerated test cases.");
+				
+				for ( AHost storage_host : hosts ) {
+					LocalPhptTestPackRunner test_pack_runner = new LocalPhptTestPackRunner(tmgr.getConsoleManager(), tmgr, scenario_set, build, storage_host, host, config);
+					cm.showGUI(test_pack_runner);
+					
+					test_pack_runner.runTestList(test_pack, test_cases);
+				
+					tmgr.notifyPhptFinished(host, test_pack_runner.getScenarioSetSetup());
 				}
-			}
-			//
-			
-		} // end for (scenario_set)
+				
+				//
+				{
+					PhptTestCountsMatchSmokeTest test = new PhptTestCountsMatchSmokeTest();
+					if (test.test(tmgr)==ESmokeTestStatus.FAIL) {
+						cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+					}
+				}
+				//
+				
+			} // end for (scenario_set)
+			if (cm.getRunTestPack()>1)
+				closeWriter(tmgr);
+		}
 	} // end public void coreList
 	
 	public enum ERevisionGetOption {
@@ -1173,13 +1218,12 @@ public class PfttMain {
 		}
 		//
 		
-		PfttMain p = new PfttMain(null);
 		//
 		int args_i = 0;
 		
 		Config config = null;
 		boolean is_uac = false, debug = false, randomize_order = false, no_result_file_for_pass_xskip_skip = false, pftt_debug = false, show_gui = false, overwrite = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false, thread_safety = true, skip_smoke_tests = false, pause = false, restart_each_test_all = false, no_restart_all = false, ignore_unknown_option = false, ini_actual_all = false;
-		int run_test_times_all = 1, delay_between_ms = 0, run_test_times_list_times = 1, run_group_times_all = 1, run_group_times_list_times = 1, max_test_read_count = 0, thread_count = 0, run_count = 0, suspend_seconds = 0;
+		int run_test_times_all = 1, run_test_pack = 1, delay_between_ms = 0, run_test_times_list_times = 1, run_group_times_all = 1, run_group_times_list_times = 1, max_test_read_count = 0, thread_count = 0, run_count = 0, suspend_seconds = 0;
 		LinkedList<String> debug_list = new LinkedList<String>();
 		LinkedList<String> run_test_times_list = new LinkedList<String>();
 		LinkedList<String> run_group_times_list = new LinkedList<String>();
@@ -1211,7 +1255,7 @@ public class PfttMain {
 				System.exit(-255);
 			System.out.println("PFTT: Config: loaded "+config_files);
 		} else {
-			File default_config_file = new File(p.host.getPfttDir()+"/conf/default.groovy");
+			File default_config_file = new File(new LocalHost().getPfttDir()+"/conf/default.groovy");
 			config = Config.loadConfigFromFiles(cm, default_config_file);
 			System.out.println("PFTT: Config: no config files loaded... using default only ("+default_config_file+")");
 		}
@@ -1223,11 +1267,13 @@ public class PfttMain {
 			if (config.processConsoleOptions(cm, args_list)) {
 				config_args = true;
 				// config file(s) changed console options. show the console options PFTT will now be run with.
-				System.out.println("PFTT: Console Options: "+args_list);
+				System.out.println("PFTT: Console Options(2): "+args_list);
 			}
 			args = ArrayUtil.toArray(args_list);
 		}
 		//
+		
+		PfttMain p = new PfttMain(null, config);
 		
 		// process all console args now
 		for ( args_i = 0 ; args_i < args.length ; args_i++ ) {
@@ -1273,6 +1319,9 @@ public class PfttMain {
 				no_result_file_for_pass_xskip_skip = true;
 			} else if (args[args_i].equals("-randomize_order")) {
 				randomize_order = true;
+			} else if (args[args_i].equals("-run_test_pack")) {
+				args_i++;
+				run_test_pack = Integer.parseInt(args[args_i]);
 			} else if (args[args_i].equals("-run_test_times_all")) {
 				args_i++;
 				run_test_times_all = Integer.parseInt(args[args_i]);
@@ -1302,7 +1351,7 @@ public class PfttMain {
 			} else if (args[args_i].equals("-suspend_seconds")) {
 				args_i++;
 				suspend_seconds = Integer.parseInt(args[args_i]);
-			} else if (args[args_i].equals("-run_count")) {
+			} else if (args[args_i].equals("-run_count")||args[args_i].equals("-rc")) {
 				args_i++;
 				run_count = Integer.parseInt(args[args_i]);
 			} else if (args[args_i].equals("-max_test_read_count")) {
@@ -1338,6 +1387,12 @@ public class PfttMain {
 			} else if (args[args_i].startsWith("-debug_all")) {
 				// also intercepted and handled by bin/pftt.cmd batch script
 				debug = true;
+				
+			} else if (args[args_i].startsWith("-debugger")) {
+				// also intercepted and handled by bin/pftt.cmd batch script
+				debug = true;
+				args_i++;
+				// TODO debugger = args[args_i];
 				
 			} else if (args[args_i].equals("-disable_debug_prompt")||args[args_i].equals("-debug_none")||args[args_i].equals("-d")) {
 				disable_debug_prompt = true; 
@@ -1405,7 +1460,7 @@ public class PfttMain {
 		}
 		
 		
-		cm = new LocalConsoleManager(source_pack, debug_pack, overwrite, debug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug, no_result_file_for_pass_xskip_skip, randomize_order, run_test_times_all, 
+		cm = new LocalConsoleManager(source_pack, debug_pack, overwrite, debug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug, no_result_file_for_pass_xskip_skip, randomize_order, run_test_times_all, run_test_pack, 
 				thread_safety, run_test_times_list_times, run_group_times_all, run_group_times_list_times, debug_list, run_test_times_list, run_group_times_list, skip_list,
 				skip_smoke_tests, max_test_read_count, thread_count, restart_each_test_all, no_restart_all, delay_between_ms,
 				run_count, suspend_seconds, ini_actual_all);
@@ -1864,7 +1919,18 @@ public class PfttMain {
 									if (scenario_set_setup==null)
 										continue;
 									
-									web = ws_mgr.getWebServerInstance(cm, host, scenario_set, build, RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, host, build), null, "C:/PHP-SDK/APPS", null, cm.isDebugAll(), test_pack.getNameAndVersionInfo());
+									web = ws_mgr.getWebServerInstance(
+											cm, 
+											host, 
+											scenario_set, 
+											build, 
+											RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, host, build), 
+											null, 
+											"C:/PHP-SDK/APPS", // TODO 
+											null,
+											cm.isDebugAll(),
+											test_pack.getNameAndVersionInfo()
+										);
 								
 									UITestRunner runner = new UITestRunner(
 												cm, 

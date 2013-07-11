@@ -765,6 +765,9 @@ public class LocalHost extends AHost {
 			// start the process
 			try {
 				process = guardStart(builder);
+				if (process==null && isWindows())
+					// try again
+					process = guardStart(builder);
 			} catch ( IOException ex ) {
 				if (isWindows() && ex.getMessage().contains("Not enough storage")) {
 					//

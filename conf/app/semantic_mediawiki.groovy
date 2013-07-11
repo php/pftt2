@@ -34,7 +34,7 @@ class SemanticMediaWikiPhpUnitTestPack extends DatabasePhpUnitSourceTestPack {
 	}
 	
 	@Override
-	protected boolean isFileNameATest(String file_name) {
+	public boolean isFileNameATest(String file_name) {
 		return file_name.endsWith(".php");
 	}
  

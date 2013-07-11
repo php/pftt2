@@ -233,6 +233,7 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 		for ( EPhpUnitTestStatus status : EPhpUnitTestStatus.values() ) {
 			cm.println(EPrintType.CLUE, getClass(),  status+" "+phpunit.count(status)+" tests");
 		}
+		cm.println(EPrintType.CLUE, getClass(), "Pass Rate(%): "+phpunit.passRate());
 	}
 
 	@Override

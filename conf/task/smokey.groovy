@@ -7,6 +7,6 @@ Helps find bad builds that the regular smoke tests won't detect."""
 
 def processConsoleOptions(List options) {
 	options.add("-run_count");
-	options.add("1000");
+	options.add("500");
 	options.add("-randomize_order")
 }

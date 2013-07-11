@@ -41,27 +41,71 @@ public class ArrayUtil {
 		return (E[]) Array.newInstance(sample.getClass(), size);
 	}
 	
-	public static <E extends Object> E[] mergeNoDuplicates(Class<E> clazz, E[] ... lists) {
-		if (lists==null)
+	public static final int NOT_FOUND = -1;
+	public static <E extends Object> int indexOf(E[] in, E a, int off, int len) {
+		for ( ; off < len ; off++ ) {
+			if (in[off].equals(a))
+				return off;
+		}
+		return NOT_FOUND;
+	}
+	
+	public static <E extends Object> boolean contains(E[] in, E a, int off, int len) {
+		return indexOf(in, a, off, len) != NOT_FOUND;
+	}
+	
+	public static <E extends Object> List<E> copyNoDuplicates(List<E> list) {
+		ArrayList<E> out = new ArrayList<E>(list.size());
+		copyNoDuplicates(list, out);
+		return out;
+	}
+	
+	public static <E extends Object> void copyNoDuplicates(List<E> in, List<E> out) {
+		for ( E e : in ) {
+			if (!out.contains(e))
+				out.add(e);
+		}
+	}
+	
+	public static <E extends Object> E[] copyNoDuplicates(E[] in) {
+		if (in==null)
 			return null;
-		else if (true)
-			return lists[0];
-		
-		ArrayList<E> out = new ArrayList<E>(lists[0]==null?lists[0].length+16:16);
-		
-		for (E[] list : lists) {
-			if (list==null)
-				continue;
-			
-			for (E e : list) {
-				if (e==null)
-					continue;
-				else if (!out.contains(e))
-					out.add(e);				
+		else if (in.length<2)
+			return in;
+		E[] out = newArray(in, in.length);
+		int i=0;
+		for ( E e : in ) {
+			if (!contains(out, e, 0, i)) {
+				out[i++] = e;
 			}
 		}
-		
-		return clazz == null ? null : (E[]) out.toArray((E[])Array.newInstance(clazz, out.size()));
+		return out;
+	}
+	
+	public static <E extends Object> E[] mergeNoDuplicates(Class<E> clazz, E[] ... lists) {
+		if (lists==null) {
+			return null;
+		} else if (lists.length==0) {
+			return lists[0];
+		} else if (lists.length==1) {
+			return copyNoDuplicates(lists[0]);
+		} else {
+			ArrayList<E> out = new ArrayList<E>(lists[0]==null?lists[0].length+16:16);
+			
+			for (E[] list : lists) {
+				if (list==null)
+					continue;
+				
+				for (E e : list) {
+					if (e==null)
+						continue;
+					else if (!out.contains(e))
+						out.add(e);				
+				}
+			}
+			
+			return clazz == null ? null : (E[]) out.toArray((E[])Array.newInstance(clazz, out.size()));
+		}
 	}
 	
 	public static <E extends Object> E[] mergeAllowDuplicates(E[] ... lists) {
