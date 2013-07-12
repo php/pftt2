@@ -229,6 +229,19 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 		for ( EPhptTestStatus status : EPhptTestStatus.values() ) {
 			cm.println(EPrintType.CLUE, getClass(),  status+" "+phpt.count(status)+" tests");
 		}
+		// show (some) of the failing tests (for convenience)
+		int fail_count = phpt.count(EPhptTestStatus.FAIL);
+		if (fail_count > 0) {
+			int show_count = 0;
+			for ( String test_name : phpt.getTestNames(EPhptTestStatus.FAIL)) {
+				cm.println(EPrintType.CLUE, getClass(), "Failing test: "+test_name);
+				show_count++;
+				if (show_count >= 20) {
+					cm.println(EPrintType.CLUE, getClass(), "And "+(fail_count-show_count)+" more failing test(s)");
+					break;
+				}
+			}
+		}
 		cm.println(EPrintType.CLUE, getClass(), "Pass Rate(%): "+phpt.passRate());
 	}
 

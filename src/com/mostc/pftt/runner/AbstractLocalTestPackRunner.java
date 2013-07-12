@@ -811,6 +811,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 									|| name.equals("ext/mbstring/tests/mb_ereg_replace_variation1.phpt")
 									|| name.equals("ext/phar/tests/phar_dotted_path.phpt")
 									|| name.equals("ext/session/tests/027.phpt")
+									|| name.startsWith("ext/mbstring/tests/mb_output")
 									|| name.equals("ext/mbstring/tests/mb_ereg_replace_variation1.phpt")
 									|| name.equals("ext/phar/tests/cache_list/frontcontroller13.phpt")
 									|| name.equals("ext/phar/tests/frontcontroller29.phpt")
