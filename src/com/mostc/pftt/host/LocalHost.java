@@ -281,6 +281,12 @@ public class LocalHost extends AHost {
 		return System.getProperty("user.name");
 	}
 	
+	protected static final UncaughtExceptionHandler  IGNORE_EXCEPTION_HANDLER = new UncaughtExceptionHandler () {
+			@Override
+			public void uncaughtException(Thread arg0, Throwable arg1) {
+				// ignore, do nothing
+			}
+		};
 	public class LocalExecHandle extends ExecHandle {
 		protected int exit_code = 0;
 		protected final AtomicReference<Process> process;
@@ -326,7 +332,11 @@ public class LocalHost extends AHost {
 			final Process p = this.process.get();
 			if (p==null)
 				return;
+			// @see #exec_copy_lines
 			run.set(false);
+			synchronized(run) {
+				run.notifyAll();
+			}
 			
 			// sometimes it can take a while to #close a process(especially on Windows)... do it in a thread
 			// to avoid blocking for too long. however, we don't want to have too many threads
@@ -466,7 +476,7 @@ public class LocalHost extends AHost {
 								close_thread_set.remove(calling_thread);
 						}
 						synchronized(tlock) {
-						tlock.notifyAll();
+							tlock.notifyAll();
 						}
 						
 						// encourage JVM to free up the Windows process handle (may have problems if too many are left open too long)
@@ -536,7 +546,49 @@ public class LocalHost extends AHost {
 			System.gc();
 		} // end protected void run
 				
-		protected void exec_copy_lines(StringBuilder sb, InputStream in, Charset charset) throws IOException {
+		@SuppressWarnings("deprecation")
+		protected void exec_copy_lines(final StringBuilder sb, final InputStream in, final Charset charset) throws IOException {
+			if (isWindows()) {
+				final AtomicBoolean copy_thread_lock = new AtomicBoolean(true);
+				Thread copy_thread = new Thread() {
+						public void run() {
+							try {
+								do_exec_copy_lines(sb, in, charset);
+								copy_thread_lock.set(false);
+								synchronized(run) {
+									run.notifyAll();
+								}
+							} catch (IOException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+					};
+				copy_thread.setName("Copy"+copy_thread.getName());
+				copy_thread.setDaemon(true);
+				copy_thread.setUncaughtExceptionHandler(IGNORE_EXCEPTION_HANDLER);
+				copy_thread.start();
+				while (true) {
+					synchronized(run) {
+						try {
+							run.wait();
+						} catch ( InterruptedException ex ) {}
+					}
+					if (!copy_thread_lock.get()) {
+						// stopped normally
+						break;
+					} else if (!run.get()) {
+						// try killing copy thread since its still running after it was supposed to stop
+						copy_thread.stop(new RuntimeException());
+						break;
+					}
+				}
+			} else {
+				do_exec_copy_lines(sb, in, charset);
+			}
+		}
+		
+		protected void do_exec_copy_lines(StringBuilder sb, InputStream in, Charset charset) throws IOException {
 			DefaultCharsetDeciderDecoder d = charset == null ? null : PhptTestCase.newCharsetDeciderDecoder();
 			ByLineReader reader = charset == null ? new NoCharsetByLineReader(new java.io.BufferedInputStream(in)) : new MultiCharsetByLineReader(in, d);
 			String line;

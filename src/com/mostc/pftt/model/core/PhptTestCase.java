@@ -1020,7 +1020,7 @@ public class PhptTestCase extends TestCase {
 			"tests/basic/022.phpt",
 		};
 	/** SPEC: PHPT tests are given 60 seconds to execute. If they have not finished by then,
-	 * they are killed and whatever output (if any) they returned is used to evalute for PASS/FAIL.
+	 * they are killed and whatever output (if any) they returned is used to evaluate for PASS/FAIL.
 	 * 
 	 * Note: tests reach their time limit and EXPECT no output will probably PASS (unless they CRASH)
 	 * because they probably returned no output.  

@@ -225,7 +225,6 @@ public abstract class WebServerScenario extends SAPIScenario {
 			"ext/standard/tests/strings/004.phpt",
 			"ext/mbstring/tests/bug63447_001.phpt",
 			"ext/mbstring/tests/bug63447_002.phpt",
-			"ext/iconv/tests/ob_iconv_handler.phpt",
 			"ext/mbstring/tests/mb_strcut.phpt",
 			"ext/mbstring/tests/mb_decode_numericentity.phpt",
 			//////////////////

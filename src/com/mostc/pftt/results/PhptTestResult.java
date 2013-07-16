@@ -250,7 +250,7 @@ public class PhptTestResult implements ISerializer {
 			// TODO serial.attribute(null, "host", host.getName());
 		
 		// normally only need the rest of the information if the test failed
-		if (include_all) {
+		if (true) {// TODO include_all) {
 			
 			if (StringUtil.isNotEmpty(actual)) {
 				serial.startTag(null, "actual");

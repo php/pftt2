@@ -78,13 +78,23 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 // real unattended (automated) testing that actually works
 // the php test tool that you'd actually want to use
 // doesn't resort to brittle shell scripts
+//
+// useful to test the whole stack you're running your application on
+//     -test the php build
+//     -test the web server build
+//
 /* -rename ostcpftt@ name to `OSTC PFTT Unattended Test System`
 	-name still clear who owns it
 		-plus database field would tell
 	-only `php` is missing from new name, but any 2nd/3rd party who saw the name wouldn't care about that
 		-just care about owner*/
 
+// TODO enchant scenario
+//      skips on 5.4 cli apache ts
+//      skips on 5.5 cli apache ts 
 // TODO new nsis based installer for windows
+//        -works, but need to exclude some directories
+//        -improve documentation, improve instructions
 // TODO linux apache support
 // TODO linux .sh installer
 // TODO iis support
@@ -93,6 +103,16 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //        so php cli and apache on linux can be compared to windows
 //           for any windows specific memory problems, etc...
 // TODO -debug_all -debugger gdb
+// TODO use multiple phpt test-packs
+//     -in same result-pack
+//         -don't change PHPT report form though
+//     -for console-args
+// TODO get custom DLL from custom test-pack
+// TODO mssql scenario
+//     -for both `sql server` and `azure sql`?
+//     -supply mssql binary using console args (custom_ext task)
+//           -or include in pftt's cache/dep
+//     -use mssql PHPTs as a separate PhptTestPack until they are integrated with PhpCore
 // TODO xdebug only for 5.4-ts
 // TODO task/code_coverage store in result-pack
 // TODO get code coverage data of Symfony demo app (UI?)

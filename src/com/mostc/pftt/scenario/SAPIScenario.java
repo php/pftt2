@@ -154,6 +154,7 @@ public abstract class SAPIScenario extends AbstractSerialScenario {
 			"ext/intl/tests/rbbiter_getbinaryrules_basic.phpt",
 			"ext/intl/tests/rbbiter_getrules_basic.phpt",
 			"ext/mbstring/tests/mb_ereg_replace-compat-03.phpt",
+			"ext/iconv/tests/ob_iconv_handler.phpt",
 			"sapi/cli/tests/cli_process_title_windows.phpt",
 			"ext/mbstring/tests/ini_language.phpt",
 			"ext/mbstring/tests/mb_parse_str02.phpt",
