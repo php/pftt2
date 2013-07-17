@@ -386,7 +386,11 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				request.setHeader("Cookie", cookie_str);
 			// CRITICAL: tell web server to return plain-text (not HTMl) 
 			// for some reason(w/o this), apache returns HTML formatted responses for tests like ext/standard/tests/array/rsort.phpt
-			request.setHeader("Accept", "text/plain");
+			if (path.equals("/tests/output/ob_018.php"))
+				// TODO temp - need to send this header
+				request.setHeader("Accept-Encoding", "gzip,deflate ");
+			else
+				request.setHeader("Accept", "text/plain");
 			request.setParams(params);
 			
 			httpexecutor.preProcess(request, httpproc, context);
