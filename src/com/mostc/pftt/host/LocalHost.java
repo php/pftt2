@@ -530,16 +530,33 @@ public class LocalHost extends AHost {
 				} catch ( InterruptedException ex ) {
 					break;
 				}
-				time *= 2;
-				if (time>=400)
-					time = 50; // 50 100 200 400
+				time *= 2; // wait longer next time
+				if (time>=400) {
+					if (run.get()) {
+						// limit max growth of time between checking `wait`
+						time = 50; // 50 100 200 400
+					} else {
+						// #close has now been called, but may not have
+						// finished yet (`wait` may still be true)
+						//
+						// waited long enough (750ms) anyway though, since #close
+						// will terminate the process eventually, return control to
+						// code that originally called #exec or #execThread
+						break;
+					}
+				}
 			}
 			//
 			
 			// free up process handle
-			try {
-				p.destroy();
-			} catch ( Exception ex ) {}
+			if (process.get()!=null) {
+				// don't call #destroy on this process if #close already has
+				//
+				// on Windows, it can block forever
+				try {
+					p.destroy();
+				} catch ( Exception ex ) {}
+			}
 			
 			// encourage JVM to free up the Windows process handle (may have problems if too many are left open too long)
 			process.set(null);

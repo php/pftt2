@@ -9,7 +9,6 @@ import java.util.LinkedList;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.PhpBuildInfo;
-import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 
 /** Reads result-pack of a test run completed in the past.
@@ -28,7 +27,7 @@ public class PhpResultPackReader extends PhpResultPack {
 	 * @throws FileNotFoundException 
 	 */
 	public static PhpResultPackReader open(ConsoleManager cm, AHost host, File result_pack_dir) throws FileNotFoundException {
-		PhpResultPackReader reader = new PhpResultPackReader(host);
+		PhpResultPackReader reader = new PhpResultPackReader(host, result_pack_dir);
 		
 		//
 		try {
@@ -186,9 +185,11 @@ public class PhpResultPackReader extends PhpResultPack {
 	PhpBuildInfo build_info;
 	EBuildBranch test_pack_branch;
 	String test_pack_version; // TODO rename to phpt_test_pack_version
+	protected final File file;
 	
-	public PhpResultPackReader(AHost host) {
+	public PhpResultPackReader(AHost host, File file) {
 		super(host);
+		this.file = file;
 		ui_test_reader_map = new HashMap<String,HashMap<String,HashMap<String,HashMap<String,UITestReader>>>>(3);
 		phpt_reader_map = new HashMap<String,HashMap<String,AbstractPhptRW>>(3);
 		php_unit_reader_map = new HashMap<String,HashMap<String,HashMap<String,AbstractPhpUnitRW>>>(3);
@@ -406,6 +407,11 @@ public class PhpResultPackReader extends PhpResultPack {
 			}
 		}
 		return out;
+	}
+
+	@Override
+	public File getResultPackPath() {
+		return file;
 	}
 
 } // end public class PhpResultPackReader

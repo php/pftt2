@@ -73,6 +73,9 @@ public class MySQLScenario extends DatabaseScenario {
 			ini.addExtension(PhpIni.EXT_PDO_MYSQL);
 		}
 		
+		/** environment variables for running PHPT or PhpUnit tests
+		 * 
+		 */
 		@Override
 		public void getENV(Map<String, String> env) {
 			String dsn = getDataSourceName();
@@ -97,21 +100,24 @@ public class MySQLScenario extends DatabaseScenario {
 			env.put("PDOTEST_USER", getUsername());
 			env.put("PDOTEST_PASS", getPassword());
 			env.put("PDOTEST_DSN", dsn);
-			
-			// @see joomla-platform/tests/core/case/database/mysql.php
-			env.put("JTEST_DATABASE_MYSQL_DSN", dsn);
 		}
 		
+		/** entries for $_GLOBALS for PhpUnit tests
+		 * 
+		 * these entries are also defined with define() calls in PHP
+		 * 
+		 */
 		@Override
 		public void setGlobals(Map<String, String> globals) {
 			super.setGlobals(globals);
 			// @see joomla-platform/tests/core/case/database/mysql.php
 			globals.put("JTEST_DATABASE_MYSQL_DSN", getDataSourceName());
+			globals.put("JTEST_DATABASE_MYSQLI_DSN", getDataSourceName());
 		}
 
 		@Override
 		public String getDataSourceName() {
-			return "mysql:host="+getHostname()+";port="+getPort()+";dbname="+getDatabaseName();
+			return "mysql:host="+getHostname()+";port="+getPort()+";dbname="+getDatabaseName()+";user="+getUsername()+";pass="+getPassword();
 		}
 
 		@Override

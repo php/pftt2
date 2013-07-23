@@ -185,6 +185,7 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 					PhpIni.EXT_BZ2,
 					PhpIni.EXT_COM_DOTNET,
 					PhpIni.EXT_CURL,
+					PhpIni.EXT_ENCHANT, // TODO test
 					PhpIni.EXT_FILEINFO,
 					PhpIni.EXT_GD2,
 					PhpIni.EXT_GETTEXT,
@@ -210,13 +211,13 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 					PhpIni.EXT_XMLRPC,
 					PhpIni.EXT_XSL
 				);
-			try {
+			/*try {
 				if (build.getVersionBranch(cm, host)==EBuildBranch.PHP_5_5) {
 					ini.addExtension(PhpIni.EXT_ENCHANT);
 				}
 			} catch ( Exception ex ) {
 				ex.printStackTrace();//
-			}
+			}*/
 		}
 		
 		// TIMING: do this after all calls to #putMulti, etc... b/c that sets is_default = false

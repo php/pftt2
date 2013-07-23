@@ -65,7 +65,7 @@ final class WindowsSnapshotDownloadUtil {
 			return PHP_5_5_DOWNLOAD;
 		case EBuildBranch.PHP_5_6:
 			return PHP_5_6_DOWNLOAD;
-		case EBuildBranch.MASTER:
+		case EBuildBranch.PHP_Master:
 			return PHP_MASTER_DOWNLOAD;
 		}
 		return null;

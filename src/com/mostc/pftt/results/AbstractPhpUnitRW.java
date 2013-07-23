@@ -26,4 +26,13 @@ public abstract class AbstractPhpUnitRW extends AbstractTestResultRW {
 	}
 	public abstract PhpIni getPhpIni();
 	
+	public boolean isTooMuchChange(AbstractPhpUnitRW base) {
+		return
+				( 20 < Math.abs(base.count(EPhpUnitTestStatus.FAILURE) - count(EPhpUnitTestStatus.FAILURE)) )
+				|| ( 20 < Math.abs(base.count(EPhpUnitTestStatus.ERROR) - count(EPhpUnitTestStatus.ERROR)) )
+				|| ( 10 < Math.abs(base.count(EPhpUnitTestStatus.CRASH) - count(EPhpUnitTestStatus.CRASH)) )
+				|| ( 100 < Math.abs(base.count(EPhpUnitTestStatus.PASS) - count(EPhpUnitTestStatus.PASS)) )
+			;
+	}
+	
 } // end public abstract class AbstractPhpUnitRW

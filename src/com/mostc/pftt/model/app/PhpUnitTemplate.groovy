@@ -236,11 +236,11 @@ pw.println("""clearstatcache();
 		if (\$e instanceof PHPUnit_Framework_SkippedTest) { 
 			\$status = PHPUnit_Runner_BaseTestRunner::STATUS_SKIPPED;
 		} else if (\$e instanceof PHPUnit_Framework_IncompleteTest) {
-			\$status = PHPUnit_Runner_BaseTestRunner::STATUS_ERROR;
+			\$status = PHPUnit_Runner_BaseTestRunner::STATUS_INCOMPLETE;
 		} else if (\$e instanceof PHPUnit_Framework_AssertionFailedError) {
 			\$status = PHPUnit_Runner_BaseTestRunner::STATUS_FAILURE;
 		} else {
-			\$status = PHPUnit_Runner_BaseTestRunner::STATUS_INCOMPLETE;
+			\$status = PHPUnit_Runner_BaseTestRunner::STATUS_ERROR;
 		}
 		\$status_msg = \$e->getTraceAsString() . \$e->getMessage();
 	}
@@ -399,6 +399,7 @@ pw.print("""
 				value = StringUtil.cslashes(value);
 				
 				pw.println("\$GLOBALS['$name'] = '$value';");
+				pw.println("define('$name', '$value');");
 			}
 		}
 		

@@ -190,7 +190,7 @@ public class PhpBuild extends SAPIManager {
 		case PHP_5_6:
 			debug_path = "php-debug-pack-5.6-"+build_type+"-windows-"+compiler+"-"+cpu_arch+"-"+revision;
 			break;
-		case MASTER:
+		case PHP_Master:
 			debug_path = "php-debug-pack-master-"+build_type+"-windows-"+compiler+"-"+cpu_arch+"-"+revision;
 			break;
 		default:
@@ -229,7 +229,7 @@ public class PhpBuild extends SAPIManager {
 		case PHP_5_6:
 			source_path = "php-5.6-src-"+revision;
 			break;
-		case MASTER:
+		case PHP_Master:
 			source_path = "php-master-src-"+revision;
 			break;
 		default:
@@ -389,7 +389,7 @@ public class PhpBuild extends SAPIManager {
 			major = 5;
 			minor = 6;
 		} else if (b.contains("php-master")) {
-			branch = EBuildBranch.MASTER;
+			branch = EBuildBranch.PHP_Master;
 			major = 5;
 			minor = 6;
 		}
@@ -405,7 +405,7 @@ public class PhpBuild extends SAPIManager {
 		
 		// should be able to get this info for release, qa and snapshot builds
 		// but for dev builds, might not be able to get this info any other way than parsing phpinfo
-		if (host instanceof AHost) {
+		if (host instanceof AHost && branch != EBuildBranch.PHP_Master) {
 			for (String line : StringUtil.splitLines(getPhpInfo(cm, (AHost)host))) {
 				if (line.startsWith("PHP Version =>")) {
 					version_str = line.substring("PHP Version => ".length());

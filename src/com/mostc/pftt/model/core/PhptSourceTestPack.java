@@ -540,7 +540,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		else if (dir.contains("5.6")||dir.contains("5-6")||dir.contains("5_6")||dir.contains("56"))
 			return EBuildBranch.PHP_5_6;
 		else if (dir.toLowerCase().contains("master"))
-			return EBuildBranch.MASTER;
+			return EBuildBranch.PHP_Master;
 		else
 			return null;
 	}

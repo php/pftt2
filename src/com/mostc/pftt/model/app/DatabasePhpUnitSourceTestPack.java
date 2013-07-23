@@ -21,7 +21,7 @@ public abstract class DatabasePhpUnitSourceTestPack extends PhpUnitSourceTestPac
 	public boolean startRun(ConsoleManager cm, AHost runner_host, ScenarioSet scenario_set, PhpBuild build) {
 		DatabaseScenario ds = getDatabaseScenario(runner_host, scenario_set, build);
 		if (ds==null) {
-			cm.println(EPrintType.CANT_CONTINUE, getClass(), "No database scenario found. Try adding `mysql` or other scenario to your -config.");
+			cm.println(EPrintType.CANT_CONTINUE, getClass(), "No database scenario found. Try adding `local_mysql` or other scenario to your -config.");
 			return false;
 		}
 		

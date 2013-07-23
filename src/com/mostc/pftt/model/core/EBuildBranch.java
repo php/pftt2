@@ -13,7 +13,11 @@ public enum EBuildBranch {
 			return ECPUArch.X86;
 		}
 	},
-	MASTER {
+	PHP_Master {
+		@Override
+		public String toString() {
+			return "PHP_Master";
+		}
 		@Override
 		public ECPUArch getCPUArch() {
 			return null; // could be X86 or X64
@@ -51,8 +55,8 @@ public enum EBuildBranch {
 			return PHP_5_5;
 		else if (str.equals("php_5_6")||str.equals("5_6")||str.equals("5.6")||str.equals("56")||str.equals("php5_6")||str.equals("php56")||str.equals("php5.6")||str.equals("php_5.6"))
 			return PHP_5_6;
-		else if (str.equals("master"))
-			return MASTER;
+		else if (str.equals("master")||str.equals("php_master"))
+			return PHP_Master;
 		else
 			return null;
 	}
@@ -68,7 +72,7 @@ public enum EBuildBranch {
 		else if (str.contains("php_5_6")||str.contains("php5_6")||str.contains("php56")||str.contains("php5.6")||str.contains("php_5.6"))
 			return PHP_5_6;
 		else if (str.contains("master"))
-			return MASTER;
+			return PHP_Master;
 		else
 			return null;
 	}

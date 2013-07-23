@@ -92,9 +92,6 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 // TODO enchant scenario
 //      skips on 5.4 cli apache ts
 //      skips on 5.5 cli apache ts 
-// TODO new nsis based installer for windows
-//        -works, but need to exclude some directories
-//        -improve documentation, improve instructions
 // TODO linux apache support
 // TODO linux .sh installer
 // TODO iis support
@@ -469,7 +466,7 @@ public class PfttMain {
 		System.out.println(new AlignedTable(2, 85)
 			.addRow("-ini_actual_all", "includes INI for all tests (default=only for failures)... SLOW but helps verify")
 			.addRow("-suspend_seconds <seconds>", "suspends test process for <seconds> before running test so you can check the process first (1 minute timeout after resume)")
-			.addRow("-run_count <N>", "runs N number of tests. does not count early SKIPped tests (whereas -max_test_read_count does)")
+			.addRow("-run_count <N>", "runs N number of tests. does not count early SKIP'd tests (whereas -max_test_read_count does)")
 			.addRow("-mem_check", "runs tests with Valgrind or other memory checker (OS dependent). Slow, typically use this with `*_list` or `*_named` NOT `*_all`."));
 		System.out.println();
 		System.out.println("   === Threading Options ===");

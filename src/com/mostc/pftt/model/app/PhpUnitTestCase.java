@@ -11,6 +11,8 @@ import com.mostc.pftt.model.TestCase;
  *
  */
 
+// TODO @dataProvider support http://phpunit.de/manual/3.7/en/appendixes.annotations.html#appendixes.annotations.dataProvider
+// TODO @depends support http://phpunit.de/manual/3.7/en/appendixes.annotations.html#appendixes.annotations.depends
 public class PhpUnitTestCase extends TestCase {
 	public static final int MAX_TEST_TIME_SECONDS = 60;
 	protected final PhpUnitDist php_unit_dist;

@@ -8,7 +8,6 @@ import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
 import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.PhpBuildInfo;
 import com.mostc.pftt.model.ui.UITestPack;
-import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 
 /** Manages PHP test results (PHPT, PhpUnit, etc...)
@@ -54,6 +53,7 @@ public abstract class PhpResultPack {
 		this.host = host;
 	}
 	
+	public abstract File getResultPackPath();
 	public abstract void close();
 	public abstract AbstractPhptRW getPHPT(AHost host, ScenarioSetSetup scenario_set);
 	public abstract Collection<AbstractPhptRW> getPHPT(AHost host);

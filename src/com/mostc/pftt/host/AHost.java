@@ -15,7 +15,6 @@ import com.github.mattficken.io.ByLineReader;
 import com.github.mattficken.io.CharsetDeciderDecoder;
 import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.StringUtil;
-import com.mostc.pftt.host.IProgramRunner.RunRequest;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
@@ -674,7 +673,8 @@ public abstract class AHost extends Host implements IProgramRunner {
 	private static void install7Zip(ConsoleManager cm, AHost src_host, AHost dst_host) throws Exception {
 		final String src_7z_path = src_host.getPfttDir()+"\\bin\\7za.exe";
 		if (!src_host.exists(src_7z_path)) {
-			cm.println(EPrintType.WARNING, "install7Zip", "7za.exe not found on source: "+src_host);
+			if (cm!=null)
+				cm.println(EPrintType.WARNING, "install7Zip", "7za.exe not found on source: "+src_host);
 			return;
 		}
 		
@@ -683,7 +683,8 @@ public abstract class AHost extends Host implements IProgramRunner {
 		if (dst_host.exists(dst_7z_path) && src_host.getSize(src_7z_path)==dst_host.getSize(dst_7z_path)) {
 			if (dst_host.reported_7zip_already_installed)
 				return;
-			cm.println(EPrintType.CLUE, "install7Zip", "7za.exe already installed on: "+dst_host);
+			if (cm!=null)
+				cm.println(EPrintType.CLUE, "install7Zip", "7za.exe already installed on: "+dst_host);
 			dst_host.reported_7zip_already_installed = true;
 			return;
 		}
@@ -693,8 +694,10 @@ public abstract class AHost extends Host implements IProgramRunner {
 			
 			cm.println(EPrintType.CLUE, "install7Zip", "7z.exe installed on: "+dst_host+" (src="+src_host+")");
 		} catch ( Exception ex ) {
-			cm.addGlobalException(EPrintType.CLUE, "install7Zip", ex, "Unable to install 7z.exe on dst="+dst_host+" from src="+src_host);
-			
+			if (cm!=null)
+				cm.addGlobalException(EPrintType.CLUE, "install7Zip", ex, "Unable to install 7z.exe on dst="+dst_host+" from src="+src_host);
+			else
+				ex.printStackTrace();
 			throw ex;
 		}
 	} // end private static void install7Zip
