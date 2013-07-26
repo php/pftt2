@@ -71,36 +71,35 @@ public class PhpResultPackReader extends PhpResultPack {
 		File phpt_dir = new File(host_dir+"/phpt");
 		File[] dirs = phpt_dir.listFiles();
 		if (dirs!=null) {
-			for ( File scenario_dir : dirs ) {
-				if (!scenario_dir.isDirectory())
+			for ( File test_pack_dir : dirs ) {
+				if (!test_pack_dir.isDirectory())
 					continue;
-				
-				String scenario_set_name = scenario_dir.getName();
 				
 				HashMap<String,HashMap<String,AbstractPhptRW>> map_a = reader.phpt_reader_map.get(host_name);
 				if (map_a==null) {
 					map_a = new HashMap<String,HashMap<String,AbstractPhptRW>>(3);
 					reader.phpt_reader_map.put(host_name, map_a);
 				}
-				File[] dirs2 = scenario_dir.listFiles();
+				HashMap<String,AbstractPhptRW> map_b = map_a.get(test_pack_dir.getName());
+				if (map_b==null) {
+					map_b = new HashMap<String,AbstractPhptRW>(7);
+					map_a.put(test_pack_dir.getName(), map_b);
+				}
+				File[] dirs2 = test_pack_dir.listFiles();
 				if (dirs2==null)
 					continue;
-				for ( File test_pack_dir : dirs2 ) {
-					HashMap<String,AbstractPhptRW> map_b = map_a.get(scenario_set_name);
-					if (map_b==null) {
-						map_b = new HashMap<String,AbstractPhptRW>(7);
-						map_a.put(scenario_set_name, map_b);
-					}
+				for ( File scenario_dir : dirs2 ) {
+					String scenario_set_name = scenario_dir.getName();
 					
 					PhptResultReader phpt_reader = new PhptResultReader();
 					try {
-						phpt_reader.open(cm, test_pack_dir, scenario_set_name, reader.build_info, reader.test_pack_branch, reader.test_pack_version);
+						phpt_reader.open(cm, scenario_dir, scenario_set_name, reader.build_info, reader.test_pack_branch, reader.test_pack_version);
 					} catch ( Exception ex ) {
 						ex.printStackTrace();
 						continue;
 					}
 					
-					map_b.put(test_pack_dir.getName(), phpt_reader);
+					map_b.put(scenario_dir.getName(), phpt_reader);
 				}
 			}
 		}
