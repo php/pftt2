@@ -42,7 +42,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	protected File telem_dir;
 	protected final LocalHost local_host;
 	protected final HashMap<AHost,HashMap<String,UITestScenarioSetGroup>> ui_test_writer_map;
-	protected final HashMap<AHost,HashMap<ScenarioSetSetup,PhptResultWriter>> phpt_writer_map;
+	protected final HashMap<AHost,HashMap<ScenarioSetSetup,HashMap<String,PhptResultWriter>>> phpt_writer_map;
 	protected final HashMap<AHost,HashMap<String,PhpUnitScenarioSetGroup>> phpunit_writer_map;
 	protected PrintWriter global_exception_writer;
 	protected LocalConsoleManager cm;
@@ -113,7 +113,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		this.config = config;
 		
 		ui_test_writer_map = new HashMap<AHost,HashMap<String,UITestScenarioSetGroup>>(16);
-		phpt_writer_map = new HashMap<AHost,HashMap<ScenarioSetSetup,PhptResultWriter>>(16);
+		phpt_writer_map = new HashMap<AHost,HashMap<ScenarioSetSetup,HashMap<String,PhptResultWriter>>>(3);
 		phpunit_writer_map = new HashMap<AHost,HashMap<String,PhpUnitScenarioSetGroup>>(16);
 		
 		cm.w = this;
@@ -188,6 +188,16 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		protected HSResultQueueEntry(AHost this_host, ScenarioSetSetup this_scenario_set_setup) {
 			this.this_host = this_host;
 			this.this_scenario_set_setup = this_scenario_set_setup;
+		}
+		
+	}
+	
+	protected abstract class PhptQueueEntry extends HSResultQueueEntry {
+		protected final PhptSourceTestPack src_test_pack;
+		
+		protected PhptQueueEntry(AHost this_host, ScenarioSetSetup this_scenario_set_setup, PhptSourceTestPack src_test_pack) {
+			super(this_host, this_scenario_set_setup);
+			this.src_test_pack = src_test_pack;
 		}
 		
 	}
@@ -322,18 +332,18 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		return b;
 	} // end protected UITestScenarioSetGroup getCreateUITestWriter
 	
-	protected class PhptResultQueueEntry extends HSResultQueueEntry {
+	protected class PhptResultQueueEntry extends PhptQueueEntry {
 		protected final PhptTestResult this_result;
 		
-		protected PhptResultQueueEntry(AHost this_host, ScenarioSetSetup this_scenario_set_setup, PhptTestResult this_result) {
-			super(this_host, this_scenario_set_setup);
+		protected PhptResultQueueEntry(AHost this_host, ScenarioSetSetup this_scenario_set_setup, PhptSourceTestPack src_test_pack, PhptTestResult this_result) {
+			super(this_host, this_scenario_set_setup, src_test_pack);
 			this.this_result = this_result;
 		}
 
 		@Override
 		public void handle() throws IOException {
 			config.processPhptTestResult(cm, this_result);
-			PhptResultWriter w = getCreatePhptResultWriter(this_host, this_scenario_set_setup);
+			PhptResultWriter w = getCreatePhptResultWriter(this_host, this_scenario_set_setup, src_test_pack);
 			
 			w.writeResult(cm, this_host, this_scenario_set_setup, this_result);
 			this_result.extra = null;
@@ -353,19 +363,30 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		
 	} // end protected class PhptResultQueueEntry
 	
-	protected PhptResultWriter getCreatePhptResultWriter(AHost this_host, ScenarioSetSetup this_scenario_set_setup) throws IOException {
-		HashMap<ScenarioSetSetup,PhptResultWriter> smap = phpt_writer_map.get(this_host);
-		PhptResultWriter w;
-		if (smap==null) {
-			smap = new HashMap<ScenarioSetSetup,PhptResultWriter>();
-			w = new PhptResultWriter(phpt_telem_dir(this_host, this_scenario_set_setup), this_host, this_scenario_set_setup, build_info, test_pack_branch, test_pack_version);
-			phpt_writer_map.put(this_host, smap);
-			smap.put(this_scenario_set_setup, w);
+	protected PhptResultWriter getCreatePhptResultWriter(AHost this_host, ScenarioSetSetup this_scenario_set_setup, PhptSourceTestPack test_pack) throws IOException {
+		return getCreatePhptResultWriter(this_host, this_scenario_set_setup, test_pack.getNameAndVersionString());
+	}
+	
+	protected PhptResultWriter getCreatePhptResultWriter(AHost this_host, ScenarioSetSetup this_scenario_set_setup, String test_pack_name) throws IOException {
+		HashMap<ScenarioSetSetup,HashMap<String,PhptResultWriter>> a = phpt_writer_map.get(this_host);
+		HashMap<String,PhptResultWriter> b;
+		PhptResultWriter w = null;
+		if (a==null) {
+			a = new HashMap<ScenarioSetSetup,HashMap<String,PhptResultWriter>>();
+			b = new HashMap<String,PhptResultWriter>();
+			phpt_writer_map.put(this_host, a);
+			a.put(this_scenario_set_setup, b);
+			w = new PhptResultWriter(phpt_telem_dir(this_host, this_scenario_set_setup, test_pack_name), this_host, this_scenario_set_setup, build_info, test_pack_branch, test_pack_version);
+			b.put(test_pack_name, w);
 		} else {
-			w = smap.get(this_scenario_set_setup);
+			b = a.get(this_scenario_set_setup);
+			if (b==null)
+				a.put(this_scenario_set_setup, b = new HashMap<String,PhptResultWriter>());
+			else
+				w = b.get(test_pack_name);
 			if (w==null) {
-				w = new PhptResultWriter(phpt_telem_dir(this_host, this_scenario_set_setup), this_host, this_scenario_set_setup, build_info, test_pack_branch, test_pack_version);
-				smap.put(this_scenario_set_setup, w);
+				w = new PhptResultWriter(phpt_telem_dir(this_host, this_scenario_set_setup, test_pack_name), this_host, this_scenario_set_setup, build_info, test_pack_branch, test_pack_version);
+				b.put(test_pack_name, w);
 			}
 		}
 		return w;
@@ -393,8 +414,6 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 			PhpUnitResultWriter w = sg.getWriter(this_scenario_set_setup);
 			
 			w.writeResult(cm.phpunit_gui!=null, this_result);
-			this_result.extra = null;
-			this_result.code_coverage = null;
 			
 			// show on console
 			// TODO
@@ -461,17 +480,17 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		return b;
 	} // end protected PhpUnitScenarioSetGroup getCreatePhpUnitResultWriter
 	
-	protected class PhptTestStartQueueEntry extends HSResultQueueEntry {
+	protected class PhptTestStartQueueEntry extends PhptQueueEntry {
 		protected final String test_name;
 		
-		public PhptTestStartQueueEntry(AHost host, ScenarioSetSetup scenario_set_setup, String test_name) {
-			super(host, scenario_set_setup);
+		public PhptTestStartQueueEntry(AHost host, ScenarioSetSetup scenario_set_setup, PhptSourceTestPack src_test_pack, String test_name) {
+			super(host, scenario_set_setup, src_test_pack);
 			this.test_name = test_name;
 		}
 		
 		@Override
 		public void handle() throws IllegalArgumentException, IllegalStateException, IOException {
-			getCreatePhptResultWriter(this_host, this_scenario_set_setup).notifyStart(test_name);
+			getCreatePhptResultWriter(this_host, this_scenario_set_setup, src_test_pack).notifyStart(test_name);
 		}
 		
 	} // end protected class PhptTestStartQueueEntry
@@ -521,8 +540,8 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	} // end protected class UITestStartQueueEntry
 	
 	@Override
-	public void notifyStart(AHost host, ScenarioSetSetup scenario_set_setup, PhptTestCase test_case) {
-		results.add(new PhptTestStartQueueEntry(host, scenario_set_setup, test_case.getName()));
+	public void notifyStart(AHost host, ScenarioSetSetup scenario_set_setup, PhptSourceTestPack src_test_pack, PhptTestCase test_case) {
+		results.add(new PhptTestStartQueueEntry(host, scenario_set_setup, src_test_pack, test_case.getName()));
 	}
 	
 	@Override
@@ -558,7 +577,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	public void addTestException(AHost this_host, ScenarioSetSetup this_scenario_set_setup, TestCase test_case, Throwable ex, Object a, Object b) {
 		ex.printStackTrace(); // XXX provide to ConsoleManager
 	}
-	public void addTestException(AHost this_host, ScenarioSetSetup this_scenario_set_setup, PhptTestCase test_case, Throwable ex, Object a, Object b) {
+	public void addTestException(AHost this_host, ScenarioSetSetup this_scenario_set_setup, PhptSourceTestPack src_test_pack, PhptTestCase test_case, Throwable ex, Object a, Object b) {
 		String ex_str = ErrorUtil.toString(ex);
 		if (a!=null)
 			ex_str += " a="+a;
@@ -570,32 +589,38 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		}
 		
 		// count exceptions as a result (the worst kind of failure, a pftt failure)
-		addResult(this_host, this_scenario_set_setup, new PhptTestResult(host, EPhptTestStatus.TEST_EXCEPTION, test_case, ex_str, null, null, null, null, null, null, null, null, null, null, null));
+		addResult(this_host, this_scenario_set_setup, src_test_pack, new PhptTestResult(host, EPhptTestStatus.TEST_EXCEPTION, test_case, ex_str, null, null, null, null, null, null, null, null, null, null, null));
 	}
 	
 	@Override
-	public void addResult(AHost this_host, ScenarioSetSetup this_scenario_set_setup, PhptTestResult result) {
+	public void addResult(AHost this_host, ScenarioSetSetup this_scenario_set_setup, PhptSourceTestPack src_test_pack, PhptTestResult result) {
 		// enqueue result to be handled by another thread to avoid delaying every phpt thread
-		results.add(new PhptResultQueueEntry(this_host, this_scenario_set_setup, result));
+		results.add(new PhptResultQueueEntry(this_host, this_scenario_set_setup, src_test_pack, result));
 	}
 	
 	// TODO rename these
 	protected File ui_test_telem_dir(AHost this_host, ScenarioSetSetup this_scenario_set_setup, UITestPack test_pack, String web_browser_name_and_version) {
 		if (this_scenario_set_setup==null)
-			return new File(host.joinIntoOnePath(telem_dir.getAbsolutePath(), this_host.getName(), "UI-Test", test_pack.getNameAndVersionInfo().intern()));
+			return new File(this_host.joinIntoOnePath(telem_dir.getAbsolutePath(), this_host.getName(), "UI-Test", test_pack.getNameAndVersionInfo().intern()));
 		else
-			return new File(host.joinIntoOnePath(telem_dir.getAbsolutePath(), this_host.getName(), "UI-Test", test_pack.getNameAndVersionInfo().intern(), StringUtil.max(this_scenario_set_setup.getNameWithVersionInfo(), 70), web_browser_name_and_version));
+			return new File(this_host.joinIntoOnePath(telem_dir.getAbsolutePath(), this_host.getName(), "UI-Test", test_pack.getNameAndVersionInfo().intern(), StringUtil.max(this_scenario_set_setup.getNameWithVersionInfo(), 70), web_browser_name_and_version));
 	}
 	
 	protected File phpunit_telem_dir(AHost this_host, ScenarioSetSetup this_scenario_set_setup, PhpUnitSourceTestPack test_pack) {
 		if (this_scenario_set_setup==null)
-			return new File(host.joinIntoOnePath(telem_dir.getAbsolutePath(), this_host.getName(), "PhpUnit", test_pack.getNameAndVersionString().intern()));
+			return new File(this_host.joinIntoOnePath(telem_dir.getAbsolutePath(), this_host.getName(), "PhpUnit", test_pack.getNameAndVersionString().intern()));
 		else
-			return new File(host.joinIntoOnePath(telem_dir.getAbsolutePath(), this_host.getName(), "PhpUnit", test_pack.getNameAndVersionString().intern(), StringUtil.max(this_scenario_set_setup.getNameWithVersionInfo(), 70)));
+			return new File(this_host.joinIntoOnePath(telem_dir.getAbsolutePath(), this_host.getName(), "PhpUnit", test_pack.getNameAndVersionString().intern(), StringUtil.max(this_scenario_set_setup.getNameWithVersionInfo(), 70)));
 	}
 	
-	protected File phpt_telem_dir(AHost this_host, ScenarioSetSetup this_scenario_set_setup) {
-		return new File(host.joinIntoOnePath(telem_dir.getAbsolutePath(), this_host.getName(), "PHPT", StringUtil.max(this_scenario_set_setup.getNameWithVersionInfo(), 70)));
+	protected File phpt_telem_dir(AHost this_host, ScenarioSetSetup this_scenario_set_setup, String test_pack_name) {
+		return new File(this_host.joinIntoOnePath(
+				telem_dir.getAbsolutePath(), 
+				this_host.getName(), 
+				"PHPT", 
+				test_pack_name, 
+				this_scenario_set_setup==null?"":StringUtil.max(this_scenario_set_setup.getNameWithVersionInfo(), 70)
+			));
 	}
 	
 	@Override
@@ -612,21 +637,21 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		results.add(new PhpUnitResultQueueEntry(host, scenario_set_setup, result));
 	}
 	
-	protected class NotifyPhptFinishedEntry extends HSResultQueueEntry {
+	protected class NotifyPhptFinishedEntry extends PhptQueueEntry {
 
-		protected NotifyPhptFinishedEntry(AHost this_host, ScenarioSetSetup this_scenario_set_setup) {
-			super(this_host, this_scenario_set_setup);
+		protected NotifyPhptFinishedEntry(AHost this_host, ScenarioSetSetup this_scenario_set_setup, PhptSourceTestPack src_test_pack) {
+			super(this_host, this_scenario_set_setup, src_test_pack);
 		}
 
 		@Override
 		public void handle() throws IllegalArgumentException, IllegalStateException, IOException {
-			getCreatePhptResultWriter(this_host, this_scenario_set_setup).close();
+			getCreatePhptResultWriter(this_host, this_scenario_set_setup, src_test_pack).close();
 		}
 		
 	}
 	
-	public void notifyPhptFinished(AHost host, ScenarioSetSetup scenario_set) {
-		results.add(new NotifyPhptFinishedEntry(host, scenario_set));
+	public void notifyPhptFinished(AHost host, ScenarioSetSetup scenario_set, PhptSourceTestPack src_test_pack) {
+		results.add(new NotifyPhptFinishedEntry(host, scenario_set, src_test_pack));
 	}
 	
 	protected class NotifyPhpUnitFinishedEntry extends PhpUnitQueueEntry {
@@ -724,11 +749,26 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 			ex.printStackTrace();
 		}
 	} // end protected void doClose
+	
+	@Override
+	public Collection<AbstractPhptRW> getPHPT(AHost host, String test_pack_name) {
+		HashMap<ScenarioSetSetup,HashMap<String,PhptResultWriter>> map_a = phpt_writer_map.get(host);
+		if (map_a==null)
+			return null;
+		ArrayList<AbstractPhptRW> out = new ArrayList<AbstractPhptRW>(map_a.size());
+		for ( HashMap<String,PhptResultWriter> b : map_a.values() ) {
+			for ( String c : b.keySet() ) {
+				if (c.equalsIgnoreCase(test_pack_name))
+					out.add(b.get(c));
+			}
+		}
+		return out;
+	}
 
 	@Override
-	public AbstractPhptRW getPHPT(AHost host, ScenarioSetSetup scenario_set) {
+	public AbstractPhptRW getPHPT(AHost host, ScenarioSetSetup scenario_set, String test_pack_name) {
 		try {
-			return getCreatePhptResultWriter(host, scenario_set);
+			return getCreatePhptResultWriter(host, scenario_set, test_pack_name);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -737,11 +777,12 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 
 	@Override
 	public Collection<AbstractPhptRW> getPHPT(AHost host) {
-		HashMap<ScenarioSetSetup,PhptResultWriter> map_a = phpt_writer_map.get(host);
+		HashMap<ScenarioSetSetup,HashMap<String,PhptResultWriter>> map_a = phpt_writer_map.get(host);
 		if (map_a==null)
 			return null;
 		ArrayList<AbstractPhptRW> out = new ArrayList<AbstractPhptRW>(map_a.size());
-		out.addAll(map_a.values());
+		for ( HashMap<String,PhptResultWriter> b : map_a.values() )
+			out.addAll(b.values());
 		return out;
 	}
 
@@ -750,7 +791,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		LinkedList<AbstractPhptRW> out = new LinkedList<AbstractPhptRW>();
 		for ( AHost host : phpt_writer_map.keySet() ) {
 			for ( ScenarioSetSetup scenario_set : phpt_writer_map.get(host).keySet() ) {
-				out.add(phpt_writer_map.get(host).get(scenario_set));
+				out.addAll(phpt_writer_map.get(host).get(scenario_set).values());
 			}
 		}
 		return out;
@@ -793,11 +834,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		}
 		return out;
 	}
-	@Override
-	public void setTotalCount(int size) {
-		// TODO temp get rid of method
-	}
-
+	
 	@Override
 	public PhpBuildInfo getBuildInfo() {
 		return build_info;

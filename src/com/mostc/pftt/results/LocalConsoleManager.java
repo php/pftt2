@@ -192,7 +192,7 @@ public class LocalConsoleManager implements ConsoleManager {
 			last_clue_msg = new WeakReference<String>(string);
 			break;
 		case TIP:
-			doPrintMultiline("PFTT: ", string);
+			doPrintMultiline("TIP: ", string);
 			break;
 		default:
 			doPrintMultiline("PFTT: "+ctx_str+": ", string);

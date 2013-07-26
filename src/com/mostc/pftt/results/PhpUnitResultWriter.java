@@ -43,7 +43,7 @@ import com.mostc.pftt.scenario.ScenarioSetSetup;
 
 @NotThreadSafe
 public class PhpUnitResultWriter extends AbstractPhpUnitRW {
-	protected final KXmlSerializer serial;
+	protected final KXmlSerializer main_serial, extra_serial;
 	protected final File dir;
 	protected final OutputStream out;
 	protected final PrintWriter all_csv_pw, started_pw;
@@ -76,12 +76,14 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 		File file = new File(dir+"/"+StringUtil.max("phpunit_"+test_pack.getName()+"_"+scenario_set_setup.getNameWithVersionInfo(), 40)+".xml");
 		
 		// XXX write host, scenario_set and build to file (do in #writeTally or #close)
-		serial  = new KXmlSerializer();
+		main_serial  = new KXmlSerializer();
+		extra_serial  = new KXmlSerializer();
 		
-		serial.setOutput(out = new BufferedOutputStream(new FileOutputStream(file)), null);
+		main_serial.setOutput(out = new BufferedOutputStream(new FileOutputStream(file)), "utf-8");
 		
 		// setup serializer to indent XML (pretty print) so its easy for people to read
-		serial.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
+		main_serial.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
+		extra_serial.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
 		
 		status_list_map = new HashMap<EPhpUnitTestStatus,StatusListEntry>();
 		for ( EPhpUnitTestStatus status : EPhpUnitTestStatus.values() ) {
@@ -157,14 +159,13 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 			output_by_name.put(test_name, result.output);
 		}
 		
-		
 		// write file header
 		String test_suite_name = result.test_case.getPhpUnitDist()!=null && result.test_case.getPhpUnitDist().getPath()!=null ?
 				result.test_case.getPhpUnitDist().getPath().getPath() : null;
 		if (is_first_result) {
-			serial.startDocument("utf-8",  null);
-			serial.setPrefix("pftt", "pftt");
-			serial.startTag(null, "testsuites");
+			main_serial.startDocument("utf-8",  null);
+			main_serial.setPrefix("pftt", "pftt");
+			main_serial.startTag(null, "testsuites");
 			writeTestSuiteStart(test_suite_name);
 			
 			is_first_result = false;
@@ -176,8 +177,27 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 		//
 		
 		// write result itself
-		result.serial(serial);
-		result.extra = null;
+		result.serial(main_serial);
+		
+		//
+		if ((result.code_coverage!=null||result.extra!=null)&&PhpUnitTestResult.shouldStoreAllInfo(result.status)) {
+			// store this data in a separate file
+			File f = new File(dir, result.getName().replace("::", "_").replace("(", "_").replace(")", "").replace(".php", "")+".xml");
+			f.getParentFile().mkdirs(); // ensure directory exists
+			FileWriter fw = new FileWriter(f);
+			extra_serial.setOutput(fw);
+			extra_serial.startDocument("utf-8", Boolean.TRUE);
+			extra_serial.startTag("pftt", "phpUnitTestResult");
+			if (result.extra!=null)
+				result.extra.serial(extra_serial);
+			if (result.code_coverage!=null)
+				result.code_coverage.serial(extra_serial);
+			extra_serial.endTag("pftt", "phpUnitTestResult");
+			extra_serial.endDocument();
+			extra_serial.flush();
+			fw.close();
+		}
+		//
 		
 		// store name, status and run-time in CSV format
 		all_csv_pw.print("'");
@@ -194,13 +214,13 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 	}
 	
 	private void writeTestSuiteStart(String test_suite_name) throws IllegalArgumentException, IllegalStateException, IOException {
-		serial.startTag(null, "testsuite");
+		main_serial.startTag(null, "testsuite");
 		if (StringUtil.isNotEmpty(test_suite_name))
-			serial.attribute(null, "name", test_suite_name);
+			main_serial.attribute(null, "name", test_suite_name);
 	}
 	
 	private void writeTestSuiteEnd() throws IllegalArgumentException, IllegalStateException, IOException {
-		serial.endTag(null, "testsuite");
+		main_serial.endTag(null, "testsuite");
 	}
 	
 	@Override
@@ -220,18 +240,18 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 		
 		writeTestSuiteEnd();
 		writeTally();
-		serial.endTag(null, "testsuites");
-		serial.endDocument();
+		main_serial.endTag(null, "testsuites");
+		main_serial.endDocument();
 		
-		serial.flush();
+		main_serial.flush();
 		out.close();
 		
 		// @see PhpUnitReader#readTally
 		{
 			FileWriter fw = new FileWriter(new File(dir.getAbsolutePath()+"/tally.xml"));
-			serial.setOutput(fw);
+			main_serial.setOutput(fw);
 			writeTally(); // write again - this file is smaller and faster to read
-			serial.flush();
+			main_serial.flush();
 			fw.close();
 		}
 		//
@@ -245,38 +265,38 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 	} // end public void close
 	
 	private void writeTally() throws IllegalArgumentException, IllegalStateException, IOException {
-		serial.startTag("pftt", "tally");
+		main_serial.startTag("pftt", "tally");
 		
-		serial.attribute(null, "test_pack_name_and_version", test_pack_name_and_version);
-		serial.attribute(null, "os_name", host.getOSNameLong());
-		serial.attribute(null, "test_count", Integer.toString(test_count));
-		serial.attribute(null, "percent_total", Integer.toString( getTestCount() ));
-		serial.attribute(null, "pass", Integer.toString(count(EPhpUnitTestStatus.PASS)));
-		serial.attribute(null, "pass_percent", Float.toString( passRate() ));
-		serial.attribute(null, "timeout", Integer.toString(count(EPhpUnitTestStatus.TIMEOUT)));
-		serial.attribute(null, "failure", Integer.toString(count(EPhpUnitTestStatus.FAILURE)));
-		serial.attribute(null, "failure_percent", Float.toString( 100.0f * (((float)count(EPhpUnitTestStatus.FAILURE))/((float)getTestCount()))));
-		serial.attribute(null, "error", Integer.toString(count(EPhpUnitTestStatus.ERROR)));
-		serial.attribute(null, "error_percent", Float.toString( 100.0f * (((float)count(EPhpUnitTestStatus.ERROR))/((float)getTestCount()))));
-		serial.attribute(null, "crash", Integer.toString(count(EPhpUnitTestStatus.CRASH)));
-		serial.attribute(null, "crash_percent", Float.toString( 100.0f * (((float)count(EPhpUnitTestStatus.CRASH))/((float)getTestCount()))));
-		serial.attribute(null, "skip", Integer.toString(count(EPhpUnitTestStatus.SKIP)));
-		serial.attribute(null, "xskip", Integer.toString(count(EPhpUnitTestStatus.XSKIP)));
-		serial.attribute(null, "warning", Integer.toString(count(EPhpUnitTestStatus.WARNING)));
-		serial.attribute(null, "notice", Integer.toString(count(EPhpUnitTestStatus.NOTICE)));
-		serial.attribute(null, "deprecated", Integer.toString(count(EPhpUnitTestStatus.DEPRECATED)));
-		serial.attribute(null, "not_implemented", Integer.toString(count(EPhpUnitTestStatus.NOT_IMPLEMENTED)));
-		serial.attribute(null, "unsupported", Integer.toString(count(EPhpUnitTestStatus.UNSUPPORTED)));
-		serial.attribute(null, "test_exception", Integer.toString(count(EPhpUnitTestStatus.TEST_EXCEPTION)));
-		serial.attribute(null, "bork", Integer.toString(count(EPhpUnitTestStatus.BORK)));
+		main_serial.attribute(null, "test_pack_name_and_version", test_pack_name_and_version);
+		main_serial.attribute(null, "os_name", host.getOSNameLong());
+		main_serial.attribute(null, "test_count", Integer.toString(test_count));
+		main_serial.attribute(null, "percent_total", Integer.toString( getTestCount() ));
+		main_serial.attribute(null, "pass", Integer.toString(count(EPhpUnitTestStatus.PASS)));
+		main_serial.attribute(null, "pass_percent", Float.toString( passRate() ));
+		main_serial.attribute(null, "timeout", Integer.toString(count(EPhpUnitTestStatus.TIMEOUT)));
+		main_serial.attribute(null, "failure", Integer.toString(count(EPhpUnitTestStatus.FAILURE)));
+		main_serial.attribute(null, "failure_percent", Float.toString( 100.0f * (((float)count(EPhpUnitTestStatus.FAILURE))/((float)getTestCount()))));
+		main_serial.attribute(null, "error", Integer.toString(count(EPhpUnitTestStatus.ERROR)));
+		main_serial.attribute(null, "error_percent", Float.toString( 100.0f * (((float)count(EPhpUnitTestStatus.ERROR))/((float)getTestCount()))));
+		main_serial.attribute(null, "crash", Integer.toString(count(EPhpUnitTestStatus.CRASH)));
+		main_serial.attribute(null, "crash_percent", Float.toString( 100.0f * (((float)count(EPhpUnitTestStatus.CRASH))/((float)getTestCount()))));
+		main_serial.attribute(null, "skip", Integer.toString(count(EPhpUnitTestStatus.SKIP)));
+		main_serial.attribute(null, "xskip", Integer.toString(count(EPhpUnitTestStatus.XSKIP)));
+		main_serial.attribute(null, "warning", Integer.toString(count(EPhpUnitTestStatus.WARNING)));
+		main_serial.attribute(null, "notice", Integer.toString(count(EPhpUnitTestStatus.NOTICE)));
+		main_serial.attribute(null, "deprecated", Integer.toString(count(EPhpUnitTestStatus.DEPRECATED)));
+		main_serial.attribute(null, "not_implemented", Integer.toString(count(EPhpUnitTestStatus.NOT_IMPLEMENTED)));
+		main_serial.attribute(null, "unsupported", Integer.toString(count(EPhpUnitTestStatus.UNSUPPORTED)));
+		main_serial.attribute(null, "test_exception", Integer.toString(count(EPhpUnitTestStatus.TEST_EXCEPTION)));
+		main_serial.attribute(null, "bork", Integer.toString(count(EPhpUnitTestStatus.BORK)));
 		
 		if (ini!=null) {
-			serial.startTag("pftt", "ini");
-			serial.text(ini.toString());
-			serial.endTag("pftt", "ini");
+			main_serial.startTag("pftt", "ini");
+			main_serial.text(ini.toString());
+			main_serial.endTag("pftt", "ini");
 		}
 		
-		serial.endTag("pftt", "tally");
+		main_serial.endTag("pftt", "tally");
 	} // end private void writeTally
 	
 	@Override

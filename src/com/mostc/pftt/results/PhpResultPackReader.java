@@ -76,15 +76,32 @@ public class PhpResultPackReader extends PhpResultPack {
 					continue;
 				
 				String scenario_set_name = scenario_dir.getName();
-				PhptResultReader phpt_reader = new PhptResultReader();
-				phpt_reader.open(cm, scenario_dir, scenario_set_name, reader.build_info, reader.test_pack_branch, reader.test_pack_version);
 				
-				HashMap<String,AbstractPhptRW> map_a = reader.phpt_reader_map.get(host_name);
+				HashMap<String,HashMap<String,AbstractPhptRW>> map_a = reader.phpt_reader_map.get(host_name);
 				if (map_a==null) {
-					map_a = new HashMap<String,AbstractPhptRW>(7);
+					map_a = new HashMap<String,HashMap<String,AbstractPhptRW>>(3);
 					reader.phpt_reader_map.put(host_name, map_a);
 				}
-				map_a.put(scenario_set_name, phpt_reader);
+				File[] dirs2 = scenario_dir.listFiles();
+				if (dirs2==null)
+					continue;
+				for ( File test_pack_dir : dirs2 ) {
+					HashMap<String,AbstractPhptRW> map_b = map_a.get(scenario_set_name);
+					if (map_b==null) {
+						map_b = new HashMap<String,AbstractPhptRW>(7);
+						map_a.put(scenario_set_name, map_b);
+					}
+					
+					PhptResultReader phpt_reader = new PhptResultReader();
+					try {
+						phpt_reader.open(cm, test_pack_dir, scenario_set_name, reader.build_info, reader.test_pack_branch, reader.test_pack_version);
+					} catch ( Exception ex ) {
+						ex.printStackTrace();
+						continue;
+					}
+					
+					map_b.put(test_pack_dir.getName(), phpt_reader);
+				}
 			}
 		}
 	} // end protected static void readPhpt
@@ -179,7 +196,7 @@ public class PhpResultPackReader extends PhpResultPack {
 	} // end protected static void readPhpUnit
 	//
 	//
-	protected final HashMap<String,HashMap<String,AbstractPhptRW>> phpt_reader_map;
+	protected final HashMap<String,HashMap<String,HashMap<String,AbstractPhptRW>>> phpt_reader_map;
 	protected final HashMap<String,HashMap<String,HashMap<String,AbstractPhpUnitRW>>> php_unit_reader_map;
 	protected final HashMap<String,HashMap<String,HashMap<String,HashMap<String,UITestReader>>>> ui_test_reader_map;
 	PhpBuildInfo build_info;
@@ -191,7 +208,7 @@ public class PhpResultPackReader extends PhpResultPack {
 		super(host);
 		this.file = file;
 		ui_test_reader_map = new HashMap<String,HashMap<String,HashMap<String,HashMap<String,UITestReader>>>>(3);
-		phpt_reader_map = new HashMap<String,HashMap<String,AbstractPhptRW>>(3);
+		phpt_reader_map = new HashMap<String,HashMap<String,HashMap<String,AbstractPhptRW>>>(3);
 		php_unit_reader_map = new HashMap<String,HashMap<String,HashMap<String,AbstractPhpUnitRW>>>(3);
 	}
 
@@ -201,19 +218,39 @@ public class PhpResultPackReader extends PhpResultPack {
 	}
 
 	@Override
-	public AbstractPhptRW getPHPT(AHost host, ScenarioSetSetup scenario_set) {
-		return getPHPT(host.getName(), scenario_set);
+	public AbstractPhptRW getPHPT(AHost host, ScenarioSetSetup scenario_set, String test_pack_name) {
+		return getPHPT(host.getName(), scenario_set, test_pack_name);
 	}
 	
-	public AbstractPhptRW getPHPT(String host_name, ScenarioSetSetup scenario_set) {
+	public AbstractPhptRW getPHPT(String host_name, ScenarioSetSetup scenario_set, String test_pack_name) {
 		host_name = host_name.toLowerCase();
-		HashMap<String,AbstractPhptRW> map_a = phpt_reader_map.get(host_name);
-		if (map_a==null) {
-			map_a = new HashMap<String,AbstractPhptRW>();
-			phpt_reader_map.put(host_name, map_a);
-		}
+		HashMap<String,HashMap<String,AbstractPhptRW>> map_a = phpt_reader_map.get(host_name);
+		if (map_a==null)
+			return null;
 		String scenario_set_name = scenario_set.getNameWithVersionInfo().toLowerCase();
-		return map_a.get(scenario_set_name);
+		HashMap<String,AbstractPhptRW> map_b = map_a.get(scenario_set_name);
+		if (map_b==null)
+			return null;
+		return map_b.get(test_pack_name);
+	}
+	
+	@Override
+	public Collection<AbstractPhptRW> getPHPT(AHost host, String test_pack_name) {
+		return getPHPT(host.getName(), test_pack_name);
+	}
+	
+	public Collection<AbstractPhptRW> getPHPT(String host_name, String test_pack_name) {
+		host_name = host_name.toLowerCase();
+		HashMap<String,HashMap<String,AbstractPhptRW>> map_a = phpt_reader_map.get(host_name);
+		LinkedList<AbstractPhptRW> out = new LinkedList<AbstractPhptRW>();
+		if (map_a!=null) {
+			HashMap<String,AbstractPhptRW> map_b = map_a.get(test_pack_name);
+			if (map_b!=null) {
+				for ( AbstractPhptRW b : map_b.values() )
+					out.add(b);
+			}
+		}
+		return out;
 	}
 
 	@Override
@@ -223,12 +260,13 @@ public class PhpResultPackReader extends PhpResultPack {
 	
 	public Collection<AbstractPhptRW> getPHPT(String host_name) {
 		host_name = host_name.toLowerCase();
-		HashMap<String,AbstractPhptRW> map_a = phpt_reader_map.get(host_name);
-		if (map_a==null) {
-			map_a = new HashMap<String,AbstractPhptRW>();
-			phpt_reader_map.put(host_name, map_a);
+		HashMap<String,HashMap<String,AbstractPhptRW>> map_a = phpt_reader_map.get(host_name);
+		LinkedList<AbstractPhptRW> out = new LinkedList<AbstractPhptRW>();
+		if (map_a!=null) {
+			for ( HashMap<String,AbstractPhptRW> b : map_a.values() )
+				out.addAll(b.values());
 		}
-		return map_a.values();
+		return out;
 	}
 
 	@Override
@@ -236,7 +274,8 @@ public class PhpResultPackReader extends PhpResultPack {
 		LinkedList<AbstractPhptRW> out = new LinkedList<AbstractPhptRW>();
 		for ( String host_name : phpt_reader_map.keySet() ) {
 			for ( String scenario_set_name : phpt_reader_map.get(host_name).keySet() ) {
-				out.add(phpt_reader_map.get(host_name).get(scenario_set_name));
+				for ( String test_pack_name : phpt_reader_map.get(host_name).get(scenario_set_name).keySet() )
+					out.add(phpt_reader_map.get(host_name).get(scenario_set_name).get(test_pack_name));
 			}
 		}
 		return out;

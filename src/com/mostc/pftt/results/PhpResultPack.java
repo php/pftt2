@@ -55,7 +55,8 @@ public abstract class PhpResultPack {
 	
 	public abstract File getResultPackPath();
 	public abstract void close();
-	public abstract AbstractPhptRW getPHPT(AHost host, ScenarioSetSetup scenario_set);
+	public abstract AbstractPhptRW getPHPT(AHost host, ScenarioSetSetup scenario_set, String test_pack_name);
+	public abstract Collection<AbstractPhptRW> getPHPT(AHost host, String test_pack_name);
 	public abstract Collection<AbstractPhptRW> getPHPT(AHost host);
 	public abstract Collection<AbstractPhptRW> getPHPT();
 	public abstract Collection<AbstractPhpUnitRW> getPhpUnit(AHost host, ScenarioSetSetup scenario_set);

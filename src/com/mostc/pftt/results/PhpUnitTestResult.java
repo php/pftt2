@@ -168,18 +168,8 @@ public class PhpUnitTestResult implements ISerializer {
 				serial.endTag(null, "SAPIConfig");
 			}
 			
-			if (code_coverage!=null) {
-				code_coverage.serial(serial);
-			}
-		} else {
-			if (code_coverage!=null) {
-				code_coverage.serial(serial);
-			}
 		}
 		//
-		
-		if (extra!=null)
-			extra.serial(serial);
 		
 		serial.endTag(null, "testcase");
 	} // end public void serial
