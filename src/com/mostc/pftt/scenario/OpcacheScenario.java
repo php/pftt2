@@ -136,7 +136,7 @@ public class OpcacheScenario extends CodeCacheScenario {
 					if (build.isNTS(host))
 						version = getDllPath54NTS(host);
 					else
-						version = getDllPath53TS(host);
+						version = getDllPath54TS(host);
 				}
 				break;
 			default:
