@@ -102,7 +102,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			return;
 		not_crashed = false; // @see #runTest
 		
-		twriter.addResult(host, scenario_set, notifyNotPass(new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, null, null, null, null, ini, env, null, stdin_post, null, null, null, null, web==null?null:web.getSAPIOutput(), web==null?null:web.getSAPIConfig())));
+		twriter.addResult(host, scenario_set, src_test_pack, notifyNotPass(new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, null, null, null, null, ini, env, null, stdin_post, null, null, null, null, web==null?null:web.getSAPIOutput(), web==null?null:web.getSAPIConfig())));
 	}
 	
 	/** executes SKIPIF, TEST or CLEAN over http.

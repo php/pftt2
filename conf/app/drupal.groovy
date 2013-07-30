@@ -11,7 +11,7 @@ def scenarios() {
 /** see drupal.patch.txt for patch to drupal required to make this work
  *
  */
-class DrupalPhpUnitTestPack extends PhpUnitSourceTestPack {
+class DrupalPhpUnitTestPack extends RequiredDatabasePhpUnitSourceTestPack {
 	
 	@Override
 	public String getNameAndVersionString() {

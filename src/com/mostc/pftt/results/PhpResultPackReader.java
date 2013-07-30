@@ -89,6 +89,8 @@ public class PhpResultPackReader extends PhpResultPack {
 				if (dirs2==null)
 					continue;
 				for ( File scenario_dir : dirs2 ) {
+					if (!scenario_dir.isDirectory())
+						continue;
 					String scenario_set_name = scenario_dir.getName();
 					
 					PhptResultReader phpt_reader = new PhptResultReader();

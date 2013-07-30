@@ -8,7 +8,7 @@ def scenarios() {
 }
 
 // MediaWiki PhpUnit Code Coverage: https://integration.wikimedia.org/cover/mediawiki-core/master/php/
-class MediaWikiPhpUnitTestPack extends DatabasePhpUnitSourceTestPack {
+class MediaWikiPhpUnitTestPack extends RequiredDatabasePhpUnitSourceTestPack {
 	
 	@Override
 	public String getNameAndVersionString() {

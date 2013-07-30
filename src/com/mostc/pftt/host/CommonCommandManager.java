@@ -5,11 +5,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class CommonCommandManager {
-	protected SoftReference<String[]> wer_fault_query;
-	protected final ReentrantLock wer_fault_query_lock, win_close_all_handles_lock, win_kill_process_lock;
+	protected SoftReference<String[]> process_table_query;
+	protected final ReentrantLock process_table_query_lock, win_close_all_handles_lock, win_kill_process_lock;
 	
 	public CommonCommandManager() {
-		wer_fault_query_lock = new ReentrantLock();
+		process_table_query_lock = new ReentrantLock();
 		win_close_all_handles_lock = new ReentrantLock();
 		win_kill_process_lock = new ReentrantLock();
 	}
@@ -95,27 +95,19 @@ public class CommonCommandManager {
 		}
 	}
 	
-	/** finds and kills any WERFault.exe processes (WER popup message) created for given process.
-	 * 
-	 * this method will only launch one WMIC query process at a time per Localhost instance. this added complexity (complexity
-	 * entirely handled internally by this method) is needed to avoid a WMIC process-storm if this method is called many times (30+)
-	 * in quick succession.
-	 * 
-	 * @param host
-	 * @param process_id
-	 */
-	public boolean ensureWERFaultIsNotRunning(AHost host, int process_id) {
+	
+	protected String[] getWindowsProcessTable(AHost host) {
 		// lock if no other thread is waiting
-		final boolean no_other_thread_is_waiting = wer_fault_query_lock.tryLock();
+		final boolean no_other_thread_is_waiting = process_table_query_lock.tryLock();
 
 		if (!no_other_thread_is_waiting)
 			// wait and lock until other thread is done
-			wer_fault_query_lock.lock();
+			process_table_query_lock.lock();
 		
 		
 		String[] lines = null;
-		if (wer_fault_query!=null)
-			lines = wer_fault_query.get();
+		if (process_table_query!=null)
+			lines = process_table_query.get();
 		
 		if (lines==null||no_other_thread_is_waiting) {
 			// only query again if:
@@ -129,9 +121,24 @@ public class CommonCommandManager {
 			} catch ( Exception ex ) {
 			}
 			
-			wer_fault_query = new SoftReference<String[]>(lines);
+			process_table_query = new SoftReference<String[]>(lines);
 		}
-		wer_fault_query_lock.unlock();
+		process_table_query_lock.unlock();
+		
+		return lines;
+	}
+	
+	/** finds and kills any WERFault.exe processes (WER popup message) created for given process.
+	 * 
+	 * this method will only launch one WMIC query process at a time per Localhost instance. this added complexity (complexity
+	 * entirely handled internally by this method) is needed to avoid a WMIC process-storm if this method is called many times (30+)
+	 * in quick succession.
+	 * 
+	 * @param host
+	 * @param process_id
+	 */
+	public boolean ensureWERFaultIsNotRunning(AHost host, int process_id) {
+		String[] lines = getWindowsProcessTable(host);
 		
 		if (lines==null)
 			return false; // just in case
@@ -154,6 +161,34 @@ public class CommonCommandManager {
 		return false;
 	}
 	
+	public boolean ensureWinDebugIsNotRunning(LocalHost host, int pid) {
+		// look for `windbg [other args] -p <process id> [other args]`
+		String[] lines = getWindowsProcessTable(host);
+		
+		if (lines==null)
+			return false; // just in case
+		
+		String prev_line = "";
+		for ( String line : lines ) {
+			line = line.toLowerCase();
+			// @see WinDebugManager for command line args
+			if (line.contains("windbg.exe") && line.contains("-p "+pid)) {
+				
+				// get PID of windbg process to kill
+				int blocking_process_id = Integer.parseInt(prev_line.trim());
+				
+				// kill it
+				winKillProcess(host, "windbg.exe", blocking_process_id);
+				
+				// now target process (pid) should be able to terminate 
+				//  (should terminate immediately after windbg killed actually)
+				return true;
+			}
+			prev_line = line;
+		}
+		return false;
+	}
+	
 	public boolean move(AHost host, String src, String dst, boolean elevated) throws Exception {
 		if (!host.isSafePath(dst))
 			return false;
@@ -162,9 +197,9 @@ public class CommonCommandManager {
 			dst = AHost.toWindowsPath(dst);
 			
 			if (elevated)
-				host.cmdElevated("move \""+src+"\" \""+dst+"\"", AHost.NO_TIMEOUT);
+				host.cmdElevated("move /Y \""+src+"\" \""+dst+"\"", AHost.NO_TIMEOUT);
 			else
-				host.cmd("move \""+src+"\" \""+dst+"\"", AHost.NO_TIMEOUT);
+				host.cmd("move /Y \""+src+"\" \""+dst+"\"", AHost.NO_TIMEOUT);
 		} else {
 			src = AHost.toUnixPath(src);
 			dst = AHost.toUnixPath(dst);

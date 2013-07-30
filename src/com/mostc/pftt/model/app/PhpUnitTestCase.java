@@ -11,15 +11,13 @@ import com.mostc.pftt.model.TestCase;
  *
  */
 
-// TODO @dataProvider support http://phpunit.de/manual/3.7/en/appendixes.annotations.html#appendixes.annotations.dataProvider
-// TODO @depends support http://phpunit.de/manual/3.7/en/appendixes.annotations.html#appendixes.annotations.depends
 public class PhpUnitTestCase extends TestCase {
 	public static final int MAX_TEST_TIME_SECONDS = 60;
 	protected final PhpUnitDist php_unit_dist;
-	protected final String abs_filename, rel_filename, className, methodName;
+	protected final String abs_filename, rel_filename, className, methodName, dependsMethodName, dataProviderMethodName;
 	protected final int arg_count;
 	
-	protected PhpUnitTestCase(PhpUnitDist php_unit_dist, String abs_filename, String rel_filename, String className, String methodName, int arg_count) {
+	protected PhpUnitTestCase(PhpUnitDist php_unit_dist, String abs_filename, String rel_filename, String className, String methodName, int arg_count, String dataProviderMethodName, String dependsMethodName) {
 		this.php_unit_dist = php_unit_dist;
 		// don't need to call #normalizeFilename here usually. it's called in PhpUnitSourcetestPack#readDir...
 		// calling it (again )here would be a performance hit
@@ -30,6 +28,16 @@ public class PhpUnitTestCase extends TestCase {
 		this.className = className;
 		this.methodName = methodName;
 		this.arg_count = arg_count;
+		this.dataProviderMethodName = dataProviderMethodName;
+		this.dependsMethodName = dependsMethodName;
+	}
+	
+	public String getDataProviderMethodName() {
+		return dataProviderMethodName;
+	}
+	
+	public String getDependsMethodName() {
+		return dependsMethodName;
 	}
 	
 	public int getArgCount() {

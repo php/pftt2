@@ -118,14 +118,14 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 		String name = test_case.getName();
 		if (name.contains("svsvmsg")||name.contains("sysvshm")||name.contains("posix")||name.contains("ftp")||name.contains("dba")||name.contains("sybase")||name.contains("interbase")||name.contains("ldap")||name.contains("imap")||name.contains("oci")||name.contains("soap")||name.contains("xmlrpc")||name.contains("pcntl")||name.contains("odbc")||name.contains("snmp")) {
 			// TODO temp 5/29
-			twriter.addResult(runner_host, scenario_set_setup, new PhptTestResult(runner_host, EPhptTestStatus.SKIP, test_case, "Skip", null, null, null, null, null, null, null, null, null, null, null));
+			twriter.addResult(runner_host, scenario_set_setup, src_test_pack, new PhptTestResult(runner_host, EPhptTestStatus.SKIP, test_case, "Skip", null, null, null, null, null, null, null, null, null, null, null));
 			return null;
 		}
 		
 		final ESAPIType sapi_type = sapi_scenario.getSAPIType();
 		for ( Scenario scenario : scenario_set ) {
 			// usually just asking sapi_scenario, sometimes file system scenario
-			if (scenario.willSkip(cm, twriter, runner_host, scenario_set_setup, sapi_type, build, test_case)) {
+			if (scenario.willSkip(cm, twriter, runner_host, scenario_set_setup, sapi_type, build, src_test_pack, test_case)) {
 				// #willSkip will record the PhptTestResult explaining why it was skipped
 				//
 				// do some checking before making a PhpIni (part of group_key) below
@@ -141,7 +141,7 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 		//
 		// now that PhpIni is generated, we know which extensions will be loaded
 		//  so we can now skip tests of extensions that aren't loaded (faster than running every test's SKIPIF section)
-		if (sapi_scenario.willSkip(cm, twriter, runner_host, scenario_set_setup, sapi_scenario.getSAPIType(), group_key.getPhpIni(), build, test_case)) {
+		if (sapi_scenario.willSkip(cm, twriter, runner_host, scenario_set_setup, sapi_scenario.getSAPIType(), group_key.getPhpIni(), build, src_test_pack, test_case)) {
 			// #willSkip will record the PhptTestResult explaining why it was skipped
 			return null;
 		}
@@ -182,7 +182,7 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 	} // end protected void postGroup
 	
 	protected void reportGroups() {
-		PhptResultWriter phpt = (PhptResultWriter) ((PhpResultPackWriter)twriter).getPHPT(runner_host, scenario_set_setup);
+		PhptResultWriter phpt = (PhptResultWriter) ((PhpResultPackWriter)twriter).getPHPT(runner_host, scenario_set_setup, src_test_pack.getNameAndVersionString());
 		phpt.reportGroups(thread_safe_groups, non_thread_safe_exts);
 	} 
 	
@@ -201,7 +201,7 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 		@Override
 		protected void runTest(TestCaseGroupKey group_key, PhptTestCase test_case) throws IOException, Exception, Throwable {
 			r = sapi_scenario.createPhptTestCaseRunner(this, group_key, test_case, cm, twriter, runner_host, scenario_set_setup, build, src_test_pack, active_test_pack);
-			twriter.notifyStart(runner_host, scenario_set_setup, test_case);
+			twriter.notifyStart(runner_host, scenario_set_setup, src_test_pack, test_case);
 			r.runTest(cm, this, LocalPhptTestPackRunner.this);
 		}
 
@@ -218,14 +218,14 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 
 		@Override
 		protected void recordSkipped(PhptTestCase test_case) {
-			twriter.addResult(runner_host, scenario_set_setup, new PhptTestResult(runner_host, EPhptTestStatus.SKIP, test_case, "test timed out", null, null, null, null, null, null, null, null, null, null, null));
+			twriter.addResult(runner_host, scenario_set_setup, src_test_pack, new PhptTestResult(runner_host, EPhptTestStatus.TIMEOUT, test_case, "test timed out", null, null, null, null, null, null, null, null, null, null, null));
 		}
 		
 	} // end public class PhptThread
 
 	@Override
 	protected void showTally() {
-		AbstractPhptRW phpt = ((PhpResultPackWriter)twriter).getPHPT(runner_host, scenario_set_setup);
+		AbstractPhptRW phpt = ((PhpResultPackWriter)twriter).getPHPT(runner_host, scenario_set_setup, src_test_pack.getNameAndVersionString());
 		for ( EPhptTestStatus status : EPhptTestStatus.values() ) {
 			cm.println(EPrintType.CLUE, getClass(),  status+" "+phpt.count(status)+" tests");
 		}

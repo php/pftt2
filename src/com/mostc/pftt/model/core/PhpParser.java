@@ -2,6 +2,7 @@ package com.mostc.pftt.model.core;
 
 import java.io.File;
 
+import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -38,6 +39,8 @@ import com.caucho.vfs.FileReadStream;
 import com.caucho.vfs.NullPath;
 import com.caucho.vfs.ReadStream;
 import com.caucho.vfs.StringStream;
+import com.github.mattficken.io.IOUtil;
+import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.results.ISerializer;
 import com.mostc.pftt.results.TestCaseCodeCoverage;
 
@@ -78,11 +81,12 @@ public class PhpParser {
 					new FilePath(file.getAbsolutePath()), 
 					new ReadStream(new FileReadStream(new FileInputStream(file)))
 				);
-			return new PhpScript(file, new Env(qctx), p.parse());
+			String php_code_str = IOUtil.toString(new BufferedInputStream(new FileInputStream(file)), IOUtil.ONE_MEGABYTE);
+			return new PhpScript(file, php_code_str, new Env(qctx), p.parse());
 		} catch ( Exception ex ) {
 			//ex.printStackTrace();
 		}
-		return new PhpScript(file, null, null);
+		return new PhpScript(file, "", null, null);
 	} // end public static PhpScript parseScript
 	
 	/** parses PhpScript from string containing php code
@@ -99,11 +103,11 @@ public class PhpParser {
 					filename == null ? new NullPath("<unknown>") : new FilePath(filename),  
 					StringStream.open(php_code_str)
 				);
-			return new PhpScript(php_code_str, new Env(qctx), p.parse());
+			return new PhpScript(php_code_str, php_code_str, new Env(qctx), p.parse());
 		} catch ( Exception ex ) {
 			//ex.printStackTrace();
 		}
-		return new PhpScript(php_code_str, null, null);
+		return new PhpScript(php_code_str, php_code_str, null, null);
 	}
 	
 	public static PhpScript parseScript(String php_code_str) {
@@ -131,10 +135,12 @@ public class PhpParser {
 	public static class PhpScript extends PhpCode {
 		protected final QuercusProgram prog;
 		protected final Object source;
+		protected final String source_code;
 		
-		protected PhpScript(Object source, Env env, QuercusProgram prog) {
+		protected PhpScript(Object source, String source_code, Env env, QuercusProgram prog) {
 			super(env);
 			this.source = source;
+			this.source_code = source_code;
 			this.prog = prog;
 		}
 		
@@ -150,7 +156,7 @@ public class PhpParser {
 				ClassDefinition[] defs = new ClassDefinition[clazzes.size()];
 				int i=0;
 				for ( InterpretedClassDef clazz : clazzes )
-					defs[i++] = new ClassDefinition(env, clazz);
+					defs[i++] = new ClassDefinition(env, this, clazz);
 				return defs;
 			}
 		}
@@ -683,9 +689,11 @@ public class PhpParser {
 	
 	public static class ClassDefinition extends CodeBlock {
 		protected final ClassDef clazz;
+		protected final PhpScript ps;
 		
-		protected ClassDefinition(Env env, ClassDef clazz) {
+		protected ClassDefinition(Env env, PhpScript ps, ClassDef clazz) {
 			super(env);
+			this.ps = ps;
 			this.clazz = clazz;
 		}
 		
@@ -770,6 +778,10 @@ public class PhpParser {
 		@Override
 		public String toString() {
 			return clazz.toString();
+		}
+
+		public PhpScript getPhpScript() {
+			return ps;
 		}
 		
 	} // end public static class ClassDefinition
@@ -958,7 +970,7 @@ public class PhpParser {
 										out.add(
 												new UserFunctionCall(env, this, call.getLocation(),
 														// TODO lookup the class this function actually belongs to
-													new FunctionDefinition(env, new ClassDefinition(env, qc.getClassDef()), f)
+													new FunctionDefinition(env, new ClassDefinition(env, clazz.ps, qc.getClassDef()), f)
 												));
 										continue;
 									}
@@ -987,6 +999,12 @@ public class PhpParser {
 		public void serial(XmlSerializer serial) throws IllegalArgumentException, IllegalStateException, IOException {
 			serial.startTag("pftt", "function");
 			serial.attribute("pftt", "name", getName());
+			final String ds = getDocstring();
+			if (StringUtil.isNotEmpty(ds)) {
+				serial.startTag("pftt", "docstring");
+				serial.text(ds);
+				serial.endTag("pftt", "docstring");
+			}
 			serial.startTag("pftt", "arguments");
 			for ( VariableValue arg : getArguments() )
 				arg.serial(serial);
@@ -1016,6 +1034,55 @@ public class PhpParser {
 		@Override
 		public String toString() {
 			return getName();
+		}
+		
+		/** gets docstring (documentation) for this function
+		 * 
+		 */
+		public String getDocstring() {
+			PhpScript ps = clazz.getPhpScript();
+			int i = ps.source_code.indexOf("function "+getName());
+			if (i==-1)
+				return null;
+			i = ps.source_code.lastIndexOf("*/", i);
+			if (i==-1)
+				return null;
+			int j = ps.source_code.lastIndexOf("/*", i);
+			if (j==-1)
+				return null;
+			return ps.source_code.substring(j, i);
+		}
+		
+		/** returns names and values of annotations from docstring
+		 * 
+		 * @return
+		 */
+		public HashMap<String,String> getAnnotations() {
+			String docstring = getDocstring();
+			if (StringUtil.isEmpty(docstring))
+				return new HashMap<String,String>();
+			HashMap<String,String> map = new HashMap<String,String>();
+			int i, j;
+			for ( String line : StringUtil.splitLines(docstring) ) {
+				i = line.indexOf('@');
+				if (i==-1)
+					continue;
+				j = line.indexOf(' ', i+1);
+				if (j==-1)
+					map.put(line.substring(i+1), "");
+				else
+					map.put(line.substring(i+1, j), line.substring(j+1));
+			}
+			return map;
+		}
+		
+		/** returns the value of this annotation or null if annotation does not exist
+		 * 
+		 * @param name
+		 * @return
+		 */
+		public String getAnnotationValue(String name) {
+			return getAnnotations().get(name);
 		}
 		
 	} // end public static class FunctionDefinition

@@ -5,8 +5,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.annotation.Nullable;
-
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.app.EPhpUnitTestStatus;
 import com.mostc.pftt.model.app.PhpUnitActiveTestPack;
@@ -40,17 +38,6 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 		super(cm, twriter, scenario_set, build, storage_host, runner_host);
 	}
 	
-	@Override
-	protected ITestPackStorageDir doSetupStorageAndTestPack(boolean test_cases_read, @Nullable List<PhpUnitTestCase> test_cases) throws Exception {
-		if (test_cases_read) {
-			
-			// TODO cm.println(EPrintType.IN_PROGRESS, getClass(), "installed tests("+test_cases.size()+") from test-pack onto storage: local="+local_test_pack_dir+" remote="+remote_test_pack_dir);
-			
-			return null;
-		}
-		return super.doSetupStorageAndTestPack(test_cases_read, test_cases);
-	}
-
 	protected String temp_base_dir;
 	protected boolean reflection_only;
 	@Override
@@ -222,7 +209,7 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 
 		@Override
 		protected void recordSkipped(PhpUnitTestCase test_case) {
-			twriter.addResult(runner_host, scenario_set_setup, new PhpUnitTestResult(test_case, EPhpUnitTestStatus.SKIP, scenario_set_setup, runner_host, null, null, 0, null, "PFTT: Test Timed Out", null));
+			twriter.addResult(runner_host, scenario_set_setup, new PhpUnitTestResult(test_case, EPhpUnitTestStatus.TIMEOUT, scenario_set_setup, runner_host, null, null, 0, null, "PFTT: Test Timed Out", null));
 		}
 		
 	} // end public class PhpUnitThread

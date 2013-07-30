@@ -12,7 +12,7 @@ def describe() {
  */
 // use symfony-standard instead of just symfony
 // seems that composer.json from symfony-standard installs a bunch of extra modules that composer.json from symfony does not
-class SymfonyPhpUnitTestPack extends PhpUnitSourceTestPack {
+class SymfonyPhpUnitTestPack extends OptionalDatabasePhpUnitSourceTestPack {
 	
 	@Override
 	public String getNameAndVersionString() {
@@ -41,6 +41,8 @@ class SymfonyPhpUnitTestPack extends PhpUnitSourceTestPack {
 	protected boolean openAfterInstall(ConsoleManager cm, AHost host) throws Exception {
 		// 1. do initial install (if not done already)
 		if (!host.exists(getRoot()+"/vendor")) {
+			// TODO modified require_once __DIR__ in C:\php-sdk\PFTT\current\cache\working\symfony-standard\vendor\symfony\symfony\vendor\symfony\symfony\autoload.php.dist
+			//          -fixes ~100 (or less) TEST_EXCEPTIONs
 			if (host.isWindows()) {
 				// composer needs git
 				host.exec(host.getPfttDir()+"\\cache\\dep\\git.exe /VERYSILENT /SP-", AHost.ONE_MINUTE*4)

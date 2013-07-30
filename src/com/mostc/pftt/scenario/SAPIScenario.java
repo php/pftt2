@@ -189,11 +189,11 @@ public abstract class SAPIScenario extends AbstractSerialScenario {
 	public static Trie SCENARIO_EXTS = PhptTestCase.createExtensions("dba", "sybase", "snmp", "interbase", "ldap", "imap", "oci8", "pcntl", "soap", "xmlrpc", "pdo", "odbc", "pdo_mssql", "mssql", "pdo_pgsql", "sybase_ct", "ftp", "curl");
 
 	@Override
-	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup setup, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup setup, ESAPIType type, PhpBuild build, PhptSourceTestPack src_test_pack, PhptTestCase test_case) throws Exception {
 		if (host.isWindows()) {
 			if (test_case.isExtension(NON_WINDOWS_EXTS)) {
 				// extensions not supported on Windows
-				twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "OS not supported", null, null, null, null, null, null, null, null, null, null, null));
+				twriter.addResult(host, setup, src_test_pack, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "OS not supported", null, null, null, null, null, null, null, null, null, null, null));
 				
 				return true;
 			}
@@ -202,36 +202,36 @@ public abstract class SAPIScenario extends AbstractSerialScenario {
 			// skip windows specific tests if host is not windows
 			// do an early quick check... also fixes problem with sapi/cli/tests/021.phpt
 			
-			twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "OS not supported", null, null, null, null, null, null, null, null, null, null, null));
+			twriter.addResult(host, setup, src_test_pack, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "OS not supported", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return true;
 		}
 		if (build.is53(cm, host)) {
 			if (test_case.isNamed(TESTS53)) {
-				twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null, null));
+				twriter.addResult(host, setup, src_test_pack, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null, null));
 				
 				return true;	
 			}
 		}
 		// TODO || ?
 		if (test_case.containsSection(EPhptSection.REQUEST)||test_case.isNamed(RANDOMLY_FAIL)) {
-			twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null, null));
+			twriter.addResult(host, setup, src_test_pack, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return true;
 		} else if (test_case.isExtension(SCENARIO_EXTS)) {
 			// TODO don't run these SKIPIFs without the scenario loaded
-			twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.SKIP, test_case, "test would've been skipped", null, null, null, null, null, null, null, null, null, null, null));
+			twriter.addResult(host, setup, src_test_pack, new PhptTestResult(host, EPhptTestStatus.SKIP, test_case, "test would've been skipped", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return true;
 		}
 		return false;
 	} // end public boolean willSkip
 	
-	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, ESAPIType type, PhpIni ini, PhpBuild build, PhptTestCase test_case) throws Exception {
+	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, ESAPIType type, PhpIni ini, PhpBuild build, PhptSourceTestPack src_test_pack, PhptTestCase test_case) throws Exception {
 		if (test_case.isExtensionTest() && !build.isExtensionEnabled(cm, host, type, ini, test_case.getExtensionName())) {
 			// if extension-under-test is not loaded, don't bother running test since it'll just be skipped (or false fail)
 			
-			twriter.addResult(host, scenario_set_setup, new PhptTestResult(host, EPhptTestStatus.SKIP, test_case, "Extension not loaded", null, null, null, ini, null, null, null, null, null, null, null));
+			twriter.addResult(host, scenario_set_setup, src_test_pack, new PhptTestResult(host, EPhptTestStatus.SKIP, test_case, "Extension not loaded", null, null, null, ini, null, null, null, null, null, null, null));
 			
 			return true;
 		}

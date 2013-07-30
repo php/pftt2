@@ -257,15 +257,15 @@ public class CliScenario extends SAPIScenario {
 			"zend/tests/multibyte/multibyte_encoding_002.phpt"
 		);
 	@Override
-	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup setup, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
-		if (super.willSkip(cm, twriter, host, setup, type, build, test_case)) {
+	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup setup, ESAPIType type, PhpBuild build, PhptSourceTestPack src_test_pack, PhptTestCase test_case) throws Exception {
+		if (super.willSkip(cm, twriter, host, setup, type, build, src_test_pack, test_case)) {
 			return true;
 		} else if (cm.isDisableDebugPrompt()&&test_case.isNamed(DISABLE_DEBUG_PROMPT)) {
-			twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it"));
+			twriter.addResult(host, setup, src_test_pack, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it"));
 			
 			return true;
 		} else if (test_case.isNamed(RANDOMLY_FAIL)) {
-			twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it"));
+			twriter.addResult(host, setup, src_test_pack, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it"));
 			
 			return true;
 		}

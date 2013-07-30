@@ -12,6 +12,7 @@ import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.ESAPIType;
 import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.model.core.PhptSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
@@ -38,7 +39,7 @@ import com.mostc.pftt.results.ITestResultReceiver;
 public abstract class Scenario {
 
 	@Overridable
-	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup setup, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
+	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup setup, ESAPIType type, PhpBuild build, PhptSourceTestPack src_test_pack, PhptTestCase test_case) throws Exception {
 		return false;
 	}
 	

@@ -15,7 +15,7 @@ def getUITestPack() {
 /** see wordpress-tests.patch.txt for patch to wordpress-tests required to make this work
  * 
  */
-class WordpressPhpUnitTestPack extends DatabasePhpUnitSourceTestPack {
+class WordpressPhpUnitTestPack extends RequiredDatabasePhpUnitSourceTestPack {
 	
 	@Override
 	public String getNameAndVersionString() {

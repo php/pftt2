@@ -13,6 +13,7 @@ import java.util.Map;
 import javax.annotation.Nullable;
 
 import com.github.mattficken.Overridable;
+import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.LocalHost;
@@ -27,6 +28,7 @@ import com.mostc.pftt.model.core.PhpParser.FunctionDefinition;
 import com.mostc.pftt.model.core.PhpParser.PhpScript;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
+import com.mostc.pftt.results.PhpResultPackWriter;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 /** Represents a pack of PhpUnitTestCases and the configuration information needed to run them.
@@ -49,6 +51,9 @@ import com.mostc.pftt.scenario.ScenarioSet;
  * 7. optionally, add pre-bootstrap and post-bootstrap php code that will be run before or after the bootstrap file is loaded
  *      NOTE: what `phpunit` calls 'preamble' code, is post-bootstrap in PFTT.
  * 8. optionally, add globals to #prepareGlobals. optionally, add INI directives to #prepareINI
+ * 
+ * If your test-pack MUST be run with a database scenario (ex: mysql), you should extend RequiredDatabasePhpUnitSourceTestPack instead (it'll take care of making sure a database scenario is included in the configuration).
+ * If your test-pack has some database tests that can be run, you should extend OptionalDatabasePhpUnitSourceTestPack.
  * 
  *  While your test-pack is in development, you should override #isDevelopment and have it return true. You'll get more stack traces and other
  *  information to help during the develop-test cycle you'll be in developing your test-pack.
@@ -187,6 +192,16 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 		return this;
 	}
 	
+	@Override
+	public void read(Config config, List<PhpUnitTestCase> test_cases, List<String> names, ConsoleManager cm, PhpResultPackWriter twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {
+		read(config, test_cases, names, cm, twriter, build, false);
+	}
+	
+	@Override
+	public void read(Config config, List<PhpUnitTestCase> test_cases, List<String> names, ConsoleManager cm, PhpResultPackWriter twriter, PhpBuild build, boolean ignore_missing) throws FileNotFoundException, IOException, Exception {
+		doRead(config, cm, test_cases, names);
+	}
+	
 	/** reads all the PhpUnitTestCases from this test-pack
 	 * 
 	 * @param config
@@ -209,9 +224,19 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 		}
 		//
 		
+		doRead(config, cm, test_cases, null);
+		
+		// cache for future use
+		_test_cases = new ArrayList<PhpUnitTestCase>(test_cases.size());
+		_test_cases.addAll(test_cases);
+		_ref_test_cases = new SoftReference<ArrayList<PhpUnitTestCase>>(_test_cases);
+		//
+	}
+	
+	protected void doRead(Config config, ConsoleManager cm, List<PhpUnitTestCase> test_cases, List<String> test_names) throws IOException {
 		final int max_read_count = cm.getMaxTestReadCount();
 		for (PhpUnitDist php_unit_dist : php_unit_dists) {
-			readDir(config, max_read_count, test_cases, php_unit_dist, php_unit_dist.path);
+			readDir(config, max_read_count, test_cases, php_unit_dist, php_unit_dist.path, test_names);
 		}
 		
 		// alphabetize
@@ -221,13 +246,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 					return a.getName().compareTo(b.getName());
 				}
 			});
-		
-		// cache for future use
-		_test_cases = new ArrayList<PhpUnitTestCase>(test_cases.size());
-		_test_cases.addAll(test_cases);
-		_ref_test_cases = new SoftReference<ArrayList<PhpUnitTestCase>>(_test_cases);
-		//
-	} // end public void read
+	}
 	
 	/** Many test-packs store their phpunit tests only in files that end with `Test.php`,
 	 * but some don't.
@@ -263,7 +282,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	 * @param dir
 	 * @throws IOException
 	 */
-	protected void readDir(Config config, final int max_read_count, List<PhpUnitTestCase> test_cases, PhpUnitDist php_unit_dist, File dir) throws IOException {
+	protected void readDir(Config config, final int max_read_count, List<PhpUnitTestCase> test_cases, PhpUnitDist php_unit_dist, File dir, List<String> test_names) throws IOException {
 		if (max_read_count > 0 && test_cases.size() >= max_read_count)
 			return;
 		
@@ -275,7 +294,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 			if (file.isDirectory()) {
 				if (max_read_count > 0 && test_cases.size() >= max_read_count)
 					return;
-				readDir(config, max_read_count, test_cases, php_unit_dist, file);
+				readDir(config, max_read_count, test_cases, php_unit_dist, file, test_names);
 				if (max_read_count > 0 && test_cases.size() >= max_read_count)
 					return;
 			} else if (isFileNameATest(file.getName())) {
@@ -284,6 +303,17 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 				String abs_file_name = PhpUnitTestCase.normalizeFileName(file.getAbsolutePath());
 				
 				String lc_test_file_name = rel_file_name.toLowerCase();
+				if (test_names!=null) {
+					boolean skip = true;
+					for ( String test_name : test_names ) {
+						if (lc_test_file_name.contains(test_name)) {
+							skip = false;
+							break;
+						}
+					}
+					if (skip)
+						continue;
+				}
 				if (blacklist_test_names.contains(lc_test_file_name))
 					continue;
 				else if (!whitelist_test_names.isEmpty() && !whitelist_test_names.contains(lc_test_file_name))
@@ -310,6 +340,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	 */
 	protected void readTestFile(Config config, final int max_read_count, String rel_test_file_name, String abs_test_file_name, PhpUnitDist php_unit_dist, List<PhpUnitTestCase> test_cases, File file) {
 		PhpScript script = PhpParser.parseScript(file);
+		String dataProviderMethodName, dependsMethodName;
 		
 		for ( ClassDefinition clazz : script.getClasses() ) {
 			if (clazz.isAbstract()||clazz.isInterface())
@@ -319,6 +350,16 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 				// search class for functions that start with 'test'
 				if (isFunctionATest(func.getName())) {
 					// this is a test case
+					//
+					//
+					// some tests use these annotations to provide the name of a function (in same class)
+					// to call to get the arguments for this test case method
+					//
+					// @see http://phpunit.de/manual/3.7/en/appendixes.annotations.html#appendixes.annotations.dataProvider
+					dataProviderMethodName = cleanFunctionName(func.getAnnotationValue("dataProvider"));
+					// @see http://phpunit.de/manual/3.7/en/appendixes.annotations.html#appendixes.annotations.depends
+					dependsMethodName = cleanFunctionName(func.getAnnotationValue("depends"));
+					
 					PhpUnitTestCase test_case = new PhpUnitTestCase(
 							php_unit_dist,
 							abs_test_file_name,
@@ -329,7 +370,9 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 							clazz.getName(),
 							// name of method within the class
 							func.getName(),
-							func.getArgumentCount()
+							func.getArgumentCount(),
+							dataProviderMethodName,
+							dependsMethodName
 						);
 					config.processPhpUnit(test_case);
 					test_cases.add(test_case);
@@ -340,6 +383,19 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 			}
 		}
 	} // end protected void readTestFile
+	
+	protected static String cleanFunctionName(String name) {
+		if (StringUtil.isEmpty(name))
+			return null;
+		name = name.trim();
+		int i = name.indexOf("::");
+		if (i!=-1)
+			name = name.substring(i+"::".length());
+		i = name.indexOf('(');
+		if (i!=-1)
+			name = name.substring(0, i);
+		return StringUtil.isEmpty(name) ? null : name;
+	}
 
 	@Override
 	public void cleanup(ConsoleManager cm) {
@@ -375,11 +431,17 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	}
 
 	@Override
-	public PhpUnitActiveTestPack installNamed(AHost host, String string,
-			List<PhpUnitTestCase> test_cases) throws IllegalStateException,
-			IOException, Exception {
-		// TODO Auto-generated method stub
-		return null;
+	public PhpUnitActiveTestPack installNamed(ConsoleManager cm, AHost host, String string, List<PhpUnitTestCase> test_cases) throws IllegalStateException, IOException, Exception {
+		final String src_root = getSourceRoot(new LocalHost());
+		addIncludeDirectory(src_root);
+		if (!new File(src_root).isDirectory()) {
+			throw new IOException("source-test-pack not found: "+src_root);
+		}
+		setRoot(src_root);
+		
+		openAfterInstall(cm, host);
+		
+		return new PhpUnitActiveTestPack(src_root, src_root);
 	}
 
 	@Override

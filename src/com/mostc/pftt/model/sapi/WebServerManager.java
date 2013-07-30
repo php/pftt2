@@ -42,8 +42,6 @@ public abstract class WebServerManager extends SAPIManager {
 	 */
 	public abstract IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build);
 	
-	public abstract boolean start(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini);
-	
 	public abstract boolean stop(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini);
 	
 	public abstract String getName();
@@ -153,6 +151,7 @@ public abstract class WebServerManager extends SAPIManager {
 		//
 		env.put(AbstractPhptTestCaseRunner.ENV_PFTT_SCENARIO_SET, scenario_set.getName());
 		env.put(AbstractPhptTestCaseRunner.ENV_PFTT_IS, "1");
+		
 		return env;
 	}
 	

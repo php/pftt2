@@ -272,12 +272,12 @@ public class BuiltinWebServerScenario extends WebServerScenario {
 	}
 	
 	@Override
-	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup setup, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
-		if (super.willSkip(cm, twriter, host, setup, type, build, test_case)) {
+	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup setup, ESAPIType type, PhpBuild build, PhptSourceTestPack src_test_pack, PhptTestCase test_case) throws Exception {
+		if (super.willSkip(cm, twriter, host, setup, type, build, src_test_pack, test_case)) {
 			return true;
 		} else if (test_case.isNamed(NOT_ON_BUILTIN_WEB_SERVER)) {
 
-			twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on builtin web server", null, null, null, null, null, null, null, null, null, null, null));
+			twriter.addResult(host, setup, src_test_pack, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on builtin web server", null, null, null, null, null, null, null, null, null, null, null));
 			return true;
 		} else {
 			return false;

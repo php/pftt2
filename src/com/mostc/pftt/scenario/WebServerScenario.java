@@ -118,7 +118,7 @@ public abstract class WebServerScenario extends SAPIScenario {
 	public TestCaseGroupKey createTestGroupKey(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSetSetup scenario_set_setup, PhptActiveTestPack active_test_pack, PhptTestCase test_case, IENVINIFilter filter, TestCaseGroupKey group_key) throws Exception {
 		Map<String,String> env = null;
 		// ENV vars will be passed to web server manager to wrap the web server in when its executed
-		if (true) {// TODO temp 6/15 - test_case.containsSection(EPhptSection.ENV)) {
+		if (scenario_set_setup.hasENV() || test_case.containsSection(EPhptSection.ENV)) {
 			env = AbstractPhptTestCaseRunner.generateENVForTestCase(cm, host, build, scenario_set_setup, test_case);
 			
 			// for most test cases, env will be null|empty, so the TestCaseGroupKey will match (assuming PhpInis match)
@@ -156,27 +156,27 @@ public abstract class WebServerScenario extends SAPIScenario {
 	}
 	
 	@Override
-	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup setup, ESAPIType type, PhpBuild build, PhptTestCase test_case) throws Exception {
-		if (super.willSkip(cm, twriter, host, setup, type, build, test_case)) {
+	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup setup, ESAPIType type, PhpBuild build, PhptSourceTestPack src_test_pack, PhptTestCase test_case) throws Exception {
+		if (super.willSkip(cm, twriter, host, setup, type, build, src_test_pack, test_case)) {
 			return true;
 		} else if (test_case.containsSection(EPhptSection.STDIN)) {
-			twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "STDIN section not supported for testing against web servers"));
+			twriter.addResult(host, setup, src_test_pack, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "STDIN section not supported for testing against web servers"));
 			
 			return true;
 		} else if (test_case.containsSection(EPhptSection.ARGS)) {
-			twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "ARGS section not supported for testing against web servers"));
+			twriter.addResult(host, setup, src_test_pack, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "ARGS section not supported for testing against web servers"));
 			
 			return true;
 		} else if (cm.isDisableDebugPrompt()&&test_case.isNamed(BLOCKING_WINPOPUP)) {
-			twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test shows blocking winpopup msg"));
+			twriter.addResult(host, setup, src_test_pack, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test shows blocking winpopup msg"));
 			
 			return true;
 		} else if (test_case.isNamed(NOT_VALID_ON_WEB_SERVERS)) {
-			twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on web servers"));
+			twriter.addResult(host, setup, src_test_pack, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on web servers"));
 			
 			return true;
 		} else if (host.isWindows() && test_case.isNamed(NOT_VALID_ON_WEB_SERVERS_WINDOWS)) {
-			twriter.addResult(host, setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on web servers"));
+			twriter.addResult(host, setup, src_test_pack, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test is not valid on web servers"));
 			
 			return true;
 		} else {
@@ -207,6 +207,8 @@ public abstract class WebServerScenario extends SAPIScenario {
 	public static Trie NOT_VALID_ON_WEB_SERVERS = PhptTestCase.createNamed(
 			// XXX this test crashes on apache b/c the stack size is too small (see #setStackSize in ApacheManager)
 			"ext/pcre/tests/bug47662.phpt",
+			// PHP outputs some of expected output in its log only
+			"zend/tests/bug64720.phpt",
 			// fpassthru() system() and exec() doesn't run on Apache
 			"ext/standard/tests/popen_pclose_basic-win32.phpt", 
 			"sapi/cli/tests/bug61546.phpt",

@@ -7,7 +7,7 @@ def describe() {
 	"Load PhpMyAdmin application"
 }
 
-class PhpMyAdminPhpUnitTestPack extends PhpUnitSourceTestPack {
+class PhpMyAdminPhpUnitTestPack extends RequiredDatabasePhpUnitSourceTestPack {
 	
 	@Override
 	public String getNameAndVersionString() {

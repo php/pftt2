@@ -25,6 +25,7 @@ public class EnchantScenario extends INIScenario {
 		
 		// this is only needed for Windows
 		try {
+			// LATER php on non-windows may need a dictionary too ??
 			String dst = build.getBuildPath()+"/share/";
 			if (!host.exists(dst)) {
 				host.copyElevated(host.getPfttDir()+"/cache/util/enchant/share", dst);
@@ -37,7 +38,7 @@ public class EnchantScenario extends INIScenario {
 			return SETUP_SUCCESS;
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "setup", ex, "Unable to install spell checker dictionary");
-			return null;
+			return SETUP_FAILED;
 		}
 	}
 	

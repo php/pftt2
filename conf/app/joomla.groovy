@@ -18,7 +18,7 @@ def getUITestPack() {
  * 
  */
 
-class JoomlaPlatformPhpUnitTestPack extends PhpUnitSourceTestPack { 
+class JoomlaPlatformPhpUnitTestPack extends OptionalDatabasePhpUnitSourceTestPack { 
 	
 	@Override
 	public String getNameAndVersionString() {
@@ -55,6 +55,7 @@ require_once '$root/tests/suites/unit/joomla/application/stubs/JApplicationWebIn
 	@Override
 	public String[][] getNonThreadSafeTestFileNames() {
 		return [
+				["joomla/archive/"],
 				["joomla/filesystem/"],
 				["joomla/language/"],
 				["joomla/cache/"],

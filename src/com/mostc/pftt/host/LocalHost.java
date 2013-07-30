@@ -40,6 +40,7 @@ import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.MultiCharsetByLineReader;
 import com.github.mattficken.io.NoCharsetByLineReader;
 import com.github.mattficken.io.StringUtil;
+import com.mostc.pftt.main.PfttMain;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
@@ -412,6 +413,14 @@ public class LocalHost extends AHost {
 													if (ccm.ensureWERFaultIsNotRunning(LocalHost.this, pid)) {
 														// WER just killed, try again
 														wprocess.kill();
+													}
+													// can kill off windebug if running under PUTS (windebug shouldn't be running at all, sometimes does)
+													if (!PfttMain.is_puts && ccm.ensureWinDebugIsNotRunning(LocalHost.this, pid)) {
+														// process should terminate on its own, so don't call #kill here 
+														//  (it may kill a different process that has been allocated the same PID)
+														//
+														// instead, wait for loop to reach #winKillProcess because that'll check by image name and PID
+														//   to ensure process is terminated
 													}
 												}
 											}
@@ -868,7 +877,9 @@ public class LocalHost extends AHost {
 				}
 			} // end try
 		}
-			      
+		if (process==null)
+			return new LocalExecHandle(process, null, null, null, null);
+		
 		OutputStream stdin = process.getOutputStream();
 		
 		if (stdin_data!=null && stdin_data.length>0) {

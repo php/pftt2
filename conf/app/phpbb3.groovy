@@ -14,7 +14,7 @@ def describe() {
 	"Load PhpBB3 application"
 }
 
-class PhpBB3PhpUnitTestPack extends PhpUnitSourceTestPack {
+class PhpBB3PhpUnitTestPack extends RequiredDatabasePhpUnitSourceTestPack {
 	
 	@Override
 	public String getNameAndVersionString() {

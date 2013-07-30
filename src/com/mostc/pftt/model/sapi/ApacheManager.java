@@ -11,11 +11,11 @@ import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
-import com.mostc.pftt.host.HostGroup;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
+import com.mostc.pftt.model.core.PhptSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.model.sapi.EApacheVersion.ApacheHttpdAndVersion;
 import com.mostc.pftt.results.ConsoleManager;
@@ -78,10 +78,10 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		}
 	}
 	
-	public static boolean isSupported(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptTestCase test_case) {
+	public static boolean isSupported(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptTestCase test_case) {
 		if (build.isNTS(host)) {
 			cm.println(EPrintType.SKIP_OPERATION, ApacheManager.class, "Error Apache requires TS Php Build. NTS Php Builds aren't supported with Apache mod_php.");
-			twriter.addResult(host, scenario_set_setup, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "NTS Build not supported", null, null, null, null, null, null, null, null, null, null, null));
+			twriter.addResult(host, scenario_set_setup, src_test_pack, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "NTS Build not supported", null, null, null, null, null, null, null, null, null, null, null));
 			
 			return false;
 		} else {
@@ -341,6 +341,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		
 	} // end public class ApacheWebServerInstance
 	
+	@Override
 	public void close(ConsoleManager cm) {
 		super.close(cm);
 		
@@ -444,6 +445,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		try {
 			// install Windows service
 			host.exec(httpd.httpd+" -k install", Host.ONE_MINUTE);
+			// TODO start();
 			return new ApacheSetup(apache_version, host, httpd.httpd, httpd.version);
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "setup", ex, "Couldn't install Apache as a Windows service");
@@ -497,52 +499,6 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		
 	} // end public class ApacheSetup
 	
-	@Override
-	public boolean start(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
-		if (!(host instanceof AHost)) {
-			HostGroup group = (HostGroup) host;
-			for ( Host ghost : group ) {
-				if (!start(cm, ghost, build, ini))
-					return false;
-			}
-			return !group.isEmpty();
-		}
-		EApacheVersion apache_version = decideApacheVersion(cm, host, build, this._apache_version);
-		final String listen_address = "0.0.0.0";
-		final int port = 80;
-		CouldConnect could = canConnect(listen_address, port, false); 
-		if (could.connect) {
-			cm.println(EPrintType.CLUE, "ApacheManager", "A web server is already running");
-			cm.println(EPrintType.TIP, "ApacheManager", "Try `stop -c apache "+build.getBuildPath()+"` to stop Apache");
-			return false; 
-		}
-		final String docroot = getDefaultDocroot(host, build);
-		
-		ApacheHttpdAndVersion apache = apache_version.getHttpd(cm, host, build);
-		// important: see #close - use different name for apache config directory so it won't be deleted
-		PreparedApache prep = prepareApache("Setup", ini, apache, cm, apache_version, (AHost)host, build, listen_address, port, docroot);
-		
-		// XXX will this work on Linux??
-		try {
-			// ensure Windows service is installed
-			host.exec(prep.httpd+" -f "+prep.apache_conf_file+" -k install", AHost.ONE_MINUTE);
-			// ensure configured (important to run `config` or `start` will fail or fail to get new configuration)
-			host.exec(prep.httpd+" -f "+prep.apache_conf_file+" -k config", AHost.ONE_MINUTE);
-			// start
-			host.exec(prep.httpd+" -f "+prep.apache_conf_file+" -k start", AHost.ONE_MINUTE);
-		} catch ( Exception ex ) {
-			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "start", ex, "Unable to Start Apache after setup", prep.httpd, prep.apache_conf_file);
-			return false;
-		}
-		if (canConnect(listen_address, port, false).connect) {
-			cm.println(EPrintType.CLUE, "ApacheManager", "Apache running\nDocument Root: "+docroot+"\nURL: http://"+listen_address+":"+port+"/");
-			return true;
-		} else {
-			cm.println(EPrintType.CLUE, "ApacheManager", "Apache process appeared to start, but not able to connect after many attempts. \nThis Apache build may be broken: "+prep.httpd);
-			return false;
-		}
-	}
-
 	@Override
 	public boolean stop(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
 		try {

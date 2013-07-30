@@ -57,7 +57,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				if (build.hasPhpCgiExe()) {
 					exe_type = EExecutableType.CGI;
 				} else {
-					twriter.addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "CGI not available", null, null, null, null, null, null, null, null, null, null, null));
+					twriter.addResult(host, scenario_set, src_test_pack, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "CGI not available", null, null, null, null, null, null, null, null, null, null, null));
 					
 					return false;
 				}
@@ -259,7 +259,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			
 			int exit_code = running_test_handle.getExitCode();
 			
-			twriter.addResult(host, scenario_set, notifyNotPass(new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, "PFTT: exit_code="+exit_code+" status="+AHost.guessExitCodeStatus(host, exit_code)+"\n"+output_str, null, null, null, ini, env, null, stdin_post, null, null, null, null, output_str, null)));
+			twriter.addResult(host, scenario_set, src_test_pack, notifyNotPass(new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, "PFTT: exit_code="+exit_code+" status="+AHost.guessExitCodeStatus(host, exit_code)+"\n"+output_str, null, null, null, ini, env, null, stdin_post, null, null, null, null, output_str, null)));
 		}
 		
 		running_test_handle = null;

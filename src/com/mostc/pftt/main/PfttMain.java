@@ -26,6 +26,7 @@ import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
+import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.EBuildType;
 import com.mostc.pftt.model.core.ECPUArch;
@@ -296,6 +297,7 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //       (after ported to windows) drizzle weakref fpdf gnupg  xdebug? suhosin?? 
 
 public class PfttMain {
+	public static boolean is_puts = false; // TODO
 	protected final LocalHost host;
 	protected LocalConsoleManager cm;
 	protected final HashMap<PhpBuild,PhpResultPackWriter> writer_map;
@@ -539,10 +541,20 @@ public class PfttMain {
 			cm.println(EPrintType.TIP, PfttMain.class, "Add test-pack configuration file to -c console option. For example `aa -c symfony`");
 			return;
 		}
+		
 		for ( int i=0 ; i < cm.getRunTestPack() ; i++ ) {
 			for ( PhpUnitSourceTestPack test_pack : test_packs ) {
 				cm.println(EPrintType.CLUE, PfttMain.class, "Test-Pack: "+test_pack);
 				cm.println(EPrintType.CLUE, PfttMain.class, "Writing Result-Pack: "+tmgr.getResultPackPath());
+				
+				LinkedList<PhpUnitTestCase> test_cases = new LinkedList<PhpUnitTestCase>();
+				
+				test_pack.cleanup(cm);
+				cm.println(EPrintType.IN_PROGRESS, "PhpUnitSourceTestPack", "enumerating test cases from test-pack...");
+				test_pack.installNamed(cm, host, "", test_cases);
+				test_pack.read(config, test_cases, test_names, tmgr.getConsoleManager(), tmgr, build, true);
+				cm.println(EPrintType.IN_PROGRESS, "PhpUnitSourceTestPack", "enumerated test cases.");
+				
 				
 				for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.WEB_APPLICATION)) {
 				
@@ -551,9 +563,7 @@ public class PfttMain {
 					LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, host, host);
 					cm.showGUI(r, test_pack);
 					
-					// TODO implement app_list
-					//test_pack.read(test_cases, cm, tmgr, build);
-					//r.runTestList(test_pack, test_cases);
+					r.runTestList(test_pack, test_cases);
 					
 					tmgr.notifyPhpUnitFinished(host, r.getScenarioSetSetup(), test_pack);
 					
@@ -635,7 +645,7 @@ public class PfttMain {
 					
 					test_pack_runner.runAllTests(config, test_pack);
 				
-					tmgr.notifyPhptFinished(host, test_pack_runner.getScenarioSetSetup());
+					tmgr.notifyPhptFinished(host, test_pack_runner.getScenarioSetSetup(), test_pack);
 				}
 				
 				//
@@ -700,7 +710,7 @@ public class PfttMain {
 					
 					test_pack_runner.runTestList(test_pack, test_cases);
 				
-					tmgr.notifyPhptFinished(host, test_pack_runner.getScenarioSetSetup());
+					tmgr.notifyPhptFinished(host, test_pack_runner.getScenarioSetSetup(), test_pack);
 				}
 				
 				//

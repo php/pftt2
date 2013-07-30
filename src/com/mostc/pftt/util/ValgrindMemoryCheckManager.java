@@ -91,11 +91,15 @@ public class ValgrindMemoryCheckManager extends DebuggerManager {
 		@Override
 		public ExecOutput execOut(RunRequest req) {
 			req.setCommandline("valgrind --leak-check=yes "+req.getCommandline());
+			
+			return null; // TODO temp
 		}
 
 		@Override
 		public ExecHandle execThread(RunRequest req) {
 			req.setCommandline("valgrind --leak-check=yes "+req.getCommandline());
+			
+			return null; // TODO temp
 		}
 		
 	}

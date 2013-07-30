@@ -12,23 +12,28 @@ import com.mostc.pftt.scenario.ScenarioSet;
 public abstract class DatabasePhpUnitSourceTestPack extends PhpUnitSourceTestPack {
 	protected DatabaseScenarioSetup database;
 	
+	DatabasePhpUnitSourceTestPack() {
+		// make sure this can only be subclassed within this package
+	}
+	
 	@Overridable
 	protected DatabaseScenario getDatabaseScenario(AHost runner_host, ScenarioSet scenario_set, PhpBuild build) {
 		return scenario_set.getScenario(DatabaseScenario.class);
 	}
 	
+	protected abstract boolean handleNoDatabaseScenario(ConsoleManager cm);
+	
 	@Override
 	public boolean startRun(ConsoleManager cm, AHost runner_host, ScenarioSet scenario_set, PhpBuild build) {
 		DatabaseScenario ds = getDatabaseScenario(runner_host, scenario_set, build);
 		if (ds==null) {
-			cm.println(EPrintType.CANT_CONTINUE, getClass(), "No database scenario found. Try adding `local_mysql` or other scenario to your -config.");
-			return false;
+			return handleNoDatabaseScenario(cm);
 		}
 		
 		database = ds.setup(cm, runner_host, build, scenario_set);
 		if (database==null) {
 			cm.println(EPrintType.CANT_CONTINUE, getClass(), "Could not setup database scenario");
-			return false;
+			return handleNoDatabaseScenario(cm);
 		}
 		configureDatabaseServer();
 		return true;

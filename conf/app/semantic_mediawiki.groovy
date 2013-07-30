@@ -11,7 +11,7 @@ def getUITestPack() {
 	return null; // TODO
 }
 
-class SemanticMediaWikiPhpUnitTestPack extends DatabasePhpUnitSourceTestPack {
+class SemanticMediaWikiPhpUnitTestPack extends RequiredDatabasePhpUnitSourceTestPack {
 	
 	@Override
 	public String getNameAndVersionString() {

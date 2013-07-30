@@ -198,11 +198,12 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		host.deleteFileExtension(test_pack+"/sapi", ".php");
 	}
 	
+	@Override
 	public void read(Config config, List<PhptTestCase> test_cases, List<String> names, ConsoleManager cm, PhpResultPackWriter twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {
 		read(config, test_cases, names, cm, twriter, build, false);
 	}
 	
-	
+	@Override
 	public void read(Config config, List<PhptTestCase> test_cases, List<String> names, ConsoleManager cm, PhpResultPackWriter twriter, PhpBuild build, boolean ignore_missing) throws FileNotFoundException, IOException, Exception {
 		//
 		ArrayList<PhptTestCase> _test_cases;
@@ -275,7 +276,6 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		_test_cases.addAll(test_cases);
 		_ref_test_cases = new SoftReference<ArrayList<PhptTestCase>>(_test_cases);
 		//
-		twriter.setTotalCount(test_cases.size());
 	} // end public void read
 
 	@Override
@@ -296,15 +296,12 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		test_pack_file = new File(test_pack);
 		test_pack = test_pack_file.getAbsolutePath(); // normalize path
 		add_test_files(config, test_pack_file.listFiles(), test_cases, null, cm, twriter, build, null, new LinkedList<PhptTestCase>());
-		twriter.setTotalCount(test_cases.size());
 		
 		//
 		// cache for use next time
 		_test_cases = new ArrayList<PhptTestCase>(test_cases.size());
 		_test_cases.addAll(test_cases);
 		_ref_test_cases = new SoftReference<ArrayList<PhptTestCase>>(_test_cases);
-		//
-		twriter.setTotalCount(test_cases.size());
 	}
 	
 	private void add_test_files(Config config, File[] files, List<PhptTestCase> test_files, List<String> names, ConsoleManager cm, ITestResultReceiver twriter, PhpBuild build, PhptTestCase redirect_parent, List<PhptTestCase> redirect_targets) throws FileNotFoundException, IOException, Exception {
@@ -471,17 +468,17 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 	} // end public PhptActiveTestPack install
 	
 	/** installs only the named test cases from test pack into to the given location to actively run it from.
+	 * @param host
+	 * @param test_cases
+	 * @param test_pack_dir
 	 * 
 	 * @see #read - must have already been called
-	 * @param host
-	 * @param test_pack_dir
-	 * @param test_cases
 	 * @return
 	 * @throws IllegalStateException
 	 * @throws IOException
 	 * @throws Exception
 	 */
-	public PhptActiveTestPack installNamed(AHost host, String test_pack_dir, List<PhptTestCase> test_cases) throws IllegalStateException, IOException, Exception {
+	public PhptActiveTestPack installNamed(ConsoleManager cm, AHost host, String test_pack_dir, List<PhptTestCase> test_cases) throws IllegalStateException, IOException, Exception {
 		if (!this.host.isRemote() || this.host.equals(host)) {
 			// installing from local host to remote host OR from remote host to itself
 			uploadNonTestCaseFiles(host, test_pack, test_pack_dir);
@@ -579,6 +576,11 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 	@Override
 	public String getTestPackVersionRevision() {
 		return getVersion();
+	}
+
+	@Override
+	public String getNameAndVersionString() {
+		return AHost.basename(getSourceDirectory());
 	}
 	
 } // end public class PhptSourceTestPack

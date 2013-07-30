@@ -22,6 +22,7 @@ import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpDebugPack;
 import com.mostc.pftt.model.core.PhptActiveTestPack;
+import com.mostc.pftt.model.core.PhptSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.model.ui.UITestPack;
 import com.mostc.pftt.results.ConsoleManager;
@@ -179,7 +180,7 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 	}
 	
 	@Override
-	public void notifyStart(AHost this_host, ScenarioSetSetup this_scenario_set, PhptTestCase test_case) {
+	public void notifyStart(AHost this_host, ScenarioSetSetup this_scenario_set, PhptSourceTestPack src_test_pack, PhptTestCase test_case) {
 		// TODO Auto-generated method stub
 	}
 
@@ -194,7 +195,7 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 	}
 	
 	@Override
-	public void addResult(AHost this_host, ScenarioSetSetup this_scenario_set, PhptTestResult result) {
+	public void addResult(AHost this_host, ScenarioSetSetup this_scenario_set, PhptSourceTestPack src_test_pack, PhptTestResult result) {
 		try {
 			sendResult(result);
 		} catch ( Exception ex ) {
@@ -230,11 +231,6 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 			serial_out.write('\n');
 		}
 	} // end protected void sendResult
-	
-	@Override
-	public void setTotalCount(int size) {
-		sendMessage("<totalCount>"+size+"</totalCount>");
-	}
 	
 	@Override
 	public void restartingAndRetryingTest(TestCase test_case) {
@@ -512,15 +508,15 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 			this.serial.setOutput(this.serial_out, "utf-8");
 			System.setOut(ps);
 			
-			addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.PASS, null, "", null, null, null, null, null, null, null, null, null, null, null));
-			addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.PASS, null, "", null, null, null, null, null, null, null, null, null, null, null));
+			addResult(host, scenario_set, null, new PhptTestResult(host, EPhptTestStatus.PASS, null, "", null, null, null, null, null, null, null, null, null, null, null));
+			addResult(host, scenario_set, null, new PhptTestResult(host, EPhptTestStatus.PASS, null, "", null, null, null, null, null, null, null, null, null, null, null));
 			restartingAndRetryingTest("ext/standard/strings/strpos.phpt");
-			addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.PASS, null, "", null, null, null, null, null, null, null, null, null, null, null));
-			addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.SKIP, null, "", null, null, null, null, null, null, null, null, null, null, null));
-			addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.PASS, null, "", null, null, null, null, null, null, null, null, null, null, null));
+			addResult(host, scenario_set, null, new PhptTestResult(host, EPhptTestStatus.PASS, null, "", null, null, null, null, null, null, null, null, null, null, null));
+			addResult(host, scenario_set, null, new PhptTestResult(host, EPhptTestStatus.SKIP, null, "", null, null, null, null, null, null, null, null, null, null, null));
+			addResult(host, scenario_set, null, new PhptTestResult(host, EPhptTestStatus.PASS, null, "", null, null, null, null, null, null, null, null, null, null, null));
 			println(EPrintType.CLUE, "setup", "setup finished");
-			addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.PASS, null, "", null, null, null, null, null, null, null, null, null, null, null));
-			addResult(host, scenario_set, new PhptTestResult(host, EPhptTestStatus.PASS, null, "", null, null, null, null, null, null, null, null, null, null, null));
+			addResult(host, scenario_set, null, new PhptTestResult(host, EPhptTestStatus.PASS, null, "", null, null, null, null, null, null, null, null, null, null, null));
+			addResult(host, scenario_set, null, new PhptTestResult(host, EPhptTestStatus.PASS, null, "", null, null, null, null, null, null, null, null, null, null, null));
 			
 			//
 			flush();

@@ -1,18 +1,25 @@
 package com.mostc.pftt.model.sapi;
 
+import java.io.IOException;
+import java.lang.ref.SoftReference;
+import java.util.Collection;
 import java.util.Map;
 import javax.annotation.concurrent.ThreadSafe;
 
 import com.github.mattficken.io.StringUtil;
-import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
+import com.mostc.pftt.model.core.PhptSourceTestPack;
+import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
+import com.mostc.pftt.results.ITestResultReceiver;
+import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.scenario.ScenarioSet;
-import com.mostc.pftt.util.ErrorUtil;
+import com.mostc.pftt.scenario.ScenarioSetSetup;
 
 /** manages and monitors IIS and IIS express web servers
  * 
@@ -20,341 +27,221 @@ import com.mostc.pftt.util.ErrorUtil;
  *
  */
 
-// XXX need process handle for each IIS process in order to tell for sure if the process crashes
-// this class only has to work on windows vista+
 @ThreadSafe
-public class IISManager extends WebServerManager {
-	/** To get a list of web applications (web apps registered with IIS): 
-	 * `appcmd list app`
-	 * 
-	 * To get a list of web sites:
-	 * `appcmd list site`
-	 * 
-	 */
-	public static final String DEFAULT_SITE_NAME = "Default Web Site";
-	public static final String DEFAULT_APP_NAME = "";
-	public static final String DEFAULT_SITE_AND_APP_NAME = "Default Web Site/";
+public class IISManager extends AbstractManagedProcessesWebServerManager {
 	
-	protected String appcmd_path(Host host) {
-		return host.getSystemRoot()+"\\System32\\inetsrv\\appcmd.exe";
+	public IISManager() {
 	}
-	
-	protected ExecOutput appcmd(AHost host, String args) throws Exception {
-		String cmd = appcmd_path(host)+" "+args;
-		ExecOutput eo = host.execElevatedOut(cmd, AHost.ONE_MINUTE);
-		//System.err.println(cmd);
-		//System.err.println(eo.output);
-		return eo;
-	}
-	
-	@Override
-	public boolean start(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
-		try {
-			return host.execElevated(cm, getClass(), "net start w3svc", AHost.ONE_MINUTE*2);
-		} catch ( Exception ex ) {
-			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "start", ex, "");
-			return false;
-		}
-	}
-	
-	@Override
-	public boolean stop(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
-		try {
-			return host.execElevated(cm, getClass(), "net stop w3svc", AHost.ONE_MINUTE*2);
-		} catch ( Exception ex ) {
-			if (cm==null)
-				ex.printStackTrace();
-			else
-				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "stop", ex, "");
-			return false;
-		}
-	}
-	
-	public ExecOutput configure(ConsoleManager cm, AHost host, PhpBuild build, String doc_root, PhpIni ini, Map<String,String> env, String listen_address, int listen_port) {
-		return configure(cm, host, build, DEFAULT_SITE_NAME, DEFAULT_APP_NAME, doc_root, ini, env, listen_address, listen_port);
-	}
-	
-	public ExecOutput configure(ConsoleManager cm, AHost host, PhpBuild build, String site_name, String app_name, String doc_root, PhpIni ini, Map<String,String> env, String listen_address, int listen_port) {
-		// clear previous configuration from previous interrupted runs
-		undoConfigure(cm, host);
 		
-		addToPHPIni(ini);
-		
-		String php_binary = build.getPhpCgiExe();
-		String c_section = "section:system.webServer";
-		
-		// TODO env = prepareENV(env, php_conf_file, build, scenario_set, httpd);
-
-		try {
-			ExecOutput eo;
+	public static boolean isSupported(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptTestCase test_case) {
+		if (build.isTS(host)) {
+			cm.println(EPrintType.SKIP_OPERATION, IISManager.class, "Error IIS requires NTS Php Build. TS Php Builds aren't supported with IIS.");
+			twriter.addResult(host, scenario_set_setup, src_test_pack, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "TS Build not supported", null, null, null, null, null, null, null, null, null, null, null));
 			
-			// bind HTTP to listen_port
-			eo = appcmd(host, "set site /site.name:"+site_name+" /+bindings.[protocol='http',bindingInformation='*:"+listen_port+":']");
-			if (eo.isCrashed())
-				return eo;
-			// setup PHP to be run with FastCGI
-			eo = appcmd(host, "set config /"+c_section+"/fastCGI /+[fullPath='"+php_binary+"',arguments='',instanceMaxRequests='10000',maxInstances='0']");
-			if (eo.isCrashed())
-				return eo;
-			// setup important environment variables
-			eo = appcmd(host, "set config /"+c_section+"/fastCGI /+[fullPath='"+php_binary+"'].environmentVariables.[name='PHPRC',value='"+build.getBuildPath()+"']");
-			if (eo.isCrashed())
-				return eo;
-			eo = appcmd(host, "set config /"+c_section+"/fastCGI /+[fullPath='"+php_binary+"'].environmentVariables.[name='PHP_FCGI_MAX_REQUESTS',value='50000']");
-			if (eo.isCrashed())
-				return eo;
-			// copy any environment variables that need to be passed to PHP
-			//
-			// PHPT database tests need this in order to run
-			if (env!=null) {
-				for ( String name : env.keySet() ) {
-					String value = env.get(name);
-					
-					eo = appcmd(host, "set config /"+c_section+"/fastCGI /+[fullPath='"+php_binary+"'].environmentVariables.[name='"+name+"',value='"+value+"']");
-					if (eo.isCrashed())
-						return eo;
-				}
-			}
-			//
-			eo = appcmd(host, "set config /"+c_section+"/handlers /+[name='PHP_via_FastCGI',path='*.php',verb='*',modules='FastCgiModule',scriptProcessor='"+php_binary+"']");
-			if (eo.isCrashed())
-				return eo;
-			// set docroot to the location of the installed test-pack
-			return appcmd(host, "set vdir /vdir.name:\""+site_name+"/"+app_name+"\" /physicalPath:\""+doc_root+"\"");
-		} catch ( Exception ex ) {
-			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "configure", ex, "");
+			return false;
+		} else {
+			return true;
 		}
-		return null;
-	} // end public ExecOutput configure
+	}
 	
-	public boolean undoConfigure(ConsoleManager cm, AHost host) {
-		String c_section = "section:system.webServer";
+	protected static class PreparedIIS {
+		protected PhpIni ini;
+		protected String iis_conf_file, php_conf_file, error_log, conf_dir, conf_str;
+	}
+		
+	protected PreparedIIS prepareIIS(String temp_file_ctx, PhpIni ini, ConsoleManager cm, AHost host, PhpBuild build, String listen_address, int port, String docroot) {
+		PreparedIIS prep = new PreparedIIS();
+		prep.ini = ini;
+		
+		// create a temporary directory to hold(for each httpd.exe instance):
+		//    -IIS HWC config
+		//    -php.ini
+		//    -error.log
+		prep.conf_dir = host.mktempname(temp_file_ctx);
+		try {
+			host.mkdirs(prep.conf_dir);
+		} catch ( Exception ex ) {
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "prepareIIS", ex, "Can't create temporary dir to run IIS", host, prep.conf_dir);
+			return null;
+		}
+		
+		// CRITICAL: must add extension dir (and fix path) AND it MUST end with \ (Windows)
+		if (prep.ini==null)
+			prep.ini = new PhpIni();
+		else if (StringUtil.isEmpty(prep.ini.getExtensionDir()))
+			prep.ini.setExtensionDir(host.fixPath(build.getDefaultExtensionDir())+host.dirSeparator());
+		else if (!prep.ini.getExtensionDir().endsWith(host.dirSeparator()))
+			// extension dir already set, but doesn't end with / or \
+			prep.ini.setExtensionDir(host.fixPath(prep.ini.getExtensionDir()+host.dirSeparator()));
+		//
+		
+		prep.php_conf_file = host.joinIntoOnePath(prep.conf_dir, "php.ini");
+		prep.iis_conf_file = host.joinIntoOnePath(prep.conf_dir, "iis.config");
+		prep.error_log = host.joinIntoOnePath(prep.conf_dir, "error.log");
+		
+		prep.conf_str = writeConfigurationFile(host, build.getPhpCgiExe(), prep.conf_dir, prep.error_log, listen_address, port, docroot);
 		
 		try {
-			return appcmd(host, "clear config /"+c_section+"/fastCGI").printOutputIfCrash(getClass(), cm).isSuccess() &&
-					appcmd(host, "set config /"+c_section+"/handlers /-[name='PHP_via_FastCGI']").printOutputIfCrash(getClass(), cm).isSuccess();
+			host.saveTextFile(prep.php_conf_file, prep.ini.toString());
 		} catch ( Exception ex ) {
-			if (cm==null)
-				ex.printStackTrace();
-			else
-				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "undoConfigure", ex, "");
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "prepareIIS", ex, "Unable to save PhpIni: "+prep.php_conf_file, host, prep.php_conf_file);
+			return null;
 		}
-		return false;
-	}
-	
-	public static void addToPHPIni(PhpIni ini) {
-		//add these directives to php.ini file used by php.exe
-		ini.putSingle("fastcgi.impersonate", 1);
-		ini.putSingle("cgi.fix_path_info", 1);
-		ini.putSingle("cgi.force_redirect", 0);
-		ini.putSingle("cgi.rfc2616_headers", 0);
-	}
-	    
-	@Override
-	public String getName() {
-		return "IIS";
-	}
-	
-	WebServerInstance wsi;
-	@Override
-	public synchronized WebServerInstance getWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, WebServerInstance assigned, boolean debugger_attached, Object server_name) {
-		if (wsi==null)
-			wsi = super.getWebServerInstance(cm, host, scenario_set, build, ini, env, docroot, assigned, debugger_attached, server_name);
-		return wsi;
-	}
-	
-	@Override
-	protected WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String,String> env, String doc_root, boolean debugger_attached, Object server_name, boolean is_replacement) {
-		final String listen_address = host.getLocalhostListenAddress();
-		final int listen_port = 80;
-		
-		ExecOutput eo = configure(cm, host, build, doc_root, ini, env, listen_address, listen_port);
-		
-		if (eo.isSuccess()) {
-			String err_str = "";
-			try {
-				eo = host.execElevatedOut("net start w3svc", AHost.ONE_MINUTE*2);
-				if (eo.isSuccess()) {
-					return new IISWebServerInstance(this, StringUtil.EMPTY_ARRAY, ini, env, host, build, listen_address, listen_port);
-				} else {
-					err_str = eo.output;
-				}
-			} catch ( Exception ex ) {
-				err_str = ErrorUtil.toString(ex);
-			}
-			return new CrashedWebServerInstance(this, ini, env, err_str);
+		try {
+			host.saveTextFile(prep.iis_conf_file, prep.conf_str);
+		} catch ( Exception ex ) {
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "prepareIIS", ex, "Unable to save IIS configuration: "+prep.iis_conf_file, host, prep.iis_conf_file);
+			return null;
 		}
-		return new CrashedWebServerInstance(this, ini, env, eo.output);
-	}
+		return prep;
+	} // end protected PreparedIIS prepareIIS
 	
-	public class IISWebServerInstance extends WebServerInstance {
+	@Override
+	protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String, String> env, final String docroot, String listen_address, int port) {
+		if (!host.isWindows())
+			// IIS is only supported on Windows
+			return null;
+		
+		PreparedIIS prep = prepareIIS("IISManager", ini, cm, host, build, listen_address, port, docroot);
+		
+		env = prepareENV(env, prep.php_conf_file, build, scenario_set, build.getPhpCgiExe());
+		
+		
+		final String cmdline = host.getPfttDir()+"/cache/dep/IIS/IISRunner "+host.fixPath(prep.iis_conf_file);
+		
+		// @see #createWebServerInstance for where command is executed to create httpd.exe process
+		return new IISWebServerInstance(this, docroot, cmdline, env, ini, listen_address, port, prep, host, build);
+	} // end protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance
+	
+	public class IISWebServerInstance extends ManagedProcessWebServerInstance {
+		protected final PreparedIIS prep;
 		protected final AHost host;
 		protected final PhpBuild build;
-		protected final String hostname;
-		protected final int port;
-		protected boolean running = true;
-
-		public IISWebServerInstance(WebServerManager ws_mgr, String[] cmd_array, PhpIni ini, Map<String,String> env, AHost host, PhpBuild build, String hostname, int port) {
-			super(ws_mgr, cmd_array, ini, env);
-			this.host = host;
+		protected SoftReference<String> log_ref;
+		
+		public IISWebServerInstance(IISManager ws_mgr, String docroot, String cmd, Map<String,String> env, PhpIni ini, String hostname, int port, PreparedIIS prep, AHost host, PhpBuild build) {
+			super(ws_mgr, docroot, cmd, ini, env, hostname, port);
 			this.build = build;
-			this.hostname = hostname;
-			this.port = port;
-		}
-				
-		@Override
-		public String toString() {
-			return hostname+":"+port;
-		}
-
-		@Override
-		public String getHostname() {
-			return hostname;
-		}
-
-		@Override
-		public int getPort() {
-			return port;
-		}
-
-		@Override
-		protected synchronized void do_close(ConsoleManager cm) {
-			if (!running)
-				return;
-			
-			stop(null, host, build, null);
-			undoConfigure(null, host);
-			running = false;
-		}
-
-		private long last_run_check;
-		@Override
-		public boolean isRunning() {
-			// only check once every 10 seconds
-			if (last_run_check + 10000 > System.currentTimeMillis()) {
-				running = checkIsRunning();
-				
-				last_run_check = System.currentTimeMillis();
-			}
-			return running;
+			this.host = host;
+			this.prep = prep;
 		}
 		
-		protected boolean checkIsRunning() {
-			try {
-				String out = host.execOut("TASKLIST /NH /FO CSV /FI \"SERVICES eq w3svc\"", AHost.ONE_MINUTE).output;
-				return StringUtil.isNotEmpty(out) && !out.contains("No tasks");
-			} catch ( Exception ex ) { 
-				ex.printStackTrace();
-				return false;
+		@Override
+		public String getSAPIOutput() {
+			if (StringUtil.isNotEmpty(prep.error_log)) {
+				// try to include server's error log
+				try {
+					String log = readLogCache();
+					
+					if (StringUtil.isNotEmpty(log))
+						return super.getSAPIOutput() + "\n" + log;
+				} catch ( Exception ex ) {
+				}
+			}
+			return super.getSAPIOutput();
+		}
+		
+		protected String readLogCache() throws IllegalStateException, IOException {
+			String log = null;
+			if (log_ref!=null)
+				log = log_ref.get();
+			if (log==null) {
+				log = host.getContents(prep.error_log);
+				if (StringUtil.isNotEmpty(log)) {
+					log_ref = new SoftReference<String>(log);
+				}
+			}
+			return log;
+		}
+		
+		@Override
+		protected void do_close(ConsoleManager cm) {
+			// do this several times to make sure it gets done successfully
+			final boolean c = process.isCrashedOrDebuggedAndClosed();
+			for ( int i=0; i <3;i++) {
+				super.do_close(cm);
+				
+				if (!c) {
+					// don't delete temp dir if crashed so user can analyze
+					try {
+						if (StringUtil.isEmpty(prep.error_log)) {
+							// cache log in memory before deleting on disk in case its still needed after #close call
+							readLogCache();
+						}
+						
+						host.delete(prep.conf_dir);
+					} catch ( Exception ex ) {
+					}
+				}
 			}
 		}
-
+		
 		@Override
 		public String getInstanceInfo(ConsoleManager cm) {
-			try {
-				return appcmd(host, "-v").output;
-			} catch ( Exception ex ) {
-				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "getInstanceInfo", ex, "");
-				return StringUtil.EMPTY;
-			}
-		}
-
-		@Override
-		public boolean isDebuggerAttached() {
-			return false;
-		}
-
-		@Override
-		public String getDocroot() {
-			return null; // TODO
+			return StringUtil.EMPTY; // TODO
 		}
 
 		@Override
 		public String getSAPIConfig() {
-			return null; // TODO
-		}
-
-		@Override
-		public boolean isCrashedAndDebugged() {
-			return false;
+			return prep.conf_str;
 		}
 
 		@Override
 		public String getNameWithVersionInfo() {
-			return getName();
+			return "IIS"; // TODO version info
 		}
 
 		@Override
 		public String getName() {
 			return "IIS";
 		}
-
-		@Override
-		public void close(ConsoleManager cm) {
-		}
 		
 	} // end public class IISWebServerInstance
-
+	
 	@Override
 	public boolean allowConcurrentWebServerSAPIInstances() {
-		return false;
+		return true;
 	}
 
 	@Override
 	public boolean isSSLSupported() {
 		return true;
 	}
+	
+	@Override
+	public String getName() {
+		return "IIS";
+	}
+	
+	public static String writeConfigurationFile(Host host, String php_cgi_exe, String conf_dir, String error_log, String listen_address, int port, String docroot) {
+		return null;
+	} // end public String writeConfigurationFile
 
 	@Override
-	public IISScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build) {
-		if (!host.isWindows()) {
-			cm.println(EPrintType.SKIP_OPERATION, IISManager.class, "Only supported OS is Windows");
+	public IISSetup setup(ConsoleManager cm, Host host, PhpBuild build) {
+		if (!host.isWindows())
 			return null;
-		} else if (host.isBeforeVista()) {
-			cm.println(EPrintType.SKIP_OPERATION, IISManager.class, "Only Windows Vista/2008/7/2008r2/8/2012+ are supported. Upgrade Windows and try again.");
-			return null;
-		} else {
-			if (host.exists(appcmd_path(host))) {
-				cm.println(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "IIS already installed");
-				
-				return new IISScenarioSetup();
-			}
-			
-			try {
-				if (host.execElevated(cm, getClass(), "pkgmgr /iu:IIS-WebServerRole;IIS-WebServer;IIS-StaticContent;IIS-WebServerManagementTools;IIS-ManagementConsole;IIS-CGI", AHost.HALF_HOUR)) {
-					cm.println(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "IIS installed");
-					
-					return new IISScenarioSetup();
-				} else {
-					cm.println(EPrintType.CANT_CONTINUE, getClass(), "IIS install failed");
-				}
-			} catch ( Exception ex ) {
-				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "setup", ex, "exception during IIS install.", host);
-			}
-			return null;
+		
+		try {
+			// TODO install
+			host.exec("net start w3svc", Host.ONE_MINUTE);
+			return new IISSetup(host);
+		} catch ( Exception ex ) {
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "setup", ex, "Couldn't install IIS as a Windows service");
 		}
-	} // end public IISScenarioSetup setup
-
-	public class IISScenarioSetup extends SimpleWebServerSetup {
-
-		@Override
-		public void close(ConsoleManager cm) {
-			
+		return null;
+	}
+	
+	public class IISSetup extends SimpleWebServerSetup {
+		protected final Host host;
+		
+		protected IISSetup(Host host) {
+			this.host = host;
 		}
 		
 		@Override
-		public String getNameWithVersionInfo() {
-			return getName();
-		}
-
-		@Override
-		public String getName() {
-			return "IIS";
-		}
-
-		@Override
 		public String getHostname() {
-			return "127.0.0.1";
+			return ((AHost)host).getAddress();
 		}
 
 		@Override
@@ -362,11 +249,51 @@ public class IISManager extends WebServerManager {
 			return 80;
 		}
 
-	} // end public class IISScenarioSetup
+		@Override
+		public void close(ConsoleManager cm) {
+			try {
+				host.exec("net stop w3svc", Host.ONE_MINUTE);
+			} catch ( Exception ex ) {
+				if (cm==null)
+					ex.printStackTrace();
+				else
+					cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "close", ex, "Exception stopping IIS");
+			}
+		}
+
+		@Override
+		public String getNameWithVersionInfo() {
+			return "IIS"; // TODO version info
+		}
+
+		@Override
+		public String getName() {
+			return "IIS"; 
+		}
+		
+	} // end public class IISSetup
+	
+	@Override
+	public boolean stop(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
+		if (!host.isWindows())
+			return false;
+		try {
+			return host.exec(cm, getClass(), "net stop w3svc", Host.ONE_MINUTE);
+		} catch ( Exception ex ) {
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "stop", ex, "");
+		}
+		return false;
+	}
 
 	@Override
 	public String getDefaultDocroot(Host host, PhpBuild build) {
-		return host.getSystemDrive() + "\\inetpub\\wwwroot";
+		return host.isWindows() ? host.getSystemDrive()+"/inetpub/wwwroot" : null;
 	}
 
+	public void addToDebugPath(ConsoleManager cm, AHost host, PhpBuild build, Collection<String> debug_path) {
+		if (host.isWindows()) {
+			// TODO
+		}
+	}
+	
 } // end public class IISManager

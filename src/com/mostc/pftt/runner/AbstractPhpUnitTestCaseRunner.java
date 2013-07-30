@@ -29,20 +29,27 @@ import com.mostc.pftt.scenario.ScenarioSetSetup;
 
 /** runs a single PhpUnitTestCase
  * 
+ * 
+having PFTT directly run PhpUnit test cases itself, instead of just wrapping `phpunit` allows for:
+   -faster execution (threads)
+   -Web Server support ('cut closer to actual server')
+      -more accurate results
+      -usually only a slight or no difference
+      -but if you care about accurate, quality or thorough testing
+      -or if care about how well your software actually works
+   -better analysis of large amounts of phpunit tests
+   -opcache support
+      -opcache can break reflection (at least on apache)
+           -PFTT doesn't use reflection for phpunit tests
+            so PFTT can run phpunit tests regardless of this problem
+              ->add `phpunit_reflection_only` to your -config to force PFTT to use reflection to test this problem
+   -counting additional statuses (ex: xskip)
+   -accurate CRASH and TIMEOUT detection
+ * 
  * @author Matt Ficken
  *
  */
 
-// having PFTT directly run PhpUnit test cases itself, instead of just wrapping `phpunit` allows for:
-//   -faster execution (threads)
-//   -Web Server support ('cut closer to actual server')
-//      -more accurate results
-//      -usually only a slight or no difference
-//      -but if you care about accurate, quality or thorough testing
-//      -or if care about how well your software actually works
-//   -counting additional statuses (ex: xskip)
-//   -accurate crash detection
-//
 public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunner<LocalPhpUnitTestPackRunner.PhpUnitThread,LocalPhpUnitTestPackRunner> {
 	protected final SAPIScenario sapi_scenario;
 	protected final PhpUnitThread thread;
@@ -209,8 +216,8 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 			//
 			// @see PhpUnitTemplate#renderTemplate for the PHP script
 			//
-			TestCaseCodeCoverage code_coverage = new TestCaseCodeCoverage(host);
-			String output_str;
+			TestCaseCodeCoverage code_coverage = null;
+			String output_str, output_lc;
 			{
 				List<String> lines = ArrayUtil.toList(StringUtil.splitLines(output));
 				Iterator<String> line_it = lines.iterator();
@@ -222,14 +229,20 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 						
 						line_it.remove(); // remove this line from output_str
 					} else if (line.startsWith("exe=")) {
+						if (code_coverage==null)
+							code_coverage = new TestCaseCodeCoverage(host);
 						code_coverage.addExecutedLine(file, Integer.parseInt(line.substring("exe=".length())));
 						
 						line_it.remove(); // remove this line from output_str
 					} else if (line.startsWith("didnt_exe=")) {
+						if (code_coverage==null)
+							code_coverage = new TestCaseCodeCoverage(host);
 						code_coverage.addNotExecutedLine(file, Integer.parseInt(line.substring("didnt_exe=".length())));
 						
 						line_it.remove(); // remove this line from output_str
 					} else if (line.startsWith("no_exe=")) {
+						if (code_coverage==null)
+							code_coverage = new TestCaseCodeCoverage(host);
 						code_coverage.addNonExecutableLine(file, Integer.parseInt(line.substring("no_exe=".length())));
 						
 						line_it.remove(); // remove this line from output_str
@@ -251,20 +264,24 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 					} 
 				}
 				output_str = StringUtil.join(lines, "\n");
-				if (output_str.contains("Missing arg")||output_str.contains("Argument 1 passed"))
-					status = EPhpUnitTestStatus.SKIP; // TODO temp
+				output_lc = output_str.toLowerCase();
+				// some tests call code that echos out 'not implemented' (using echo, etc... 
+				//     not throwing exception with PhpUnit, so have to search the output for string)
+				if ((status==EPhpUnitTestStatus.ERROR||status==EPhpUnitTestStatus.FAILURE)
+						&& (output_lc.contains("not been implemented yet") || output_lc.contains("not implemented"))) {
+					status = EPhpUnitTestStatus.NOT_IMPLEMENTED;
+				}
 			}
 			//
 			
-			if (status==null||is_timeout) {
+			if (is_timeout) {
+				status = EPhpUnitTestStatus.TIMEOUT;
+			} else if (status==null) {
 				// if test had a 'Fatal Error', it might not have been able to print the status code at all
 				// (otherwise it should always have a status code)
 				status = EPhpUnitTestStatus.ERROR;
-			}
-			
-			if (status == EPhpUnitTestStatus.SKIP) {
+			} else if (status == EPhpUnitTestStatus.SKIP) {
 				// check if it should be XSKIP instead
-				final String output_lc = output_str.toLowerCase();
 				if (host.isWindows() && output_lc.contains("not ") && output_lc.contains(" windows"))
 					status = EPhpUnitTestStatus.XSKIP;
 				else if (!host.isWindows() && output_lc.contains("only ") && output_lc.contains(" windows"))
@@ -300,6 +317,8 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 
 	/** configures PhpUnit globals to use the given database.
 	 * 
+	 * Note: these are standard names for PhpUnit_Framework_Database, many test suites also
+	 *       use their own names which you MUST provide in an additional Scenario (which you can load from a config file)
 	 * Note: (because of how this is done) PhpUnit tests only test 1 database at a time (unlike PHPTs).
 	 * 
 	 * So if you want to test an application with multiple different databases (ex: MySQL and PostgresQL), you

@@ -38,14 +38,6 @@ public class PhpUnitTemplate {
 	}
 	
 	public static String renderTemplate(AHost host, ScenarioSet scenario_set, PhpUnitTestCase test_case, String prebootstrap_code, String bootstrap_file, String postbootstrap_code, String cwd, String include_path, String[] included_files, Map<String, String> globals, Map<String, String> constants, HashMap<String, String> env, String my_temp_dir, boolean reflection_only, boolean strict) {
-		// XXX will need to get these values from PHP code 
-		// data source: PhpUnit_Framework_TestCase constructor (default value)
-		String data = "a:0:{}";
-		// data source: PhpUnit_Framework_TestCase constructor (default value)
-		String dataName = "";
-		// default value
-		String dependencyInput = "a:0:{}";
-		
 		StringWriter sw = new StringWriter(16384);
 		PrintWriter pw = new PrintWriter(sw);
 		
@@ -176,14 +168,36 @@ function __phpunit_run_isolated_test()
 		if (!class_exists('$test_case.className')) {
 			require_once '$test_case.abs_filename';
 		}
-
-		\$test = new $test_case.className('$test_case.methodName', unserialize('$data'), '$dataName');
-		\$test->setDependencyInput(unserialize('$dependencyInput'));
-		\$test->setInIsolation(TRUE);
 		
 		ob_end_clean();
 		ob_start();
+""");
+	if (test_case.dataProviderMethodName!=null) {
+		pw.print("""
+		\$test = new $test_case.className('$test_case.dataProviderMethodName', array(), '');
+		\$test->setInIsolation(TRUE);
+		\$test->pftt_step1();
 
+		\$data = \$test->$test_case.dataProviderMethodName();
+		\$data = array_shift(\$data);
+""")
+	} else if (test_case.dependsMethodName!=null) {
+		pw.print("""
+		\$test = new $test_case.className('$test_case.dependsMethodName', array(), '');
+		\$test->setInIsolation(TRUE);
+		\$test->pftt_step1();
+
+		\$data = \$test->$test_case.dependsMethodName();
+""")
+	} else {
+		pw.print("""
+		\$data = array();
+""")
+	}
+		pw.print("""
+		\$test = new $test_case.className('$test_case.methodName', \$data, '');
+		\$test->setInIsolation(TRUE);
+		
 """);
 	//
 	if (reflection_only) {
@@ -223,7 +237,32 @@ pw.println("""
 pw.println("""clearstatcache();
 		\$test->pftt_step1();
 		\$start_time = microtime(TRUE);
-        \$test->$test_case.methodName();
+""")
+
+		//
+		// if had to call depends or dataProvider method, need to pass the arguments to the test
+		// method
+		if (test_case.dependsMethodName!=null||test_case.dataProviderMethodName!=null) {
+			// could use this PHP Code:
+			// call_user_func_array(\$test->test_case.methodName, \$data);
+			//
+			// but that uses reflection... we know the number of arguments (since we parsed this PHP file already)
+			// so generate the PHP code to read from each index of the $data array (and to call the test method)
+			pw.println("\$test->$test_case.methodName(")
+			for ( int i=0 ; i < test_case.getArgCount() ; i++ ) {
+				if (i>0)
+					pw.print(", ")
+				pw.print("\$data[$i]")
+			}
+			pw.println(");");
+			//
+		} else {
+			// don't have to pass arguments, just call the method
+			pw.println("\$test->$test_case.methodName();")
+		}
+		//
+		
+		pw.println("""
 		\$run_time = microtime(TRUE) - \$start_time;
         \$test->pftt_step2();
 		try {
