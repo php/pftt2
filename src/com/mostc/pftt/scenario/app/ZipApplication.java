@@ -5,6 +5,7 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
+import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
 import com.mostc.pftt.scenario.WebServerScenario;
 import com.mostc.pftt.scenario.ApplicationScenario;
 import com.mostc.pftt.scenario.IScenarioSetup;
@@ -15,7 +16,7 @@ public abstract class ZipApplication extends ApplicationScenario {
 	protected String app_dir;
 	
 	@Override
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
 		if (true)
 			return SETUP_SUCCESS; // TODO
 		WebServerScenario web = WebServerScenario.getWebServerScenario(scenario_set);

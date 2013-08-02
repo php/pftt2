@@ -6,6 +6,7 @@ import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.scenario.DatabaseScenario;
+import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
 import com.mostc.pftt.scenario.DatabaseScenario.DatabaseScenarioSetup;
 import com.mostc.pftt.scenario.ScenarioSet;
 
@@ -30,7 +31,7 @@ public abstract class DatabasePhpUnitSourceTestPack extends PhpUnitSourceTestPac
 			return handleNoDatabaseScenario(cm);
 		}
 		
-		database = ds.setup(cm, runner_host, build, scenario_set);
+		database = ds.setup(cm, runner_host, build, scenario_set, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_APPLICATION);
 		if (database==null) {
 			cm.println(EPrintType.CANT_CONTINUE, getClass(), "Could not setup database scenario");
 			return handleNoDatabaseScenario(cm);

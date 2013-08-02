@@ -121,6 +121,21 @@ public class PhpUnitTestCase extends TestCase {
 		return getName();
 	}
 	
+	@Override
+	public boolean equals(Object o) {
+		if (o==this)
+			return true;
+		else if (o instanceof PhpUnitTestCase) 
+			return o.toString().equals(this.toString());
+		else
+			return false;
+	}
+	
+	@Override
+	public int hashCode() {
+		return getName().hashCode();
+	}
+	
 	/** fixes slashes to Posix forward slash /.
 	 * 
 	 * this is case-preserving (to avoid breaking on posix). case is not changed.

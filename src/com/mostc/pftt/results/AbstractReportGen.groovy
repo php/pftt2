@@ -1,10 +1,14 @@
 package com.mostc.pftt.results
 
+import com.github.mattficken.io.IOUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.core.EBuildBranch;
 
 abstract class AbstractReportGen { 
-	static int ABBREVIATED_MAX_LENGTH = 512*1024;
+	// don't send large email messages
+	// keep in mind: you're probably sending both an HTML and a text/plain copy,
+	// so the actual size of the mail message may be as much as double the size here
+	static int ABBREVIATED_MAX_LENGTH = IOUtil.HALF_MEGABYTE;
  
 	abstract void run(ConsoleManager cm, boolean abbreviated);
 	

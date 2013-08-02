@@ -3,6 +3,8 @@ package com.mostc.pftt.scenario;
 import java.io.IOException;
 import java.util.Collection;
 
+import javax.annotation.Nullable;
+
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlSerializer;
@@ -38,11 +40,13 @@ import com.mostc.pftt.results.ITestResultReceiver;
 
 public abstract class Scenario {
 
+	// TODO
 	@Overridable
 	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup setup, ESAPIType type, PhpBuild build, PhptSourceTestPack src_test_pack, PhptTestCase test_case) throws Exception {
 		return false;
 	}
 	
+	// TODO
 	@Overridable
 	public Class<?> getSerialKey(EScenarioSetPermutationLayer layer) {
 		return getClass();
@@ -62,13 +66,18 @@ public abstract class Scenario {
 		
 	}
 	
+	/** does #setup need to be called before this Scenario can be used?
+	 * 
+	 * @param layer
+	 * @return
+	 */
 	@Overridable
 	public boolean setupRequired(EScenarioSetPermutationLayer layer) {
 		return !isPlaceholder(layer);
 	}
 	
 	@Overridable
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
 		return SETUP_SUCCESS;
 	}
 	public static final IScenarioSetup SETUP_SUCCESS = new SimpleScenarioSetup() {
@@ -87,11 +96,25 @@ public abstract class Scenario {
 		};
 	public static final IScenarioSetup SETUP_FAILED = null;
 	
+	/** TODO
+	 * 
+	 * @return
+	 */
 	public abstract String getName();
+	
+	/** is scenario implemented? if not calling #setup should return SETUP_FAILED
+	 * 
+	 * @return
+	 */
 	public abstract boolean isImplemented();
 		
-	@Overridable
-	public boolean isPlaceholder(EScenarioSetPermutationLayer layer) {
+	/** TODO
+	 * 
+	 * @param layer
+	 * @return
+	 */
+	@Overridable 
+	public boolean isPlaceholder(@Nullable EScenarioSetPermutationLayer layer) {
 		return false;
 	}
 	
@@ -100,6 +123,11 @@ public abstract class Scenario {
 		return isPlaceholder(layer);
 	}
 	
+	/**
+	 * 
+	 * @param name
+	 * @return
+	 */
 	@Overridable
 	protected String processNameAndVersionInfo(String name) {
 		return name;
@@ -116,11 +144,20 @@ public abstract class Scenario {
 		return false;
 	}
 	
+	// TODO
 	@Overridable
 	public boolean isUACRequiredForSetup() {
 		return false;
 	}
 	
+	/** TODO
+	 * 
+	 * @param cm
+	 * @param host
+	 * @param build
+	 * @param scenario_set
+	 * @return
+	 */
 	@Overridable
 	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		return true;

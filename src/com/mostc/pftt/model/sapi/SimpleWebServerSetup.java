@@ -9,4 +9,7 @@ public abstract class SimpleWebServerSetup extends SimpleScenarioSetup implement
 		return "http://"+getHostname()+":"+getPort()+"/";
 	}
 	
+	@Override
+	public abstract boolean isRunning();
+	
 }

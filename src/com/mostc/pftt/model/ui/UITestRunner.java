@@ -45,6 +45,7 @@ import com.mostc.pftt.scenario.EnchantScenario;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.ErrorUtil;
 import com.mostc.pftt.util.StringUtil2;
+import com.mostc.pftt.util.TimerUtil;
 
 /** Runs a UI test-pack
  * 
@@ -1267,9 +1268,7 @@ public class UITestRunner implements IUITestBranch {
 				// important: make sure it got typed - part or all of value may be missing (may not have been typed)
 				if (StringUtil.equalsCS(value, getValue(we)))
 					return true;
-				try {
-					Thread.sleep(500);
-				} catch ( InterruptedException ex ) {}
+				TimerUtil.trySleepMillis(200);
 			}
 			return true;
 		}

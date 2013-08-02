@@ -7,6 +7,7 @@ import java.lang.ref.SoftReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -202,6 +203,15 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 		doRead(config, cm, test_cases, names);
 	}
 	
+	protected static void copyTestsNoDuplicates(List<PhpUnitTestCase> src, List<PhpUnitTestCase> dst) {
+		// multiple PhpUnitDist files may reference the same tests, just run(load) each one time
+		final HashMap<String,PhpUnitTestCase> by_name = new HashMap<String,PhpUnitTestCase>();
+		for ( PhpUnitTestCase test_case : src )
+			by_name.put(test_case.getName(), test_case);
+		dst.clear(); // TODO temp? prevents enumerating each test twice
+		dst.addAll(by_name.values());
+	}
+	
 	/** reads all the PhpUnitTestCases from this test-pack
 	 * 
 	 * @param config
@@ -218,17 +228,17 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 		if (_ref_test_cases!=null) {
 			_test_cases = _ref_test_cases.get();
 			if (_test_cases!=null) {
-				test_cases.addAll(_test_cases);
+				copyTestsNoDuplicates(_test_cases, test_cases);
 				return;
 			}
 		}
 		//
 		
-		doRead(config, cm, test_cases, null);
+		_test_cases = new ArrayList<PhpUnitTestCase>(3500);
+		doRead(config, cm, _test_cases, null);
 		
 		// cache for future use
-		_test_cases = new ArrayList<PhpUnitTestCase>(test_cases.size());
-		_test_cases.addAll(test_cases);
+		copyTestsNoDuplicates(_test_cases, test_cases);
 		_ref_test_cases = new SoftReference<ArrayList<PhpUnitTestCase>>(_test_cases);
 		//
 	}

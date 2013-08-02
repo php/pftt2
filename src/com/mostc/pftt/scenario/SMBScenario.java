@@ -102,7 +102,7 @@ public abstract class SMBScenario extends RemoteFileSystemScenario {
 		public String getNameWithVersionInfo() {
 			return getName();
 		}
-
+		
 		@Override
 		public String getName() {
 			return SMBScenario.this.getName();

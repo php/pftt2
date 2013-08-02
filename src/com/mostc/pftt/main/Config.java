@@ -313,7 +313,7 @@ public final class Config implements IENVINIFilter {
 	 */
 	public List<ScenarioSet> getScenarioSets(ConsoleManager cm, EScenarioSetPermutationLayer layer) {
 		if (layer==null)
-			layer = EScenarioSetPermutationLayer.PHP_CORE; // fallback
+			layer = EScenarioSetPermutationLayer.FUNCTIONAL_TEST_CORE; // fallback
 		
 		List<ScenarioSet> this_scenario_sets = permuted_scenario_sets.get(layer);
 		if (this_scenario_sets!=null)

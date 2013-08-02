@@ -23,8 +23,8 @@ public class SOAPScenario extends NetworkedServiceScenario {
 	}
 	
 	@Override
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
-		return null;
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
+		return SETUP_FAILED;
 	}
 
 }

@@ -15,7 +15,7 @@ public abstract class SMBCSCOptionScenario extends OptionScenario {
 	public abstract boolean isEnable();
 	
 	@Override
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
 		// XXX linux client support
 		StringBuilder ps_sb = new StringBuilder();
 		ps_sb.append("$wmi = [wmiclass]\"\\\\localhost\\root\\cimv2:win32_offlinefilescache\"");

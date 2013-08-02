@@ -225,7 +225,7 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 
 	@Override
 	public EScenarioSetPermutationLayer getScenarioSetPermutationLayer() {
-		return EScenarioSetPermutationLayer.WEB_APPLICATION;
+		return EScenarioSetPermutationLayer.FUNCTIONAL_TEST_APPLICATION;
 	}
 
 } // end public class LocalPhpUnitTestPackRunner

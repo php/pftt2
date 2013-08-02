@@ -96,7 +96,7 @@ public abstract class WebServerScenario extends SAPIScenario {
 	}
 	
 	@Override
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
 		return smgr.setup(cm, host, build);
 	}
 	

@@ -58,6 +58,7 @@ import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.AlignedTable;
 import com.mostc.pftt.util.DownloadUtil;
 import com.mostc.pftt.util.HostEnvUtil;
+import com.mostc.pftt.util.TimerUtil;
 import com.mostc.pftt.util.WinDebugManager;
 import com.mostc.pftt.util.WindowsSnapshotDownloadUtil;
 import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
@@ -556,7 +557,7 @@ public class PfttMain {
 				cm.println(EPrintType.IN_PROGRESS, "PhpUnitSourceTestPack", "enumerated test cases.");
 				
 				
-				for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.WEB_APPLICATION)) {
+				for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_APPLICATION)) {
 				
 					List<AHost> hosts = config.getHosts();
 					AHost host = hosts.isEmpty()?this.host:hosts.get(0);
@@ -591,7 +592,7 @@ public class PfttMain {
 				
 				cm.println(EPrintType.CLUE, PfttMain.class, "Writing Result-Pack: "+tmgr.getResultPackPath());
 				
-				for (ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.WEB_APPLICATION)) {
+				for (ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_APPLICATION)) {
 					List<AHost> hosts = config.getHosts();
 					AHost host = hosts.isEmpty()?this.host:hosts.get(0);
 					LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, host, host);
@@ -614,7 +615,7 @@ public class PfttMain {
 			hosts.add(this.host);
 		}
 		for ( int i=0 ; i < cm.getRunTestPack() ; i++ ) {
-			for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.PHP_CORE) ) {
+			for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_CORE) ) {
 				if (!cm.isSkipSmokeTests()) {
 					{
 						// TODO test running PHPTs on a build that is missing a DLL that is
@@ -676,7 +677,7 @@ public class PfttMain {
 			hosts.add(this.host);
 		}
 		for ( int i=0 ; i < cm.getRunTestPack() ; i++ ) {
-			for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.PHP_CORE) ) {
+			for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_CORE) ) {
 				//
 				if (!cm.isSkipSmokeTests()) {
 					{
@@ -1506,7 +1507,7 @@ public class PfttMain {
 					// TODO open result-packs and process them
 					
 				} else if (command.equals("app_named")||command.equals("appnamed")||command.equals("an")) {
-					checkUAC(is_uac, false, config, cm, EScenarioSetPermutationLayer.WEB_APPLICATION);
+					checkUAC(is_uac, false, config, cm, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_APPLICATION);
 					
 					PhpBuild[] builds = newBuilds(cm, p.host, args[args_i+1]); 
 					
@@ -1527,7 +1528,7 @@ public class PfttMain {
 						return;
 					}
 					
-					checkUAC(is_uac, false, config, cm, EScenarioSetPermutationLayer.WEB_APPLICATION);
+					checkUAC(is_uac, false, config, cm, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_APPLICATION);
 					
 					PhpBuild[] builds = newBuilds(cm, p.host, args[args_i+1]);
 					
@@ -1549,7 +1550,7 @@ public class PfttMain {
 						return;
 					}
 					
-					checkUAC(is_uac, false, config, cm, EScenarioSetPermutationLayer.WEB_APPLICATION);
+					checkUAC(is_uac, false, config, cm, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_APPLICATION);
 					
 					PhpBuild[] builds = newBuilds(cm, p.host, args[args_i+1]);
 					
@@ -1573,7 +1574,7 @@ public class PfttMain {
 					}				
 					args_i += 3; // skip over build and test_pack
 					
-					checkUAC(is_uac, false, config, cm, EScenarioSetPermutationLayer.PHP_CORE);
+					checkUAC(is_uac, false, config, cm, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_CORE);
 					
 					// read name fragments from CLI arguments
 					ArrayList<String> names = new ArrayList<String>(args.length-args_i);
@@ -1610,7 +1611,7 @@ public class PfttMain {
 						return;
 					}
 					
-					checkUAC(is_uac, false, config, cm, EScenarioSetPermutationLayer.PHP_CORE);
+					checkUAC(is_uac, false, config, cm, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_CORE);
 					
 					LinkedList<String> names = new LinkedList<String>();
 					readStringListFromFile(names, list_file);
@@ -1635,7 +1636,7 @@ public class PfttMain {
 					}
 					
 					cm.println(EPrintType.IN_PROGRESS, "Main", "Testing all PHPTs in test pack...");
-					checkUAC(is_uac, false, config, cm, EScenarioSetPermutationLayer.PHP_CORE);
+					checkUAC(is_uac, false, config, cm, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_CORE);
 					
 					for ( PhpBuild build : builds )
 						p.coreAll(build, test_pack, config, p.getWriter(build, test_pack));
@@ -1670,7 +1671,7 @@ public class PfttMain {
 							cm.println(EPrintType.CLUE, "PfttMain", "Test not found: "+name);
 						names.add(name);
 					}
-					for ( ScenarioSet set : getScenarioSets(config, EScenarioSetPermutationLayer.PHP_CORE) ) {
+					for ( ScenarioSet set : getScenarioSets(config, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_CORE) ) {
 						if (!set.getName().equalsIgnoreCase("Local-FileSystem_CLI")) {
 							cm.println(EPrintType.CANT_CONTINUE, "PfttMain", "run-tests.php only supports the Local-FileSystem_CLI ScenarioSet, not: "+set);
 							cm.println(EPrintType.TIP, "PfttMain", "remove -c console option (so PFTT only tests Local-FileSystem_CLI) and try again");
@@ -1721,15 +1722,15 @@ public class PfttMain {
 					
 					PhpBuild build = newBuild(cm, p.host, args[args_i+1]);
 					
-					checkUAC(is_uac, true, config, cm, EScenarioSetPermutationLayer.WEB_SERVER);
+					checkUAC(is_uac, true, config, cm, EScenarioSetPermutationLayer.PRODUCTION_OR_ALL_UP_TEST);
 					
 					PhpIni ini;
 					ScenarioSetSetup scenario_set_setup;
-					for ( ScenarioSet set : getScenarioSets(config, EScenarioSetPermutationLayer.WEB_SERVER) ) {
+					for ( ScenarioSet set : getScenarioSets(config, EScenarioSetPermutationLayer.PRODUCTION_OR_ALL_UP_TEST) ) {
 						ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, p.host, build);
 						INIScenario.setupScenarios(cm, p.host, set, build, ini);
 						
-						scenario_set_setup = ScenarioSetSetup.setupScenarioSet(cm, p.host, build, set, EScenarioSetPermutationLayer.WEB_SERVER);
+						scenario_set_setup = ScenarioSetSetup.setupScenarioSet(cm, p.host, build, set, EScenarioSetPermutationLayer.PRODUCTION_OR_ALL_UP_TEST);
 						
 						if (scenario_set_setup==null) {
 							cm.println(EPrintType.CANT_CONTINUE, "Stop", "Error opening: "+set.getName());
@@ -1749,16 +1750,16 @@ public class PfttMain {
 					
 					PhpBuild build = newBuild(cm, p.host, args[args_i+1]);
 					
-					checkUAC(is_uac, true, config, cm, EScenarioSetPermutationLayer.WEB_SERVER);
+					checkUAC(is_uac, true, config, cm, EScenarioSetPermutationLayer.PRODUCTION_OR_ALL_UP_TEST);
 					
 					// setup all scenarios
 					PhpIni ini;
-					for ( ScenarioSet set : getScenarioSets(config, EScenarioSetPermutationLayer.WEB_SERVER) ) {
+					for ( ScenarioSet set : getScenarioSets(config, EScenarioSetPermutationLayer.PRODUCTION_OR_ALL_UP_TEST) ) {
 						
 						ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, p.host, build);
 						INIScenario.setupScenarios(cm, p.host, set, build, ini);
 						
-						ScenarioSetSetup.setupScenarioSet(cm, p.host, build, set, EScenarioSetPermutationLayer.WEB_SERVER);
+						ScenarioSetSetup.setupScenarioSet(cm, p.host, build, set, EScenarioSetPermutationLayer.PRODUCTION_OR_ALL_UP_TEST);
 						
 					}
 				} else if (command.equals("release_get")||command.equals("rgn")||command.equals("rgnew")||command.equals("rgnewest")||command.equals("rgp")||command.equals("rgprev")||command.equals("rgprevious")||command.equals("rg")||command.equals("rget")) {
@@ -1939,10 +1940,10 @@ public class PfttMain {
 						// TODO install and configure wordpress
 						w = p.getWriter(build);
 						for ( UITestPack test_pack : test_packs ) {
-							for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.WEB_APPLICATION) ) {
+							for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_APPLICATION) ) {
 								for ( AHost host : hosts ) {
 									// XXX move to separate class, method, etc...
-									ScenarioSetSetup scenario_set_setup = ScenarioSetSetup.setupScenarioSet(cm, host, build, scenario_set, EScenarioSetPermutationLayer.WEB_APPLICATION);
+									ScenarioSetSetup scenario_set_setup = ScenarioSetSetup.setupScenarioSet(cm, host, build, scenario_set, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_APPLICATION);
 									if (scenario_set_setup==null)
 										continue;
 									
@@ -2012,9 +2013,7 @@ public class PfttMain {
 		//
 		// if not:
 		// wait 30 seconds for shutdown hooks, etc... then halt for sure
-		try {
-			Thread.sleep(30000);
-		} catch ( InterruptedException ex ) {}
+		TimerUtil.trySleepSeconds(30);
 		System.out.println("PFTT: exiting...");
 		Runtime.getRuntime().halt(0);
 	}

@@ -6,9 +6,12 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
 
+import com.github.mattficken.io.ArrayUtil;
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.host.SSHHost;
 import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.PhpBuildInfo;
+import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 
 /** Reads result-pack of a test run completed in the past.
@@ -452,6 +455,58 @@ public class PhpResultPackReader extends PhpResultPack {
 	@Override
 	public File getResultPackPath() {
 		return file;
+	}
+
+	@Override
+	public Collection<AHost> getHosts() {
+		LinkedList<AHost> hosts = new LinkedList<AHost>();
+		for ( File f : file.listFiles() ) {
+			if (f.isDirectory())
+				hosts.add(new SSHHost(f.getName(), "", ""));
+		}
+		return hosts;
+	}
+
+	@Override
+	public Collection<String> getPhptTestPacks(AHost host) {
+		return ArrayUtil.toList(new File(file, new File(host.getName(), "PHPT").getName()).list());
+	}
+
+	@Override
+	public Collection<ScenarioSet> getPhptScenarioSets(AHost host, String phpt_test_pack) {
+		LinkedList<ScenarioSet> out = new LinkedList<ScenarioSet>();
+		for ( File f : new File(file, new File(host.getName(), new File("PHPT", phpt_test_pack).getName()).getName()).listFiles() ) {
+			if (f.isDirectory())
+				out.add(ScenarioSet.parse(f.getName()));
+		}
+		return out;
+	}
+
+	@Override
+	public Collection<String> getPhpUnitTestPacks(AHost host) {
+		return ArrayUtil.toList(new File(file, new File(host.getName(), "PhpUnit").getName()).list());
+	}
+
+	@Override
+	public Collection<ScenarioSet> getPhpUnitScenarioSets(AHost host, String phpunit_test_pack) {
+		LinkedList<ScenarioSet> out = new LinkedList<ScenarioSet>();
+		for ( File f : new File(file, new File(host.getName(), new File("PhpUnit", phpunit_test_pack).getName()).getName()).listFiles() ) {
+			if (f.isDirectory())
+				out.add(ScenarioSet.parse(f.getName()));
+		}
+		return out;
+	}
+
+	public AbstractPhptRW getPHPT(AHost host, ScenarioSet scenario_set, String test_pack_name) {
+		return phpt_reader_map.get(host).get(scenario_set).get(test_pack_name);
+	}
+
+	public AbstractPhpUnitRW getPhpUnit(AHost host, String test_pack_name_and_version, ScenarioSet scenario_set) {
+		return php_unit_reader_map.get(host).get(test_pack_name_and_version).get(scenario_set);
+	}
+	
+	public AbstractUITestRW getUITest(AHost host, String test_pack_name_and_version, ScenarioSet scenario_set, String web_browser_name_and_version) {
+		return ui_test_reader_map.get(host).get(test_pack_name_and_version).get(scenario_set).get(web_browser_name_and_version);
 	}
 
 } // end public class PhpResultPackReader

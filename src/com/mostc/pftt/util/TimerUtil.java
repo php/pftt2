@@ -4,6 +4,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class TimerUtil {
 	
+	public static boolean trySleepSeconds(int seconds) {
+		return trySleepMillis(seconds*1000);
+	}
+	
+	public static boolean trySleepMillis(int millis) {
+		try {
+			Thread.sleep(millis);
+			return true;
+		} catch ( Exception ex ) {}
+		return false;
+	}
+	
 	public interface RepeatingRunnable {
 		public void run(RepeatingThread thread);
 	}

@@ -51,7 +51,7 @@ public class ScenarioSet extends ArrayList<Scenario> {
 	private static Comparator<Scenario> COMPARATOR = new Comparator<Scenario>() {
 			@Override
 			public int compare(Scenario a, Scenario b) {
-				return a.getSerialKey(EScenarioSetPermutationLayer.PHP_CORE).getName().compareTo(b.getSerialKey(EScenarioSetPermutationLayer.PHP_CORE).getName());
+				return a.getSerialKey(EScenarioSetPermutationLayer.FUNCTIONAL_TEST_CORE).getName().compareTo(b.getSerialKey(EScenarioSetPermutationLayer.FUNCTIONAL_TEST_CORE).getName());
 			}
 		};
 	private synchronized void sort(EScenarioSetPermutationLayer layer) {
@@ -311,13 +311,19 @@ public class ScenarioSet extends ArrayList<Scenario> {
 		return scenario_sets;
 	}
 	static {
-		scenario_sets = permuteScenarioSets(EScenarioSetPermutationLayer.PHP_CORE, Arrays.asList(Scenario.getAllDefaultScenarios()));
+		scenario_sets = permuteScenarioSets(EScenarioSetPermutationLayer.FUNCTIONAL_TEST_CORE, Arrays.asList(Scenario.getAllDefaultScenarios()));
 	}
 	
 	protected String processNameAndVersionInfo(String name) {
 		for ( Scenario s : this )
 			name = s.processNameAndVersionInfo(name);
 		return name;
+	}
+
+	public static ScenarioSet parse(String name) {
+		ScenarioSet s = new ScenarioSet();
+		s.str = name;
+		return s;
 	}
 	
 } // end public class ScenarioSet

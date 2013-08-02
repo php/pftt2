@@ -240,7 +240,7 @@ public class OpcacheScenario extends CodeCacheScenario {
 	}
 
 	@Override
-	public OpcacheSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	public OpcacheSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
 		if (host.isWindows()) {
 			// TODO shouldn't be casting to AHost
 			cleanupBaseAddressFile((AHost)host, build, null);

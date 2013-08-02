@@ -30,6 +30,7 @@ import com.mostc.pftt.model.ui.UITestPack;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.ErrorUtil;
+import com.mostc.pftt.util.TimerUtil;
 
 /** Writes the result-pack from a test run.
  * 
@@ -710,11 +711,8 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 			results.add(new CloseQueueEntry());
 			if (block) {
 				while (!results.isEmpty()) {
-					try {
-						Thread.sleep(100);
-					} catch ( InterruptedException ex ) {
+					if (!TimerUtil.trySleepMillis(100))
 						break;
-					}
 				}
 			}
 		} else {
@@ -725,11 +723,8 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	public void wait(AHost host, ScenarioSet scenario_set) {
 		// TODO
 		while (!results.isEmpty()) {
-			try {
-				Thread.sleep(100);
-			} catch ( InterruptedException ex ) {
+			if (!TimerUtil.trySleepMillis(100))
 				break;
-			}
 		}
 	}
 	
@@ -986,6 +981,48 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		} catch ( Exception ex ) {
 			ex.printStackTrace();
 		}
+	}
+
+	@Override
+	public Collection<AHost> getHosts() {
+		// TODO combine phpunit_writer_map and uitest_writer_map
+		return phpt_writer_map.keySet();
+	}
+
+	@Override
+	public Collection<String> getPhptTestPacks(AHost host) {
+		LinkedList<String> out = new LinkedList<String>();
+		for ( HashMap<String,PhptResultWriter> a : phpt_writer_map.get(host).values() ) {
+			for ( String test_pack : a.keySet() ) {
+				if (!out.contains(test_pack))
+					out.add(test_pack);
+			}
+		}
+		return out;
+	}
+
+	@Override
+	public Collection<ScenarioSet> getPhptScenarioSets(AHost host, String phpt_test_pack) {
+		LinkedList<ScenarioSet> out = new LinkedList<ScenarioSet>();
+		for ( ScenarioSetSetup s : phpt_writer_map.get(host).keySet() ) {
+			HashMap<String,PhptResultWriter> a = phpt_writer_map.get(host).get(s);
+			if (a.equals(phpt_test_pack))
+				out.add(s.getScenarioSet());
+		}
+		return out;
+	}
+
+	@Override
+	public Collection<String> getPhpUnitTestPacks(AHost host) {
+		return phpunit_writer_map.get(host).keySet();
+	}
+
+	@Override
+	public Collection<ScenarioSet> getPhpUnitScenarioSets(AHost host, String phpunit_test_pack) {
+		LinkedList<ScenarioSet> out = new LinkedList<ScenarioSet>();
+		for ( ScenarioSetSetup s : phpunit_writer_map.get(host).get(phpunit_test_pack).map.keySet() )
+			out.add(s.getScenarioSet());
+		return out;
 	}
 	
 } // end public class PhpResultPackWriter

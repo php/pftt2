@@ -83,6 +83,8 @@ public abstract class FileSystemScenario extends AbstractSerialScenario {
 		public void close(ConsoleManager cm) {
 			
 		}
+		@Override
+		public abstract boolean isRunning();
 	}
 	
 	public abstract ITestPackStorageDir setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set);

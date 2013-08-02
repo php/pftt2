@@ -89,17 +89,22 @@ class WordpressPhpUnitTestPack extends RequiredDatabasePhpUnitSourceTestPack {
 		// experience has shown that using a separate database per thread is required to get consistent test results
 		//
 		//
+		final def db_host = database.getHostname();
+		final def db_port = database.getPort();
+		final def db_username = "wp_test";
+		final def db_password = "password01!";
 		// drop and recreate it from the previous test
 		// (in case previous test messed up the database ... happens using a single database and different table prefixes too)
-		database.createDatabaseWithUserReplaceOk(db_name, "wp_test", "password01!");
+		database.createDatabaseWithUserReplaceOk(db_name, db_username, db_password);
 		
 		
+		// important: specify the port number! database may be using a non-standard port number.
 		def build_path = build.getPhpExe();
 		return """
 define( 'DB_NAME', '$db_name' );
-define( 'DB_USER', 'wp_test' );
-define( 'DB_PASSWORD', 'password01!' );
-define( 'DB_HOST', 'localhost' );
+define( 'DB_USER', '$db_username' );
+define( 'DB_PASSWORD', '$db_password' );
+define( 'DB_HOST', '$db_host:$db_port' );
 define( 'WP_PHP_BINARY', '$build_path' );
 
 \$table_prefix  = 'wp_tests_';

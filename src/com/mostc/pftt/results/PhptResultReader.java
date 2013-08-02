@@ -158,6 +158,7 @@ public class PhptResultReader extends AbstractPhptRW {
 			e.test_names.remove("ext/iconv/tests/ob_iconv_handler.phpt");
 			e.test_names.remove("ext/mbstring/tests/mb_decode_numericentity.phpt");
 			e.test_names.remove("ext/standard/tests/strings/explode_bug.phpt");
+			e.test_names.remove("tests/lang/bug35176.phpt");
 		}
 		return e.test_names;
 	}

@@ -20,6 +20,11 @@ public abstract class SimpleScenarioSetup implements IScenarioSetup {
 	}
 	
 	@Override
+	public boolean isRunning() {
+		return true;
+	}
+	
+	@Override
 	public boolean hasENV() {
 		return false;
 	}

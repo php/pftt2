@@ -16,4 +16,5 @@ public interface IScenarioSetup extends IClosable {
 	public void setGlobals(Map<String, String> globals);
 	public boolean hasENV();
 	public void notifyScenarioSetSetup(ScenarioSetSetup setup);
+	public boolean isRunning();
 }

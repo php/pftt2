@@ -247,7 +247,7 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 
 	@Override
 	public EScenarioSetPermutationLayer getScenarioSetPermutationLayer() {
-		return EScenarioSetPermutationLayer.PHP_CORE;
+		return EScenarioSetPermutationLayer.FUNCTIONAL_TEST_CORE;
 	}
 	
 } // end public class LocalPhptTestPackRunner

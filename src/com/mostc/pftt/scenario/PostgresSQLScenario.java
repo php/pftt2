@@ -17,12 +17,12 @@ import com.mostc.pftt.results.ConsoleManager;
 
 public class PostgresSQLScenario extends DatabaseScenario {
 
-	public PostgresSQLScenario(AHost host, int port, String default_username, String default_password) {
-		super(host, port, default_username, default_password);
+	public PostgresSQLScenario(AHost host, String default_username, String default_password) {
+		super(host, default_username, default_password);
 	}
 
 	@Override
-	protected DatabaseScenarioSetup createScenarioSetup() {
+	protected DatabaseScenarioSetup createScenarioSetup(boolean is_production_server) {
 		return new PostgresSQLScenarioSetup();
 	}
 	
@@ -61,6 +61,20 @@ public class PostgresSQLScenario extends DatabaseScenario {
 		public String getPdoDbType() {
 			return "pdo_pgsql";
 		}
+
+		@Override
+		protected boolean startServer(ConsoleManager cm,
+				boolean is_production_database_server) {
+			// TODO Auto-generated method stub
+			return false;
+		}
+
+		@Override
+		protected boolean stopServer(ConsoleManager cm,
+				boolean is_production_database_server) {
+			// TODO Auto-generated method stub
+			return false;
+		}
 		
 	} // end public class PostgresSQLScenarioSetup
 
@@ -77,18 +91,6 @@ public class PostgresSQLScenario extends DatabaseScenario {
 	@Override
 	protected String getDriverClassName() {
 		return "org.postgres.JDriver";
-	}
-
-	@Override
-	protected boolean startServer() {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	protected boolean stopServer() {
-		// TODO Auto-generated method stub
-		return false;
 	}
 
 } // end public class PostgresSQLScenario

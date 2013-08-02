@@ -6,4 +6,6 @@ public interface IWebServerSetup extends IScenarioSetup {
 	public String getHostname();
 	public int getPort();
 	public String getRootURL();
+	@Override
+	public boolean isRunning();
 }

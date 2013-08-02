@@ -5,6 +5,7 @@ import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.scenario.DatabaseScenario;
+import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
 import com.mostc.pftt.scenario.IScenarioSetup;
 import com.mostc.pftt.scenario.MySQLScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
@@ -27,12 +28,12 @@ public abstract class ZipDbApplication extends ZipApplication {
 	}
 	
 	@Override
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
 		if (!scenario_set.contains(DatabaseScenario.class)) {
 			cm.println(EPrintType.SKIP_OPERATION, getClass(), "add a database (ex: local_mysql) to -config console option and try again");
 			return SETUP_FAILED;
 		} else {
-			return super.setup(cm, host, build, scenario_set);
+			return super.setup(cm, host, build, scenario_set, layer);
 		}
 	}
 	

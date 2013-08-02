@@ -21,6 +21,10 @@ public class LocalFileSystemScenario extends FileSystemScenario {
 				return true;
 			}
 			@Override
+			public boolean isRunning() {
+				return true;
+			}
+			@Override
 			public String getLocalPath(AHost host) {
 				return host.getPhpSdkDir();
 			}

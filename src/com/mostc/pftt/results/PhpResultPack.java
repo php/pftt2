@@ -8,6 +8,7 @@ import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
 import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.PhpBuildInfo;
 import com.mostc.pftt.model.ui.UITestPack;
+import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 
 /** Manages PHP test results (PHPT, PhpUnit, etc...)
@@ -73,8 +74,8 @@ public abstract class PhpResultPack {
 	public abstract Collection<AbstractUITestRW> getUITest(String test_pack_name_and_version);
 	public abstract PhpBuildInfo getBuildInfo();
 	
-	public AbstractPhpUnitRW getPhpUnit(AHost host, PhpUnitSourceTestPack test_pack, ScenarioSetSetup scenario_set_setup) {
-		return getPhpUnit(host, test_pack.getNameAndVersionString(), scenario_set_setup);
+	public AbstractPhpUnitRW getPhpUnit(AHost host, PhpUnitSourceTestPack test_pack, ScenarioSetSetup scenario_set) {
+		return getPhpUnit(host, test_pack.getNameAndVersionString(), scenario_set);
 	}
 	public Collection<AbstractPhpUnitRW> getPhpUnit(AHost host, PhpUnitSourceTestPack test_pack) {
 		return getPhpUnit(host, test_pack.getNameAndVersionString());
@@ -100,5 +101,11 @@ public abstract class PhpResultPack {
 		else
 			return ret;
 	}
+
+	public abstract Collection<AHost> getHosts();
+	public abstract Collection<String> getPhptTestPacks(AHost host);
+	public abstract Collection<ScenarioSet> getPhptScenarioSets(AHost host, String phpt_test_pack);
+	public abstract Collection<String> getPhpUnitTestPacks(AHost host);
+	public abstract Collection<ScenarioSet> getPhpUnitScenarioSets(AHost host, String phpunit_test_pack);
 	
 } // end public abstract class PhpResultPack

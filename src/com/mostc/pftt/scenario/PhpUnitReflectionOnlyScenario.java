@@ -7,7 +7,7 @@ import com.mostc.pftt.results.ConsoleManager;
 public class PhpUnitReflectionOnlyScenario extends PhpUnitReflectionScenario {
 
 	@Override
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
 		return SETUP_SUCCESS;
 	}
 

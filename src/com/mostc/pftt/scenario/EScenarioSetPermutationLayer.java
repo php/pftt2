@@ -15,19 +15,19 @@ package com.mostc.pftt.scenario;
  */
 
 public enum EScenarioSetPermutationLayer {
-	USER_INTERFACE,
 	/** running PhpUnit, etc... tests */
-	WEB_APPLICATION {
+	FUNCTIONAL_TEST_APPLICATION {
+		@Override
 		public boolean reject(Scenario scenario) {
 			return scenario instanceof ApplicationScenario; // TODO for wordpress,symfony,joomla
 		}
 	},
 	/** running PHPT tests against php.exe or php-cgi.exe */
-	PHP_CORE,
-	FILE_SYSTEM,
-	PERFORMANCE,
-	DATABASE,
-	WEB_SERVER;
+	FUNCTIONAL_TEST_CORE,
+	FUNCTIONAL_TEST_FILESYSTEM,
+	FUNCTIONAL_TEST_DATABASE,
+	FUNCTIONAL_TEST_WEBSERVER_ONLY,
+	PRODUCTION_OR_ALL_UP_TEST;
 
 	public boolean reject(Scenario scenario) {
 		return false;

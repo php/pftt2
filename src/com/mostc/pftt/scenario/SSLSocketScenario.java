@@ -23,14 +23,14 @@ public class SSLSocketScenario extends SocketScenario {
 	}
 
 	@Override
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
 		// TODO configure HttpPhptTestCaseRunner and HttpPhpUnitTestCaseRunner to use SSL
 		return SETUP_FAILED;
 	}
 	
 	@Override
 	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
-		// only work with AbstractWebServerScenario
+		// only work with web server scenarios
 		return WebServerScenario.getWebServerScenario(scenario_set) != null;
 	}
 

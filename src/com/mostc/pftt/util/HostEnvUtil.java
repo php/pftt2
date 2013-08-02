@@ -63,15 +63,25 @@ public final class HostEnvUtil {
 		boolean b = regQueryAdd(cm, host, "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting", "Disable", wer_value, REG_DWORD);
 		// this 1 disables the 'Instruction 0xNN referenced memory address that could not be read' popup msg (happens on a few PHPTs with remote FS for x64 builds)
 		boolean c = regQueryAdd(cm, host, "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Windows", "ErrorMode", em_value, REG_DWORD);
-		if ( a || b || c ) {			
+		
+		if (!enable_debug_prompt) {
+			regDel(cm, host, "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug", "Debugger");
+			// IMPORTANT: don't delete this key, change the value otherwise (if windbg installed) werfault.exe will
+			//            still launch windbg... won't if set to 0x2.
+			regQueryAdd(cm, host, "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug", "Auto", "0x2", REG_DWORD);
+		}
+		
+		if ( a || b || c ) {
 			// assume if registry had to be edited, the rest of this has to be done, otherwise assume this is all already done
 			// (avoid doing this if possible because it requires user to approve elevation)
 			
 			
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "disabling Windows Firewall...");
 			
-			// LATER edit firewall rules instead (what if on public network, ex: Azure)
-			host.execElevated(cm, HostEnvUtil.class, "netsh firewall set opmode disable", AHost.ONE_MINUTE);
+			if (!host.isRemote()) {
+				// LATER edit firewall rules instead (what if on public network, ex: Azure)
+				host.execElevated(cm, HostEnvUtil.class, "netsh firewall set opmode disable", AHost.ONE_MINUTE);
+			}
 			
 			//
 			if (enable_debug_prompt) {
@@ -92,11 +102,6 @@ public final class HostEnvUtil {
 					// `windbg -IS`
 					host.execElevated(cm, HostEnvUtil.class, StringUtil.ensureQuoted(win_dbg_exe)+" -IS", AHost.ONE_MINUTE);
 				}
-			} else {
-				// edit registry to try to undo windbg -I
-				//
-				regDel(cm, host, "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug", "Debugger");
-				regDel(cm, host, "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug", "Auto");
 			}
 			//
 			

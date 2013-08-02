@@ -10,7 +10,7 @@ public abstract class ApplicationScenario extends AbstractSerialScenario {
 	public boolean isPlaceholder(EScenarioSetPermutationLayer layer) {
 		if (layer==null)
 			return true;
-		else if (layer==EScenarioSetPermutationLayer.WEB_APPLICATION||layer==EScenarioSetPermutationLayer.WEB_SERVER||layer==EScenarioSetPermutationLayer.USER_INTERFACE)
+		else if (layer==EScenarioSetPermutationLayer.FUNCTIONAL_TEST_APPLICATION||layer==EScenarioSetPermutationLayer.PRODUCTION_OR_ALL_UP_TEST)
 			return false;
 		else
 			return true;
@@ -31,5 +31,5 @@ public abstract class ApplicationScenario extends AbstractSerialScenario {
 	}
 	
 	@Override
-	public abstract IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set);
+	public abstract IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer);
 }

@@ -10,12 +10,12 @@ import com.mostc.pftt.host.AHost;
 
 public class MSSQLScenario extends DatabaseScenario {
 
-	public MSSQLScenario(AHost host, int port, String default_username, String default_password) {
-		super(host, port, default_username, default_password);
+	public MSSQLScenario(AHost host, String default_username, String default_password) {
+		super(host, default_username, default_password);
 	}
 
 	@Override
-	protected DatabaseScenarioSetup createScenarioSetup() {
+	protected DatabaseScenarioSetup createScenarioSetup(boolean is_production_server) {
 		return null;
 	}
 
@@ -33,18 +33,6 @@ public class MSSQLScenario extends DatabaseScenario {
 	protected String getDriverClassName() {
 		// TODO Auto-generated method stub
 		return null;
-	}
-
-	@Override
-	protected boolean startServer() {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	protected boolean stopServer() {
-		// TODO Auto-generated method stub
-		return false;
 	}
 	
 }

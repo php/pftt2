@@ -35,7 +35,7 @@ public class ScenarioSetSetup implements IClosable {
 		boolean has_env = false;
 		for ( Scenario scenario : scenario_set ) {
 			if (scenario.setupRequired(layer)) {
-				setup = scenario.setup(cm, host, build, scenario_set);
+				setup = scenario.setup(cm, host, build, scenario_set, layer);
 			
 				if (setup==null) {
 					if (cm!=null) {
