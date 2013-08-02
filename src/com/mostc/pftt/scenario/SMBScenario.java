@@ -168,6 +168,11 @@ public abstract class SMBScenario extends RemoteFileSystemScenario {
 		public String getRemotePath(AHost local_host) {
 			return remote_path;
 		}
+
+		@Override
+		public boolean isRunning() {
+			return new File(local_path).exists();
+		}
 		
 	} // end public class SMBStorageDir
 	

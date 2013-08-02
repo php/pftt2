@@ -270,6 +270,11 @@ public class IISManager extends AbstractManagedProcessesWebServerManager {
 		public String getName() {
 			return "IIS"; 
 		}
+
+		@Override
+		public boolean isRunning() {
+			return true; // TODO
+		}
 		
 	} // end public class IISSetup
 	

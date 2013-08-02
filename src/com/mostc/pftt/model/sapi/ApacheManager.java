@@ -496,6 +496,11 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		public String getName() {
 			return "Apache-ModPHP";
 		}
+
+		@Override
+		public boolean isRunning() {
+			return true; // TODO
+		}
 		
 	} // end public class ApacheSetup
 	

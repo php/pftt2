@@ -166,6 +166,11 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 			return "Builtin-Web";
 		}
 
+		@Override
+		public boolean isRunning() {
+			return handle.isRunning();
+		}
+
 	}
 
 	@Override
