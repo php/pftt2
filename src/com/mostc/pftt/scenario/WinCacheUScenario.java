@@ -1,6 +1,8 @@
 package com.mostc.pftt.scenario;
 
+import com.github.mattficken.Overridable;
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
@@ -14,27 +16,66 @@ import com.mostc.pftt.results.ConsoleManager;
 
 // TODO http://us.php.net/manual/en/wincache.stats.php
 // TODO mediawiki support
-public class WinCacheUScenario extends UserCacheScenario {
+// TODO windebug integration - wincache includes the .PDB symbol file
+public abstract class WinCacheUScenario extends UserCacheScenario {
 
+	@Overridable
+	protected String getDllPath55Plus(Host host) {
+		return host.getPfttDir()+"/cache/dep/wincache/wincache-1.3.4.1-dev-5.5-nts-vc11-x86/php_wincache.dll";
+	}
+	@Overridable
+	protected String getDllPath54(Host host) {
+		return host.getPfttDir()+"/cache/dep/wincache/wincache-1.3.4-5.4-nts-vc9-x86/php_wincache.dll";
+	}
+	@Overridable
+	protected String getDllPath53(Host host) {
+		return host.getPfttDir()+"/cache/dep/wincache/wincache-1.3.4-5.3-nts-vc9-x86/php_wincache.dll";
+	}
+	
 	// @see http://us.php.net/manual/en/wincache.configuration.php
+	boolean first = true;
 	@Override
 	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
-		// TODO temp
-		try {
-			host.copy("C:/php-sdk/PFTT/current/cache/dep/wincache/php_wincache-1.3-5.5-nts-vc11-x86/php_wincache.dll", build.getDefaultExtensionDir()+"/php_wincache.dll");
-		} catch ( Exception ex ) {
-			ex.printStackTrace();
+		if (!host.isWindows() || !build.isNTS(host))
 			return SETUP_FAILED;
+		
+		// TODO temp
+		if (first) {
+			String dll_path;
+			EBuildBranch branch;
+			try {
+				branch = build.getVersionBranch(cm, host);
+			} catch ( Exception ex ) {
+				ex.printStackTrace();
+				return SETUP_FAILED;
+			}
+			switch(branch) {
+			case PHP_5_3:
+				dll_path = getDllPath53(host);
+				break;
+			case PHP_5_4:
+				dll_path = getDllPath54(host);
+				break;
+			default:
+				dll_path = getDllPath55Plus(host);
+				break;
+			}
+			// install wincache
+			try {
+				host.copy(dll_path, build.getDefaultExtensionDir()+"/php_wincache.dll");
+			} catch ( Exception ex ) {
+				ex.printStackTrace();
+				return SETUP_FAILED;
+			}
+			first = false;
 		}
 		
+		// enable wincache
 		ini.putMulti(PhpIni.EXTENSION, "php_wincache.dll");
 		
-		//
 		ini.putSingle("wincache.enablecli", "1");
-		// enable file caching
-		ini.putSingle("wincache.fcenabled", "1");
-		// enable user caching
-		ini.putSingle("wincache.ucenabled", "1");
+		
+		configure(ini);
 		
 		// DISABLE opcode caching (required to use wincacheu with opcache scenarios)
 		ini.putSingle("wincache.ocenabled", "0");
@@ -42,17 +83,14 @@ public class WinCacheUScenario extends UserCacheScenario {
 		return SETUP_SUCCESS;
 	}
 	
+	protected abstract void configure(PhpIni ini);
+	
 	@Override
 	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		// don't run WinCache on Apache-ModPHP (Apache CGI probably ok)
 		//
-		// not sure if its supported on scenarios other than CLI or IIS (so allow it)
-		return !scenario_set.contains(ApacheModPHPScenario.class);
-	}
-
-	@Override
-	public String getName() {
-		return "WinCacheU";
+		// not sure if its supported on scenarios other than CLI or IIS (or builtin-web?)
+		return host.isWindows() && build.isNTS(host) && !scenario_set.contains(ApacheModPHPScenario.class);
 	}
 
 	@Override
