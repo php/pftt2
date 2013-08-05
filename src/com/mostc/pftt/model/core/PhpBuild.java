@@ -91,7 +91,12 @@ public class PhpBuild extends SAPIManager {
 				host.move(build_path+"/php.ini", build_path+"/php_ini.bak");
 			}
 			
-			return true;
+			if (host.exists(getPhpExe())) {
+				return true;
+			} else {
+				cm.println(EPrintType.CANT_CONTINUE, getClass(), "Unable to find: "+getPhpExe());
+				return false;
+			}
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "open", ex, "", host, build_path);
 		}

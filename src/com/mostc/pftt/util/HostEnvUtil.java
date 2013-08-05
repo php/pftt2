@@ -65,6 +65,13 @@ public final class HostEnvUtil {
 		boolean c = regQueryAdd(cm, host, "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Windows", "ErrorMode", em_value, REG_DWORD);
 		
 		if (!enable_debug_prompt) {
+			// WER may still queue reports to send (even though it never asks the user and never sends them)
+			// these reports can accumulate to 100s of MB and require regular cleaning
+			// disable queuing them
+			regQueryAdd(cm, host, "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting", "DisableQueue", "0x1", REG_DWORD);
+			regQueryAdd(cm, host, "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting", "ForceQueue", "0x0", REG_DWORD);
+			regQueryAdd(cm, host, "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting", "LoggingDisabled", "0x1", REG_DWORD);
+			
 			regDel(cm, host, "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug", "Debugger");
 			// IMPORTANT: don't delete this key, change the value otherwise (if windbg installed) werfault.exe will
 			//            still launch windbg... won't if set to 0x2.
