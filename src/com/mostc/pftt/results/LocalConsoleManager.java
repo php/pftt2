@@ -27,6 +27,7 @@ import com.mostc.pftt.util.ErrorUtil;
 public class LocalConsoleManager implements ConsoleManager {
 	protected final boolean overwrite, debug_all, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug, no_result_file_for_pass_xskip_skip, randomize_order, thread_safety, skip_smoke_tests, restart_each_test_all, no_restart_all, ini_actual_all;
 	protected final int run_test_times_all, run_test_pack, run_test_times_list_times, run_group_times, run_group_times_list_times, max_test_read_count, thread_count, delay_between_ms, suspend_seconds, run_count;
+	protected final long max_run_time_millis;
 	protected String source_pack;
 	protected PhpDebugPack debug_pack;
 	protected PhptDebuggerFrame phpt_gui;
@@ -35,10 +36,10 @@ public class LocalConsoleManager implements ConsoleManager {
 	protected List<String> debug_list, run_test_times_list, run_group_times_list, skip_list;
 		
 	public LocalConsoleManager() {
-		this(null, null, false, false, false, false, true, false, true, false, true, false, 1, 1, true, 1, 1, 1, null, null, null, null, true, 0, 0, false, false, 0, 0, 0, false);
+		this(null, null, false, false, false, false, true, false, true, false, true, false, 1, 1, true, 1, 1, 1, null, null, null, null, false, 0, 0, false, false, 0, 0, 0, false, 0);
 	}
 	
-	public LocalConsoleManager(String source_pack, PhpDebugPack debug_pack, boolean overwrite, boolean debug_all, boolean results_only, boolean show_gui, boolean disable_debug_prompt, boolean dont_cleanup_test_pack, boolean phpt_not_in_place, boolean pftt_debug, boolean no_result_file_for_pass_xskip_skip, boolean randomize_order, int run_test_times_all, int run_test_pack, boolean thread_safety, int run_test_times_list_times, int run_group_times, int run_group_times_list_times, List<String> debug_list, List<String> run_test_times_list, List<String> run_group_times_list, List<String> skip_list, boolean skip_smoke_tests, int max_test_read_count, int thread_count, boolean restart_each_test_all, boolean no_restart_all, int delay_between_ms, int run_count, int suspend_seconds, boolean ini_actual_all) {
+	public LocalConsoleManager(String source_pack, PhpDebugPack debug_pack, boolean overwrite, boolean debug_all, boolean results_only, boolean show_gui, boolean disable_debug_prompt, boolean dont_cleanup_test_pack, boolean phpt_not_in_place, boolean pftt_debug, boolean no_result_file_for_pass_xskip_skip, boolean randomize_order, int run_test_times_all, int run_test_pack, boolean thread_safety, int run_test_times_list_times, int run_group_times, int run_group_times_list_times, List<String> debug_list, List<String> run_test_times_list, List<String> run_group_times_list, List<String> skip_list, boolean skip_smoke_tests, int max_test_read_count, int thread_count, boolean restart_each_test_all, boolean no_restart_all, int delay_between_ms, int run_count, int suspend_seconds, boolean ini_actual_all, long max_run_time_millis) {
 		this.source_pack = source_pack;
 		this.debug_pack = debug_pack;
 		this.overwrite = overwrite;
@@ -70,6 +71,7 @@ public class LocalConsoleManager implements ConsoleManager {
 		this.run_count = run_count;
 		this.suspend_seconds = suspend_seconds;
 		this.ini_actual_all = ini_actual_all;
+		this.max_run_time_millis = max_run_time_millis;
 	}
 	
 	public void showGUI(LocalPhptTestPackRunner test_pack_runner) {
@@ -395,6 +397,11 @@ public class LocalConsoleManager implements ConsoleManager {
 	@Override
 	public boolean isGetActualIniAll() {
 		return ini_actual_all;
+	}
+
+	@Override
+	public long getMaxRunTimeMillis() {
+		return max_run_time_millis;
 	}
 	
 } // end public class ConsoleManager

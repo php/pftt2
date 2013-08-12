@@ -9,15 +9,19 @@ package com.mostc.pftt.model.core;
  */
 
 public class ReadOnlyPhpIni extends PhpIni {
+	@Override
 	public void putSingle(String directive, String value) {
 		
 	}
+	@Override
 	public void putMulti(String directive, String value) {
 		
 	}
+	@Override
 	public void replaceAll(PhpIni ini) {
 		
 	}
+	@Override
 	public void remove(String directive) {
 		
 	}

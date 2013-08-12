@@ -281,6 +281,12 @@ public class PhpIni {
 	 * @see #setExtensionDir
 	 */
 	public void putSingle(String directive, String value) {
+		doPutSingle(directive, value);
+	}
+	
+	protected void doPutSingle(String directive, String value) {
+		if (value==null)
+			value = "";
 		ArrayList<String> values = new ArrayList<String>(1);
 		values.add(value);
 		ini_map.put(directive, values);
@@ -304,9 +310,14 @@ public class PhpIni {
 	public void putMulti(String directive, String value) {
 		ArrayList<String> values = ini_map.get(directive);
 		if (values==null) {
+			if (value==null)
+				value = "";
 			values = new ArrayList<String>(1);
 			values.add(value);
 			ini_map.put(directive, values);
+		} else if (value==null) {
+			// allow at most 1 blank value
+			return;
 		} else if (!values.contains(value)) {
 			values.add(value);
 		}
@@ -368,7 +379,7 @@ public class PhpIni {
 	 * @return
 	 */
 	@Nullable
-	public String[] getExtensions() {
+	public String[] getEnabledExtensions() {
 		return getMulti(EXTENSION);
 	}
 	
@@ -531,7 +542,7 @@ public class PhpIni {
 		this.ext_ini = ext_ini.ext_ini = new SoftReference<PhpIni>(ext_ini);
 		String ext_dir = get(EXTENSION_DIR);
 		if (ext_dir!=null)
-			ext_ini.putSingle(EXTENSION_DIR, ext_dir);
+			ext_ini.doPutSingle(EXTENSION_DIR, ext_dir);
 		ArrayList<String> values = ini_map.get(EXTENSION);
 		if (values!=null)
 			ext_ini.ini_map.put(EXTENSION, (ArrayList<String>)values.clone());
@@ -555,23 +566,24 @@ public class PhpIni {
 		//
 		StringBuilder sb = new StringBuilder(256);
 		for ( String directive : getDirectives()) {
-			String value = get(directive);
-			if (value==null)
-				continue; // allow "" empty values though
-			
-			// CRITICAL: escape these characters in the INI
-			value = StringUtil.replaceAll(PAT_bs, "\\\\\"", StringUtil.replaceAll(PAT_amp, "\\\\&", StringUtil.replaceAll(PAT_pipe, "\\\\|", value)));
-			 
-			// CRITICAL: in a windows batch script % is replaced with the command to execute.
-			//           need to escape this value.
-			if (host.isWindows())
-				value = StringUtil.replaceAll(PAT_per, "\\%\\%", value);
-			
-			sb.append(" -d \"");
-			sb.append(directive);
-			sb.append("=");
-			sb.append(value);
-			sb.append("\"");
+			for ( String value : getMulti(directive) ) {
+				if (value==null)
+					continue; // allow "" empty values though
+				
+				// CRITICAL: escape these characters in the INI
+				value = StringUtil.replaceAll(PAT_bs, "\\\\\"", StringUtil.replaceAll(PAT_amp, "\\\\&", StringUtil.replaceAll(PAT_pipe, "\\\\|", value)));
+				 
+				// CRITICAL: in a windows batch script % is replaced with the command to execute.
+				//           need to escape this value.
+				if (host.isWindows())
+					value = StringUtil.replaceAll(PAT_per, "\\%\\%", value);
+				
+				sb.append(" -d \"");
+				sb.append(directive);
+				sb.append("=");
+				sb.append(value);
+				sb.append("\"");
+			}
 		}
 		String cli_arg_str = sb.toString();
 		cli_arg = new SoftReference<String>(cli_arg_str);

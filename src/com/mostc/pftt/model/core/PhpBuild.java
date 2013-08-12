@@ -37,16 +37,17 @@ import com.mostc.pftt.util.StringUtil2;
 public class PhpBuild extends SAPIManager {
 	private String build_path, php_exe, php_cgi_exe;
 	private WeakHashMap<PhpIni,WeakHashMap<String,Boolean>> ext_enable_map;
+	private WeakHashMap<PhpIni,String[]> ext_available_map;
 	private SoftReference<String> php_info;
 	private SoftReference<PhpIni> php_ini;
 	private String version_str, revision;
 	private EBuildBranch branch;
-	private SoftReference<String[]> module_list;
 	private int major, minor, release;
 	
 	public PhpBuild(String build_path) {
 		this.build_path = new File(build_path).getAbsolutePath();
-		ext_enable_map = new WeakHashMap<PhpIni,WeakHashMap<String,Boolean>>();
+		ext_enable_map = new WeakHashMap<PhpIni,WeakHashMap<String,Boolean>>(3);
+		ext_available_map = new WeakHashMap<PhpIni,String[]>(3);
 	}
 	
 	/** checks if given OpenSSL version is compatible with this PHP Build
@@ -567,33 +568,24 @@ public class PhpBuild extends SAPIManager {
 		WeakHashMap<String,Boolean> map = ext_enable_map.get(ini);
 		if (map!=null) {
 			Boolean b = map.get(ext_name);
-			//return b == null ? false : b.booleanValue();
-			return true;
+			return b == null ? false : b.booleanValue();
 		}
 			
 		map = new WeakHashMap<String,Boolean>();
 		ext_enable_map.put(ini, map);
-				
-		if (ini!=null) {
-			String[] extensions = ini.getExtensions();
-			if (extensions!=null) {
-				for (String module:extensions) {
-					if (module.toLowerCase().contains(ext_name)) {
-						map.put(ext_name, true);
-						return true;
-					}
-				}
-			}
-		}
 		
-		for (String module:getExtensionList(cm, host, ini)) {
-			if (module.toLowerCase().contains(ext_name)) {
-				map.put(ext_name, true);
+		String[] available_extensions = getLoadableExtensionList(cm, host, ini);
+		for (String available_ext_name:available_extensions)
+			// cache as FOUND for next time
+			map.put(available_ext_name, Boolean.TRUE);
+		
+		for (String available_ext_name:available_extensions) {
+			if (ext_name.equals(available_ext_name))
 				return true;
-			}
 		}
 		
-		map.put(ext_name, false);
+		// cache as NOT FOUND
+		map.put(ext_name, Boolean.FALSE);
 		return false;
 	} // end public boolean isExtensionEnabled
 	
@@ -782,8 +774,8 @@ public class PhpBuild extends SAPIManager {
 		}
 	} // end public static class PHPOutput
 	
-	public String[] getExtensionList(ConsoleManager cm, AHost host, ESAPIType type) throws Exception {
-		return getExtensionList(cm, host, getDefaultPhpIni(cm, host, type));
+	public String[] getLoadableExtensionList(ConsoleManager cm, AHost host, ESAPIType type) throws Exception {
+		return getLoadableExtensionList(cm, host, getDefaultPhpIni(cm, host, type));
 	}
 	
 	/** gets the static builtin extensions for this build build and the dynamic extensions the
@@ -798,29 +790,28 @@ public class PhpBuild extends SAPIManager {
 	 * @param ini
 	 * @return
 	 * @throws Exception
+	 * @see PhpIni#getEnabledExtensions
 	 */
-	public String[] getExtensionList(ConsoleManager cm, AHost host, PhpIni ini) throws Exception {
-		String[] module_list;
-		if (this.module_list!=null) {
-			module_list = this.module_list.get();
-			if (module_list!=null)
-				return module_list;
-		}
+	public String[] getLoadableExtensionList(ConsoleManager cm, AHost host, PhpIni ini) throws Exception {
+		String[] module_list = ext_available_map.get(ini);
+		if (module_list!=null)
+			return module_list;
 		
 		String ini_settings = ini==null?null:ini.toCliArgString(host);
 		
-		ExecOutput output = host.execOut(php_exe+(ini_settings==null?"":" "+ini_settings)+" -m", Host.ONE_MINUTE);
+		String php_cmd = php_exe+(ini_settings==null?"":" "+ini_settings)+" -m";
+		ExecOutput output = host.execOut(php_cmd, Host.ONE_MINUTE);
 		output.printOutputIfCrash(Host.toContext(getClass(), "getExtensionList"), cm);
 		
 		ArrayList<String> list = new ArrayList<String>();
 		
 		for (String module : output.getLines()) {
-			if (!module.startsWith("[") && module.length() > 0)
+			if (!module.startsWith("[") && !module.contains("Unknown") && !module.contains("Warning") && module.length() > 0)
 				list.add(module.toLowerCase());
 		}
 		
 		module_list = (String[]) list.toArray(new String[list.size()]);
-		this.module_list = new SoftReference<String[]>(module_list);
+		ext_available_map.put(ini, module_list);
 		return module_list;
 	}
 

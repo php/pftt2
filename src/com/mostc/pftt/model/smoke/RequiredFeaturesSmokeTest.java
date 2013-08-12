@@ -4,6 +4,7 @@ import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
+import com.mostc.pftt.results.PhpResultPackWriter;
 
 /** tests that a build has all required features
  * 
@@ -1196,7 +1197,7 @@ public class RequiredFeaturesSmokeTest extends SmokeTest {
 		nts_parts = required_nts_features_str.split("%s");
 	} // end static
 	
-	public ESmokeTestStatus test(PhpBuild build, ConsoleManager cm, AHost host) {
+	public ESmokeTestStatus test(PhpBuild build, ConsoleManager cm, AHost host, PhpResultPackWriter tmgr) {
 		if (!host.isWindows())
 			return ESmokeTestStatus.XSKIP;
 		
@@ -1210,15 +1211,20 @@ public class RequiredFeaturesSmokeTest extends SmokeTest {
 			String info = build.getPhpInfo(cm, host);
 			int i = 0, j;
 			ESmokeTestStatus status = ESmokeTestStatus.PASS;
+			StringBuilder out = new StringBuilder();
 			for ( String part : parts ) {
 				j = info.indexOf(part, i);
 				if (j==-1) {
 					cm.println(EPrintType.COMPLETED_OPERATION, getName(), "Missing required info: `"+part+"`");
+					out.append("Missing required info: `"+part+"`");
+					out.append('\n');
 					status = ESmokeTestStatus.FAIL;
 				} else {
 					i = j+1;
 				}
 			}
+			if (status==ESmokeTestStatus.FAIL)
+				tmgr.notifyFailedSmokeTest(getName(), out.toString());
 			return status;
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "test", ex, "");

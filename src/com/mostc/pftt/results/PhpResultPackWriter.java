@@ -1024,5 +1024,20 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 			out.add(s.getScenarioSet());
 		return out;
 	}
+
+	public void notifyFailedSmokeTest(String name, String output) {
+		try {
+			FileWriter fw = new FileWriter(new File(telem_dir, "SMOKE"), true); // append
+			PrintWriter pw = new PrintWriter(fw);
+			pw.println(name);
+			fw.close();
+		
+			fw = new FileWriter(new File(telem_dir, "SMOKE_"+name));
+			fw.write(output);
+			fw.close();
+		} catch ( Exception ex ) {
+			ex.printStackTrace();
+		}
+	}
 	
 } // end public class PhpResultPackWriter

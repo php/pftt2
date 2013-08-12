@@ -454,6 +454,7 @@ public class PfttMain {
 		System.out.println();
 		System.out.println("   === Test Times ===");
 		System.out.println(new AlignedTable(2, 85)
+			.addRow("-max_run_time_millis <N>", "milliseconds to run each ScenarioSet for")
 			.addRow("-run_test_pack <N>", "runs entire test-pack N times")
 			.addRow("-run_group_times_all <N>", "runs all groups of tests N times (in same order every time, unless -randomize used)")
 			.addRow("-run_group_times_list <N> <list file>", "just like run_group_times_all and run_test_times_list (but for groups of tests)")
@@ -624,16 +625,18 @@ public class PfttMain {
 						// on Windows, missing .DLLs from a php build will cause a blocking winpop dialog msg to appear
 						// in such a case, the test will timeout after 1 minute and then fail (stopping at that point is important)
 						// @see PhpBuild#getExtensionList
-						if (test.test(build, cm, host, SAPIScenario.getSAPIScenario(scenario_set).getSAPIType())==ESmokeTestStatus.FAIL) {
+						if (test.test(build, cm, host, SAPIScenario.getSAPIScenario(scenario_set).getSAPIType(), tmgr)==ESmokeTestStatus.FAIL) {
 							// if this test fails, RequiredFeaturesSmokeTest will fail for sure
 							cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+							
 							break;
 						}
 					}
 					{
 						RequiredFeaturesSmokeTest test = new RequiredFeaturesSmokeTest();
-						if (test.test(build, cm, host)==ESmokeTestStatus.FAIL) {
+						if (test.test(build, cm, host, tmgr)==ESmokeTestStatus.FAIL) {
 							cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+							
 							break;
 						}
 					}
@@ -654,6 +657,8 @@ public class PfttMain {
 					PhptTestCountsMatchSmokeTest test = new PhptTestCountsMatchSmokeTest();
 					if (test.test(tmgr)==ESmokeTestStatus.FAIL) {
 						cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+						
+						tmgr.notifyFailedSmokeTest(test.getName(), "");
 					}
 				}
 				//
@@ -682,15 +687,17 @@ public class PfttMain {
 				if (!cm.isSkipSmokeTests()) {
 					{
 						RequiredExtensionsSmokeTest test = new RequiredExtensionsSmokeTest();
-						if (test.test(build, cm, host, SAPIScenario.getSAPIScenario(scenario_set).getSAPIType())==ESmokeTestStatus.FAIL) {
+						if (test.test(build, cm, host, SAPIScenario.getSAPIScenario(scenario_set).getSAPIType(), tmgr)==ESmokeTestStatus.FAIL) {
 							cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+
 							break;
 						}
 					}
 					{
 						RequiredFeaturesSmokeTest test = new RequiredFeaturesSmokeTest();
-						if (test.test(build, cm, host)==ESmokeTestStatus.FAIL) {
+						if (test.test(build, cm, host, tmgr)==ESmokeTestStatus.FAIL) {
 							cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+							
 							break;
 						}
 					}
@@ -719,6 +726,8 @@ public class PfttMain {
 					PhptTestCountsMatchSmokeTest test = new PhptTestCountsMatchSmokeTest();
 					if (test.test(tmgr)==ESmokeTestStatus.FAIL) {
 						cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+						
+						tmgr.notifyFailedSmokeTest(test.getName(), "");
 					}
 				}
 				//
@@ -1114,6 +1123,9 @@ public class PfttMain {
 			} else {
 				cm.println(EPrintType.CLUE, PfttMain.class, "Build: "+build);
 				build = new PhpBuild(host.getPhpSdkDir() + "/" + path);
+				// open all builds now to ensure they exist (rather than finding out
+				//  later when build is used (because that could be hours away if running
+				//  several scenario sets and several builds))
 				if (build.open(cm, host)) {
 					builds.add(build);
 				} else {
@@ -1251,6 +1263,7 @@ public class PfttMain {
 		
 		Config config = null;
 		boolean is_uac = false, debug = false, randomize_order = false, no_result_file_for_pass_xskip_skip = false, pftt_debug = false, show_gui = false, overwrite = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false, thread_safety = true, skip_smoke_tests = false, pause = false, restart_each_test_all = false, no_restart_all = false, ignore_unknown_option = false, ini_actual_all = false;
+		long max_run_time_millis = 0;
 		int run_test_times_all = 1, run_test_pack = 1, delay_between_ms = 0, run_test_times_list_times = 1, run_group_times_all = 1, run_group_times_list_times = 1, max_test_read_count = 0, thread_count = 0, run_count = 0, suspend_seconds = 0;
 		LinkedList<String> debug_list = new LinkedList<String>();
 		LinkedList<String> run_test_times_list = new LinkedList<String>();
@@ -1359,6 +1372,9 @@ public class PfttMain {
 				no_restart_all = true;
 			} else if (args[args_i].equals("-ini_actual_all")) {
 				ini_actual_all = true;
+			} else if (args[args_i].equals("-max_run_time_millis")) {
+				args_i++;
+				max_run_time_millis = Long.parseLong(args[args_i]);
 			} else if (args[args_i].equals("-delay_between_ms")) {
 				args_i++;
 				delay_between_ms = Integer.parseInt(args[args_i]);
@@ -1429,7 +1445,7 @@ public class PfttMain {
 			} else if (args[args_i].equals("-uac")) {
 				// ignore: intercepted and handled by bin/pftt.cmd batch script
 				is_uac = true;
-			} else if (args[args_i].equals("-pftt-profile")) {
+			} else if (args[args_i].equals("-pftt_profile")) {
 				// ignore: intercepted and handled by bin/pftt.cmd batch script
 			} else if (args[args_i].equals("-pftt_debug")) {
 				pftt_debug = true;
@@ -1491,7 +1507,7 @@ public class PfttMain {
 		cm = new LocalConsoleManager(source_pack, debug_pack, overwrite, debug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug, no_result_file_for_pass_xskip_skip, randomize_order, run_test_times_all, run_test_pack, 
 				thread_safety, run_test_times_list_times, run_group_times_all, run_group_times_list_times, debug_list, run_test_times_list, run_group_times_list, skip_list,
 				skip_smoke_tests, max_test_read_count, thread_count, restart_each_test_all, no_restart_all, delay_between_ms,
-				run_count, suspend_seconds, ini_actual_all);
+				run_count, suspend_seconds, ini_actual_all, max_run_time_millis);
 		p.cm = cm;
 		
 		if (command!=null) {

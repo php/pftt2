@@ -3,12 +3,12 @@ package com.mostc.pftt.model.smoke;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
-import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.ESAPIType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
+import com.mostc.pftt.results.PhpResultPackWriter;
 
 /** Smoke test that verifies a PHP Build has all the required extensions.
  * 
@@ -83,20 +83,28 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 		"zlib"
 	};
 	
-	public ESmokeTestStatus test(PhpBuild build, ConsoleManager cm, AHost host, ESAPIType type) {
+	public ESmokeTestStatus test(PhpBuild build, ConsoleManager cm, AHost host, ESAPIType type, PhpResultPackWriter tmgr) {
 		if (!host.isWindows())
 			// non-Windows PHP builds can have whatever extensions they want
 			return ESmokeTestStatus.XSKIP;
 		try {
 			// Windows PHP builds must have these extensions to pass this test
+			ESmokeTestStatus status = ESmokeTestStatus.PASS;
+			StringBuilder out = new StringBuilder();
 			for ( String ext_name : windows_required_extensions ) {
 				// this will timeout in .DLL is missing on Windows - must fail test in that case
 				if (!build.isExtensionEnabled(cm, host, type, ext_name)) {
+					out.append("Missing Required Extension: "+ext_name);
+					out.append('\n');
 					cm.println(EPrintType.COMPLETED_OPERATION, getName(), "Missing Required Extension: "+ext_name);
-					return ESmokeTestStatus.FAIL;
+					status = ESmokeTestStatus.FAIL;
+					// continue checking all extensions
 				}
 			}
-			return ESmokeTestStatus.PASS;
+			if (status==ESmokeTestStatus.FAIL)
+				tmgr.notifyFailedSmokeTest(getName(), out.toString());
+			
+			return status;
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "test", ex, "");
 			return ESmokeTestStatus.INTERNAL_EXCEPTION;
