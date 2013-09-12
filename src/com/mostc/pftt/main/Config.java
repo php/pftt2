@@ -38,9 +38,11 @@ import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhpResultPackWriter;
 import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.results.PhptTestResult;
+import com.mostc.pftt.runner.AbstractLocalTestPackRunner.TestPackThread;
 import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.scenario.app.JoomlaScenario;
 
 import groovy.lang.GroovyClassLoader;
@@ -133,6 +135,8 @@ public final class Config implements IENVINIFilter {
 	public static final String PROCESS_PHPUNIT_TEST_PACK_METHOD_NAME = "processPhpUnitTestPack";
 	public static final String PROCESS_PHPT_TEST_RESULT_METHOD_NAME = "processPhptTestResult";
 	public static final String PROCESS_PHP_UNIT_TEST_RESULT_METHOD_NAME = "processPhpUnitTestResult";
+	public static final String PREPARE_TEST_PACK_PER_THREAD_METHOD_NAME = "prepareTestPackPerThread";
+	public static final String PREPARE_TEST_PACK_METHOD_NAME = "prepareTestPack";
 	//
 	protected final LinkedList<AHost> hosts;
 	protected final LinkedList<Scenario> scenarios;
@@ -168,6 +172,26 @@ public final class Config implements IENVINIFilter {
 		// TODO get helpMsg() from config files
 		//      ex: list_builtin_functions
 		//      ex: internal_examples - copy to internal
+	}
+	
+	public void prepareTestPack(ConsoleManager cm, AHost host, ScenarioSetSetup setup, PhpBuild build, PhptSourceTestPack test_pack) {
+		ArrayList<MethodImpl> methods = by_method_name.get(PREPARE_TEST_PACK_METHOD_NAME);
+		if (methods==null||methods.isEmpty())
+			return;
+		cm.println(EPrintType.IN_PROGRESS, getClass(), "preparing test pack from configuration... "+setup+" "+test_pack);
+		for ( MethodImpl m : methods ) {
+			invokeMethod(null, null, m.go, PREPARE_TEST_PACK_METHOD_NAME, new Object[]{cm, host, setup, build, test_pack}, null);
+		}
+	}
+	
+	public void prepareTestPackPerThread(ConsoleManager cm, AHost host, TestPackThread test_pack_thread, ScenarioSetSetup setup, PhpBuild build, PhptSourceTestPack test_pack) {
+		ArrayList<MethodImpl> methods = by_method_name.get(PREPARE_TEST_PACK_PER_THREAD_METHOD_NAME);
+		if (methods==null||methods.isEmpty())
+			return;
+		cm.println(EPrintType.IN_PROGRESS, getClass(), "preparing test pack per thread from configuration... "+test_pack_thread+" "+setup+" "+test_pack);
+		for ( MethodImpl m : methods ) {
+			invokeMethod(null, null, m.go, PREPARE_TEST_PACK_PER_THREAD_METHOD_NAME, new Object[]{cm, host, test_pack_thread, setup, build, test_pack}, null);
+		}
 	}
 	
 	public void processPHPTTestPack(PhptSourceTestPack test_pack, PhpResultPackWriter twriter, PhpBuild build) {
@@ -279,7 +303,7 @@ public final class Config implements IENVINIFilter {
 		while (it.hasNext()) {
 			nv = it.next().getName().toLowerCase();
 			for ( String str : not_scenarios ) {
-				if (nv.contains(str.toLowerCase())) {
+				if (nv.equalsIgnoreCase(str)) {
 					// match, remove it
 					it.remove();
 					break;
@@ -321,10 +345,16 @@ public final class Config implements IENVINIFilter {
 		
 		this_scenario_sets = not(getNotScenarios(cm), permuteScenarioSets(cm, layer));
 		
-		// cache for next time (this config won't change, so its ok to cache)
-		permuted_scenario_sets.put(layer, this_scenario_sets);
+		HashMap<String,ScenarioSet> map = new HashMap<String,ScenarioSet>();
+		for ( ScenarioSet s : this_scenario_sets )
+			map.put(s.toString(), s);
+		ArrayList<ScenarioSet> a = new ArrayList<ScenarioSet>(map.size());
+		a.addAll(map.values());
 		
-		return this_scenario_sets;
+		// cache for next time (this config won't change, so its ok to cache)
+		permuted_scenario_sets.put(layer, a);
+		
+		return a;
 	}
 		
 	public List<ScenarioSet> getScenarioSets(EScenarioSetPermutationLayer layer) {
@@ -568,6 +598,12 @@ public final class Config implements IENVINIFilter {
 	 * @throws IOException
 	 */
 	public static Config loadConfigFromFiles(ConsoleManager cm, File... files) throws CompilationFailedException, InstantiationException, IllegalAccessException, IOException {
+		Config config = new Config();
+		config.doLoadConfigFromFiles(cm, files);
+		return config;
+	}
+	
+	protected void doLoadConfigFromFiles(ConsoleManager cm, File... files) throws InstantiationException, IllegalAccessException, CompilationFailedException, FileNotFoundException, IOException {
 		GroovyClassLoader loader = new GroovyClassLoader(Config.class.getClassLoader());
 		
 		/*ImportCustomizer ic = new ImportCustomizer();
@@ -576,8 +612,6 @@ public final class Config implements IENVINIFilter {
 		CompilerConfiguration cc;
 		cc.addCompilationCustomizers(ic);
 		*/
-		
-		Config config = new Config();
 		
 		// don't load default scenarios. configuration file(s) completely replace them (not merged)
 		LinkedList<Scenario> scenarios = new LinkedList<Scenario>();
@@ -591,11 +625,11 @@ public final class Config implements IENVINIFilter {
 			go = (GroovyObject) clazz.newInstance();
 			
 			// call methods in file to get configuration (hosts, etc...)
-			loadObjectToConfig(cm, config, go, scenarios, file.getAbsolutePath());
+			loadObjectToConfig(cm, this, go, scenarios, file.getAbsolutePath());
 		}
 		
-		return loadConfigCommon(cm, scenarios, config);
-	} // end public static Config loadConfigFromFiles
+		loadConfigCommon(cm, scenarios, this);
+	} 
 	
 	protected static String importString(String filename, String code) {
 		// a hack to import common classes for configuration files (XXX do this a better way)
@@ -744,6 +778,8 @@ public final class Config implements IENVINIFilter {
 		registerMethod(cm, config, go, PROCESS_PHPUNIT_TEST_PACK_METHOD_NAME, file_name);
 		registerMethod(cm, config, go, PROCESS_PHPT_TEST_RESULT_METHOD_NAME, file_name);
 		registerMethod(cm, config, go, PROCESS_PHP_UNIT_TEST_RESULT_METHOD_NAME, file_name);
+		registerMethod(cm, config, go, PREPARE_TEST_PACK_PER_THREAD_METHOD_NAME, file_name);
+		registerMethod(cm, config, go, PREPARE_TEST_PACK_METHOD_NAME, file_name);
 	} // end protected static void loadObjectToConfig
 	
 	private static void checkImplemented(ConsoleManager cm, Scenario o) {
@@ -807,6 +843,10 @@ public final class Config implements IENVINIFilter {
 				return true;
 		}
 		return false;
+	}
+
+	public void addConfigFile(ConsoleManager cm, File file) throws CompilationFailedException, FileNotFoundException, InstantiationException, IllegalAccessException, IOException {
+		doLoadConfigFromFiles(cm, file);
 	}
 	
 } // end public final class ConfigUtil

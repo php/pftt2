@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -38,8 +39,10 @@ import com.mostc.pftt.results.PhpResultPackWriter;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
 import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
 import com.mostc.pftt.scenario.FileSystemScenario;
+import com.mostc.pftt.scenario.IScenarioSetup;
 import com.mostc.pftt.scenario.RemoteFileSystemScenario;
 import com.mostc.pftt.scenario.SAPIScenario;
+import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.WebServerScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.FileSystemScenario.ITestPackStorageDir;
@@ -54,10 +57,11 @@ import com.mostc.pftt.util.ErrorUtil;
  */
 
 public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S extends SourceTestPack<A,T>, T extends TestCase> extends AbstractTestPackRunner<S, T> {
-	protected static final int MAX_THREAD_COUNT = 128;
+	protected static final int MAX_USER_SPECIFIED_THREAD_COUNT = 192;
 	protected S src_test_pack;
 	protected final ConsoleManager cm;
 	protected final ITestResultReceiver twriter;
+	protected long start_time_millis;
 	protected int thread_safe_test_count;
 	protected A active_test_pack;
 	protected AtomicReference<ETestPackRunnerState> runner_state;
@@ -176,7 +180,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			return null;
 		}
 		//
-		cm.println(EPrintType.CLUE, getClass(), "Scenario Set: "+scenario_set.getName());
+		cm.println(EPrintType.CLUE, getClass(), "Scenario Set: "+scenario_set_setup.getNameWithVersionInfo());
 		setupStorageAndTestPack(storage_dir, test_cases);
 		
 		return storage_dir;
@@ -259,11 +263,11 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			
 			cm.println(EPrintType.IN_PROGRESS, getClass(), "ready to go!    scenario_set="+scenario_set+" runner_host="+runner_host+" storage_dir="+storage_dir.getClass()+" local_path="+storage_dir.getLocalPath(runner_host)+" remote_path="+storage_dir.getRemotePath(runner_host));
 			
-			long start_time = System.currentTimeMillis();
+			start_time_millis = System.currentTimeMillis();
 			
 			executeTestCases(true); // TODO false);
 			
-			long run_time = Math.abs(System.currentTimeMillis() - start_time);
+			final long run_time = Math.abs(System.currentTimeMillis() - start_time_millis);
 			
 			cm.println(EPrintType.CLUE, getClass(), "Finished test run in "+(run_time/1000)+" seconds");
 			
@@ -281,6 +285,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			//
 			
 			showTally();
+			cm.println(EPrintType.CLUE, getClass(), "Scenario Set: "+scenario_set);
 		} finally {
 			// be sure all running WebServerInstances, or other SAPIInstances are
 			// closed by end of testing (otherwise `php.exe -S` will keep on running)
@@ -481,46 +486,63 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		
 	}
 	
-	protected int decideThreadCount() {
-		// decide number of threads
-		// 1. ask SAPI Scenario
-		// 2. limit to number of thread safe tests + number of NTS extensions (extensions with NTS tests)
-		//        -exceed this number and there will be threads that won't have any tests to run
-		// 3. if debugging
-		// 4. ask user (-thread_count console option)
-		// 5. limit to MAX_THREAD_COUNT
-		
-		int thread_count = sapi_scenario.getTestThreadCount(runner_host);
-		if ((cm.isThreadSafety() || cm.getRunTestTimesAll()<2) && thread_count > thread_safe_test_count + non_thread_safe_exts.size()) {
+	protected int init_thread_count, max_thread_count;
+	protected void decideThreadCount() {
+		init_thread_count = runner_host.getCPUCount();
+		if ((cm.isThreadSafety() || cm.getRunTestTimesAll()<2) && init_thread_count > thread_safe_groups.size() + non_thread_safe_exts.size()) {
 			// don't start more threads than there will be work for
 			// however, if -no_nts AND -run_test_times_all console option used, user wants tests run
 			// as much as possible, so don't do this check (in that case, do normal number of threads, not this)
 			//
-			thread_count = thread_safe_test_count + non_thread_safe_exts.size(); 
+			init_thread_count = thread_safe_test_count + non_thread_safe_exts.size(); 
+		}
+		max_thread_count = init_thread_count * 2;
+		// ask scenarios for approval (primarily SAPIScenario and WinCacheUScenario)
+		{
+			// ask sapi scenario first
+			init_thread_count = sapi_scenario.getApprovedInitialThreadPoolSize(runner_host, init_thread_count);
+			max_thread_count = sapi_scenario.getApprovedMaximumThreadPoolSize(runner_host, max_thread_count);
+			// ask all other scenarios
+			for ( Scenario s : scenario_set ) {
+				if (s==sapi_scenario)
+					continue;
+				int a = s.getApprovedInitialThreadPoolSize(runner_host, init_thread_count);
+				int b = s.getApprovedMaximumThreadPoolSize(runner_host, max_thread_count);
+				if (a<init_thread_count)
+					init_thread_count = a;
+				if (b<max_thread_count)
+					max_thread_count = b;
+			}
 		}
 		if (cm.isDebugAll()) {
 			// run fewer threads b/c we're running WinDebug
 			// (can run WinDebug w/ same number of threads, but UI responsiveness will be really SLoow)
-			thread_count = Math.max(1, thread_count / 4);
+			init_thread_count = Math.max(1, init_thread_count / 4);
 		}
 		if (cm.getThreadCount()>0) {
 			// let user override SAPI and debug thread count checks
-			thread_count = cm.getThreadCount();
-		}
-		if (thread_count > MAX_THREAD_COUNT) {
-			// safety check: don't run too many threads
-			thread_count = MAX_THREAD_COUNT;
-		}
-		return thread_count;
-	} // end protected int decideThreadCount
+			init_thread_count = cm.getThreadCount();
+		} 
+		
+		checkThreadCountLimit();
+	} // end protected void decideThreadCount
+	
+	protected void checkThreadCountLimit() {
+		if (init_thread_count>max_thread_count)
+			max_thread_count = init_thread_count;
+		if (init_thread_count>MAX_USER_SPECIFIED_THREAD_COUNT)
+			init_thread_count = MAX_USER_SPECIFIED_THREAD_COUNT;
+		if (max_thread_count>MAX_USER_SPECIFIED_THREAD_COUNT)
+			max_thread_count = MAX_USER_SPECIFIED_THREAD_COUNT;
+	}
 	
 	protected void executeTestCases(boolean parallel) throws InterruptedException, IllegalStateException, IOException {
-		int thread_count = decideThreadCount();
-		cm.println(EPrintType.IN_PROGRESS, getClass(), "Starting up Test Threads: thread_count="+thread_count+" runner_host="+runner_host+" sapi_scenario="+sapi_scenario);
+		decideThreadCount();
+		cm.println(EPrintType.IN_PROGRESS, getClass(), "Starting up Test Threads: thread_count="+init_thread_count+" max="+max_thread_count+" runner_host="+runner_host+" sapi_scenario="+sapi_scenario);
 			
 		test_count.set(0);
 		
-		for ( int i=0 ; i < thread_count ; i++ ) { 
+		for ( int i=0 ; i < init_thread_count ; i++ ) { 
 			start_thread(parallel);
 		}
 		
@@ -544,7 +566,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 					// run a timer task while the test is running to kill the test if it takes too long
 					//
 					// wait a while before killing it (double the max runtime for the test)
-					if ((test_run_start_time>0&&Math.abs(System.currentTimeMillis()-test_run_start_time)>120000)) {
+					if (!thread.shouldRun()||(test_run_start_time>0&&Math.abs(System.currentTimeMillis()-test_run_start_time)>120000)) {
 						// thread running too long
 						if (thread.isDebuggerAttached()) {
 							not_running = false; // keep running
@@ -639,7 +661,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			// (if there aren't enough NTS extensions to fill all the threads, some threads will only execute thread-safe tests)
 			//
 			try {
-				while (shouldRun()&&!thread_safe_groups.isEmpty()) {
+				while (shouldRun()&&(!thread_safe_groups.isEmpty()||!non_thread_safe_exts.isEmpty())) {//thread_safe_test_count==0)) {
 					try {
 						runNonThreadSafe();
 						
@@ -737,23 +759,28 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			return this;
 		}
 		
-		protected boolean shouldRun() {
-			return run_thread.get() && runner_state.get()==ETestPackRunnerState.RUNNING;
+		protected long getMaxRunTimeMillis() {
+			return cm.getMaxRunTimeMillis();
 		}
+		
+		protected boolean shouldRun() {
+			final long max_run_time_millis = getMaxRunTimeMillis();
+			return run_thread.get() && runner_state.get()==ETestPackRunnerState.RUNNING && (max_run_time_millis<1000||Math.abs(System.currentTimeMillis() - start_time_millis) < max_run_time_millis);
+		}
+		
+		protected abstract void prepareExec(TestCaseGroupKey group_key, PhpIni ini, Map<String,String> env, IScenarioSetup s);
 		
 		protected void exec_jobs(TestCaseGroupKey group_key, LinkedBlockingQueue<T> jobs) {
 			this.group_key = group_key;
 			LinkedList<T> completed_tests = new LinkedList<T>();
 			this.jobs = jobs;
 			
+			
+			for ( IScenarioSetup s :scenario_set_setup.getSetups() ) {
+				prepareExec(group_key, group_key.getPhpIni(), group_key.getEnv(), s);
+			}
+			
 			while (shouldRun()) {
-				/*if (test_count.get() > 100 ) {//cm.getRunCount() > 0 && test_count.get() > cm.getRunCount() ) {
-					// run maximum number of tests, don't run any more
-					System.exit(0);
-					runner_state.set(ETestPackRunnerState.NOT_RUNNING);
-					break;
-				}*/
-				
 				//
 				test_case = null;
 				try {
@@ -801,28 +828,6 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 									thread_wsi = null;
 								}
 								
-								String name = test_case.getName();
-								if (name.equals("ext/filter/tests/004.phpt")
-									|| name.equals("ext/standard/tests/strings/htmlentities05.phpt")
-									|| name.equals("ext/wddx/tests/004.phpt")
-									|| name.equals("ext/wddx/tests/005.phpt")
-									|| name.equals("ext/standard/tests/strings/htmlentities12.phpt")
-									|| name.equals("ext/mbstring/tests/mb_ereg_replace_variation1.phpt")
-									|| name.equals("ext/mbstring/tests/mb_ereg_replace_variation1.phpt")
-									|| name.equals("ext/phar/tests/phar_dotted_path.phpt")
-									|| name.equals("ext/session/tests/027.phpt")
-									|| name.equals("tests/basic/0")
-									|| name.startsWith("ext/mbstring/tests/mb_output")
-									|| name.equals("ext/mbstring/tests/mb_ereg_replace_variation1.phpt")
-									|| name.equals("ext/phar/tests/cache_list/frontcontroller13.phpt")
-									|| name.equals("ext/phar/tests/frontcontroller29.phpt")
-									|| name.equals("zend/tests/multibyte/multibyte_encoding_001.phpt")
-									|| name.equals("ext/session/tests/009.phpt")) {
-									if(thread_wsi!=null)
-										thread_wsi.close(cm);
-									thread_wsi = null;
-								}
-								
 								if (thread_wsi==null ||
 										
 										( !cm.isNoRestartAll()
@@ -862,21 +867,27 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 						// finally: create the test case runner and run the actual test
 						runTest(group_key, test_case);
 						
-						
-						if (Math.abs(System.currentTimeMillis() - test_run_start_time.get()) < sapi_scenario.getFastTestTimeSeconds()) {
-							// scale back down
+						// if test took too long OR tests are running fast now
+						// TODO temp test decreasing threads when getting lots of timeouts
+						if (Math.abs(System.currentTimeMillis() - test_run_start_time.get()) > 60
+								||
+								Math.abs(System.currentTimeMillis() - test_run_start_time.get()) < sapi_scenario.getFastTestTimeSeconds()) {
+							// scale back down (decrease number of threads)
 							Iterator<TestPackThread<T>> it = scale_up_threads.iterator();
 							TestPackThread<T> slow;
 							while (it.hasNext()) {
 								slow = it.next();
+								it.remove();
 								if (slow.ext==null) {
 									// stop after current test case finished
-									slow.run_thread.set(false);	
+									slow.run_thread.set(false);
+									// remove 1 NTS thread at a time 
+									// (each NTS thread can remove 1 at a time, so several can get removed at same time)
+									break;
 								} else {
 									// don't stop this one because ext has been dequeued
 									// and would have gotten lost
 								}
-								it.remove();
 							}
 						}
 						
@@ -917,8 +928,8 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		protected abstract void runTest(TestCaseGroupKey group_key, T test_case) throws IOException, Exception, Throwable;
 
 		@Override
-		protected boolean slowCreateNewThread() {
-			return threads.size() < MAX_THREAD_COUNT;
+		protected boolean canCreateNewThread() {
+			return threads.size() < max_thread_count;
 		}
 
 		@Override

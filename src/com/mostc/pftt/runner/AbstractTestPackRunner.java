@@ -56,12 +56,12 @@ public abstract class AbstractTestPackRunner<S extends SourceTestPack<?, T>, T e
 	
 	public abstract class SlowReplacementTestPackRunnerThread extends TestPackRunnerThread {
 		
-		protected abstract boolean slowCreateNewThread();
+		protected abstract boolean canCreateNewThread();
 		protected abstract void createNewThread();
 		
 		@Override
 		public void notifySlowTest() {
-			if (slowCreateNewThread()) {
+			if (canCreateNewThread()) {
 				createNewThread();
 			}
 		}

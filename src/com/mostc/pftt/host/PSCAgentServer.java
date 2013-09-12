@@ -180,6 +180,11 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 	}
 	
 	@Override
+	public long getMaxRunTimeMillis() {
+		return 0;
+	}
+	
+	@Override
 	public void notifyStart(AHost this_host, ScenarioSetSetup this_scenario_set, PhptSourceTestPack src_test_pack, PhptTestCase test_case) {
 		// TODO Auto-generated method stub
 	}

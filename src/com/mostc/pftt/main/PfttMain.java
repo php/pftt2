@@ -85,11 +85,7 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //     -test the php build
 //     -test the web server build
 //
-/* -rename ostcpftt@ name to `OSTC PFTT Unattended Test System`
-	-name still clear who owns it
-		-plus database field would tell
-	-only `php` is missing from new name, but any 2nd/3rd party who saw the name wouldn't care about that
-		-just care about owner*/
+// no component should be allowed to run forever(implicitly it will eventually break), always have explicit timeouts
 
 // TODO enchant scenario
 //      skips on 5.4 cli apache ts
@@ -113,7 +109,6 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //           -or include in pftt's cache/dep
 //     -use mssql PHPTs as a separate PhptTestPack until they are integrated with PhpCore
 // TODO xdebug only for 5.4-ts
-// TODO task/code_coverage store in result-pack
 // TODO get code coverage data of Symfony demo app (UI?)
 //      -get list of builtin functions
 //      -find phpunit tests that use same builtin functions
@@ -156,14 +151,6 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //            aa -c dev/symfony-2.3
 //                  dev/ indicates conf/dev for config file
 // TODO include Selenium WebDriver in javadoc
-// TODO WincacheUScenario 
-//     -and APCUScenario
-//       which both extend UserCache (not a code cache) - can use with and without opcache or apc or wincache
-//
-//      >  mediawiki can use WinCacheU for its user/object cache
-//           -makes a major performance difference
-//           -make it a point to unit test that!
-//
 // TODO progress indicator for `release_get`
 // TODO soap xmlrpc ftp snmp ldap postgresql curl ftp - including symfony, joomla, phpt
 //       pdo_odbc odbc (to mssql??)
@@ -594,6 +581,31 @@ public class PfttMain {
 				cm.println(EPrintType.CLUE, PfttMain.class, "Writing Result-Pack: "+tmgr.getResultPackPath());
 				
 				for (ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_APPLICATION)) {
+					if (!cm.isSkipSmokeTests()) {
+						{
+							// TODO test running PHPTs on a build that is missing a DLL that is
+							RequiredExtensionsSmokeTest test = new RequiredExtensionsSmokeTest();
+							//
+							// on Windows, missing .DLLs from a php build will cause a blocking winpop dialog msg to appear
+							// in such a case, the test will timeout after 1 minute and then fail (stopping at that point is important)
+							// @see PhpBuild#getExtensionList
+							if (test.test(build, cm, host, SAPIScenario.getSAPIScenario(scenario_set).getSAPIType(), tmgr)==ESmokeTestStatus.FAIL) {
+								// if this test fails, RequiredFeaturesSmokeTest will fail for sure
+								cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+								
+								break;
+							}
+						}
+						{
+							RequiredFeaturesSmokeTest test = new RequiredFeaturesSmokeTest();
+							if (test.test(build, cm, host, tmgr)==ESmokeTestStatus.FAIL) {
+								cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+								
+								break;
+							}
+						}
+					}
+					
 					List<AHost> hosts = config.getHosts();
 					AHost host = hosts.isEmpty()?this.host:hosts.get(0);
 					LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, host, host);
@@ -1143,12 +1155,12 @@ public class PfttMain {
 		return (PhpBuild[]) builds.toArray(new PhpBuild[builds.size()]);
 	} // end protected static PhpBuild[] newBuilds
 	
-	protected static PhptSourceTestPack newTestPack(ConsoleManager cm, AHost host, String path) {
+	protected static PhptSourceTestPack newTestPack(ConsoleManager cm, Config config, AHost host, String path) {
 		PhptSourceTestPack test_pack = new PhptSourceTestPack(path);
-		if (test_pack.open(cm, host))
+		if (test_pack.open(cm, config, host))
 			return test_pack;
 		test_pack = new PhptSourceTestPack(host.getPhpSdkDir() + "/" + path);
-		if (test_pack.open(cm, host))
+		if (test_pack.open(cm, config, host))
 			return test_pack;
 		else
 			return null; // test-pack not found/readable error
@@ -1296,7 +1308,7 @@ public class PfttMain {
 				System.exit(-255);
 			System.out.println("PFTT: Config: loaded "+config_files);
 		} else {
-			File default_config_file = new File(new LocalHost().getPfttDir()+"/conf/default.groovy");
+			File default_config_file = new File(new LocalHost().getPfttConfDir()+"/default.groovy");
 			config = Config.loadConfigFromFiles(cm, default_config_file);
 			System.out.println("PFTT: Config: no config files loaded... using default only ("+default_config_file+")");
 		}
@@ -1582,7 +1594,7 @@ public class PfttMain {
 					
 					PhpBuild[] builds = newBuilds(cm, p.host, args[args_i+1]);
 					
-					PhptSourceTestPack test_pack = newTestPack(cm, p.host, args[args_i+2]);
+					PhptSourceTestPack test_pack = newTestPack(cm, config, p.host, args[args_i+2]);
 					if (test_pack==null) {
 						System.err.println("IO Error: can not open php test pack: "+test_pack);
 						System.exit(-255);
@@ -1613,7 +1625,7 @@ public class PfttMain {
 					
 					PhpBuild[] builds = newBuilds(cm, p.host, args[args_i+1]);
 					
-					PhptSourceTestPack test_pack = newTestPack(cm, p.host, args[args_i+2]);
+					PhptSourceTestPack test_pack = newTestPack(cm, config, p.host, args[args_i+2]);
 					if (test_pack == null) {
 						System.err.println("IO Error: can not open php test pack: "+test_pack);
 						System.exit(-255);
@@ -1644,7 +1656,7 @@ public class PfttMain {
 					
 					PhpBuild[] builds = newBuilds(cm, p.host, args[args_i+1]);
 					
-					PhptSourceTestPack test_pack = newTestPack(cm, p.host, args[args_i+2]);
+					PhptSourceTestPack test_pack = newTestPack(cm, config, p.host, args[args_i+2]);
 					if (test_pack == null) {
 						System.err.println("IO Error: can not open php test pack: "+test_pack);
 						System.exit(-255);
@@ -1667,7 +1679,7 @@ public class PfttMain {
 					
 					PhpBuild[] builds = newBuilds(cm, p.host, args[args_i+1]);
 					
-					PhptSourceTestPack test_pack = newTestPack(cm, p.host, args[args_i+2]);
+					PhptSourceTestPack test_pack = newTestPack(cm, config, p.host, args[args_i+2]);
 					if (test_pack==null) {
 						System.err.println("IO Error: can not open php test pack: "+test_pack);
 						System.exit(-255);
@@ -1759,7 +1771,7 @@ public class PfttMain {
 				} else if (command.equals("setup")||command.equals("set")||command.equals("setu")) {
 					if (!(args.length > args_i+1)) {
 						System.err.println("User Error: must include build");
-						System.out.println("usage: pftt [-c config_files ]setup <path to PHP build>");
+						System.out.println("usage: pftt [-c config_files ]setup <path to PHP build> [optional: PHPT test-pack to setup]");
 						System.exit(-255);
 						return;
 					}
@@ -1770,13 +1782,21 @@ public class PfttMain {
 					
 					// setup all scenarios
 					PhpIni ini;
+					ScenarioSetSetup setup = null;
 					for ( ScenarioSet set : getScenarioSets(config, EScenarioSetPermutationLayer.PRODUCTION_OR_ALL_UP_TEST) ) {
 						
 						ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, p.host, build);
 						INIScenario.setupScenarios(cm, p.host, set, build, ini);
 						
-						ScenarioSetSetup.setupScenarioSet(cm, p.host, build, set, EScenarioSetPermutationLayer.PRODUCTION_OR_ALL_UP_TEST);
+						setup = ScenarioSetSetup.setupScenarioSet(cm, p.host, build, set, EScenarioSetPermutationLayer.PRODUCTION_OR_ALL_UP_TEST);
 						
+					}
+					if (setup != null && args.length > args_i+2) {
+						// this will load the test-pack's configuration script (if present)
+						PhptSourceTestPack test_pack = PfttMain.newTestPack(cm, config, p.host, args[args_i+2]);
+						
+						// use last ScenarioSetSetup
+						config.prepareTestPack(cm, p.host, setup, build, test_pack);
 					}
 				} else if (command.equals("release_get")||command.equals("rgn")||command.equals("rgnew")||command.equals("rgnewest")||command.equals("rgp")||command.equals("rgprev")||command.equals("rgprevious")||command.equals("rg")||command.equals("rget")) {
 					EBuildBranch branch = null;

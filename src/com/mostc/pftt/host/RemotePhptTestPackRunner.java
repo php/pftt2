@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 
 import com.github.mattficken.io.StringUtil;
+import com.mostc.pftt.main.Config;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhptActiveTestPack;
 import com.mostc.pftt.model.core.PhptSourceTestPack;
@@ -53,13 +54,14 @@ public class RemotePhptTestPackRunner extends AbstractRemoteTestPackRunner<PhptA
 	public static void main(String[] args) throws Exception {
 		LocalHost host = new LocalHost();
 		
-		LocalConsoleManager cm = new LocalConsoleManager(null, null, false, false, false, false, true, false, true, false, false, false, 1, 1, true, 1, 1, 1, null, null, null, null, false, 0, 0, false, false, 0, 0, 0, false);
+		LocalConsoleManager cm = new LocalConsoleManager(null, null, false, false, false, false, true, false, true, false, false, false, 1, 1, true, 1, 1, 1, null, null, null, null, false, 0, 0, false, false, 0, 0, 0, false, 0);
+		Config config = Config.loadConfigFromFiles(cm, "default");
 		
 		PhpBuild build = new PhpBuild("C:\\php-sdk\\php-5.5-ts-windows-vc11-x64-re3aeb6c");
 		build.open(cm, host);
 		
 		PhptSourceTestPack test_pack = new PhptSourceTestPack("C:\\php-sdk\\php-test-pack-5.5-ts-windows-vc11-x86-r0704e4b");
-		test_pack.open(cm, host);
+		test_pack.open(cm, config, host);
 		
 		PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, new File(host.getPhpSdkDir()), build, test_pack, null);
 		

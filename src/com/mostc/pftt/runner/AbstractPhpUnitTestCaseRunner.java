@@ -274,7 +274,7 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 			}
 			//
 			
-			if (is_timeout) {
+			if (is_timeout&&status!=EPhpUnitTestStatus.PASS) {
 				status = EPhpUnitTestStatus.TIMEOUT;
 			} else if (status==null) {
 				// if test had a 'Fatal Error', it might not have been able to print the status code at all

@@ -15,6 +15,7 @@ import org.incava.util.diff.Diff;
 
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.model.app.PhpUnitTemplate;
 import com.mostc.pftt.model.core.EPhptSection;
 import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.PhpBuild;
@@ -26,6 +27,7 @@ import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
+import com.mostc.pftt.results.TestCaseCodeCoverage;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 import com.mostc.pftt.scenario.SAPIScenario;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
@@ -44,6 +46,8 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	protected final PhptThread thread;
 	protected final SAPIScenario sapi_scenario;
 	protected final PhptActiveTestPack active_test_pack;
+	protected final boolean xdebug;
+	protected TestCaseCodeCoverage code_coverage;
 	protected Map<String, String> env;
 	protected byte[] stdin_post;
 	protected String skipif_file, test_dir, base_file_name, test_file, test_clean, content_type;
@@ -54,18 +58,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	protected boolean is_timeout = false;
 	
 	public abstract String getIniActual() throws Exception;
-	
-	protected String get_ini_get_all_path() throws IllegalStateException, IOException {
-		// ensure ini_get_all.php exists
-		// TODO temp 5/15 - should store this once only and delete it later
-		String ini_get_all_path = host.mktempname(getClass(), "ini_get_all.php");
-		if (!host.exists(ini_get_all_path)) {
-			// TODO locking?
-			host.saveTextFile(ini_get_all_path, "<?php var_dump($argv);\nvar_dump(ini_get_all()); ?>");
-		}
-		return ini_get_all_path;
-	}
-	
+		
 	/** runs the test case and reports the results to the PhptTelemetryManager
 	 * 
 	 * @see #willSkip - called by PhptTestPackRunner before #runTest is called
@@ -84,19 +77,44 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			prepareTest();
 			//
 			String test_output = executeTest();
+			//
+			if (xdebug) {
+				// read and filter code coverage data from the output
+				// @see PhpUnitTemplate#renderXDebugPhptTemplate
+				StringBuilder sb = new StringBuilder(4096);
+				code_coverage = new TestCaseCodeCoverage(host, test_file);
+				String filename = test_file; // can assume it starts here
+				for ( String line : StringUtil.splitLines(test_output)) {
+					if (line.startsWith("exe=")) {
+						code_coverage.addExecutedLine(filename, Integer.parseInt(line.substring("exe=".length())));
+					} else if (line.startsWith("didnt_exe=")) {
+						code_coverage.addNotExecutedLine(filename, Integer.parseInt(line.substring("didnt_exe=".length())));
+					} else if (line.startsWith("no_exe=")) {
+						code_coverage.addNonExecutableLine(filename, Integer.parseInt(line.substring("no_exe=".length())));
+					} else if (line.startsWith("file=")) {
+						filename = line.substring("file=".length());
+					} else {
+						sb.append(line);
+						sb.append('\n');
+					}
+				}
+				test_output = sb.toString();
+			}
+			//
 			if (not_crashed) {
 				//
 				evalTest(test_output, test_case.getCommonCharset());
 				
 				// some tests create files/dirs which, which will cause the test to fail again
 				// if its run in-place from the same test-pack
-				if (!cm.isPhptNotInPlace()&&test_clean!=null) {
+				if (!cm.isPhptNotInPlace()&&test_clean!=null&&!host.isBusy()) {
 					current_section = EPhptSection.CLEAN; // @see #getSAPIOutput
 					executeClean(); // #executeClean != #doRunTestClean
 				}
 			}
 		}
-		doRunTestClean(cm);
+		if (!host.isBusy())
+			doRunTestClean(cm);
 	}
 	
 	protected void doRunTestClean(ConsoleManager cm) throws IllegalStateException, IOException {
@@ -120,7 +138,8 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		}
 	}
 	
-	public AbstractPhptTestCaseRunner2(SAPIScenario sapi_scenario, PhpIni ini, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+	public AbstractPhptTestCaseRunner2(boolean xdebug, SAPIScenario sapi_scenario, PhpIni ini, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+		this.xdebug = xdebug;
 		this.sapi_scenario = sapi_scenario;
 		this.ini = ini;
 		this.thread = thread;
@@ -209,7 +228,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		//
 		// find 'skip ' or 'skip...' or 'skip.. ' or 'skip' but ignore '404 error, file not found abc.skip.php'
 		//    (don't need to check for multiple occurences of 'skip', just one... finding abc.skip.php would be a TEST_EXCEPTION or FAIL anyway)
-		if (lc_output.contains("skip") && ( !( this instanceof HttpPhptTestCaseRunner ) || !lc_output.contains("404")) ) {
+		if ((is_timeout||lc_output.contains("skip")) && ( !( this instanceof HttpPhptTestCaseRunner ) || !lc_output.contains("404")) ) {
 			// test is to be skipped
 						
 			// decide to mark test SKIP or XSKIP (could test be executed on this OS?)
@@ -217,15 +236,15 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			if (host.isWindows()) {
 				if ( (lc_output.contains("only ")&&(lc_output.contains(" linux")||lc_output.contains(" non windows")||lc_output.contains(" non-windows")))||(lc_output.contains("not ")&&lc_output.contains(" windows")))
 					// can"t run this test on this OS
-					twriter.addResult(host, scenario_set, src_test_pack, new PhptTestResult(host, is_timeout?EPhptTestStatus.TIMEOUT:EPhptTestStatus.XSKIP, test_case, output, null, null, null, ini, null, null, null, null, null, null, null));
+					twriter.addResult(host, scenario_set, src_test_pack, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, output, null, null, null, ini, null, null, null, null, null, null, null));
 				else
-					twriter.addResult(host, scenario_set, src_test_pack, new PhptTestResult(host, is_timeout?EPhptTestStatus.TIMEOUT:EPhptTestStatus.SKIP, test_case, output, null, null, null, ini, null, null, null, null, null, null, null));
+					twriter.addResult(host, scenario_set, src_test_pack, new PhptTestResult(host, EPhptTestStatus.SKIP, test_case, output, null, null, null, ini, null, null, null, null, null, null, null));
 			} else {
 				if ( (lc_output.contains("only ")&&lc_output.contains(" windows"))||(lc_output.contains("not ")&&lc_output.contains(" linux")))
 					// can"t run this test on this OS
-					twriter.addResult(host, scenario_set, src_test_pack, new PhptTestResult(host, is_timeout?EPhptTestStatus.TIMEOUT:EPhptTestStatus.XSKIP, test_case, output, null, null, null, ini, null, null, null, null, null, null, null));
+					twriter.addResult(host, scenario_set, src_test_pack, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, output, null, null, null, ini, null, null, null, null, null, null, null));
 				else
-					twriter.addResult(host, scenario_set, src_test_pack, new PhptTestResult(host, is_timeout?EPhptTestStatus.TIMEOUT:EPhptTestStatus.SKIP, test_case, output, null, null, null, ini, null, null, null, null, null, null, null));
+					twriter.addResult(host, scenario_set, src_test_pack, new PhptTestResult(host, EPhptTestStatus.SKIP, test_case, output, null, null, null, ini, null, null, null, null, null, null, null));
 			}
 			
 			// skip this test
@@ -237,8 +256,10 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	} // end protected void evalSkipIf
 	
 	protected String preparePhptTestCode(String php_code) {
-		// TODO "<? xdebug_() ?>";
-		return php_code;
+		if (xdebug)
+			return PhpUnitTemplate.renderXDebugPhptTemplate(php_code);
+		else
+			return php_code;
 	}
 	
 	static final Pattern PATTERN_CONTENT_TYPE = Pattern.compile("Content-Type:(.*)");
@@ -447,12 +468,12 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			try {
 				expected_re_match = test_case.getExpectedCompiled(host, scenario_set, twriter, false).match(output_trim); 
 			} catch (Throwable ex) {
-				twriter.addTestException(host, scenario_set, test_case, ex, expected);
+				twriter.addResult(host, scenario_set, src_test_pack, new PhptTestResult(host, EPhptTestStatus.BORK, test_case, ErrorUtil.toString(ex), null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual, getSAPIOutput(), getSAPIConfig(), code_coverage));
 				throw ex;
 			}
 			if (expected_re_match) {
 
-				twriter.addResult(host, scenario_set, src_test_pack, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual, getSAPIOutput(), getSAPIConfig())));
+				twriter.addResult(host, scenario_set, src_test_pack, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual, getSAPIOutput(), getSAPIConfig(), code_coverage)));
 						
 				return;
 			} 
@@ -460,12 +481,12 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 				try {
 					expected_re_match = test_case.getExpectedCompiled(host, scenario_set, twriter, true).match(output_trim); 
 				} catch (Throwable ex) {
-					twriter.addTestException(host, scenario_set, test_case, ex, expected);
+					twriter.addResult(host, scenario_set, src_test_pack, new PhptTestResult(host, EPhptTestStatus.BORK, test_case, ErrorUtil.toString(ex), null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual, getSAPIOutput(), getSAPIConfig(), code_coverage));
 					throw ex;
 				}
 				if (expected_re_match) {
 	
-					twriter.addResult(host, scenario_set, src_test_pack, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual, getSAPIOutput(), getSAPIConfig())));
+					twriter.addResult(host, scenario_set, src_test_pack, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual, getSAPIOutput(), getSAPIConfig(), code_coverage)));
 							
 					return;
 				}
@@ -483,12 +504,12 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 				try {
 					expected_re_match = test_case.getExpectedCompiled(host, scenario_set, twriter, false).match(output_trim); 
 				} catch (Throwable ex) {
-					twriter.addTestException(host, scenario_set, test_case, ex, expected);
+					twriter.addResult(host, scenario_set, src_test_pack, new PhptTestResult(host, EPhptTestStatus.BORK, test_case, ErrorUtil.toString(ex), null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual, getSAPIOutput(), getSAPIConfig(), code_coverage));
 					throw ex;
 				}
 				if (expected_re_match) {
 
-					twriter.addResult(host, scenario_set, src_test_pack, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual, getSAPIOutput(), getSAPIConfig())));
+					twriter.addResult(host, scenario_set, src_test_pack, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual, getSAPIOutput(), getSAPIConfig(), code_coverage)));
 							
 					return;
 				}
@@ -496,12 +517,12 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 					try {
 						expected_re_match = test_case.getExpectedCompiled(host, scenario_set, twriter, true).match(output_trim); 
 					} catch (Throwable ex) {
-						twriter.addTestException(host, scenario_set, test_case, ex, expected);
+						twriter.addResult(host, scenario_set, src_test_pack, new PhptTestResult(host, EPhptTestStatus.BORK, test_case, ErrorUtil.toString(ex), null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual, getSAPIOutput(), getSAPIConfig(), code_coverage));
 						throw ex;
 					}
 					if (expected_re_match) {
 	
-						twriter.addResult(host, scenario_set, src_test_pack, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual, getSAPIOutput(), getSAPIConfig())));
+						twriter.addResult(host, scenario_set, src_test_pack, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual, getSAPIOutput(), getSAPIConfig(), code_coverage)));
 								
 						return;
 					}
@@ -514,7 +535,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			
 			if (equalsNoWS(output, expected)||(test_case.expectsWarningOrFatalError() && equalsNoWS(output, PhptTestCase.removeWarningAndFatalError(expected)))||(output.contains("<html>")&&!output.contains("404"))||(test_case.isNamed("ext/phar/tests/zip/phar_commitwrite.phpt")&&expected.contains(output.substring(50, 60)))||(test_case.isNamed("ext/phar/tests/tar/phar_commitwrite.phpt")&&expected.contains(output.substring(60, 70)))) {
 				
-				twriter.addResult(host, scenario_set, src_test_pack, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null)));
+				twriter.addResult(host, scenario_set, src_test_pack, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null, code_coverage)));
 						
 				return;
 			}
@@ -531,7 +552,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 				// compare again
 				if (equalsNoWS(output, expected)) {
 					
-					twriter.addResult(host, scenario_set, src_test_pack, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual, getSAPIOutput(), getSAPIConfig())));
+					twriter.addResult(host, scenario_set, src_test_pack, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual, getSAPIOutput(), getSAPIConfig(), code_coverage)));
 					
 					return;
 				} // end if
@@ -541,7 +562,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			String output_trim = output.trim();
 			
 			if (StringUtil.isEmpty(output_trim)||(output.contains("<html>")&&!output.contains("404"))) {
-				twriter.addResult(host, scenario_set, src_test_pack, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual, getSAPIOutput(), getSAPIConfig())));
+				twriter.addResult(host, scenario_set, src_test_pack, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual, getSAPIOutput(), getSAPIConfig(), code_coverage)));
 				
 				return;
 			}
@@ -564,9 +585,9 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 
 		PhptTestResult result;
 		if (test_case.isXFail()) {
-			result = notifyNotPass(new PhptTestResult(host, is_timeout?EPhptTestStatus.TIMEOUT:EPhptTestStatus.XFAIL_WORKS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual, getSAPIOutput(), getSAPIConfig()));
+			result = notifyNotPass(new PhptTestResult(host, is_timeout?EPhptTestStatus.TIMEOUT:EPhptTestStatus.XFAIL_WORKS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual, getSAPIOutput(), getSAPIConfig(), code_coverage));
 		} else {
-			result = notifyNotPass(notifyFail(new PhptTestResult(host, is_timeout?EPhptTestStatus.TIMEOUT:EPhptTestStatus.FAIL, test_case, output, actual_lines, expected_lines, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), diff, expectf, preoverride_actual, getSAPIOutput(), getSAPIConfig())));
+			result = notifyNotPass(notifyFail(new PhptTestResult(host, is_timeout?EPhptTestStatus.TIMEOUT:EPhptTestStatus.FAIL, test_case, output, actual_lines, expected_lines, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), diff, expectf, preoverride_actual, getSAPIOutput(), getSAPIConfig(), code_coverage)));
 		}
 		
 		//
