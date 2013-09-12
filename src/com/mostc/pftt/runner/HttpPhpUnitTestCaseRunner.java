@@ -325,7 +325,7 @@ public class HttpPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 			response.setParams(params);
 			httpexecutor.postProcess(response, httpproc, context);
 			
-			timeout_task.cancel();
+			timeout_task.close();
 			
 			//
 			// support for HTTP redirects

@@ -2,6 +2,7 @@ package com.mostc.pftt.model.sapi;
 
 import java.util.Map;
 
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 
@@ -18,12 +19,12 @@ public class CrashedWebServerInstance extends WebServerInstance {
 	protected final String sapi_output;
 	protected final String instance_info;
 	
-	public CrashedWebServerInstance(WebServerManager ws_mgr, PhpIni ini, Map<String,String> env, String sapi_output) {
-		this(ws_mgr, ini, env, sapi_output, null);
+	public CrashedWebServerInstance(AHost host, WebServerManager ws_mgr, PhpIni ini, Map<String,String> env, String sapi_output) {
+		this(host, ws_mgr, ini, env, sapi_output, null);
 	}
 	
-	public CrashedWebServerInstance(WebServerManager ws_mgr, PhpIni ini, Map<String,String> env, String sapi_output, String instance_info) {
-		super(ws_mgr, null, ini, env);
+	public CrashedWebServerInstance(AHost host, WebServerManager ws_mgr, PhpIni ini, Map<String,String> env, String sapi_output, String instance_info) {
+		super(host, ws_mgr, null, ini, env);
 		this.sapi_output = sapi_output;
 		this.instance_info = instance_info;
 	}

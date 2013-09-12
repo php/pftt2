@@ -11,15 +11,20 @@ import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 
 public class CliSAPIInstance extends SAPIInstance {
-	protected final AHost host;
 	protected final PhpBuild build;
-	protected final PhpIni ini;
 	protected String ini_dir;
 	
 	public CliSAPIInstance(AHost host, PhpBuild build, PhpIni ini) {
-		this.host = host;
+		super(host, ini);
 		this.build = build;
-		this.ini = ini;
+	}
+	
+	@Override
+	protected String doGetIniActual(String php_code) throws Exception {
+		return build.eval(host, php_code)
+			.printHasFatalError(getClass().getSimpleName(), (ConsoleManager)null)
+			.cleanupSuccess(host)
+			.output;
 	}
 	
 	public void prepare() throws Exception {

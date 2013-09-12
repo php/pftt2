@@ -51,7 +51,11 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		return getSourceDirectory();
 	}
 	
-	public boolean open(ConsoleManager cm, AHost host) {
+	public String getTestPackConfigFilePath() {
+		return getSourceDirectory()+"/config.pftt.groovy";
+	}
+	
+	public boolean open(ConsoleManager cm, Config config, AHost host) {
 		if (StringUtil.endsWithIC(this.test_pack, ".zip")) {
 			// automatically decompress build
 			String zip_file = test_pack;
@@ -63,7 +67,20 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		
 		this.host = host;
 		this.test_pack = host.fixPath(test_pack);
-		return host.exists(this.test_pack);
+		if (host.exists(this.test_pack)) {
+			String config_file = getTestPackConfigFilePath();
+			if (host.exists(config_file)) {
+				try {
+					config.addConfigFile(cm, new File(config_file));
+				} catch ( Exception ex ) {
+					cm.addGlobalException(EPrintType.CLUE, getClass(), "open", ex, "Unable to load test-pack configuration");
+				}
+			}
+			
+			return true;
+		} else {
+			return false;
+		}
 	}
 	
 	@Override
@@ -86,6 +103,8 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		// these are symlinks(junctions) which may cause an infinite loop
 		//
 		// normally, they are deleted, but if certain tests were interrupted, they may still be there
+		host.deleteIfExists(test_pack+"/ext/standard/tests/file/a_dir");
+		host.deleteIfExists(test_pack+"/ext/standard/tests/file/a_jdir");
 		host.deleteIfExists(test_pack+"/ext/standard/tests/file/12345");
 		host.deleteIfExists(test_pack+"/ext/standard/tests/file/clearstatcache_001.php_link1");
 		host.deleteIfExists(test_pack+"/ext/standard/tests/file/clearstatcache_001.php_link2");

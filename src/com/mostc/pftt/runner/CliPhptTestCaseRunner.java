@@ -44,8 +44,8 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected ExecOutput output;
 	protected String query_string, shell_script, test_cmd, shell_file;
 	
-	public CliPhptTestCaseRunner(CliScenario sapi_scenario, CliSAPIInstance sapi, PhpIni ini, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
-		super(sapi_scenario, ini, thread, test_case, cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack);
+	public CliPhptTestCaseRunner(boolean xdebug, CliScenario sapi_scenario, CliSAPIInstance sapi, PhpIni ini, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+		super(xdebug, sapi_scenario, ini, thread, test_case, cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack);
 		this.sapi = sapi;
 	}
 	
@@ -72,11 +72,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		
 	@Override
 	public String getIniActual() throws Exception {
-		// @see #prepareTest
-		
-		String ini_get_all_path = get_ini_get_all_path();
-		
-		return ini_get_all_path+sapi.execute(exe_type, ini_get_all_path, null, env, AHost.ONE_MINUTE).output;
+		return sapi.getIniActual();
 	}
 	
 	@Override

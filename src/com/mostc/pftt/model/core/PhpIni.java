@@ -594,4 +594,12 @@ public class PhpIni {
 	static final Pattern PAT_pipe = Pattern.compile("\\|");
 	static final Pattern PAT_per = Pattern.compile("\\%");
 	
+	public boolean containsAny(String ...directives) {
+		for ( String d : directives ) {
+			if (containsKey(d))
+				return true;
+		}
+		return false;
+	}
+	
 } // end public class PhpIni

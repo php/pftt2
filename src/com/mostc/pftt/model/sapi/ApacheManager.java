@@ -247,16 +247,14 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 	
 	public class ApacheWebServerInstance extends ManagedProcessWebServerInstance {
 		protected final String conf_dir, apache_conf_file, conf_str, error_log, apache_version_str;
-		protected final AHost host;
 		protected final PhpBuild build;
 		protected final EApacheVersion apache_version;
 		protected SoftReference<String> log_ref;
 		
 		public ApacheWebServerInstance(EApacheVersion apache_version, PhpBuild build, ApacheManager ws_mgr, String docroot, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port, AHost host, String conf_dir, String apache_conf_file, String error_log, String conf_str, String apache_version_str) {
-			super(ws_mgr, docroot, cmd, ini, env, hostname, port);
+			super(host, ws_mgr, docroot, cmd, ini, env, hostname, port);
 			this.build = build;
 			this.apache_version = apache_version;
-			this.host = host;
 			this.conf_dir = conf_dir;
 			this.apache_conf_file = apache_conf_file;
 			this.error_log = error_log;

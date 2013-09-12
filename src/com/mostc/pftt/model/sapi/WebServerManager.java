@@ -8,10 +8,12 @@ import java.util.Map;
 
 import javax.annotation.concurrent.ThreadSafe;
 
+import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
+import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
 import com.mostc.pftt.scenario.IScenarioSetup;
@@ -68,20 +70,39 @@ public abstract class WebServerManager extends SAPIManager {
 	}
 	
 	private static boolean eq(WebServerInstance c, boolean debugger_attached, PhpIni ini, Map<String,String> env) {
-		if (c.isRunning())
-			return true; // TODO temp 5/30
-		
-		// TODO note - AbstractManagedProcessesWebServerManager, BuiltinWebServerManager and ApacheManager
-		//             all add to `env` which means this `env` might not match (because its missing some extra keys)
-		//             (what about checking just the values of the keys they both have in common?)
 		if (c.isRunning() && (!debugger_attached||c.isDebuggerAttached())) {
-			if (c.getPhpIni()!=null&&ini!=null&&c.getPhpIni().equals(ini))
+			if (PhptTestCase.isEquivalentForTestCase(c.getPhpIni(), ini))
 				return true;
-			if (c.getEnv()!=null&&env!=null&&c.getEnv().equals(env))
+			// the two ENVs may not be exactly the same. if 1 ENV has some additional
+			// variables that the other does not, that is ok. Only the variables they both have MUST match.
+			else if (equalsOrCommonValues(c.getEnv(), env))
 				return true;
-			//return true;
 		}
 		return false;
+	}
+	
+	protected static boolean equalsOrCommonValues(Map<String, String> a, Map<String, String> b) {
+		if (a==null)
+			return b == null || b.isEmpty();
+		else if (b==null)
+			return a == null || a.isEmpty();
+		else if (a.equals(b))
+			return true;
+		String va, vb;
+		for ( String key : a.keySet() ) {
+			va = a.get(key);
+			vb = b.get(key);
+			if (va==null) {
+				if (StringUtil.isNotEmpty(vb))
+					return false;
+			} else if (vb==null) {
+				if (StringUtil.isNotEmpty(va))
+					return false;
+			} else if (!vb.equals(va)) {
+				return false;
+			}
+		}
+		return true;
 	}
 	
 	/** gets a running WebServerInstance
@@ -119,6 +140,8 @@ public abstract class WebServerManager extends SAPIManager {
 					synchronized(c) {
 						if (eq(c, debugger_attached, ini, env))
 							return c;
+						else
+							c.close(cm);
 					}
 				}
 			}

@@ -153,8 +153,9 @@ public class PhpParser {
 				return new ClassDefinition[]{};
 			} else {
 				Collection<InterpretedClassDef> clazzes = prog.getClasses();
-				ClassDefinition[] defs = new ClassDefinition[clazzes.size()];
+				ClassDefinition[] defs = new ClassDefinition[clazzes.size()+1];
 				int i=0;
+				defs[i++] = new MainClassDefinition(env, this, prog.getStatement());
 				for ( InterpretedClassDef clazz : clazzes )
 					defs[i++] = new ClassDefinition(env, this, clazz);
 				return defs;
@@ -687,6 +688,47 @@ public class PhpParser {
 		
 	} // end public static abstract class CodeBlock
 	
+	public static class MainClassDefinition extends ClassDefinition {
+		protected final Statement stmt;
+		protected MainClassDefinition(Env env, PhpScript ps, Statement stmt) {
+			super(env, ps, null);
+			this.stmt = stmt;
+		}
+		public String getName() {
+			return "<main>";
+		}
+		public Field[] getFields() {
+			return new Field[]{};
+		}
+		public FunctionDefinition[] getFunctions() {
+			return new FunctionDefinition[] {
+				new FunctionDefinition(env, this, stmt)
+			};
+		}
+		public boolean isInterface() {
+			return false;
+		}
+		public boolean isAbstract() {
+			return false;
+		}
+		public boolean isFinal() {
+			return false;
+		}
+		@Override
+		public boolean equals(Object o) {
+			if (o==this)
+				return true;
+			else if (o instanceof MainClassDefinition)
+				return true;
+			else
+				return toString().equals(o.toString());
+		}
+		@Override
+		public String toString() {
+			return getName();
+		}
+	}
+	
 	public static class ClassDefinition extends CodeBlock {
 		protected final ClassDef clazz;
 		protected final PhpScript ps;
@@ -887,23 +929,33 @@ public class PhpParser {
 	public static class FunctionDefinition extends CodeBlock {
 		protected final AbstractFunction def;
 		protected final ClassDefinition clazz;
+		protected final BlockStatement stmt;
 		
 		protected FunctionDefinition(Env env, ClassDefinition clazz, AbstractFunction def) {
 			super(env);
 			this.def = def;
 			this.clazz = clazz;
+			this.stmt = def instanceof Function && ((Function)def)._statement instanceof BlockStatement ?
+					((BlockStatement)((Function)def)._statement) : null;
 		}
 		
+		public FunctionDefinition(Env env, MainClassDefinition clazz, Statement stmt) {
+			super(env);
+			this.def = null;
+			this.clazz = clazz;
+			this.stmt = stmt instanceof BlockStatement ? (BlockStatement) stmt : null;
+		}
+
 		public int getLineNumber() {
-			return def.getLocation().getLineNumber();
+			return def==null?0:def.getLocation().getLineNumber();
 		}
 		
 		public String getClassName() {
-			return def.getLocation().getClassName();
+			return def==null?"":def.getLocation().getClassName();
 		}
 
 		public String getFileName() {
-			return def.getLocation().getFileName();
+			return def==null?"":def.getLocation().getFileName();
 		}
 
 		public ClassDefinition getClassDefinition() {
@@ -916,11 +968,11 @@ public class PhpParser {
 		 */
 		@Override
 		public String getName() {
-			return def.getName();
+			return def==null?"":def.getName();
 		}
 		
 		public int getArgumentCount() {
-			return def.getArgs().length;
+			return def==null?0:def.getArgs().length;
 		}
 		
 		/** returns the arguments this function accepts
@@ -928,6 +980,8 @@ public class PhpParser {
 		 * @return
 		 */
 		public VariableValue[] getArguments() {
+			if (def==null)
+				return new VariableValue[]{};
 			Arg[] args = def.getArgs();
 			VariableValue[] val = new VariableValue[args.length];
 			int i=0;
@@ -946,12 +1000,12 @@ public class PhpParser {
 		 */
 		public FunctionCall[] getCalls() {
 			ArrayList<FunctionCall> out = new ArrayList<FunctionCall>(2);
-			if (def instanceof Function && ((Function)def)._statement instanceof BlockStatement) {
+			if (stmt != null) {
 				String call_name, class_name;
 				int i;
 				AbstractFunction f;
 				QuercusClass qc;
-				for ( Statement st : ((BlockStatement)((Function)def)._statement)._statements ) {
+				for ( Statement st : stmt._statements ) {
 					if (st instanceof ExprStatement) {
 						Expr expr = ((ExprStatement)st)._expr;
 						if (expr instanceof CallExpr) {

@@ -484,4 +484,29 @@ ob_end_clean();
  * 
  */
 	
+	public static String renderXDebugPhptTemplate(String php_code) {
+		// add php code to collect code coverage data and output it
+		return """<?php
+xdebug_start_code_coverage( XDEBUG_CC_UNUSED | XDEBUG_CC_DEAD_CODE );
+function dump_coverage() {
+	echo PHP_EOL; 
+	foreach ( xdebug_get_code_coverage() as \$filename => \$coverage ) {
+		echo "file=\$filename"; echo PHP_EOL;
+		foreach ( \$coverage as \$line_num => \$type ) {
+			if (\$type==1) {
+				echo "exe=\$line_num"; echo PHP_EOL;
+			} else if (\$type==-1) {
+				echo "didnt_exe=\$line_num"; echo PHP_EOL;
+			} else if (\$type==-2) {
+				echo "no_exe=\$line_num"; echo PHP_EOL;
+			}
+		}
+		xdebug_stop_code_coverage(TRUE);
+	}
+}
+register_shutdown_function('dump_coverage');
+?>""".replace("\r", "").replace("\n", " ") + php_code
+		// reduce the added php code to 1 extra line (remove \n)
+	}
+	
 } // end class PhpUnitTemplate

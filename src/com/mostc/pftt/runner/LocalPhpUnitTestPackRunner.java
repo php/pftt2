@@ -23,6 +23,7 @@ import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.scenario.CodeCacheScenario;
 import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
 import com.mostc.pftt.scenario.FileSystemScenario.ITestPackStorageDir;
+import com.mostc.pftt.scenario.IScenarioSetup;
 import com.mostc.pftt.scenario.SMBScenario.SMBStorageDir;
 import com.mostc.pftt.scenario.WebServerScenario;
 import com.mostc.pftt.scenario.PhpUnitReflectionOnlyScenario;
@@ -70,8 +71,10 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 			long millis = System.currentTimeMillis();
 			for ( int i=0 ; i < 131070 ; i++ ) {
 				// try to include version, branch info etc... from name of test-pack
-				local_test_pack_dir = local_path + "/PFTT-" + src_test_pack.getName() + (i==0?"":"-" + millis) + "/";
-				remote_test_pack_dir = remote_path + "/PFTT-" + src_test_pack.getName() + (i==0?"":"-" + millis) + "/";
+				//
+				// don't want long directory paths or lots of nesting, just put in /php-sdk
+				local_test_pack_dir = local_path + "/TEMP-" + src_test_pack.getName() + (i==0?"":"-" + millis) + "/";
+				remote_test_pack_dir = remote_path + "/TEMP-" + src_test_pack.getName() + (i==0?"":"-" + millis) + "/";
 				if (!storage_host.exists(remote_test_pack_dir) || !runner_host.exists(local_test_pack_dir))
 					break;
 				millis++;
@@ -103,11 +106,15 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 	} // end protected void setupStorageAndTestPack
 	
 	@Override
-	protected int decideThreadCount() {
-		int default_thread_count = super.decideThreadCount() * 2;
+	protected void decideThreadCount() {
+		super.decideThreadCount();
+		//init_thread_count *= 2;
 		
 		// some test-packs need different numbers of threads - ask
-		return Math.max(1, src_test_pack.getThreadCount(runner_host, scenario_set, default_thread_count));
+		init_thread_count = Math.max(1, src_test_pack.getThreadCount(runner_host, scenario_set, init_thread_count));
+		max_thread_count = init_thread_count * 2;
+		
+		checkThreadCountLimit();
 	}
 	
 	@Override
@@ -165,6 +172,12 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 		}
 		
 		@Override
+		protected long getMaxRunTimeMillis() {
+			// phpunit tests are faster
+			return super.getMaxRunTimeMillis() / 3;
+		}
+		
+		@Override
 		public void run() {
 			super.run();
 			
@@ -210,6 +223,18 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 		@Override
 		protected void recordSkipped(PhpUnitTestCase test_case) {
 			twriter.addResult(runner_host, scenario_set_setup, new PhpUnitTestResult(test_case, EPhpUnitTestStatus.TIMEOUT, scenario_set_setup, runner_host, null, null, 0, null, "PFTT: Test Timed Out", null));
+		}
+
+		@Override
+		protected void prepareExec(TestCaseGroupKey group_key, PhpIni ini, Map<String,String> env, IScenarioSetup s) {
+			if (!s.isNeededPhpUnitWriter())
+				return;
+			AbstractPhpUnitRW phpunit = ((PhpResultPackWriter)twriter).getPhpUnit(
+					runner_host, 
+					src_test_pack.getNameAndVersionString(), 
+					scenario_set_setup
+				);
+			s.setPhpUnitWriter(runner_host, scenario_set_setup, build, ini, phpunit);
 		}
 		
 	} // end public class PhpUnitThread

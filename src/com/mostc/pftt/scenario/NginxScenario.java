@@ -1,6 +1,5 @@
 package com.mostc.pftt.scenario;
 
-import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.core.ESAPIType;
 import com.mostc.pftt.model.sapi.WebServerManager;
 
@@ -23,12 +22,6 @@ public class NginxScenario extends ProductionWebServerScenario {
 	protected NginxScenario(WebServerManager smgr) {
 		super(smgr);
 		// TODO Auto-generated constructor stub
-	}
-
-	@Override
-	public int getTestThreadCount(AHost host) {
-		// TODO Auto-generated method stub
-		return 0;
 	}
 
 	@Override

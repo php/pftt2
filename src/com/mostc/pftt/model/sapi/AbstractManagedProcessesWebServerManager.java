@@ -228,7 +228,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 									}
 								} finally {
 									// don't need to check any more
-									thread.cancel();
+									thread.close();
 								}
 							}
 						} // end public void run
@@ -249,7 +249,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 		sapi_output = "PFTT: could not start web server instance (after "+total_attempts+" attempts)... giving up.\n" + sapi_output;
 		
 		// return this failure message to client code
-		return new CrashedWebServerInstance(this, ini, env, sapi_output);
+		return new CrashedWebServerInstance(host, this, ini, env, sapi_output);
 	} // end protected WebServerInstance createWebServerInstance
 	
 	@Overridable
@@ -266,8 +266,8 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 		protected final String docroot;
 		protected ExecHandle process;
 		
-		public ManagedProcessWebServerInstance(AbstractManagedProcessesWebServerManager ws_mgr, String docroot, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port) {
-			super(ws_mgr, LocalHost.splitCmdString(cmd), ini, env);
+		public ManagedProcessWebServerInstance(AHost host, AbstractManagedProcessesWebServerManager ws_mgr, String docroot, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port) {
+			super(host, ws_mgr, LocalHost.splitCmdString(cmd), ini, env);
 			this.docroot = docroot;
 			this.cmd = cmd;
 			this.hostname = hostname;

@@ -487,7 +487,7 @@ public class RequiredFeaturesSmokeTest extends SmokeTest {
 "%s" +
 "Session Support => enabled%s" +
 "Registered save handlers => files user %s" +
-"Registered serializer handlers => php php_binary wddx%s" +
+"Registered serializer handlers => %sphp php_binary wddx%s" +
 "%s" +
 "Directive => Local Value => Master Value%s" +
 "session.auto_start => Off => Off%s" +
@@ -1075,7 +1075,7 @@ public class RequiredFeaturesSmokeTest extends SmokeTest {
 "%s" +
 "Session Support => enabled%s" +
 "Registered save handlers => files user %s" +
-"Registered serializer handlers => php php_binary wddx%s" +
+"Registered serializer handlers => %sphp php_binary wddx%s" +
 "%s" +
 "Directive => Local Value => Master Value%s" +
 "session.auto_start => Off => Off%s" +

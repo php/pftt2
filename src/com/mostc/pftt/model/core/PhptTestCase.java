@@ -66,6 +66,7 @@ public class PhptTestCase extends TestCase {
 	 * 
 	 * Reminder: if -no-nts console option is used, this list is ignored (that option allows tests to be run on any thread regardless of thread-safety)
 	 * */
+	// TODO SOMEDAY store this list in the test-pack's PFTT configuration file
 	public static final String[][] NON_THREAD_SAFE_EXTENSIONS = new String[][]{
 			// split up the ext/standard/tests/file PHPTs
 			// they can be run in 1 thread, but split them into several threads so they'll all finish faster
@@ -81,12 +82,13 @@ public class PhptTestCase extends TestCase {
 			new String[]{"ext/standard/tests/file/windows_acls/", "ext/standard/tests/file/windows_links/"},
 			// note: this array is processed in order, so this entry will catch any remaining /file/ phpts
 			new String[]{"ext/standard/tests/dir/"},
+			new String[]{"ext/standard/tests/string/fprint"},
 			new String[]{"ext/standard/tests/streams/stream_get_"},
 			new String[]{"ext/standard/tests/streams/stream_set_"},
 			new String[]{"ext/standard/tests/streams/"},
 			new String[]{"ext/standard/tests/sockets/", "ext/sockets/"},
 			new String[]{"ext/mysqli/tests/0", "ext/mysqli/tests/bug"},
-			new String[]{"ext/phar/tests/frontcontroller", "ext/phar/tests/cache_list/copyonwrite", "ext/phar/tests/zip/copyonwrite", "ext/phar/tests/tar/copyonwrite", "ext/phar/cache_list/frontcontroller", "ext/phar/zip/frontcontroller", "ext/phar/tar/frontcontroller"},
+			new String[]{"ext/mbstring/tests/mb_output_"},
 			new String[]{"ext/pgsql/"},
 			new String[]{"ext/pdo_pgsql/"},
 			// several 61367 tests that aren't thread-safe (temp files)
@@ -104,8 +106,10 @@ public class PhptTestCase extends TestCase {
 			new String[]{"ext/soap/"},
 			new String[]{"ext/fileinfo/"},
 			new String[]{"ext/ldap/"},
-			new String[]{"ext/spl/tests/splfileobject_fputcsv_"}, // TODO
-			new String[]{"ext/spl/tests/splfileobject_fgetcsv_"}
+			new String[]{"ext/spl/tests/splfileobject_fputcsv_"},
+			new String[]{"ext/spl/tests/splfileobject_fgetcsv_"},
+			new String[]{"ext/pdo_sqlsrv/tests/"},
+			new String[]{"ext/sqlsrv/tests/"},
 		};
 	// PHPT test files end with .phpt
 	public static final String PHPT_FILE_EXTENSION = ".phpt";
@@ -1034,8 +1038,16 @@ public class PhptTestCase extends TestCase {
 	 * @return
 	 */
 	public boolean isSlowTest() {
-		return isExtension("phar") || isExtension("standard/tests/streams") || isNamed(SLOW_TESTS);
+		return isExtension(SLOW_EXTS) || isNamed(SLOW_TESTS);
 	}
+	public static Trie SLOW_EXTS = createExtensions(
+			"tests/security", 
+			"phar", 
+			"ctype",
+			"spl/tests/spl_autoload_", 
+			"session",
+			"standard/tests/streams"
+		);
 	public static Trie SLOW_TESTS = createNamed(
 				// tests that check the SKIP_SLOW_TESTS env var (ie tests considered slow by their authors)
 				//
@@ -1107,6 +1119,67 @@ public class PhptTestCase extends TestCase {
 				"ext/session/tests/020.phpt",
 				"zend/tests/unset_cv05.phpt"
 			);
+	public static int hashCode(PhpIni ini) {
+		if (ini==null)
+			return 1;
+		int hc = 1;
+		for ( String d : DECISIVE_DIRECTIVES ) {
+			String v = ini.get(d);
+			if (v!=null)
+				hc += v.hashCode();
+		}
+		return hc;
+	}
+	public static final String[] DECISIVE_DIRECTIVES = new String[]{
+			//"filter.default",
+			//"mbstring.internal_encoding",
+			//"mbstring.http_output_conv_mimetypes",
+			//"output_handler",
+			"output_buffering",
+			"precision",
+			"error_reporting",
+			//"session.serialize_handler",
+			//"html_errors",
+			//"open_basedir",
+			//"unicode.output_encoding",
+			//"session.save_handler",
+			//"session.auto_start"
+			//"phar.require_hash",
+			"phar.readonly",
+			//"allow_url_fopen"
+		};
+	/** some INI directives will affect the result of a test case (`the decisive directives`)
+	 * 
+	 * This determines if the two PhpInis are either equal (the same) or
+	 * have the `decisive directives` are at least equal.
+	 * 
+	 * @param a
+	 * @param b
+	 * @return
+	 */
+	public static boolean isEquivalentForTestCase(PhpIni a, PhpIni b) {
+		if (a==null)
+			return b==null || !b.containsAny(DECISIVE_DIRECTIVES);
+		else if (b==null)
+			return a==null || !a.containsAny(DECISIVE_DIRECTIVES);
+		else if (a.equals(b))
+			return true;
+		String sa, sb;
+		for ( String d : DECISIVE_DIRECTIVES ) {
+			sa = a.get(d);
+			sb = b.get(d);
+			if (sa==null) {
+				if (StringUtil.isNotEmpty(sb))
+					return false;
+			} else if (sb==null) {
+				if (StringUtil.isNotEmpty(sa))
+					return false;
+			} else if (!sa.equalsIgnoreCase(sb)) {
+				return false;
+			}
+		}
+		return true;
+	}
 
 	public static DefaultCharsetDeciderDecoder newCharsetDeciderDecoder() {
 		return new DefaultCharsetDeciderDecoder(CharsetDeciderDecoder.EXPRESS_RECOGNIZERS);

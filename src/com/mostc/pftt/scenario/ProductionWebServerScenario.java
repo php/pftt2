@@ -20,18 +20,23 @@ public abstract class ProductionWebServerScenario extends WebServerScenario {
 	}
 	
 	@Override
-	public int getTestThreadCount(AHost host) {
-		return 4 * host.getCPUCount();
+	public int getApprovedInitialThreadPoolSize(AHost host, int threads) {
+		return host.getCPUCount() * 8;
+	}
+	
+	@Override
+	public int getApprovedMaximumThreadPoolSize(AHost host, int threads) {
+		return host.getCPUCount() * 16;
 	}
 	
 	@Override
 	public int getSlowTestTimeSeconds() {
-		return 15;
+		return 12;
 	}
 	
 	@Override
 	public long getFastTestTimeSeconds() {
-		return 10;
+		return 8;
 	}
 	
 	@Override
@@ -40,8 +45,8 @@ public abstract class ProductionWebServerScenario extends WebServerScenario {
 		Collections.sort(test_cases, new Comparator<PhptTestCase>() {
 				@Override
 				public int compare(PhptTestCase a, PhptTestCase b) {
-					final boolean as = isSlowTest(a);
-					final boolean bs = isSlowTest(b);
+					final boolean as = !isSlowTest(a);
+					final boolean bs = !isSlowTest(b);
 					return ( as ^ bs ) ? ( as ^ true  ? -1 : +1 ) : 0;
 				}
 			});

@@ -19,18 +19,34 @@ import com.mostc.pftt.results.EPrintType;
  * @author Matt Ficken
  *
  */
-
+ 
 public class MySQLScenario extends DatabaseScenario {
 	public static final int DEFAULT_MYSQL_PORT = 3306;
 	public static final String DEFAULT_USERNAME = "root";
 	public static final String DEFAULT_PASSWORD = "password01!";
 	
+	public MySQLScenario(EMySQLVersion version, AHost host, String default_username, String default_password) {
+		super(version, host, default_username, default_password);
+	}
+		
+	public MySQLScenario(EMySQLVersion version, AHost host) {
+		this(version, host, DEFAULT_USERNAME, DEFAULT_PASSWORD);
+	}
+	
 	public MySQLScenario(AHost host, String default_username, String default_password) {
-		super(host, default_username, default_password);
+		this(EMySQLVersion.DEFAULT, host, default_username, default_password);
 	}
 		
 	public MySQLScenario(AHost host) {
 		this(host, DEFAULT_USERNAME, DEFAULT_PASSWORD);
+	}
+	
+	public static enum EMySQLVersion implements IDatabaseVersion {
+		DEFAULT {
+			public String getNameWithVersionInfo() {
+				return "MySQL-5.6"; // TODO autodetect
+			}
+		};
 	}
 	
 	@Override
@@ -53,14 +69,34 @@ public class MySQLScenario extends DatabaseScenario {
 		protected String datadir, hostname;
 		
 		@Override
-		protected Connection createConnection() throws SQLException {
-			String url = "jdbc:mysql://"+getHostname()+":"+getPort()+"/?user="+getUsername()+"&password="+getPassword();
-			return DriverManager.getConnection(url);
+		public boolean databaseExists(String db_name) {
+			return empty(executeQuery("SHOW DATABASES LIKE '"+db_name+"'"));
 		}
 		
 		@Override
-		public String getNameWithVersionInfo() {
-			return "MySQL-5.6"; // TODO detect
+		public boolean createDatabaseWithUser(String db_name, String user, String password) {
+			return createDatabase(db_name) &&
+					execute("GRANT ALL ON "+db_name+".* TO `"+user+"`@`localhost` IDENTIFIED BY '"+password+"'") &&
+					execute("GRANT ALL ON "+db_name+".* TO `"+user+"` IDENTIFIED BY '"+password+"'");
+		}
+		
+		@Override
+		public boolean createDatabaseReplaceOk(String db_name) {
+			execute("DROP DATABASE IF EXISTS "+db_name);
+			return createDatabase(db_name);
+		}
+		
+		@Override
+		public boolean createDatabaseWithUserReplaceOk(String db_name, String user, String password) {
+			return createDatabaseReplaceOk(db_name) &&
+					execute("GRANT ALL ON "+db_name+".* TO `"+user+"`@`localhost` IDENTIFIED BY '"+password+"'") &&
+					execute("GRANT ALL ON "+db_name+".* TO `"+user+"` IDENTIFIED BY '"+password+"'");
+		}
+		
+		@Override
+		protected Connection createConnection() throws SQLException {
+			String url = "jdbc:mysql://"+getHostname()+":"+getPort()+"/?user="+getUsername()+"&password="+getPassword();
+			return DriverManager.getConnection(url);
 		}
 
 		@Override
@@ -208,18 +244,31 @@ public class MySQLScenario extends DatabaseScenario {
 			cm.println(EPrintType.CANT_CONTINUE, getClass(), "Failed to start MySQL server");
 			return false;
 		} // end protected boolean startServer
-
+		
+		protected boolean cleanupServerAfterFailedStarted(ConsoleManager cm, boolean is_production_server) {
+			try {
+				stopServerEx(cm, is_production_server);
+				return true;
+			} catch ( Exception ex ) {
+				ex.printStackTrace();
+			}
+			return false;
+		}
+		
+		protected void stopServerEx(ConsoleManager cm, boolean is_production_server) throws Exception {
+			if (is_production_server) {
+				cm.println(EPrintType.IN_PROGRESS, getClass(), "Stopping production MySQL Windows Service...");
+				host.execElevated(cm, getClass(), "net stop MySQL56", AHost.ONE_MINUTE);
+			} else {
+				cm.println(EPrintType.IN_PROGRESS, getClass(), "Stopping MySQL stanadlone process");
+				mysqld_handle.close(cm, true);
+			}
+		}
+		
 		@Override
 		protected boolean stopServer(ConsoleManager cm, boolean is_production_server) {
 			try {
-				if (is_production_server) {
-					cm.println(EPrintType.IN_PROGRESS, getClass(), "Stopping production MySQL Windows Service...");
-					host.execElevated(cm, getClass(), "net stop MySQL56", AHost.ONE_MINUTE);
-				} else {
-					cm.println(EPrintType.IN_PROGRESS, getClass(), "Stopping MySQL stanadlone process");
-					mysqld_handle.close(cm, true);
-					
-				}
+				stopServerEx(cm, is_production_server);
 				
 				// wait until MySQL can't be connected to
 				if (!WebServerManager.isLocalhostTCPPortUsed(getPort())) {

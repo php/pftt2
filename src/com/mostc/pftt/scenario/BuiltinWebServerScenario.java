@@ -63,9 +63,14 @@ public class BuiltinWebServerScenario extends WebServerScenario {
 	}
 	
 	@Override
-	public int getTestThreadCount(AHost host) {
+	public int getApprovedInitialThreadPoolSize(AHost host, int threads) {
 		// XXX update this calculation from time to time as this web server's performance improves (probably decrease number)
-		return 8 * host.getCPUCount();
+		return host.getCPUCount() * 6;//8;
+	}
+	
+	@Override
+	public int getApprovedMaximumThreadPoolSize(AHost host, int threads) {
+		return host.getCPUCount() * 8;// TODO 10;
 	}
 	
 	@Override
@@ -248,8 +253,8 @@ public class BuiltinWebServerScenario extends WebServerScenario {
 	}
 	
 	@Override
-	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
-		return new BuiltinWebHttpPhptTestCaseRunner(this, group_key.getPhpIni(), group_key.getEnv(), params, httpproc, httpexecutor, smgr, thread.getThreadWebServerInstance(), thread, test_case, cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack);
+	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack, boolean xdebug) {
+		return new BuiltinWebHttpPhptTestCaseRunner(xdebug, this, group_key.getPhpIni(), group_key.getEnv(), params, httpproc, httpexecutor, smgr, thread.getThreadWebServerInstance(), thread, test_case, cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack);
 	}
 	
 	

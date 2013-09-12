@@ -52,13 +52,18 @@ public class CliScenario extends SAPIScenario {
 	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(
 			PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case,
 			ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup,
-			PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
-		return new CliPhptTestCaseRunner(this, ((CliTestCaseGroupKey)group_key).getCliSAPIInstance(), group_key.getPhpIni(), thread, test_case, cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack);
+			PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack, boolean xdebug) {
+		return new CliPhptTestCaseRunner(xdebug, this, ((CliTestCaseGroupKey)group_key).getCliSAPIInstance(), group_key.getPhpIni(), thread, test_case, cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack);
 	}
 	
 	@Override
-	public int getTestThreadCount(AHost host) {
-		return 16 * host.getCPUCount();
+	public int getApprovedInitialThreadPoolSize(AHost host, int threads) {
+		return host.getCPUCount() * 4;// TODO 12;
+	}
+	
+	@Override
+	public int getApprovedMaximumThreadPoolSize(AHost host, int threads) {
+		return host.getCPUCount() * 8;//16;
 	}
 	
 	@Override

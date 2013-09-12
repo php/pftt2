@@ -17,8 +17,20 @@ import com.mostc.pftt.results.ConsoleManager;
 
 public class PostgresSQLScenario extends DatabaseScenario {
 
+	public PostgresSQLScenario(EPostgresSQLVersion version, AHost host, String default_username, String default_password) {
+		super(version, host, default_username, default_password);
+	}
+	
 	public PostgresSQLScenario(AHost host, String default_username, String default_password) {
-		super(host, default_username, default_password);
+		this(EPostgresSQLVersion.DEFAULT, host, default_username, default_password);
+	}
+	
+	public static enum EPostgresSQLVersion implements IDatabaseVersion {
+		DEFAULT {
+			public String getNameWithVersionInfo() {
+				return "PostgresSQL"; 
+			}
+		};
 	}
 
 	@Override
@@ -27,11 +39,6 @@ public class PostgresSQLScenario extends DatabaseScenario {
 	}
 	
 	public class PostgresSQLScenarioSetup extends DefaultDatabaseScenarioSetup {
-
-		@Override
-		public String getNameWithVersionInfo() {
-			return getName(); // TODO
-		}
 
 		@Override
 		public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
@@ -72,6 +79,39 @@ public class PostgresSQLScenario extends DatabaseScenario {
 		@Override
 		protected boolean stopServer(ConsoleManager cm,
 				boolean is_production_database_server) {
+			// TODO Auto-generated method stub
+			return false;
+		}
+
+		@Override
+		protected boolean cleanupServerAfterFailedStarted(ConsoleManager cm,
+				boolean is_production_database_server) {
+			// TODO Auto-generated method stub
+			return false;
+		}
+
+		@Override
+		public boolean databaseExists(String db_name) {
+			// TODO Auto-generated method stub
+			return false;
+		}
+
+		@Override
+		public boolean createDatabaseWithUser(String db_name, String user,
+				String password) {
+			// TODO Auto-generated method stub
+			return false;
+		}
+
+		@Override
+		public boolean createDatabaseReplaceOk(String db_name) {
+			// TODO Auto-generated method stub
+			return false;
+		}
+
+		@Override
+		public boolean createDatabaseWithUserReplaceOk(String db_name,
+				String user, String password) {
 			// TODO Auto-generated method stub
 			return false;
 		}

@@ -100,5 +100,6 @@ public interface ConsoleManager {
 	public int getRunCount();
 	public int getSuspendSeconds();
 	public boolean isGetActualIniAll();
+	public long getMaxRunTimeMillis();
 	
 } // end public class ConsoleManager

@@ -80,15 +80,19 @@ public abstract class SAPIScenario extends AbstractSerialScenario {
 	 * @param build
 	 * @param src_test_pack
 	 * @param active_test_pack
+	 * @param xdebug TODO
 	 * @return
 	 */
-	public abstract AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack);
+	public abstract AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack, boolean xdebug);
 	
 	public void close(ConsoleManager cm, boolean debug) {
 		
 	}
 
-	public abstract int getTestThreadCount(AHost host);
+	@Override
+	public abstract int getApprovedInitialThreadPoolSize(AHost host, int threads);
+	@Override
+	public abstract int getApprovedMaximumThreadPoolSize(AHost host, int threads);
 
 	public abstract ESAPIType getSAPIType();
 
@@ -163,7 +167,6 @@ public abstract class SAPIScenario extends AbstractSerialScenario {
 			"tests/basic/req60524-win.phpt",
 			"tests/func/011.phpt",
 			"zend/tests/unset_cv10.phpt",
-			// TODO
 			//
 			"ext/pdo_mysql/tests/pdo_mysql___construct_ini.phpt",
 			"ext/pcre/tests/backtrack_limit.phpt",
@@ -171,7 +174,6 @@ public abstract class SAPIScenario extends AbstractSerialScenario {
 			"ext/phar/tests/bug45218_slowtest.phpt",
 			"ext/phar/tests/phar_buildfromdirectory6.phpt",
 			"ext/reflection/tests/015.phpt",
-			"ext/session/tests/bug60860.phpt",
 			"ext/standard/tests/file/bug24482.phpt",
 			"ext/standard/tests/file/bug41655_1.phpt",
 			"ext/standard/tests/strings/htmlentities10.phpt",
@@ -183,7 +185,25 @@ public abstract class SAPIScenario extends AbstractSerialScenario {
 			"ext/standard/tests/network/udp4loop.phpt",
 			"ext/standard/tests/network/udp6loop.phpt",
 			"zend/tests/bug52041.phpt",
-			"zend/tests/halt_compiler4.phpt"
+			"tests/func/bug64523.phpt",
+			"zend/tests/halt_compiler4.phpt",
+			"ext/filter/tests/004.phpt",
+			"ext/mbstring/tests/mb_output_handler_pattern-01.phpt",
+			"ext/mbstring/tests/mb_output_handler_pattern-02.phpt",
+			"ext/mbstring/tests/mb_output_handler_pattern-03.phpt",
+			"ext/mbstring/tests/mb_output_handler_pattern-05.phpt",
+			"ext/mbstring/tests/mb_output_handler_pattern-06.phpt",
+			"ext/mbstring/tests/mb_output_handler_pattern-07.phpt",
+			"ext/mbstring/tests/mb_output_handler_pattern-08.phpt",
+			"ext/mbstring/tests/mb_output_handler_pattern-09.phpt",
+			"ext/mbstring/tests/mb_output_handler_pattern-11.phpt",
+			"ext/mbstring/tests/mb_output_handler_pattern-12.phpt",
+			"ext/mbstring/tests/mb_output_handler_runtime_ini_alteration-01.phpt",
+			"ext/session/tests/bug60860.phpt",
+			"ext/standard/tests/strings/htmlentities05.phpt",
+			"ext/wddx/tests/004.phpt",
+			"ext/wddx/tests/005.phpt",
+			"ext/zlib/tests/bug65391.phpt"
 		);
 	public static Trie NON_WINDOWS_EXTS = PhptTestCase.createExtensions("sysvsem", "sysvmsg", "sysvshm", "gettext", "exif", "readline", "posix", "shmop");
 	public static Trie SCENARIO_EXTS = PhptTestCase.createExtensions("dba", "sybase", "snmp", "interbase", "ldap", "imap", "oci8", "pcntl", "soap", "xmlrpc", "pdo", "odbc", "pdo_mssql", "mssql", "pdo_pgsql", "sybase_ct", "ftp", "curl");

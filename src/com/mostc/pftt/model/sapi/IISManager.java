@@ -107,7 +107,7 @@ public class IISManager extends AbstractManagedProcessesWebServerManager {
 		env = prepareENV(env, prep.php_conf_file, build, scenario_set, build.getPhpCgiExe());
 		
 		
-		final String cmdline = host.getPfttDir()+"/cache/dep/IIS/IISRunner "+host.fixPath(prep.iis_conf_file);
+		final String cmdline = host.getPfttCacheDir()+"/dep/IIS/IISRunner "+host.fixPath(prep.iis_conf_file);
 		
 		// @see #createWebServerInstance for where command is executed to create httpd.exe process
 		return new IISWebServerInstance(this, docroot, cmdline, env, ini, listen_address, port, prep, host, build);
@@ -115,14 +115,12 @@ public class IISManager extends AbstractManagedProcessesWebServerManager {
 	
 	public class IISWebServerInstance extends ManagedProcessWebServerInstance {
 		protected final PreparedIIS prep;
-		protected final AHost host;
 		protected final PhpBuild build;
 		protected SoftReference<String> log_ref;
 		
 		public IISWebServerInstance(IISManager ws_mgr, String docroot, String cmd, Map<String,String> env, PhpIni ini, String hostname, int port, PreparedIIS prep, AHost host, PhpBuild build) {
-			super(ws_mgr, docroot, cmd, ini, env, hostname, port);
+			super(host, ws_mgr, docroot, cmd, ini, env, hostname, port);
 			this.build = build;
-			this.host = host;
 			this.prep = prep;
 		}
 		

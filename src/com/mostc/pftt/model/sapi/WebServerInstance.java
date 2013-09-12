@@ -1,5 +1,7 @@
 package com.mostc.pftt.model.sapi;
 
+import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -7,6 +9,7 @@ import java.util.Map;
 
 import javax.annotation.concurrent.ThreadSafe;
 
+import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.TestCase;
@@ -32,7 +35,8 @@ public abstract class WebServerInstance extends SAPIInstance implements IWebServ
 	protected final WebServerManager ws_mgr;
 	WebServerInstance replacement; // @see WebServerManager#getWebServerInstance
 	
-	public WebServerInstance(WebServerManager ws_mgr, String[] cmd_array, PhpIni ini, Map<String,String> env) {
+	public WebServerInstance(AHost host, WebServerManager ws_mgr, String[] cmd_array, PhpIni ini, Map<String,String> env) {
+		super(host, ini);
 		this.ws_mgr = ws_mgr;
 		this.cmd_array = cmd_array;
 		this.ini = ini;
@@ -230,5 +234,21 @@ public abstract class WebServerInstance extends SAPIInstance implements IWebServ
 	protected abstract void do_close(ConsoleManager cm);
 
 	public abstract String getDocroot();
+	
+	protected String httpGet(String url_str, String php_code) throws IllegalStateException, IOException {
+		String temp_file = host.joinIntoOnePath(getDocroot(), url_str);
+		if (!host.saveTextFile(temp_file, php_code))
+			return "";
+		
+		URL url = new URL("http", getHostname(), getPort(), url_str);
+		String output = IOUtil.toString(url.openStream(), IOUtil.QUARTER_MEGABYTE);
+		host.delete(temp_file);
+		return output;
+	}
+	
+	@Override
+	protected String doGetIniActual(String php_code) throws IllegalStateException, IOException {
+		return httpGet("ini_get_all.php", php_code);
+	}
 	
 } // end public abstract class WebServerInstance

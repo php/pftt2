@@ -68,11 +68,9 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 	
 	public class BuiltinWebServerInstance extends ManagedProcessWebServerInstance {
 		protected final PhpBuild build;
-		protected final AHost host;
 		
 		public BuiltinWebServerInstance(BuiltinWebServerManager ws_mgr, AHost host, PhpBuild build, String docroot, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port) {
-			super(ws_mgr, docroot, cmd, ini, env, hostname, port);
-			this.host = host;
+			super(host, ws_mgr, docroot, cmd, ini, env, hostname, port);
 			this.build = build;
 		}
 		

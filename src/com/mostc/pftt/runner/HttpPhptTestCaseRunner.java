@@ -62,8 +62,8 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected final HttpRequestExecutor httpexecutor;
 	protected Socket test_socket;
 
-	public HttpPhptTestCaseRunner(WebServerScenario sapi_scenario, PhpIni ini, Map<String,String> env, HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
-		super(sapi_scenario, ini, thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
+	public HttpPhptTestCaseRunner(boolean xdebug, WebServerScenario sapi_scenario, PhpIni ini, Map<String,String> env, HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+		super(xdebug, sapi_scenario, ini, thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 		this.params = params;
 		this.httpproc = httpproc;
 		this.httpexecutor = httpexecutor;
@@ -230,6 +230,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				synchronized(web) {
 					WebServerInstance _web = smgr.getWebServerInstance(cm, host, scenario_set.getScenarioSet(), build, ini, env, active_test_pack.getStorageDirectory(), web, false, test_case);
 					if (_web!=this.web) {
+						this.web.close(cm);
 						this.web = _web;
 						is_replacement = true;
 											
@@ -291,24 +292,9 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		return do_http_get(path, 0);
 	}
 	
-	@Override // TODO
-	protected String get_ini_get_all_path() throws IllegalStateException, IOException {
-		// ensure ini_get_all.php exists
-		// TODO temp 5/15 - should store this once only and delete it later
-		String ini_get_all_path = host.joinIntoOnePath(active_test_pack.getStorageDirectory(), "ini_get_all.php");
-		if (!host.exists(ini_get_all_path)) {
-			// TODO locking?
-			host.saveTextFile(ini_get_all_path, "<?php var_dump($argv);\nvar_dump(ini_get_all()); ?>");
-		}
-		return ini_get_all_path;
-	}
-	
 	@Override
 	public String getIniActual() throws Exception {
-		// ensure ini_get_all.php has been created
-		get_ini_get_all_path();
-		
-		return do_http_get("/ini_get_all.php", 0);
+		return web == null ? null : web.getIniActual();
 	}
 	
 	@Override
@@ -400,7 +386,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			response.setParams(params);
 			httpexecutor.postProcess(response, httpproc, context);
 			
-			timeout_task.cancel();
+			timeout_task.close();
 			
 			//
 			// support for HTTP redirects: used by some PHAR tests
@@ -514,7 +500,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			response.setParams(params);
 			httpexecutor.postProcess(response, httpproc, context);
 			
-			timeout_task.cancel();
+			timeout_task.close();
 			
 			//
 			// support for HTTP redirects: used by some PHAR tests
