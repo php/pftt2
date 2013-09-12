@@ -108,7 +108,7 @@ public class SMBDeduplicationScenario extends SMBScenario {
 				
 				final TempFileExecOutput eo = remote_host.powershell(getClass(), cm, "Start-Dedupjob -Volume "+volume+" -Type Optimization -Wait", AHost.FOUR_HOURS);
 				eo.printCommandAndOutput(EPrintType.CLUE, getClass(), cm);
-				if (eo.cleanupIfSuccess(remote_host)) {
+				if (eo.cleanupIsSuccess(remote_host)) {
 					
 					//
 					// log REPARSEPOINT QUERY to show if reparse point/deduplication was really setup
@@ -164,7 +164,7 @@ public class SMBDeduplicationScenario extends SMBScenario {
 			cm.println(EPrintType.IN_PROGRESS, getClass(), "Starting to Install Deduplication on: "+remote_host);
 			TempFileExecOutput teo = remote_host.powershell(getClass(), cm, ps_sb, AHost.ONE_MINUTE * 10);
 			teo.printCommandAndOutput(EPrintType.CLUE, getClass(), cm);
-			if (teo.cleanupIfSuccess(remote_host)) {
+			if (teo.cleanupIsSuccess(remote_host)) {
 				// don't delete tmp_file if it failed to help user see why
 				
 				cm.println(EPrintType.IN_PROGRESS, getClass(), "Deduplication Feature Installed.");

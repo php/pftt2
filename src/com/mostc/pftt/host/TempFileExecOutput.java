@@ -14,8 +14,14 @@ public class TempFileExecOutput extends ExecOutput {
 		this.output = eo.output;
 		this.temp_file = temp_file;
 	}
+	
+	public TempFileExecOutput cleanupSuccess(AHost host) {
+		if (isSuccess())
+			cleanup(host);
+		return this;
+	}
 
-	public boolean cleanupIfSuccess(AHost host) {
+	public boolean cleanupIsSuccess(AHost host) {
 		if (isSuccess()) {
 			cleanup(host);
 			return true;

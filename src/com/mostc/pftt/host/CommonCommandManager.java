@@ -21,7 +21,7 @@ public class CommonCommandManager {
 				win_close_all_handles_lock.tryLock(10, TimeUnit.SECONDS);
 			} catch ( InterruptedException ex ) {}
 			try {
-				handle_out = host.execOut(host.getPfttDir()+"\\bin\\handle -accepteula -p "+process_id+" -a", 10);
+				handle_out = host.execOut(host.getPfttBinDir()+"\\handle -accepteula -p "+process_id+" -a", 10);
 			} finally {
 				try {
 				win_close_all_handles_lock.unlock();
@@ -34,7 +34,7 @@ public class CommonCommandManager {
 					String handle_type = h_part[1];
 					if (handle_id.endsWith(":") && handle_type.equalsIgnoreCase("File")) {
 						handle_id = handle_id.substring(0, handle_id.length()-1);
-						String handle_cmd = host.getPfttDir()+"\\bin\\handle -accepteula -p "+process_id+" -y -c "+handle_id;
+						String handle_cmd = host.getPfttBinDir()+"\\handle -accepteula -p "+process_id+" -y -c "+handle_id;
 						try {
 							win_close_all_handles_lock.tryLock(10, TimeUnit.SECONDS);
 						} catch ( InterruptedException ex ) {}
@@ -70,7 +70,7 @@ public class CommonCommandManager {
 					win_kill_process_lock.tryLock(5, TimeUnit.SECONDS);
 				} catch ( InterruptedException ex ) {}
 				try {
-					host.exec(host.getPfttDir()+"\\bin\\pskill -accepteula -t -p "+process_id, 20);
+					host.exec(host.getPfttBinDir()+"\\pskill -accepteula -t -p "+process_id, 20);
 					//host.exec("TASKKILL /FI \"IMAGENAME eq "+image_name+"\" /FI \"PID eq "+process_id+"\" /F /T", 20);
 				} finally {
 					try {
@@ -82,7 +82,7 @@ public class CommonCommandManager {
 					win_kill_process_lock.tryLock(5, TimeUnit.SECONDS);
 				} catch ( InterruptedException ex ) {}
 				try {					
-					host.exec(host.getPfttDir()+"\\bin\\pskill -accepteula -t -p "+process_id, 20);
+					host.exec(host.getPfttBinDir()+"\\pskill -accepteula -t -p "+process_id, 20);
 					//host.exec("TASKKILL /FI \"IMAGENAME eq "+image_name+"\" /FI \"PID eq "+process_id+"\" /F /T", 20);
 				} finally {
 					try {

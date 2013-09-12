@@ -586,7 +586,7 @@ public class NTFSACL {
 	
 	protected static void setACL(Host host, String args) throws Exception {
 		//WL( '\t' + 'setacl' + args );
-		host.exec(host.getPfttDir()+"/bin/setacl " + args, Host.FOUR_HOURS );
+		host.exec(host.getPfttBinDir()+"/setacl " + args, Host.FOUR_HOURS );
 	}
 	
 } // end public class NTFSACL

@@ -1,5 +1,6 @@
 package com.mostc.pftt.scenario;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -87,6 +88,14 @@ public class ScenarioSetSetup implements IClosable {
 		this.scenario_set = scenario_set;
 		this.setups = setups;
 		this.name_version = name_version;
+	}
+	
+	public Collection<Scenario> getScenarios() {
+		return setups.keySet();
+	}
+	
+	public Collection<IScenarioSetup> getSetups() {
+		return setups.values();
 	}
 
 	public String getNameWithVersionInfo() {

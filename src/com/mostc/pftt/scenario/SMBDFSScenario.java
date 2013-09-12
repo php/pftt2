@@ -242,7 +242,7 @@ public class SMBDFSScenario extends SMBScenario {
 		try {
 			TempFileExecOutput teo = remote_host.powershell(getClass(), cm, ps_sb, AHost.FOUR_HOURS);
 			teo.printCommandAndOutput(EPrintType.CLUE, getClass(), cm);
-			if (teo.cleanupIfSuccess(remote_host)) {
+			if (teo.cleanupIsSuccess(remote_host)) {
 				
 				cm.println(EPrintType.COMPLETED_OPERATION, getClass(), "DFS Feature Installed");
 					

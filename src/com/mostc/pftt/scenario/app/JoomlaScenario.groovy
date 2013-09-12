@@ -30,7 +30,7 @@ public class JoomlaScenario extends ZipDbApplication {
 
 	@Override
 	public boolean isImplemented() {
-		return false;
+		return true;
 	}
 
 	@Override
@@ -42,7 +42,7 @@ public class JoomlaScenario extends ZipDbApplication {
 	protected boolean configure(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, String app_dir) {
 		// TODO Auto-generated method stub
 		
-		host.open("joomla/joomla.xml");
+		/*host.open("joomla/joomla.xml");
 		def xml = """
 		  <?xml version="1.0" encoding="UTF-8" ?> 
 		  - <extension version="3.0" type="file" method="upgrade">
@@ -95,9 +95,9 @@ public class JoomlaScenario extends ZipDbApplication {
 		    <server type="collection">http://update.joomla.org/jed/list.xml</server> 
 		    </updateservers>
 		    </extension>
-		"""
+		"""*/
 
-		return false;
+		return true;
 	}
 
 }

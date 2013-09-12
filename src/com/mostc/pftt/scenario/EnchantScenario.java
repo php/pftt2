@@ -28,7 +28,7 @@ public class EnchantScenario extends INIScenario {
 			// LATER php on non-windows may need a dictionary too ??
 			String dst = build.getBuildPath()+"/share/";
 			if (!host.exists(dst)) {
-				host.copyElevated(host.getPfttDir()+"/cache/util/enchant/share", dst);
+				host.copyElevated(host.getPfttCacheDir()+"/util/enchant/share", dst);
 			
 				
 				// make sure libraries are where they need to be also
@@ -63,7 +63,7 @@ public class EnchantScenario extends INIScenario {
 	}
 
 	public static String getDictionaryFile(AHost host) {
-		return host.getPfttDir()+"/cache/util/enchant/share/myspell/dicts/en_US.dic";
+		return host.getPfttCacheDir()+"/util/enchant/share/myspell/dicts/en_US.dic";
 	}
 
 } // end public class EnchantScenario

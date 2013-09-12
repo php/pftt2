@@ -123,7 +123,7 @@ public class WinDebugManager extends DebuggerManager {
 			// -n => noisy symbol load => provide extra info about symbol loading to trace any symbol problems
 			sb.append(" -n");
 			// -WF => provide default workspace file, which will automatically dock the command window within the windebug window
-			String workspace_file = host.fixPath(host.joinIntoOnePath(host.getPfttDir(), "\\bin\\pftt_workspace.WEW"));
+			String workspace_file = host.fixPath(host.joinIntoOnePath(host.getPfttBinDir(), "\\pftt_workspace.WEW"));
 			if (host.exists(workspace_file)) {
 				sb.append(" -WF \"");sb.append(workspace_file);sb.append("\"");
 			}

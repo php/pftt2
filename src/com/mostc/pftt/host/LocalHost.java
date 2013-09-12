@@ -25,6 +25,7 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
@@ -46,7 +47,9 @@ import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
 import com.mostc.pftt.util.TimerUtil;
+import com.mostc.pftt.util.TimerUtil.ObjectRunnable;
 import com.mostc.pftt.util.TimerUtil.TimerThread;
+import com.mostc.pftt.util.TimerUtil.WaitableRunnable;
 import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.Kernel32;
 import com.sun.jna.platform.win32.WinNT.HANDLE;
@@ -55,7 +58,7 @@ import com.sun.jna.platform.win32.WinNT.HANDLE;
  * 
  * LocalHost is fairly straightforward for Linux.
  * 
- * Windows has issues running large numbers of processes or large numbers of filesystem operations. LocalHost
+ * Windows has many issues running large numbers of processes or large numbers of filesystem operations. LocalHost
  * has several special internal mechanisms to try to contain and manage those issues so the rest of PFTT doesn't have to deal with them.
  *
  * @see SSHHost
@@ -79,11 +82,46 @@ public class LocalHost extends AHost {
 	}
 	protected final CommonCommandManager ccm; // share some 'shelling out' code with SSHHost
 	protected final HashMap<Thread,Object> close_thread_set; // for LocalExecHandle#close
+	protected static final AtomicInteger active_proc_counter = new AtomicInteger();
 	
 	public LocalHost() {
 		close_thread_set = new HashMap<Thread,Object>();
 		ccm = new CommonCommandManager();
 	}
+	
+	public int getActiveProcessCount() {
+		return staticGetActiveProcessCount();
+	}
+	
+	public int staticGetActiveProcessCount() {
+		return active_proc_counter.get();
+	}
+	
+	protected static final AtomicInteger wait_runnable_thread_counter = new AtomicInteger();
+	protected <E extends Object> E runWaitRunnable(String name_prefix, int seconds, final ObjectRunnable<E> r) throws Exception {
+		int a = wait_runnable_thread_counter.incrementAndGet();
+		if (a > Math.max(600, getActiveProcessCount()*1.8)) {
+			int i=0;
+			do {
+				try {
+					i++;
+					Thread.sleep(50*i);
+				} catch (InterruptedException e) {}
+			} while (wait_runnable_thread_counter.get() > Math.max(400, getActiveProcessCount()*1.4) && i < 40);
+		}
+		WaitableRunnable<E> h;
+		try {
+			h = TimerUtil.runWaitSeconds(name_prefix, seconds, r);
+		} finally {
+			wait_runnable_thread_counter.decrementAndGet();
+		}
+		if (h==null)
+			return null;
+		else if (h.getException()!=null)
+			throw h.getException();
+		else
+			return h.getResult();
+	} // end protected E runWaitRunnable
 	
 	public static boolean isLocalhostWindows() {
 		return is_windows;
@@ -119,13 +157,13 @@ public class LocalHost extends AHost {
 			//
 			//
 			if (!checked_elevate) {
-				found_elevate = exists(getPfttDir()+"\\bin\\elevate.exe");
+				found_elevate = exists(getPfttBinDir()+"\\elevate.exe");
 				
 				checked_elevate = true;
 			}
 			if (found_elevate) {
 				// execute command with this utility that will elevate the program using Windows UAC
-				cmd = getPfttDir() + "\\bin\\elevate "+cmd;
+				cmd = getPfttBinDir() + "\\elevate "+cmd;
 			}
 		}
 		
@@ -302,7 +340,7 @@ public class LocalHost extends AHost {
 			this.stdin = stdin;
 			this.stdout = stdout;
 			this.stderr = stderr;
-			this.image_name = StringUtil.unquote(basename(cmd_array[0]));
+			this.image_name = cmd_array==null||cmd_array.length==0?"":StringUtil.unquote(basename(cmd_array[0]));
 			if (isLocalhostWindows()) {
 				if (this.image_name.endsWith(".cmd"))
 					this.image_name = "cmd.exe"; // IMPORTANT: this is how its identified in the Windows process table
@@ -316,6 +354,22 @@ public class LocalHost extends AHost {
 			final Process p = this.process.get();
 			if (p==null)
 				return false;
+			if (isWindows()) {
+				Boolean b = null;
+				try {
+					b = runWaitRunnable("IsRunning", 10, new ObjectRunnable<Boolean>() {
+							public Boolean run() {
+								return doIsRunning(p);
+							}
+						});
+				} catch ( Exception ex ) {}
+				return b == null ? false : b.booleanValue();
+			} else {
+				return doIsRunning(p);
+			}
+		}
+		
+		protected boolean doIsRunning(Process p) {
 			try {
 				p.exitValue();
 				return false;
@@ -370,11 +424,7 @@ public class LocalHost extends AHost {
 						for ( int tries = 0 ; tries < 10 ; tries++ ) {
 							// 
 							//
-							try {
-								p.exitValue();
-								break; 
-								// process terminated, stop trying (or may terminate new process reusing the same id)
-							} catch ( Throwable t ) {
+							if (doIsRunning(p)) {
 								if (stdout!=null) {
 									try {
 										stdout.close();
@@ -474,7 +524,10 @@ public class LocalHost extends AHost {
 									t2.printStackTrace();
 								}
 								//
-							} // end try
+							} else {
+								// process terminated, stop trying (or may terminate new process reusing the same id)
+								break;
+							}
 						} // end for
 						// by now process should be dead/should have stopped writing
 						// so #exec_copy_lines should stop (which will stop blocking whatever called #exec_impl or #exec or #execOut)
@@ -529,11 +582,31 @@ public class LocalHost extends AHost {
 			// ignores STDERR
 			
 			// wait for process exit (shouldn't get here until exit or #close though)
+			final ObjectRunnable<Integer> or = isWindows() ? new ObjectRunnable<Integer>() {
+					public Integer run() {
+						try {
+							return p.exitValue();
+						} catch ( Exception ex ) {
+							return null;
+						}
+					}
+				} : null;
 			for (int time = 50;wait.get();) {
-				try {
-					exit_code = p.exitValue();
-					break;
-				} catch ( IllegalThreadStateException ex ) {}
+				/*if (isWindows()) {
+					Integer e = null;
+					try {
+						e = runWaitRunnable("ExitValue", 10, or);
+					} catch ( Exception ex ) {}
+					if (e!=null) {
+						exit_code = e.intValue();
+						break;
+					} // else: process is still running
+				} else {*/
+					try {
+						exit_code = p.exitValue();
+						break;
+					} catch ( IllegalThreadStateException ex ) {}
+				//}
 				try {
 					Thread.sleep(time);
 				} catch ( InterruptedException ex ) {
@@ -557,13 +630,24 @@ public class LocalHost extends AHost {
 			}
 			//
 			
+			active_proc_counter.decrementAndGet();
+			
 			// free up process handle
 			if (process.get()!=null) {
 				// don't call #destroy on this process if #close already has
 				//
 				// on Windows, it can block forever
 				try {
-					p.destroy();
+					if (isWindows()) {
+						runWaitRunnable("Destroy", 60, new ObjectRunnable<Boolean>() {
+								public Boolean run() {
+									p.destroy();
+									return true;
+								}
+							});
+					} else {
+						p.destroy();
+					}
 				} catch ( Exception ex ) {}
 			}
 			
@@ -677,9 +761,9 @@ public class LocalHost extends AHost {
 			this.run(output_sb, charset, suspend_seconds);
 			
 			if (a!=null)
-				a.cancel();
+				a.close();
 			if (b!=null)
-				b.cancel();
+				b.close();
 		}
 
 		@Override
@@ -765,13 +849,7 @@ public class LocalHost extends AHost {
 		return (String[])parts.toArray(new String[]{});
 	} // end public static String[] splitCmdString
 	
-	static final UncaughtExceptionHandler IGNORE = new UncaughtExceptionHandler() {
-			@Override
-			public void uncaughtException(Thread arg0, Throwable arg1) {
-			}
-		};
-	@SuppressWarnings("deprecation")
-	protected Process guardStart(final ProcessBuilder builder) throws IOException, InterruptedException {
+	protected Process guardStart(final ProcessBuilder builder) throws Exception, InterruptedException {
 		if (!isWindows())
 			return builder.start();
 		
@@ -779,43 +857,14 @@ public class LocalHost extends AHost {
 		//             and sometimes CLI
 		//
 		// call ProcessBuilder#start in separate thread to monitor it
-		final AtomicReference<IOException> ex_ref = new AtomicReference<IOException>();
-		final AtomicReference<Process> proc_ref = new AtomicReference<Process>();
-		final Thread start_thread = new Thread() {
-				public void run() {
-					try {
-						proc_ref.set(builder.start());
-						synchronized(proc_ref) {
-							proc_ref.notifyAll();
-						}
-					} catch ( IOException ex ) {
-						ex_ref.set(ex);
-					}
+		return runWaitRunnable("ProcessBuilder", 120, new ObjectRunnable<Process>() {
+				public Process run() throws IOException {
+					return builder.start();
 				}
-			};
-		start_thread.setUncaughtExceptionHandler(IGNORE);
-		start_thread.setDaemon(true);
-		start_thread.setName("ProcessBuilder"+start_thread.getName());
-		start_thread.start();
-		// wait up to 120 seconds for ProcessBuilder#start
-		try {
-			synchronized(proc_ref) {
-				proc_ref.wait(120000);
-			}
-		} catch ( Exception ex ) {}
-		Process proc = proc_ref.get();
-		if (proc==null) {
-			// try to kill off the thread (ProcessBuilder#start is native code though)
-			start_thread.stop(new RuntimeException("ProcessBuilder#start timeout (Localhost)"));
-			
-			IOException ex = ex_ref.get();
-			if (ex!=null)
-				throw ex;
-		}
-		return proc;
+			});
 	} // end protected Process guardStart
 	
-	protected LocalExecHandle exec_impl(String[] cmd_array, Map<String,String> env, String chdir, byte[] stdin_data) throws IOException, InterruptedException {
+	protected LocalExecHandle exec_impl(String[] cmd_array, Map<String,String> env, String chdir, byte[] stdin_data) throws Exception, InterruptedException {
 		Process process = null;
 		{
 			ProcessBuilder builder = new ProcessBuilder(cmd_array);
@@ -880,6 +929,7 @@ public class LocalHost extends AHost {
 		if (process==null)
 			return new LocalExecHandle(process, null, null, null, null);
 		
+		active_proc_counter.incrementAndGet();
 		OutputStream stdin = process.getOutputStream();
 		
 		if (stdin_data!=null && stdin_data.length>0) {
@@ -1176,6 +1226,14 @@ public class LocalHost extends AHost {
 	public boolean exec(RunRequest req) {
 		// TODO Auto-generated method stub
 		return false;
+	}
+
+	@Override
+	public boolean isBusy() {
+		// REMINDER: processes launched by cmd.exe on Windows automatically create
+		//           a second process (conhost.exe) to manage the console
+		//           so the actual number of processes will be doubled on Windows
+		return active_proc_counter.get() < (isWindows() ? 192 : 400 );
 	}
 	
 } // end public class Host

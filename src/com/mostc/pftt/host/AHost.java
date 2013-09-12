@@ -284,6 +284,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 			return isWindows() ? getPhpSdkDir() + "\\PFTT\\Current\\" : getPhpSdkDir() + "/PFTT/current/";
 		}
 	}
+	
 	@Override
 	public String getPhpSdkDir() {
 		if (StringUtil.isNotEmpty(php_sdk_dir))
@@ -671,14 +672,14 @@ public abstract class AHost extends Host implements IProgramRunner {
 	
 	private boolean reported_7zip_already_installed = false;
 	private static void install7Zip(ConsoleManager cm, AHost src_host, AHost dst_host) throws Exception {
-		final String src_7z_path = src_host.getPfttDir()+"\\bin\\7za.exe";
+		final String src_7z_path = src_host.getPfttBinDir()+"\\7za.exe";
 		if (!src_host.exists(src_7z_path)) {
 			if (cm!=null)
 				cm.println(EPrintType.WARNING, "install7Zip", "7za.exe not found on source: "+src_host);
 			return;
 		}
 		
-		final String dst_7z_path = dst_host.getPfttDir()+"\\bin\\7za.exe";
+		final String dst_7z_path = dst_host.getPfttBinDir()+"\\7za.exe";
 		
 		if (dst_host.exists(dst_7z_path) && src_host.getSize(src_7z_path)==dst_host.getSize(dst_7z_path)) {
 			if (dst_host.reported_7zip_already_installed)
@@ -721,7 +722,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 		if (cm!=null)
 			cm.println(EPrintType.IN_PROGRESS, getClass(), "decompress output_dir="+output_dir+" zip7_file="+zip7_file);
 		
-		String cmd = silenceCmd(getPfttDir()+"\\bin\\7za x -mx=9 -mmt="+getCPUCount()+" -bd -y -o"+output_dir+" "+zip7_file);
+		String cmd = silenceCmd(getPfttBinDir()+"\\7za x -mx=9 -mmt="+getCPUCount()+" -bd -y -o"+output_dir+" "+zip7_file);
 		return exec(cmd, AHost.ONE_HOUR);
 	}
 	
@@ -748,7 +749,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 		// x=9 => highest compression
 		// mt=[cpus] => use several threads == number of cpus => maximizes speed
 		// bd => no progress bar
-		final String cmd = silenceCmd(getPfttDir()+"\\bin\\7za a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on -mmt="+getCPUCount()+" -bd "+zip7_file+" "+src);
+		final String cmd = silenceCmd(getPfttBinDir()+"\\7za a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on -mmt="+getCPUCount()+" -bd "+zip7_file+" "+src);
 
 		if (cm!=null)
 			cm.println(EPrintType.IN_PROGRESS, getClass(), "compress zip7_file="+zip7_file+" src="+src);
@@ -1136,5 +1137,6 @@ public abstract class AHost extends Host implements IProgramRunner {
 	}
 
 	protected abstract boolean deleteSingleFile(String path);
+	public abstract boolean isBusy();
 	
 } // end public abstract class AHost

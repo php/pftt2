@@ -869,4 +869,10 @@ public class SSHHost extends RemoteHost {
 		return null;
 	}
 
+	@Override
+	public boolean isBusy() {
+		// hard to check so don't check for now
+		return false;
+	}
+
 } // end public class SSHHost

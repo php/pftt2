@@ -135,6 +135,8 @@ public class ArrayUtil {
 	}
 	
 	public static <E extends Object> List<E> toList(E[] e) {
+		if (e==null)
+			return new ArrayList<E>(0); // TODO temp
 		ArrayList<E> o = new ArrayList<E>(e.length);
 		for ( int i=0 ; i < e.length ; i++ )
 			o.add(e[i]);

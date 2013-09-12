@@ -74,8 +74,8 @@ public final class HostEnvUtil {
 			
 			regDel(cm, host, "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug", "Debugger");
 			// IMPORTANT: don't delete this key, change the value otherwise (if windbg installed) werfault.exe will
-			//            still launch windbg... won't if set to 0x2.
-			regQueryAdd(cm, host, "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug", "Auto", "0x2", REG_DWORD);
+			//            still launch windbg... won't if set to 0x1
+			regQueryAdd(cm, host, "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug", "Auto", "0x1", REG_DWORD);
 		}
 		
 		if ( a || b || c ) {

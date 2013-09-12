@@ -97,22 +97,22 @@ public class OpcacheScenario extends CodeCacheScenario {
 	
 	@Overridable
 	protected DllVersion getDllPath53TS(Host host) {
-		return new DllVersion(host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.2-5.3-ts-vc9-x86/php_opcache.dll", "7.0.2");
+		return new DllVersion(host.getPfttCacheDir()+"/dep/opcache/php_opcache-7.0.2-5.3-ts-vc9-x86/php_opcache.dll", "7.0.2");
 	}
 	
 	@Overridable
 	protected DllVersion getDllPath53NTS(Host host) {
-		return new DllVersion(host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.2-5.3-nts-vc9-x86/php_opcache.dll", "7.0.2");
+		return new DllVersion(host.getPfttCacheDir()+"/dep/opcache/php_opcache-7.0.2-5.3-nts-vc9-x86/php_opcache.dll", "7.0.2");
 	}
 	
 	@Overridable
 	protected DllVersion getDllPath54TS(Host host) {
-		return new DllVersion(host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.2-5.4-ts-vc9-x86/php_opcache.dll", "7.0.2");
+		return new DllVersion(host.getPfttCacheDir()+"/dep/opcache/php_opcache-7.0.2-5.4-ts-vc9-x86/php_opcache.dll", "7.0.2");
 	}
 	
 	@Overridable
 	protected DllVersion getDllPath54NTS(Host host) {
-		return new DllVersion(host.getPfttDir()+"/cache/dep/opcache/php_opcache-7.0.2-5.4-nts-vc9-x86/php_opcache.dll", "7.0.2");
+		return new DllVersion(host.getPfttCacheDir()+"/dep/opcache/php_opcache-7.0.2-5.4-nts-vc9-x86/php_opcache.dll", "7.0.2");
 	}
 	
 	public DllVersion getDllPath(ConsoleManager cm, Host host, PhpBuild build) {

@@ -231,12 +231,28 @@ public class ScenarioSet extends ArrayList<Scenario> {
 	 * @return
 	 */
 	public static List<ScenarioSet> permuteScenarioSets(EScenarioSetPermutationLayer layer, List<Scenario> scenarios) {
-		HashMap<Class<?>,List<Scenario>> map = new HashMap<Class<?>,List<Scenario>>();
+		HashMap<Object,List<ScenarioSet>> version_map = new HashMap<Object,List<ScenarioSet>>();
+		for ( Scenario s : scenarios ) {
+			if (!(s instanceof DatabaseScenario))
+				continue;
+			// TODO temp
+			Object v = ((DatabaseScenario)s).version;
+			version_map.put(v, p(layer, scenarios));
+		}
+		if (version_map.isEmpty())
+			return p(layer, scenarios);
+		List<ScenarioSet> out = new ArrayList<ScenarioSet>();
+		for ( List<ScenarioSet> a : version_map.values() )
+			out.addAll(a);
+		return out;
+	}
+	static List<ScenarioSet> p(EScenarioSetPermutationLayer layer, List<Scenario> scenarios) {
+		HashMap<Object,List<Scenario>> map = new HashMap<Object,List<Scenario>>();
 		for ( Scenario scenario : scenarios ) {
 			if (layer!=null && layer.reject(scenario))
 				continue;
 			
-			Class<?> clazz = scenario.getSerialKey(layer);
+			Object clazz = scenario.getSerialKey(layer);
 			//
 			List<Scenario> list = map.get(clazz);
 			if (list==null) {
@@ -319,10 +335,12 @@ public class ScenarioSet extends ArrayList<Scenario> {
 			name = s.processNameAndVersionInfo(name);
 		return name;
 	}
-
+	
 	public static ScenarioSet parse(String name) {
+		// TODO result_pack_mgr as param, throw NPE if not given (this method is only to be used there)
 		ScenarioSet s = new ScenarioSet();
 		s.str = name;
+		s.sorted = true;
 		return s;
 	}
 	

@@ -1,6 +1,7 @@
 package com.mostc.pftt.scenario;
 
 import com.github.mattficken.Overridable;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.PhpBuild;
@@ -18,18 +19,28 @@ import com.mostc.pftt.results.ConsoleManager;
 // TODO mediawiki support
 // TODO windebug integration - wincache includes the .PDB symbol file
 public abstract class WinCacheUScenario extends UserCacheScenario {
+	
+	@Override
+	public int getApprovedInitialThreadPoolSize(AHost host, int threads) {
+		return host.getCPUCount() * 2;
+	}
+	
+	@Override
+	public int getApprovedMaximumThreadPoolSize(AHost host, int threads) {
+		return host.getCPUCount() * 3;
+	}
 
 	@Overridable
 	protected String getDllPath55Plus(Host host) {
-		return host.getPfttDir()+"/cache/dep/wincache/wincache-1.3.4.1-dev-5.5-nts-vc11-x86/php_wincache.dll";
+		return host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.5-5.5-nts-vc11-x86/php_wincache.dll";
 	}
 	@Overridable
 	protected String getDllPath54(Host host) {
-		return host.getPfttDir()+"/cache/dep/wincache/wincache-1.3.4-5.4-nts-vc9-x86/php_wincache.dll";
+		return host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.4-5.4-nts-vc9-x86/php_wincache.dll";
 	}
 	@Overridable
 	protected String getDllPath53(Host host) {
-		return host.getPfttDir()+"/cache/dep/wincache/wincache-1.3.4-5.3-nts-vc9-x86/php_wincache.dll";
+		return host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.4-5.3-nts-vc9-x86/php_wincache.dll";
 	}
 	
 	// @see http://us.php.net/manual/en/wincache.configuration.php
@@ -87,10 +98,18 @@ public abstract class WinCacheUScenario extends UserCacheScenario {
 	
 	@Override
 	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
-		// don't run WinCache on Apache-ModPHP (Apache CGI probably ok)
-		//
-		// not sure if its supported on scenarios other than CLI or IIS (or builtin-web?)
-		return host.isWindows() && build.isNTS(host) && !scenario_set.contains(ApacheModPHPScenario.class);
+		return host.isWindows() 
+				&& build.isX86() 
+				&& build.isNTS(host) 
+				&& (
+						// LATER? Apache FastCGI support on Windows
+						scenario_set.contains(CliScenario.class)
+						|| scenario_set.contains(IISScenario.class)
+						// WinCacheU should support builtin web server b/c (low priority though):
+						//  web developers use wincache's user cache in their applications
+						//  web developers like to use the builtin web server to run/test their application
+						|| scenario_set.contains(BuiltinWebServerScenario.class)
+						);
 	}
 
 	@Override

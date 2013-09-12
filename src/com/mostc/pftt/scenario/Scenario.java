@@ -46,7 +46,6 @@ public abstract class Scenario {
 		return false;
 	}
 	
-	// TODO
 	@Overridable
 	public Class<?> getSerialKey(EScenarioSetPermutationLayer layer) {
 		return getClass();
@@ -202,6 +201,14 @@ public abstract class Scenario {
 			scenario_set.add(CLI_SCENARIO);
 		if (!scenario_set.contains(EnchantScenario.class))
 			scenario_set.add(new EnchantScenario());
+	}
+	
+	public int getApprovedInitialThreadPoolSize(AHost host, int threads) {
+		return threads;
+	}
+	
+	public int getApprovedMaximumThreadPoolSize(AHost host, int threads) {
+		return threads;
 	}
 	
 	/** writes Scenario to XML

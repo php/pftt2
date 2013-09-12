@@ -606,6 +606,16 @@ public abstract class Host {
 	public abstract String getHomeDir();
 	public abstract String getPhpSdkDir();
 	public abstract String getPfttDir();
+	
+	public String getPfttBinDir() {
+		return joinIntoOnePath(getPfttDir(), "bin");
+	}
+	public String getPfttCacheDir() {
+		return joinIntoOnePath(getPfttDir(), "cache");
+	}
+	public String getPfttConfDir() {
+		return joinIntoOnePath(getPfttDir(), "conf");
+	}
 
 	public String joinIntoOnePath(String ...parts) {
 		if (parts==null||parts.length==0)
