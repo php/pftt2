@@ -1,6 +1,9 @@
 
 def describe() {
-	"Monitor and report PHP code coverage using Xdebug (Dynamic Run-Time Analysis)."
+	"""Monitor and report PHP code coverage using Xdebug (Dynamic Run-Time Analysis).
+
+ANSWERS How much of application was tested?
+"""
 }
 
 def scenarios() {

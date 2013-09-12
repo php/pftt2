@@ -34,6 +34,6 @@ class AzureSDKPhpUnitTestPack extends PhpUnitSourceTestPack {
 
 } // end class AzureSDKPhpUnitTestPack
 
-def getPhpUnitSourceTestPack() {
+/*def getPhpUnitSourceTestPack() {
 	return new AzureSDKPhpUnitTestPack();
-}
+}*/

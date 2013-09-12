@@ -48,6 +48,6 @@ class DrupalPhpUnitTestPack extends RequiredDatabasePhpUnitSourceTestPack {
 		
 } // end class DrupalPhpUnitTestPack
 
-def getPhpUnitSourceTestPack() {
+/*def getPhpUnitSourceTestPack() {
 	return new DrupalPhpUnitTestPack();
-}
+}*/

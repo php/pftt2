@@ -14,7 +14,10 @@ import com.mostc.pftt.results.PhptTestResult;
 def describe() {
 	"""Adds list of the builtin functions test cases use to the result-pack (Static Analysis). 
 
-The hard part of code analysis is navigating all the data, this helps by listing only the builtin functions"""
+The hard part of code analysis is navigating all the data, this helps by listing only the builtin functions
+
+ANSWERS What core functions are used?
+"""
 }
 
 def scenarios() {

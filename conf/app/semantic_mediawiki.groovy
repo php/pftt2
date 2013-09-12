@@ -186,6 +186,6 @@ require_once( "\$IP/includes/installer/CliInstaller.php");
 			
 } // end class SemanticMediaWikiPhpUnitTestPack
 
-def getPhpUnitSourceTestPack() {
+/*def getPhpUnitSourceTestPack() {
 	return new SemanticMediaWikiPhpUnitTestPack();
-}
+}*/

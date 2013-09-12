@@ -40,6 +40,6 @@ class PhpMyAdminPhpUnitTestPack extends RequiredDatabasePhpUnitSourceTestPack {
 	
 } // end class PhpMyAdminPhpUnitTestPack
 
-def getPhpUnitSourceTestPack() {
+/*def getPhpUnitSourceTestPack() {
 	new PhpMyAdminPhpUnitTestPack();
-}
+}*/

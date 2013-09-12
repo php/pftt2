@@ -55,6 +55,6 @@ class PhpBB3PhpUnitTestPack extends RequiredDatabasePhpUnitSourceTestPack {
 	
 } // end class PhpBB3PhpUnitTestPack
 
-def getPhpUnitSourceTestPack() {
+/*def getPhpUnitSourceTestPack() {
 	new PhpBB3PhpUnitTestPack();
-}
+}*/
