@@ -34,5 +34,9 @@ public abstract class AbstractPhpUnitRW extends AbstractTestResultRW {
 				|| ( 100 < Math.abs(base.count(EPhpUnitTestStatus.PASS) - count(EPhpUnitTestStatus.PASS)) )
 			;
 	}
+	public boolean isTestStatus(String test_name, EPhpUnitTestStatus status) {
+		return getTestNames(status).contains(test_name);
+	}
+	public abstract String getPath();
 	
 } // end public abstract class AbstractPhpUnitRW

@@ -129,7 +129,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		this.local_host = local_host;
 		this.cm = cm;
 		this.build = build;
-		this.telem_dir = new File(makeName(telem_base_dir, build_info).getAbsolutePath());
+		this.telem_dir = new File(makeName(src_test_pack, telem_base_dir, build_info).getAbsolutePath());
 		if (this.telem_dir.exists()) {
 			this.telem_dir = new File(host.uniqueNameFromBase(this.telem_dir.getAbsolutePath()));
 			first_for_build = false;
@@ -620,7 +620,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 				this_host.getName(), 
 				"PHPT", 
 				test_pack_name, 
-				this_scenario_set_setup==null?"":StringUtil.max(this_scenario_set_setup.getNameWithVersionInfo(), 70)
+				StringUtil.max(this_scenario_set_setup.getNameWithVersionInfo(), 70)
 			));
 	}
 	
@@ -763,7 +763,10 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	@Override
 	public AbstractPhptRW getPHPT(AHost host, ScenarioSetSetup scenario_set, String test_pack_name) {
 		try {
-			return getCreatePhptResultWriter(host, scenario_set, test_pack_name);
+			System.out.println(phpt_writer_map);
+			AbstractPhptRW phpt = getCreatePhptResultWriter(host, scenario_set, test_pack_name);
+			System.out.println("767 "+phpt+" "+scenario_set+" "+test_pack_name);
+			return phpt;
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

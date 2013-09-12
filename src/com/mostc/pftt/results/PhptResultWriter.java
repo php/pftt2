@@ -7,6 +7,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -58,16 +59,16 @@ public class PhptResultWriter extends AbstractPhptRW {
 		serial  = new KXmlSerializer();
 		// setup serializer to indent XML (pretty print) so its easy for people to read
 		serial.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
+		serial.setPrefix("http://github.com/OSTC/PFTT2", "pftt");
 		
 		for(EPhptTestStatus status:EPhptTestStatus.values())
 			status_list_map.put(status, new StatusListEntry(status));
 	}
-	
 	protected class StatusListEntry {
 		protected final EPhptTestStatus status;
 		protected final File journal_file;
 		protected PrintWriter journal_writer;
-		protected LinkedList<String> test_names;
+		protected final LinkedList<String> test_names;
 		
 		public StatusListEntry(EPhptTestStatus status) throws IOException {
 			this.status = status;
@@ -76,8 +77,9 @@ public class PhptResultWriter extends AbstractPhptRW {
 			journal_writer = new PrintWriter(new FileWriter(journal_file));
 			test_names = new LinkedList<String>();
 		}
-		
 		public void write(PhptTestResult result) {
+			if (result==null||result.test_case==null)
+				return;
 			final String test_name = result.test_case.getName();
 			
 			if (journal_writer!=null)
@@ -116,7 +118,6 @@ public class PhptResultWriter extends AbstractPhptRW {
 			journal_file.delete();
 			
 			journal_writer = null;
-			test_names = null;
 		}
 	} // end protected class StatusListEntry
 
@@ -201,6 +202,7 @@ public class PhptResultWriter extends AbstractPhptRW {
 				out.close();
 				
 			} catch ( Exception ex ) {
+				ex.printStackTrace();
 				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "handleResult", ex, "", dir, test_case_base_name);
 			}
 		}
@@ -249,6 +251,8 @@ public class PhptResultWriter extends AbstractPhptRW {
 	}
 	@Override
 	public String getScenarioSetNameWithVersionInfo() {
+		if (scenario_set_setup==null)
+			return dir.getName(); // TODO temp
 		return scenario_set_setup.getNameWithVersionInfo();
 	}
 	public ScenarioSetSetup getScenarioSetSetup() {
@@ -271,11 +275,19 @@ public class PhptResultWriter extends AbstractPhptRW {
 	}
 	@Override
 	public int count(EPhptTestStatus status) {
-		return status_list_map.get(status).test_names.size();
+		StatusListEntry e = status_list_map.get(status);
+		if (e==null)
+			return 0;
+		check(status, e.test_names);
+		return e.test_names.size();
 	}
 	@Override
 	public List<String> getTestNames(EPhptTestStatus status) {
-		return status_list_map.get(status).test_names;
+		StatusListEntry e = status_list_map.get(status);
+		if (e==null)
+			return new ArrayList<String>(0);
+		check(status, e.test_names);
+		return e.test_names;
 	}
 
 	public void reportGroups(LinkedBlockingQueue<TestCaseGroup<PhptTestCase>> thread_safe_groups, LinkedBlockingQueue<NonThreadSafeExt<PhptTestCase>> non_thread_safe_exts) {
@@ -347,7 +359,10 @@ public class PhptResultWriter extends AbstractPhptRW {
 			serial.endTag(null, "group");
 		}
 	}
-	
-	
+
+	@Override
+	public String getPath() {
+		return dir.getAbsolutePath();
+	}
 	
 } // end public class PhptResultWriter

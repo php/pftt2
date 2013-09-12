@@ -21,6 +21,7 @@ public class PhpUnitResultReader extends AbstractPhpUnitRW {
 	protected PhpBuildInfo build_info;
 	protected String test_pack_name_and_version, os_name, scenario_set_name;
 	protected PhpIni ini;
+	protected File dir;
 	protected int test_count, percent_total;
 	protected float pass_percent, failure_percent, error_percent, crash_percent; // TODO read
 	
@@ -29,6 +30,7 @@ public class PhpUnitResultReader extends AbstractPhpUnitRW {
 	}
 	
 	public void open(ConsoleManager cm, File dir, String scenario_set_name, PhpBuildInfo build_info) {
+		this.dir = dir;
 		this.scenario_set_name = scenario_set_name;
 		this.build_info = build_info;
 		
@@ -195,6 +197,11 @@ public class PhpUnitResultReader extends AbstractPhpUnitRW {
 
 	@Override
 	public void close() {
+	}
+
+	@Override
+	public String getPath() {
+		return dir.getAbsolutePath();
 	}
 
 } // end public class PhpUnitResultReader

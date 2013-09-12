@@ -7,6 +7,7 @@ import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
 import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.PhpBuildInfo;
+import com.mostc.pftt.model.core.PhptSourceTestPack;
 import com.mostc.pftt.model.ui.UITestPack;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
@@ -38,12 +39,17 @@ public abstract class PhpResultPack {
 		return parts[3]; // @see #makeName and PhpBuildInfo#toStringWithoutBuildBranch
 	}
 	
-	protected static File makeName(File base, PhpBuildInfo build_info) throws Exception {
+	protected static File makeName(PhptSourceTestPack src_test_pack, File base, PhpBuildInfo build_info) throws Exception {
 		StringBuilder sb = new StringBuilder();
 		sb.append("/");
 		sb.append(build_info.getBuildBranch());
 		sb.append("-Result-Pack-");
 		sb.append(build_info.toStringWithoutBuildBranch());
+		
+		if (src_test_pack!=null&&src_test_pack.getNameAndVersionString()!=null&&src_test_pack.getNameAndVersionString().contains("sql")) {
+			// TODO temp
+			sb.append("-SQLSVR");
+		}
 		
 		return new File(base.getAbsolutePath() + sb);
 	}

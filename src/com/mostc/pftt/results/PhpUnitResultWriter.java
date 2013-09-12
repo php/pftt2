@@ -95,7 +95,7 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 		protected final EPhpUnitTestStatus status;
 		protected final File journal_file;
 		protected PrintWriter journal_writer;
-		protected LinkedList<String> test_names;
+		protected final LinkedList<String> test_names;
 		
 		public StatusListEntry(EPhpUnitTestStatus status) throws IOException {
 			this.status = status;
@@ -129,7 +129,7 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 			journal_file.delete();
 			
 			journal_writer = null;
-			test_names = null;
+			//test_names = null;
 			
 			if (test_count==0) {
 				dir.delete();
@@ -332,6 +332,11 @@ public class PhpUnitResultWriter extends AbstractPhpUnitRW {
 	@Override
 	public PhpIni getPhpIni() {
 		return this.ini;
+	}
+
+	@Override
+	public String getPath() {
+		return dir.getAbsolutePath();
 	}
 	
 } // end public class PhpUnitResultWriter

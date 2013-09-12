@@ -92,6 +92,16 @@ public class PhptTestResult implements ISerializer {
 		this(host, status, test_case, actual, actual_lines, expected_lines, actual_cs, ini, env, cmd_array, stdin_data, shell_script, diff, expectf_output, preoverride_actual, null, null);
 	}
 	
+	public PhptTestResult(AHost host, EPhptTestStatus status, PhptTestCase test_case, String actual, String[] actual_lines, String[] expected_lines, Charset actual_cs, PhpIni ini, Map<String,String> env, String[] cmd_array, byte[] stdin_data, String shell_script, Diff<String> diff, String expectf_output, String preoverride_actual, TestCaseCodeCoverage code_coverage) {
+		this(host, status, test_case, actual, actual_lines, expected_lines, actual_cs, ini, env, cmd_array, stdin_data, shell_script, diff, expectf_output, preoverride_actual, null, null);
+		this.code_coverage = code_coverage;
+	}
+	
+	public PhptTestResult(AHost host, EPhptTestStatus status, PhptTestCase test_case, String actual, String[] actual_lines, String[] expected_lines, Charset actual_cs, PhpIni ini, Map<String,String> env, String[] cmd_array, byte[] stdin_data, String shell_script, Diff<String> diff, String expectf_output, String preoverride_actual, String sapi_output, String sapi_config, TestCaseCodeCoverage code_coverage) {
+		this(host, status, test_case, actual, actual_lines, expected_lines, actual_cs, ini, env, cmd_array, stdin_data, shell_script, diff, expectf_output, preoverride_actual, sapi_output, sapi_config);
+		this.code_coverage = code_coverage;
+	}
+	
 	public PhptTestResult(AHost host, EPhptTestStatus status, PhptTestCase test_case, String actual, String[] actual_lines, String[] expected_lines, Charset actual_cs, PhpIni ini, Map<String,String> env, String[] cmd_array, byte[] stdin_data, String shell_script, Diff<String> diff, String expectf_output, String preoverride_actual, String sapi_output, String sapi_config) {
 		this();
 		this.sapi_output = sapi_output;
@@ -250,7 +260,7 @@ public class PhptTestResult implements ISerializer {
 			// TODO serial.attribute(null, "host", host.getName());
 		
 		// normally only need the rest of the information if the test failed
-		if (true) {// TODO include_all) {
+		if (include_all) {
 			
 			if (StringUtil.isNotEmpty(actual)) {
 				serial.startTag(null, "actual");

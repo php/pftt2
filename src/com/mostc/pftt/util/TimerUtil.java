@@ -1,8 +1,100 @@
 package com.mostc.pftt.util;
 
+import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.mostc.pftt.results.ConsoleManager;
+
 public final class TimerUtil {
+	
+	public interface ObjectRunnable<E extends Object> {
+		E run() throws Exception;
+	}
+	
+	protected static final UncaughtExceptionHandler IGNORE = new UncaughtExceptionHandler() {
+			@Override
+			public void uncaughtException(Thread arg0, Throwable arg1) {
+			}
+		};
+	
+	public static <E extends Object> WaitableRunnable<E> runWaitSeconds(String name_prefix, int seconds, ObjectRunnable<E> or) {
+		WaitableRunnable<E> wr = new WaitableRunnable<E>(or);
+		Thread t = new Thread(wr);
+		t.setUncaughtExceptionHandler(IGNORE);
+		t.setDaemon(true);
+		t.setName(name_prefix+t.getName());
+		wr.t = t;
+		t.start();
+		wr.block(seconds);
+		return wr;
+	}
+	
+	public static class WaitableRunnable<E extends Object> implements Runnable, IClosable {
+		protected Exception ex;
+		protected final ObjectRunnable<E> or;
+		protected E result;
+		protected Thread t;
+		protected boolean ran;
+		protected final Object lock = new Object();
+		
+		protected WaitableRunnable(ObjectRunnable<E> or) {
+			this.or = or;
+		}
+		
+		public void run() {
+			try {
+				result = or.run();
+			} catch ( Exception ex ) {
+				this.ex = ex;
+			}
+			unlock(true);
+		}
+		
+		protected void block(int seconds) {
+			synchronized(lock) {
+				if (this.ran==false) {
+					try {
+						lock.wait(seconds*1000);
+					} catch ( Exception ex ) {}
+				}
+			}
+		}
+		
+		protected void unlock(boolean ran) {
+			synchronized(lock) {
+				this.ran = ran;
+				lock.notify();
+			}
+		}
+		
+		@SuppressWarnings("deprecation")
+		public void close() {
+			unlock(false);
+			t.stop(new RuntimeException());
+		}
+		
+		public E getResult() {
+			return result;
+		}
+		
+		public boolean isFinished() {
+			return !ran;
+		}
+		
+		public boolean didRun() {
+			return ran;
+		}
+		
+		public Exception getException() {
+			return ex;
+		}
+		
+		@Override
+		public void close(ConsoleManager cm) {
+			close();
+		}
+		
+	}
 	
 	public static boolean trySleepSeconds(int seconds) {
 		return trySleepMillis(seconds*1000);
@@ -38,7 +130,7 @@ public final class TimerUtil {
 		public void run() {
 			while(true) {
 				doWait();
-				if (isCancelled())
+				if (isClosed())
 					return;
 				
 				r.run(this);
@@ -136,13 +228,13 @@ public final class TimerUtil {
 		@Override
 		public void run() {
 			doWait();
-			if (isCancelled())
+			if (isClosed())
 				return;
 			
 			fire1();
 			
 			doWait2();
-			if (isCancelled())
+			if (isClosed())
 				return;
 			
 			fire2();
@@ -251,7 +343,7 @@ public final class TimerUtil {
 		@Override
 		public void run() {
 			doWait();
-			if (isCancelled())
+			if (isClosed())
 				return;
 			
 			fire();
@@ -269,7 +361,7 @@ public final class TimerUtil {
 		
 	}
 	
-	protected static class RepeatingOrTimingThread extends Thread {
+	protected static class RepeatingOrTimingThread extends Thread implements IClosable {
 		protected final int seconds;
 		protected final AtomicBoolean b, sleeping;
 		
@@ -282,7 +374,7 @@ public final class TimerUtil {
 			setDaemon(true);
 		}
 		
-		public void cancel() {
+		public void close() {
 			b.set(true);
 			if (sleeping.get()) {
 				// interrupt #sleep not #fire
@@ -290,7 +382,7 @@ public final class TimerUtil {
 			}
 		}
 		
-		public boolean isCancelled() {
+		public boolean isClosed() {
 			return b.get();
 		}
 		
@@ -302,6 +394,11 @@ public final class TimerUtil {
 				// get interrupt from #cancel and then stop waiting
 			}
 			sleeping.set(false);
+		}
+		
+		@Override
+		public void close(ConsoleManager cm) {
+			close();
 		}
 		
 	} // end protected static class RepeatingOrTimingThread

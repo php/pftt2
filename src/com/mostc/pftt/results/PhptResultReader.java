@@ -16,6 +16,7 @@ public class PhptResultReader extends AbstractPhptRW {
 	protected PhpBuildInfo build_info;
 	protected EBuildBranch test_pack_branch;
 	protected String test_pack_version, os_name, scenario_set_name;
+	protected File dir;
 	
 	public PhptResultReader() {
 		status_list_map = new HashMap<EPhptTestStatus,StatusListEntry>();
@@ -23,6 +24,7 @@ public class PhptResultReader extends AbstractPhptRW {
 	
 	// TODO rewrite for when comparing same exact test run (ex: report included in result-pack)
 	public void open(ConsoleManager cm, File dir, String scenario_set_name, PhpBuildInfo build_info, EBuildBranch test_pack_branch, String test_pack_version) {
+		this.dir = dir;
 		this.scenario_set_name = scenario_set_name;
 		this.build_info = build_info;
 		this.test_pack_branch = test_pack_branch;
@@ -43,6 +45,7 @@ public class PhptResultReader extends AbstractPhptRW {
 		status_list_map.put(EPhptTestStatus.BORK, new StatusListEntry(tally.bork));
 		status_list_map.put(EPhptTestStatus.TEST_EXCEPTION, new StatusListEntry(tally.exception));
 		//
+		System.out.println("48 "+status_list_map);
 		
 		for ( EPhptTestStatus status : status_list_map.keySet() ) {
 			StatusListEntry e = status_list_map.get(status);
@@ -67,7 +70,6 @@ public class PhptResultReader extends AbstractPhptRW {
 			this.count = count;
 			test_names = new ArrayList<String>(count);
 		}
-		
 		public void readTestNames(ConsoleManager cm, File list_file, File journal_file) throws IOException {
 			if (list_file.exists()) {
 				
@@ -118,11 +120,11 @@ public class PhptResultReader extends AbstractPhptRW {
 
 	@Override
 	public int count(EPhptTestStatus status) {
-		if (status==EPhptTestStatus.FAIL) {
-			return getTestNames(status).size();
-		}
 		StatusListEntry e = status_list_map.get(status);
-		return e == null ? 0 : e.count;
+		if (e==null)
+			return 0;
+		check(status, e.test_names);
+		return e.count;
 	}
 
 	@Override
@@ -130,42 +132,17 @@ public class PhptResultReader extends AbstractPhptRW {
 		StatusListEntry e = status_list_map.get(status); 
 		if (e==null)
 			return new java.util.ArrayList<String>(0);
-		if (status==EPhptTestStatus.FAIL) {
-			// TODO temp
-			e.test_names.remove("tests/output/ob_018.phpt");
-			e.test_names.remove("zend/tests/bug64720.phpt");
-			e.test_names.remove("ext/mbstring/tests/mb_output_handler_shift_jis.phpt");
-			e.test_names.remove("ext/standard/tests/general_functions/002.phpt");
-			e.test_names.remove("ext/standard/tests/general_functions/006.phpt");
-			e.test_names.remove("ext/standard/tests/strings/htmlentities.phpt");
-			e.test_names.remove("ext/mbstring/tests/mb_output_handler_pattern-01.phpt");
-			e.test_names.remove("ext/mbstring/tests/mb_output_handler_pattern-02.phpt");
-			e.test_names.remove("ext/mbstring/tests/mb_output_handler_pattern-03.phpt");
-			e.test_names.remove("ext/mbstring/tests/mb_output_handler_pattern-04.phpt");
-			e.test_names.remove("ext/mbstring/tests/mb_output_handler_pattern-05.phpt");
-			e.test_names.remove("ext/mbstring/tests/mb_output_handler_pattern-06.phpt");
-			e.test_names.remove("ext/mbstring/tests/mb_output_handler_pattern-07.phpt");
-			e.test_names.remove("ext/mbstring/tests/mb_output_handler_pattern-08.phpt");
-			e.test_names.remove("ext/mbstring/tests/mb_output_handler_pattern-09.phpt");
-			e.test_names.remove("ext/mbstring/tests/mb_output_handler_pattern-10.phpt");
-			e.test_names.remove("ext/mbstring/tests/mb_output_handler_pattern-11.phpt");
-			e.test_names.remove("ext/mbstring/tests/mb_output_handler_pattern-12.phpt");
-			e.test_names.remove("ext/mbstring/tests/mb_output_handler_pattern-13.phpt");
-			e.test_names.remove("ext/mbstring/tests/mb_output_handler_pattern-14.phpt");
-			e.test_names.remove("tests/basic/027.phpt");
-			e.test_names.remove("tests/func/bug64523.phpt");
-			e.test_names.remove("ext/mysql/tests/bug53649.phpt");
-			e.test_names.remove("ext/iconv/tests/ob_iconv_handler.phpt");
-			e.test_names.remove("ext/mbstring/tests/mb_decode_numericentity.phpt");
-			e.test_names.remove("ext/standard/tests/strings/explode_bug.phpt");
-			e.test_names.remove("tests/lang/bug35176.phpt");
-			e.test_names.remove("zend/tests/errmsg_020.phpt");
-		}
+		check(status, e.test_names);
 		return e.test_names;
 	}
 
 	@Override
 	public void close() {
+	}
+
+	@Override
+	public String getPath() {
+		return dir.getAbsolutePath();
 	}
 
 } // end public class PhptResultReader

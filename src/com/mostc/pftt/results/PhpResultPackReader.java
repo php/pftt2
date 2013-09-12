@@ -8,7 +8,7 @@ import java.util.LinkedList;
 
 import com.github.mattficken.io.ArrayUtil;
 import com.mostc.pftt.host.AHost;
-import com.mostc.pftt.host.SSHHost;
+import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.PhpBuildInfo;
 import com.mostc.pftt.scenario.ScenarioSet;
@@ -229,13 +229,16 @@ public class PhpResultPackReader extends PhpResultPack {
 	public AbstractPhptRW getPHPT(String host_name, ScenarioSetSetup scenario_set, String test_pack_name) {
 		host_name = host_name.toLowerCase();
 		HashMap<String,HashMap<String,AbstractPhptRW>> map_a = phpt_reader_map.get(host_name);
+		System.out.println(map_a);
 		if (map_a==null)
 			return null;
 		String scenario_set_name = scenario_set.getNameWithVersionInfo().toLowerCase();
 		HashMap<String,AbstractPhptRW> map_b = map_a.get(scenario_set_name);
 		if (map_b==null)
 			return null;
-		return map_b.get(test_pack_name);
+		AbstractPhptRW phpt = map_b.get(test_pack_name);
+		System.out.println("phpt "+phpt);
+		return phpt;
 	}
 	
 	@Override
@@ -312,11 +315,15 @@ public class PhpResultPackReader extends PhpResultPack {
 	
 	public Collection<AbstractPhpUnitRW> getPhpUnit(String host_name) {
 		host_name = host_name.toLowerCase();
+		if (php_unit_reader_map.size()>0)
+			host_name = php_unit_reader_map.keySet().iterator().next(); // TODO temp
 		HashMap<String,HashMap<String,AbstractPhpUnitRW>> map_a = php_unit_reader_map.get(host_name);
 		LinkedList<AbstractPhpUnitRW> out = new LinkedList<AbstractPhpUnitRW>();
-		for ( HashMap<String,AbstractPhpUnitRW> b : map_a.values() ) {
-			for ( AbstractPhpUnitRW w : b.values() )
-				out.add(w);
+		if (map_a!=null) {
+			for ( HashMap<String,AbstractPhpUnitRW> b : map_a.values() ) {
+				for ( AbstractPhpUnitRW w : b.values() )
+					out.add(w);
+			}
 		}
 		return out;
 	}
@@ -353,7 +360,10 @@ public class PhpResultPackReader extends PhpResultPack {
 	@Override
 	public Collection<AbstractPhpUnitRW> getPhpUnit(AHost host, String test_pack_name_and_version) {
 		LinkedList<AbstractPhpUnitRW> out = new LinkedList<AbstractPhpUnitRW>();
-		HashMap<String,HashMap<String,AbstractPhpUnitRW>> map_a = php_unit_reader_map.get(host.getName());
+		String hostname = host.getName().toLowerCase();
+		if (php_unit_reader_map.size()>0)
+			hostname = php_unit_reader_map.keySet().iterator().next(); // TODO temp
+		HashMap<String,HashMap<String,AbstractPhpUnitRW>> map_a = php_unit_reader_map.get(hostname);
 		if (map_a==null)
 			return out;
 		HashMap<String,AbstractPhpUnitRW> map_b = map_a.get(test_pack_name_and_version);
@@ -461,21 +471,28 @@ public class PhpResultPackReader extends PhpResultPack {
 	public Collection<AHost> getHosts() {
 		LinkedList<AHost> hosts = new LinkedList<AHost>();
 		for ( File f : file.listFiles() ) {
-			if (f.isDirectory())
-				hosts.add(new SSHHost(f.getName(), "", ""));
+			if (f.isDirectory()) {
+				// TODO temp
+				final String name = f.getName();
+				hosts.add(new LocalHost() {
+						public String getName() {
+							return name;
+						}
+					});
+			}
 		}
 		return hosts;
 	}
 
 	@Override
 	public Collection<String> getPhptTestPacks(AHost host) {
-		return ArrayUtil.toList(new File(file, new File(host.getName(), "PHPT").getName()).list());
+		return ArrayUtil.toList(new File(file, host.joinIntoOnePath(host.getName(), "PHPT")).list());
 	}
 
 	@Override
 	public Collection<ScenarioSet> getPhptScenarioSets(AHost host, String phpt_test_pack) {
 		LinkedList<ScenarioSet> out = new LinkedList<ScenarioSet>();
-		for ( File f : new File(file, new File(host.getName(), new File("PHPT", phpt_test_pack).getName()).getName()).listFiles() ) {
+		for ( File f : new File(file, host.joinIntoOnePath(host.getName(), "PHPT", phpt_test_pack)).listFiles() ) {
 			if (f.isDirectory())
 				out.add(ScenarioSet.parse(f.getName()));
 		}
@@ -484,13 +501,13 @@ public class PhpResultPackReader extends PhpResultPack {
 
 	@Override
 	public Collection<String> getPhpUnitTestPacks(AHost host) {
-		return ArrayUtil.toList(new File(file, new File(host.getName(), "PhpUnit").getName()).list());
+		return ArrayUtil.toList(new File(file, host.joinIntoOnePath(host.getName(), "PhpUnit")).list());
 	}
 
 	@Override
 	public Collection<ScenarioSet> getPhpUnitScenarioSets(AHost host, String phpunit_test_pack) {
 		LinkedList<ScenarioSet> out = new LinkedList<ScenarioSet>();
-		for ( File f : new File(file, new File(host.getName(), new File("PhpUnit", phpunit_test_pack).getName()).getName()).listFiles() ) {
+		for ( File f : new File(file, host.joinIntoOnePath(host.getName(), "PhpUnit", phpunit_test_pack)).listFiles() ) {
 			if (f.isDirectory())
 				out.add(ScenarioSet.parse(f.getName()));
 		}
@@ -498,11 +515,28 @@ public class PhpResultPackReader extends PhpResultPack {
 	}
 
 	public AbstractPhptRW getPHPT(AHost host, ScenarioSet scenario_set, String test_pack_name) {
-		return phpt_reader_map.get(host).get(scenario_set).get(test_pack_name);
+		HashMap<String,HashMap<String,AbstractPhptRW>> a = phpt_reader_map.get(host);
+		if (a==null)
+			a = phpt_reader_map.values().iterator().next();
+		HashMap<String,AbstractPhptRW> b = a.get(test_pack_name);
+		if (b==null)
+			//return null;
+			b = a.values().iterator().next();
+		//return b.values().iterator().next();
+		// TODO temp 
+		System.out.println("525 "+scenario_set+" "+b);
+		return b.get(scenario_set.toString());
 	}
 
 	public AbstractPhpUnitRW getPhpUnit(AHost host, String test_pack_name_and_version, ScenarioSet scenario_set) {
-		return php_unit_reader_map.get(host).get(test_pack_name_and_version).get(scenario_set);
+		HashMap<String,HashMap<String,AbstractPhpUnitRW>> a = php_unit_reader_map.get(host);
+		if (a==null)
+			a = php_unit_reader_map.values().iterator().next();
+			// TODO return null;
+		HashMap<String,AbstractPhpUnitRW> b = a.get(test_pack_name_and_version);
+		if (b==null)
+			return null;
+		return b.get(scenario_set.toString());
 	}
 	
 	public AbstractUITestRW getUITest(AHost host, String test_pack_name_and_version, ScenarioSet scenario_set, String web_browser_name_and_version) {
