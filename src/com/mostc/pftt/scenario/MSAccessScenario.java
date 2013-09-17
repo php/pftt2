@@ -13,18 +13,30 @@ import com.mostc.pftt.host.AHost;
 
 public class MSAccessScenario extends ODBCScenario {
 
+	public MSAccessScenario(EMSAccessVersion version, AHost host, String default_username, String default_password) {
+		super(version, host, default_username, default_password);
+	}
+	
 	public MSAccessScenario(AHost host, String default_username, String default_password) {
-		super(host, default_username, default_password);
+		this(EMSAccessVersion.DEFAULT, host, default_username, default_password);
+	}
+	
+	public static enum EMSAccessVersion implements IDatabaseVersion {
+		DEFAULT {
+				@Override
+				public String getNameWithVersionInfo() {
+					return "MSAccess";
+				}
+				@Override
+				public boolean isAny() {
+					return true;
+				}
+			}
 	}
 
 	@Override
 	protected DatabaseScenarioSetup createScenarioSetup(boolean is_production_server) {
 		return null;
-	}
-
-	@Override
-	public String getName() {
-		return "MSAccess";
 	}
 
 	@Override

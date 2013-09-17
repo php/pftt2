@@ -46,17 +46,16 @@ public class MySQLScenario extends DatabaseScenario {
 			public String getNameWithVersionInfo() {
 				return "MySQL-5.6"; // TODO autodetect
 			}
+			@Override
+			public boolean isAny() {
+				return false;
+			}
 		};
 	}
 	
 	@Override
 	public boolean isImplemented() {
 		return true;
-	}
-	
-	@Override
-	public String getName() {
-		return "MySQL";
 	}
 	
 	@Override

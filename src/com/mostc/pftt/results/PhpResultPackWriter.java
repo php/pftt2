@@ -54,7 +54,6 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	protected final EBuildBranch test_pack_branch;
 	protected final String test_pack_version;
 	protected final Thread writer_thread;
-	protected final boolean first_for_build;
 	protected final Config config;
 	
 	protected class UITestScenarioSetGroup {
@@ -130,12 +129,6 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		this.cm = cm;
 		this.build = build;
 		this.telem_dir = new File(makeName(src_test_pack, telem_base_dir, build_info).getAbsolutePath());
-		if (this.telem_dir.exists()) {
-			this.telem_dir = new File(host.uniqueNameFromBase(this.telem_dir.getAbsolutePath()));
-			first_for_build = false;
-		} else {
-			first_for_build = true;
-		}
 		this.telem_dir.mkdirs();
 		
 		try {
@@ -172,10 +165,6 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 				}
 			};
 		writer_thread.start();
-	}
-	
-	public boolean isFirstForBuild() {
-		return first_for_build;
 	}
 	
 	protected abstract class ResultQueueEntry {
@@ -763,9 +752,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	@Override
 	public AbstractPhptRW getPHPT(AHost host, ScenarioSetSetup scenario_set, String test_pack_name) {
 		try {
-			System.out.println(phpt_writer_map);
 			AbstractPhptRW phpt = getCreatePhptResultWriter(host, scenario_set, test_pack_name);
-			System.out.println("767 "+phpt+" "+scenario_set+" "+test_pack_name);
 			return phpt;
 		} catch (IOException e) {
 			e.printStackTrace();

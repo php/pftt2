@@ -30,6 +30,10 @@ public class PostgresSQLScenario extends DatabaseScenario {
 			public String getNameWithVersionInfo() {
 				return "PostgresSQL"; 
 			}
+			@Override
+			public boolean isAny() {
+				return false;
+			}
 		};
 	}
 
@@ -117,11 +121,6 @@ public class PostgresSQLScenario extends DatabaseScenario {
 		}
 		
 	} // end public class PostgresSQLScenarioSetup
-
-	@Override
-	public String getName() {
-		return "PostgresSQL";
-	}
 
 	@Override
 	public boolean isImplemented() {

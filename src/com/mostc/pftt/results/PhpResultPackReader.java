@@ -229,7 +229,6 @@ public class PhpResultPackReader extends PhpResultPack {
 	public AbstractPhptRW getPHPT(String host_name, ScenarioSetSetup scenario_set, String test_pack_name) {
 		host_name = host_name.toLowerCase();
 		HashMap<String,HashMap<String,AbstractPhptRW>> map_a = phpt_reader_map.get(host_name);
-		System.out.println(map_a);
 		if (map_a==null)
 			return null;
 		String scenario_set_name = scenario_set.getNameWithVersionInfo().toLowerCase();
@@ -237,7 +236,6 @@ public class PhpResultPackReader extends PhpResultPack {
 		if (map_b==null)
 			return null;
 		AbstractPhptRW phpt = map_b.get(test_pack_name);
-		System.out.println("phpt "+phpt);
 		return phpt;
 	}
 	
@@ -524,7 +522,6 @@ public class PhpResultPackReader extends PhpResultPack {
 			b = a.values().iterator().next();
 		//return b.values().iterator().next();
 		// TODO temp 
-		System.out.println("525 "+scenario_set+" "+b);
 		return b.get(scenario_set.toString());
 	}
 

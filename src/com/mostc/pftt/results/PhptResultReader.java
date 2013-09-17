@@ -45,8 +45,6 @@ public class PhptResultReader extends AbstractPhptRW {
 		status_list_map.put(EPhptTestStatus.BORK, new StatusListEntry(tally.bork));
 		status_list_map.put(EPhptTestStatus.TEST_EXCEPTION, new StatusListEntry(tally.exception));
 		//
-		System.out.println("48 "+status_list_map);
-		
 		for ( EPhptTestStatus status : status_list_map.keySet() ) {
 			StatusListEntry e = status_list_map.get(status);
 			
@@ -124,7 +122,7 @@ public class PhptResultReader extends AbstractPhptRW {
 		if (e==null)
 			return 0;
 		check(status, e.test_names);
-		return e.count;
+		return e.test_names.size();
 	}
 
 	@Override

@@ -52,16 +52,35 @@ public abstract class DatabaseScenario extends NetworkedServiceScenario {
 	}
 	
 	@Override
-	public boolean isPlaceholder(EScenarioSetPermutationLayer layer) {
+	public String getName() {
+		return version.getNameWithVersionInfo();
+	}
+	
+	@Override
+	public boolean ignoreForShortName(EScenarioSetPermutationLayer layer) {
 		if (layer==null)
-			return true;
+			return false;
 		switch(layer) {
 		case FUNCTIONAL_TEST_APPLICATION:
 		case FUNCTIONAL_TEST_DATABASE:
 		case PRODUCTION_OR_ALL_UP_TEST:
 			return false;
 		default:
-			return true;
+			return version == null || version.isAny();
+		}
+	}
+	
+	@Override
+	public boolean isPlaceholder(EScenarioSetPermutationLayer layer) {
+		if (layer==null)
+			return false;
+		switch(layer) {
+		case FUNCTIONAL_TEST_APPLICATION:
+		case FUNCTIONAL_TEST_DATABASE:
+		case PRODUCTION_OR_ALL_UP_TEST:
+			return false;
+		default:
+			return version == null || version.isAny();
 		}
 	}
 	
@@ -76,6 +95,8 @@ public abstract class DatabaseScenario extends NetworkedServiceScenario {
 	
 	public interface IDatabaseVersion {
 		public String getNameWithVersionInfo();
+
+		public boolean isAny();
 
 		
 	}
@@ -496,11 +517,11 @@ public abstract class DatabaseScenario extends NetworkedServiceScenario {
 			}
 			
 			if (!(cm.isDebugAll()||cm.isDebugList()||cm.isPfttDebug())) {
-				new Thread() {
+				TimerUtil.runThread(new Runnable() {
 						public void run() {
 							dropDatabase(db_name);
 						}
-					}.start();
+					});
 				TimerUtil.trySleepSeconds(2);
 			}
 			
