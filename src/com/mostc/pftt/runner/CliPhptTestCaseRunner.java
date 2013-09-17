@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
+import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost.ExecHandle;
 import com.mostc.pftt.host.ExecOutput;
@@ -224,7 +225,8 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				test_case.isNon8BitCharset()?test_case.getCommonCharset():null,
 				PhptTestCase.MAX_TEST_TIME_SECONDS,
 				thread,
-				sapi_scenario.getSlowTestTimeSeconds(), cm.getSuspendSeconds()
+				sapi_scenario.getSlowTestTimeSeconds(), cm.getSuspendSeconds(), 
+				IOUtil.HALF_MEGABYTE
 			);
 		
 		return output_sb.toString();

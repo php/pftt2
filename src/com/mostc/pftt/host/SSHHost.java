@@ -465,7 +465,7 @@ public class SSHHost extends RemoteHost {
 		}
 
 		@Override
-		public void run(ConsoleManager cm, StringBuilder output_sb, Charset charset, int timeout_sec, final TestPackRunnerThread thread, int slow_sec, int suspend_seconds) throws IOException, InterruptedException {
+		public void run(ConsoleManager cm, StringBuilder output_sb, Charset charset, int timeout_sec, final TestPackRunnerThread thread, int slow_sec, int suspend_seconds, int max_chars) throws IOException, InterruptedException {
 			do_run(this, session, charset, timeout_sec, thread, slow_sec);
 			output_sb.append(out.toString());
 		}

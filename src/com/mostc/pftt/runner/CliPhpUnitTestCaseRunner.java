@@ -3,6 +3,7 @@ package com.mostc.pftt.runner;
 import java.io.IOException;
 import java.util.Map;
 
+import com.github.mattficken.io.IOUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.AHost.ExecHandle;
 import com.mostc.pftt.model.app.PhpUnitTestCase;
@@ -45,7 +46,8 @@ public class CliPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 				null, 
 				getMaxTestRuntimeSeconds(), 
 				null, 
-				0, cm.getSuspendSeconds()
+				0, cm.getSuspendSeconds(), 
+				IOUtil.HALF_MEGABYTE
 			);
 		
 		output_str = output_sb.toString();

@@ -252,7 +252,7 @@ public class LocalHost extends AHost {
 			
 		StringBuilder output_sb = new StringBuilder(1024);
 		
-		eh.run(null, output_sb, charset, timeout, thread, thread_slow_sec, 0);
+		eh.run(null, output_sb, charset, timeout, thread, thread_slow_sec, 0, IOUtil.HALF_MEGABYTE);
 		
 		
 		
@@ -417,7 +417,7 @@ public class LocalHost extends AHost {
 				}
 			}
 			
-			final Thread close_thread = new Thread() {
+			final Thread close_thread = TimerUtil.runThread("Close", new Runnable() {
 					@Override
 					public void run() {
 						// may take multiple tries to make it exit (lots of processes, certain OSes, etc...)
@@ -545,12 +545,10 @@ public class LocalHost extends AHost {
 						process.set(null);
 						System.gc();
 					} // end public void run
-				};
-			close_thread.setName("Close"+close_thread.getName()); // label this thread so it stands out in profiler
-			close_thread.start();
+				});
 		} // end public void close
 		
-		protected void run(StringBuilder output_sb, Charset charset, int suspend_seconds) throws IOException, InterruptedException {
+		protected void run(StringBuilder output_sb, int max_chars, Charset charset, int suspend_seconds) throws IOException, InterruptedException {
 			final Process p = process.get();
 			if (p==null)
 				return;
@@ -578,7 +576,7 @@ public class LocalHost extends AHost {
 			//
 			
 			// read process' output (block until #close or exit)
-			exec_copy_lines(output_sb, stdout, charset);
+			exec_copy_lines(output_sb, max_chars, stdout, charset);
 			// ignores STDERR
 			
 			// wait for process exit (shouldn't get here until exit or #close though)
@@ -657,53 +655,49 @@ public class LocalHost extends AHost {
 		} // end protected void run
 				
 		@SuppressWarnings("deprecation")
-		protected void exec_copy_lines(final StringBuilder sb, final InputStream in, final Charset charset) throws IOException {
+		protected void exec_copy_lines(final StringBuilder sb, final int max_chars, final InputStream in, final Charset charset) throws IOException {
 			if (isWindows()) {
 				final AtomicBoolean copy_thread_lock = new AtomicBoolean(true);
-				Thread copy_thread = new Thread() {
+				Thread copy_thread = TimerUtil.runThread("ExecCopyLines", new Runnable() {
 						public void run() {
 							try {
-								do_exec_copy_lines(sb, in, charset);
+								do_exec_copy_lines(sb, max_chars, in, charset);
 								copy_thread_lock.set(false);
 								synchronized(run) {
 									run.notifyAll();
 								}
 							} catch (IOException e) {
-								// TODO Auto-generated catch block
 								e.printStackTrace();
 							}
 						}
-					};
-				copy_thread.setName("Copy"+copy_thread.getName());
-				copy_thread.setDaemon(true);
+					});
 				copy_thread.setUncaughtExceptionHandler(IGNORE_EXCEPTION_HANDLER);
-				copy_thread.start();
 				while (true) {
 					synchronized(run) {
 						try {
-							run.wait();
+							run.wait(30000);
 						} catch ( InterruptedException ex ) {}
 					}
-					if (!copy_thread_lock.get()) {
-						// stopped normally
-						break;
-					} else if (!run.get()) {
+					if (!run.get()) {
 						// try killing copy thread since its still running after it was supposed to stop
 						copy_thread.stop(new RuntimeException());
+						break;
+					} else if (!copy_thread_lock.get()) {
+						// stopped normally
 						break;
 					}
 				}
 			} else {
-				do_exec_copy_lines(sb, in, charset);
+				do_exec_copy_lines(sb, max_chars, in, charset);
 			}
 		}
 		
-		protected void do_exec_copy_lines(StringBuilder sb, InputStream in, Charset charset) throws IOException {
+		protected void do_exec_copy_lines(StringBuilder sb, int max_chars, InputStream in, Charset charset) throws IOException {
 			DefaultCharsetDeciderDecoder d = charset == null ? null : PhptTestCase.newCharsetDeciderDecoder();
 			ByLineReader reader = charset == null ? new NoCharsetByLineReader(new java.io.BufferedInputStream(in)) : new MultiCharsetByLineReader(in, d);
 			String line;
 			try {
-				while (reader.hasMoreLines()&&run.get()) {
+				while (reader.hasMoreLines()&&run.get()&&(max_chars<1||sb.length()<max_chars)) {
 					line = reader.readLine();
 					if (line==null)
 						break;
@@ -748,7 +742,7 @@ public class LocalHost extends AHost {
 		}
 
 		@Override
-		public void run(ConsoleManager cm, StringBuilder output_sb, Charset charset, int timeout_sec, TestPackRunnerThread thread, int thread_slow_sec, int suspend_seconds) throws IOException, InterruptedException {
+		public void run(ConsoleManager cm, StringBuilder output_sb, Charset charset, int timeout_sec, TestPackRunnerThread thread, int thread_slow_sec, int suspend_seconds, int max_chars) throws IOException, InterruptedException {
 			TimerThread a = null, b = null;
 			if (thread!=null && thread_slow_sec>NO_TIMEOUT) {
 				b = TimerUtil.waitSeconds(thread_slow_sec, new ThreadSlowTask(thread));
@@ -758,7 +752,7 @@ public class LocalHost extends AHost {
 				a = TimerUtil.waitSeconds(timeout_sec, new ExitMonitorTask(cm, this));
 			}
 						
-			this.run(output_sb, charset, suspend_seconds);
+			this.run(output_sb, max_chars, charset, suspend_seconds);
 			
 			if (a!=null)
 				a.close();

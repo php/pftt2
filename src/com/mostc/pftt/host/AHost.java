@@ -432,7 +432,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 		
 		
 		// TODO
-		public abstract void run(ConsoleManager cm, StringBuilder output_sb, Charset charset, int timeout_sec, TestPackRunnerThread thread, int slow_sec, int suspend_seconds) throws IOException, InterruptedException;
+		public abstract void run(ConsoleManager cm, StringBuilder output_sb, Charset charset, int timeout_sec, TestPackRunnerThread thread, int slow_sec, int suspend_seconds, int max_chars) throws IOException, InterruptedException;
 	} // end public abstract class ExecHandle
 	
 	/** checks exit code to see if it means process crashed
