@@ -65,12 +65,12 @@ public class BuiltinWebServerScenario extends WebServerScenario {
 	@Override
 	public int getApprovedInitialThreadPoolSize(AHost host, int threads) {
 		// XXX update this calculation from time to time as this web server's performance improves (probably decrease number)
-		return host.getCPUCount() * 6;//8;
+		return host.getCPUCount() * 4;
 	}
 	
 	@Override
 	public int getApprovedMaximumThreadPoolSize(AHost host, int threads) {
-		return host.getCPUCount() * 8;// TODO 10;
+		return host.getCPUCount() * 6;
 	}
 	
 	@Override

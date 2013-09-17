@@ -180,7 +180,10 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			return null;
 		}
 		//
-		cm.println(EPrintType.CLUE, getClass(), "Scenario Set: "+scenario_set_setup.getNameWithVersionInfo());
+		if (scenario_set_setup!=null)
+			cm.println(EPrintType.CLUE, getClass(), "Scenario Set: "+scenario_set_setup.getNameWithVersionInfo());
+		else if (scenario_set!=null)
+			cm.println(EPrintType.CLUE, getClass(), "Scenario Set: "+scenario_set.getName());
 		setupStorageAndTestPack(storage_dir, test_cases);
 		
 		return storage_dir;

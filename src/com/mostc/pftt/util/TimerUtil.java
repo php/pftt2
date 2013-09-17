@@ -1,11 +1,104 @@
 package com.mostc.pftt.util;
 
 import java.lang.Thread.UncaughtExceptionHandler;
+import java.util.LinkedList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.results.ConsoleManager;
 
 public final class TimerUtil {
+	 
+	private static LinkedList<ThreadRunnableProxy> trp_pool = new LinkedList<ThreadRunnableProxy>();
+	static {
+		final int pool_size = Math.max(128, new LocalHost().getCPUCount() * 16);
+		for ( int i = 0 ; i < pool_size ; i++ ) {
+			ThreadRunnableProxy trp = new ThreadRunnableProxy();
+			new Thread(trp).start();
+				synchronized(trp_pool) {
+					trp_pool.add(trp);
+				}
+		}
+	}
+	
+	private static class ThreadRunnableProxy implements Runnable {
+		private Runnable r;
+		private final Object lock = new Object();
+		private Thread thread;
+		private boolean run = true;
+		
+		private void setRunnable(Runnable r) {
+			this.r = r;
+			synchronized(lock) {
+				lock.notify();
+			}
+		}
+		
+		@SuppressWarnings("unused")
+		private void stop() {
+			run = false;
+		}
+		
+		public void run() {
+			thread = Thread.currentThread();
+			while(run) {
+				if (r!=null) {
+					try {
+						r.run();
+					} catch (Throwable t) {
+						thread.getUncaughtExceptionHandler().uncaughtException(thread, t);
+					}
+					r = null;
+					synchronized(trp_pool) {
+						trp_pool.add(this);
+					}
+				}
+				try {
+					synchronized(lock) {
+						lock.wait();
+					}
+				} catch ( Throwable t ) {
+					try {
+						Thread.sleep(100);
+					} catch ( InterruptedException i ) {}
+				}
+			}
+		}
+	} // end private static class ThreadRunnableProxy
+	
+	/** Windows, at least, has problems creating threads late in some test runs sometimes.
+	 * 
+	 * Creating a thread requires getting a handle, and sometimes if Windows has allocated too
+	 * many handles, it will wait a long time before allocating more, which delays thread creation
+	 * (which in turn can delay things like killing off timed out processes, which in turn frees up handles).
+	 * 
+	 * Instead, a bunch of threads are preallocated in a pool at startup. This gets one of
+	 * those threads and has it run the given Runnable.
+	 * 
+	 * Note: you may not call #start or #setDaemon on the returned Thread. you will get an IllegalThreadStateException if you do.
+	 * 
+	 * @param r
+	 * @return
+	 */
+	public static Thread runThread(Runnable r) {
+		ThreadRunnableProxy trp = null;
+		synchronized(trp_pool) {
+			if (!trp_pool.isEmpty())
+				trp = trp_pool.removeLast();
+		}
+		if (trp==null) {
+			return new Thread(r);
+		} else {
+			trp.setRunnable(r);
+			return trp.thread;
+		}
+	}
+	
+	public static Thread runThread(String prefix, Runnable r) {
+		Thread t = runThread(r);
+		t.setName(prefix);
+		return t;
+	}
 	
 	public interface ObjectRunnable<E extends Object> {
 		E run() throws Exception;
@@ -19,12 +112,9 @@ public final class TimerUtil {
 	
 	public static <E extends Object> WaitableRunnable<E> runWaitSeconds(String name_prefix, int seconds, ObjectRunnable<E> or) {
 		WaitableRunnable<E> wr = new WaitableRunnable<E>(or);
-		Thread t = new Thread(wr);
+		Thread t = runThread(name_prefix, wr);
 		t.setUncaughtExceptionHandler(IGNORE);
-		t.setDaemon(true);
-		t.setName(name_prefix+t.getName());
 		wr.t = t;
-		t.start();
 		wr.block(seconds);
 		return wr;
 	}
@@ -111,10 +201,14 @@ public final class TimerUtil {
 	public interface RepeatingRunnable {
 		public void run(RepeatingThread thread);
 	}
+	
+	protected static void createRThread(RepeatingOrTimingThread t) {
+		t.t = runThread("Timer", (Runnable)t);
+	}
 
 	public static RepeatingThread repeatEverySeconds(int seconds, RepeatingRunnable r) {
 		RepeatingThread t = new RepeatingThread(seconds, r);
-		t.start();
+		createRThread(t);
 		return t;
 	}
 	
@@ -148,7 +242,7 @@ public final class TimerUtil {
 		} else {
 			t = new TimerThread2SX(seconds1, r1, seconds2, runnables2);
 		}
-		t.start();
+		createRThread(t);
 		return t;
 	}
 	
@@ -178,11 +272,11 @@ public final class TimerUtil {
 		
 		@Override
 		protected void fire2() {
-			new Thread() {
+			runThread(new Runnable() {
 				public void run() {
 					b2.run();
 				}
-			}.start();
+			});
 			a2.run();
 		}
 		
@@ -203,12 +297,12 @@ public final class TimerUtil {
 			
 			for ( int i=1 ; i < runnables2.length ; i++ ) {
 				final Runnable r = runnables2[i];
-				new Thread() {
+				runThread(new Runnable() {
 						@Override
 						public void run() {
 							r.run();
 						}
-					}.start();
+					});
 			}
 			runnables2[0].run();
 		}
@@ -267,7 +361,7 @@ public final class TimerUtil {
 		} else {
 			t = new TimerThreadX(seconds, runnables);
 		}
-		t.start();
+		createRThread(t);
 		return t;
 	}
 	
@@ -297,11 +391,11 @@ public final class TimerUtil {
 		
 		@Override
 		protected void fire() {
-			new Thread() {
+			runThread(new Runnable() {
 				public void run() {
 					b.run();
 				}
-			}.start();
+			});
 			a.run();
 		}
 		
@@ -322,12 +416,12 @@ public final class TimerUtil {
 			
 			for ( int i=1 ; i < runnables.length ; i++ ) {
 				final Runnable r = runnables[i];
-				new Thread() {
+				runThread(new Runnable() {
 						@Override
 						public void run() {
 							r.run();
 						}
-					}.start();
+					});
 			}
 			runnables[0].run();
 		}
@@ -361,24 +455,23 @@ public final class TimerUtil {
 		
 	}
 	
-	protected static class RepeatingOrTimingThread extends Thread implements IClosable {
+	protected static abstract class RepeatingOrTimingThread implements Runnable, IClosable {
 		protected final int seconds;
 		protected final AtomicBoolean b, sleeping;
+		protected Thread t;
 		
 		public RepeatingOrTimingThread(int seconds) {
 			this.seconds = seconds;
 			
 			b = new AtomicBoolean(false);
 			sleeping = new AtomicBoolean(false);
-			setName("Timer"+getName());
-			setDaemon(true);
 		}
 		
 		public void close() {
 			b.set(true);
 			if (sleeping.get()) {
 				// interrupt #sleep not #fire
-				RepeatingOrTimingThread.this.interrupt();
+				t.interrupt();
 			}
 		}
 		

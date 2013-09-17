@@ -304,13 +304,13 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		final Socket s = test_socket;
 		if (s==null)
 			return;
-		new Thread() {
+		TimerUtil.runThread(new Runnable() {
 			public void run() {
 				try {
 				s.close();
 				} catch ( Exception ex ) {}
 			}
-		};
+		});
 		test_socket = null;
 	}
 	

@@ -22,6 +22,7 @@ import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 import com.mostc.pftt.scenario.BuiltinWebServerScenario;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
+import com.mostc.pftt.util.TimerUtil;
 
 public class BuiltinWebHttpPhptTestCaseRunner extends HttpPhptTestCaseRunner {
 	
@@ -57,13 +58,13 @@ public class BuiltinWebHttpPhptTestCaseRunner extends HttpPhptTestCaseRunner {
 		final Socket s = test_socket;
 		if (s==null)
 			return;
-		new Thread() {
+		TimerUtil.runThread(new Runnable() {
 			public void run() {
 				try {
 				s.close();
 				} catch ( Exception ex ) {}
 			}
-		};
+		});
 		test_socket = null;
 	}
 	
