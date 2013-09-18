@@ -72,7 +72,6 @@ public class RequiredFeaturesSmokeTest extends SmokeTest {
 "Directive => Local Value => Master Value%s" +
 "allow_url_fopen => On => On%s" +
 "allow_url_include => Off => Off%s" +
-"always_populate_raw_post_data => Off => Off%s" +
 "arg_separator.input => & => &%s" +
 "arg_separator.output => & => &%s" +
 "asp_tags => Off => Off%s" +
@@ -660,7 +659,6 @@ public class RequiredFeaturesSmokeTest extends SmokeTest {
 "Directive => Local Value => Master Value%s" +
 "allow_url_fopen => On => On%s" +
 "allow_url_include => Off => Off%s" +
-"always_populate_raw_post_data => Off => Off%s" +
 "arg_separator.input => & => &%s" +
 "arg_separator.output => & => &%s" +
 "asp_tags => Off => Off%s" +
@@ -1215,6 +1213,8 @@ public class RequiredFeaturesSmokeTest extends SmokeTest {
 			for ( String part : parts ) {
 				j = info.indexOf(part, i);
 				if (j==-1) {
+					if (status!=ESmokeTestStatus.FAIL)
+						System.out.println(info);
 					cm.println(EPrintType.COMPLETED_OPERATION, getName(), "Missing required info: `"+part+"`");
 					out.append("Missing required info: `"+part+"`");
 					out.append('\n');
