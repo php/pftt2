@@ -15,7 +15,7 @@ echo app_all       all_named     app_list   aa an al  caua  smoke  parse
 echo ui_all        ui_named      ui_list    ua un ul  aua   run-test
 echo
 echo Setup:
-echo lc            setup
+echo lc            setup       info
 echo 
 echo Cleanup: 
 echo tka_apache    tka_php     stop    php_sdk

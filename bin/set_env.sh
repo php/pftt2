@@ -48,6 +48,9 @@ function core_named() {
 function smoke() {
 	pftt -ignore_unknown_option $* smoke $*
 }
+function info() {
+	pftt -ignore_unknown_option $* info $*
+}
 alias aa=app_all
 alias al=app_list
 alias an=app_named

@@ -610,6 +610,10 @@ public class PhpBuild extends SAPIManager {
 	 * @throws Exception
 	 */
 	public String getPhpInfo(ConsoleManager cm, AHost host) throws Exception {
+		return getPhpInfo(cm, null, host);
+	}
+	
+	public String getPhpInfo(ConsoleManager cm, PhpIni ini, AHost host) throws Exception {
 		String php_info;
 		if (this.php_info != null) {
 			php_info = this.php_info.get();
@@ -617,7 +621,7 @@ public class PhpBuild extends SAPIManager {
 				return php_info;
 		}
 		
-		PHPOutput eo = eval(host, "phpinfo();");
+		PHPOutput eo = eval(host, ini, "phpinfo();");
 		eo.printOutputIfCrash(Host.toContext(getClass(), "getPhpInfo"), cm);
 		php_info = eo.output;
 		eo.cleanup(host);

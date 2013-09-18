@@ -370,7 +370,8 @@ public class PfttMain {
 		// TODO fs test
 			.addRow("run-test <build> <test-pack> <full test name,...>", "runs named tests using run-tests.php from test-pack")
 			.addRow("help", "")
-			.addRow("smoke <build>", "smoke test a build");
+			.addRow("smoke <build>", "smoke test a build")
+			.addRow("info <build>", "returns phpinfo() for build (using build/php.ini if present, otherwise uses default INI)");
 		if (LocalHost.isLocalhostWindows()) {
 			table.addRow("perf <build>", "performance test of build")
 				.addRow("release_get <branch> <build-type> <revision>", "download a build and test-pack snapshot release")
@@ -469,13 +470,6 @@ public class PfttMain {
 		System.out.println();
 	} // end protected static void help_all
 	
-	public void smoke() {
-		// TODO
-		System.err.println("Error: Not implemented");
-		new RequiredExtensionsSmokeTest();
-		new RequiredFeaturesSmokeTest();
-	}
-	
 	public void shell() {
 		IO io = new IO();
 		//
@@ -563,6 +557,36 @@ public class PfttMain {
 		}
 	} // end public void appList
 	
+	public boolean smoke(PhpBuild build, Config config, PhpResultPackWriter tmgr) {
+		for (ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_APPLICATION)) {
+			if (!cm.isSkipSmokeTests()) {
+				{
+					// TODO test running PHPTs on a build that is missing a DLL that is
+					RequiredExtensionsSmokeTest test = new RequiredExtensionsSmokeTest();
+					//
+					// on Windows, missing .DLLs from a php build will cause a blocking winpop dialog msg to appear
+					// in such a case, the test will timeout after 1 minute and then fail (stopping at that point is important)
+					// @see PhpBuild#getExtensionList
+					if (test.test(build, cm, host, SAPIScenario.getSAPIScenario(scenario_set).getSAPIType(), tmgr)==ESmokeTestStatus.FAIL) {
+						// if this test fails, RequiredFeaturesSmokeTest will fail for sure
+						cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+						
+						return false;
+					}
+				}
+				{
+					RequiredFeaturesSmokeTest test = new RequiredFeaturesSmokeTest();
+					if (test.test(build, cm, host, tmgr)==ESmokeTestStatus.FAIL) {
+						cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+						
+						return false;
+					}
+				}
+			}
+		}
+		return true;
+	}
+	
 	public void appAll(PhpBuild build, Config config, PhpResultPackWriter tmgr) throws IOException, Exception {
 		ensureLocalhostPrepared(build);
 		
@@ -580,32 +604,10 @@ public class PfttMain {
 				
 				cm.println(EPrintType.CLUE, PfttMain.class, "Writing Result-Pack: "+tmgr.getResultPackPath());
 				
+				if (!smoke(build, config, tmgr))
+					break;
+				
 				for (ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_APPLICATION)) {
-					if (!cm.isSkipSmokeTests()) {
-						{
-							// TODO test running PHPTs on a build that is missing a DLL that is
-							RequiredExtensionsSmokeTest test = new RequiredExtensionsSmokeTest();
-							//
-							// on Windows, missing .DLLs from a php build will cause a blocking winpop dialog msg to appear
-							// in such a case, the test will timeout after 1 minute and then fail (stopping at that point is important)
-							// @see PhpBuild#getExtensionList
-							if (test.test(build, cm, host, SAPIScenario.getSAPIScenario(scenario_set).getSAPIType(), tmgr)==ESmokeTestStatus.FAIL) {
-								// if this test fails, RequiredFeaturesSmokeTest will fail for sure
-								cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
-								
-								break;
-							}
-						}
-						{
-							RequiredFeaturesSmokeTest test = new RequiredFeaturesSmokeTest();
-							if (test.test(build, cm, host, tmgr)==ESmokeTestStatus.FAIL) {
-								cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
-								
-								break;
-							}
-						}
-					}
-					
 					List<AHost> hosts = config.getHosts();
 					AHost host = hosts.isEmpty()?this.host:hosts.get(0);
 					LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, host, host);
@@ -628,32 +630,9 @@ public class PfttMain {
 			hosts.add(this.host);
 		}
 		for ( int i=0 ; i < cm.getRunTestPack() ; i++ ) {
+			if (!smoke(build, config, tmgr))
+				break;
 			for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_CORE) ) {
-				if (!cm.isSkipSmokeTests()) {
-					{
-						// TODO test running PHPTs on a build that is missing a DLL that is
-						RequiredExtensionsSmokeTest test = new RequiredExtensionsSmokeTest();
-						//
-						// on Windows, missing .DLLs from a php build will cause a blocking winpop dialog msg to appear
-						// in such a case, the test will timeout after 1 minute and then fail (stopping at that point is important)
-						// @see PhpBuild#getExtensionList
-						if (test.test(build, cm, host, SAPIScenario.getSAPIScenario(scenario_set).getSAPIType(), tmgr)==ESmokeTestStatus.FAIL) {
-							// if this test fails, RequiredFeaturesSmokeTest will fail for sure
-							cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
-							
-							break;
-						}
-					}
-					{
-						RequiredFeaturesSmokeTest test = new RequiredFeaturesSmokeTest();
-						if (test.test(build, cm, host, tmgr)==ESmokeTestStatus.FAIL) {
-							cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
-							
-							break;
-						}
-					}
-				}
-				
 				//
 				for ( AHost storage_host : hosts ) {
 					LocalPhptTestPackRunner test_pack_runner = new LocalPhptTestPackRunner(tmgr.getConsoleManager(), tmgr, scenario_set, build, storage_host, host, config);
@@ -1302,10 +1281,12 @@ public class PfttMain {
 		LocalConsoleManager cm = new LocalConsoleManager();
 		
 		// load config files
+		boolean config_default = true;
 		if (config_files.size()>0) {
 			config = Config.loadConfigFromFiles(cm, (String[])config_files.toArray(new String[config_files.size()]));
 			if (config==null)
 				System.exit(-255);
+			config_default = false;
 			System.out.println("PFTT: Config: loaded "+config_files);
 		} else {
 			File default_config_file = new File(new LocalHost().getPfttConfDir()+"/default.groovy");
@@ -1481,7 +1462,7 @@ public class PfttMain {
 					help_all();
 					System.exit(-255);
 					return;
-				} else if (StringUtil.containsAnyCS(args[args_i], new String[]{"core_all", "core_named", "core_list", "app_all", "app_named", "app_list", "ui_all", "ui_list", "ui_named", "release_get", "release_list", "list_config"})) {
+				} else if (StringUtil.containsAnyCS(args[args_i], new String[]{"core_all", "core_named", "core_list", "app_all", "app_named", "app_list", "ui_all", "ui_list", "ui_named", "release_get", "release_list", "list_config", "smoke", "info"})) {
 					if (args[args_i].endsWith("_"))
 						// for setup, lc
 						args[args_i] = args[args_i].substring(0, args[args_i].length()-1);
@@ -1926,7 +1907,52 @@ public class PfttMain {
 				} else if (command.equals("smoke")) {
 					no_show_gui(show_gui, command);
 					
-					p.smoke();
+					if (args.length<=args_i+1) {
+						System.out.println("Usage: smoke <path to PHP build(s);:>");
+						System.out.println("Usage: smoke -config <config name> <path to PHP build(s);:>");
+						System.exit(-254);
+						return;
+					}
+					
+					PhpBuild[] builds = newBuilds(cm, p.host, args[args_i+1]);
+					for ( PhpBuild build : builds ) {
+						PhpResultPackWriter w = p.getWriter(build);
+						if (p.smoke(build, config, w))
+							System.out.println("Smoke: smoke tests passed: "+build.getBuildPath());
+						else
+							System.out.println("Smoke: smoke tests FAILED: "+build.getBuildPath());
+					}
+				} else if (command.equals("info")) {
+					no_show_gui(show_gui, command);
+					
+					if (args.length<=args_i+1) {
+						System.out.println("Usage: info <path to PHP build(s);:>");
+						System.out.println("Usage: info -config <config name> <path to PHP build(s);:>");
+						System.out.println("Tip(*nix|Windows) info <build> | more");
+						System.exit(-254);
+						return;
+					}
+					
+					PhpBuild[] builds = newBuilds(cm, p.host, args[args_i+1]);
+					for ( PhpBuild build : builds ) {
+						System.out.println(build);
+						System.out.println(build.getBuildPath());
+						System.out.println();
+						if (p.host.exists(p.host.joinIntoOnePath(build.getBuildPath(), "php.ini"))) {
+							System.out.println("#Note: Using "+build.getBuildPath());
+							System.out.println(build.getPhpInfo(cm, p.host));
+						} else if (config_default) {
+							System.out.println("#Note: "+build.getBuildPath()+"/php.ini not found");
+							System.out.println("#Note: using PHP default INI values only! create php.ini or use -config PFTT option");
+							System.out.println(build.getPhpInfo(cm, p.host));
+						} else {
+							System.out.println("#Note: "+build.getBuildPath()+"/php.ini not found");
+							System.out.println("#Note: using INI from given PFTT configuration files");
+							PhpIni ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, p.host, build);
+							
+							System.out.println(build.getPhpInfo(cm, ini, p.host));
+						}
+					}
 				} else if (command.equals("upgrade")) {
 					no_show_gui(show_gui, command);
 					

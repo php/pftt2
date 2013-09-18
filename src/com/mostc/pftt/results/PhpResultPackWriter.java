@@ -128,7 +128,13 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		this.local_host = local_host;
 		this.cm = cm;
 		this.build = build;
-		this.telem_dir = new File(makeName(src_test_pack, telem_base_dir, build_info).getAbsolutePath());
+		{
+			int i=1;
+			do {
+				this.telem_dir = new File(makeName(src_test_pack, telem_base_dir, build_info, i).getAbsolutePath());
+				i++;
+			} while ( this.telem_dir.exists() );
+		}
 		this.telem_dir.mkdirs();
 		
 		try {
@@ -166,7 +172,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 			};
 		writer_thread.start();
 	}
-	
+
 	protected abstract class ResultQueueEntry {
 		public abstract void handle() throws IllegalArgumentException, IllegalStateException, IOException;
 	}

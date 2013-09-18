@@ -26,7 +26,7 @@ CALL ^\php-sdk^\PFTT^\current^\bin^\set_env
 @ECHO.            ^|WMWMWMW^| ^|^>^>^>^>^>^>^>^>^>^>^>^>^>^> Php Full Test Tool ^>^>^>^>^>^>^>^>^>^>^>^>^>:^>
 @ECHO.            `-------^| ^|--------------------------------------------'^^
 @ECHO.                     ^\^\
-@ECHO.                      ^\)
+@ECHO.                      ^\)    PFTT Shell - for testing the PHP Ecosystem
 @ECHO.
 ECHO  Type `pftt ^<enter^>` to get help with PFTT. ^<tab^> for auto-completion. 
 ECHO  ^<F7^> for history. Control+C to interrupt. Right-click for copy/paste menu.
@@ -46,7 +46,7 @@ ECHO  tka_apache    tka_php     tka_windbg     `net use`    stop
 @ECHO.
 ECHO  Useful:
 ECHO  ls            `start .`   windbg   npp   clear
-ECHO  php_sdk       sleep       pftt     cat
+ECHO  php_sdk       sleep       pftt     cat   info
 @ECHO.
 @prompt $t %COMPUTERNAME% $M$p$g
 REM signal pftt.cmd to not run pftt with elevate ever

@@ -39,12 +39,16 @@ public abstract class PhpResultPack {
 		return parts[3]; // @see #makeName and PhpBuildInfo#toStringWithoutBuildBranch
 	}
 	
-	protected static File makeName(PhptSourceTestPack src_test_pack, File base, PhpBuildInfo build_info) throws Exception {
+	protected static File makeName(PhptSourceTestPack src_test_pack, File base, PhpBuildInfo build_info, int i) throws Exception {
 		StringBuilder sb = new StringBuilder();
 		sb.append("/");
 		sb.append(build_info.getBuildBranch());
 		sb.append("-Result-Pack-");
 		sb.append(build_info.toStringWithoutBuildBranch());
+		if (i>1) {
+			sb.append("-");
+			sb.append(i);
+		}
 		
 		if (src_test_pack!=null&&src_test_pack.getNameAndVersionString()!=null&&src_test_pack.getNameAndVersionString().contains("sql")) {
 			// TODO temp
