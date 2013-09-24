@@ -22,7 +22,9 @@ class PhpBB3PhpUnitTestPack extends RequiredDatabasePhpUnitSourceTestPack {
 	}
 	
 	@Override
-	protected String getSourceRoot(AHost host) {
+	protected String getSourceRoot(ConsoleManager cm, AHost host) {
+		ensureAppDecompressed(cm, host, "phpbb3.7z")
+		
 		return host.getPfttDir()+"/cache/working/phpbb3";
 	}
 	

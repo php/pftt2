@@ -716,9 +716,12 @@ public abstract class AHost extends Host implements IProgramRunner {
 	public boolean decompress(ConsoleManager cm, AHost ohost, String zip7_file, String dst) throws IllegalStateException, IOException, Exception {
 		ensure7Zip(cm, ohost);
 		
+		zip7_file = fixPath(zip7_file);
+		dst = fixPath(dst);
+		
 		String output_dir = dst;
 		mkdirs(output_dir);
-		
+
 		if (cm!=null)
 			cm.println(EPrintType.IN_PROGRESS, getClass(), "decompress output_dir="+output_dir+" zip7_file="+zip7_file);
 		

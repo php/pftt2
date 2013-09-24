@@ -16,8 +16,10 @@ class MediaWikiPhpUnitTestPack extends RequiredDatabasePhpUnitSourceTestPack {
 	}
 	
 	@Override
-	protected String getSourceRoot(AHost host) {
-		return host.getPfttDir()+"/cache/working/mediawiki-1.20.2";
+	protected String getSourceRoot(ConsoleManager cm, AHost host) {
+		ensureAppDecompressed(cm, host, "mediawiki")
+		
+		return host.getPfttDir()+"/cache/working/mediawiki";
 	}
 	
 	@Override

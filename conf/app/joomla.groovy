@@ -26,7 +26,9 @@ class JoomlaPlatformPhpUnitTestPack extends OptionalDatabasePhpUnitSourceTestPac
 	}
 	
 	@Override
-	protected String getSourceRoot(AHost host) {
+	protected String getSourceRoot(ConsoleManager cm, AHost host) {
+		ensureAppDecompressed(cm, host, "joomla-platform.7z")
+		
 		return host.getPfttDir()+"/cache/working/joomla-platform";
 	}
 

@@ -19,8 +19,10 @@ class SemanticMediaWikiPhpUnitTestPack extends RequiredDatabasePhpUnitSourceTest
 	}
 	
 	@Override
-	protected String getSourceRoot(AHost host) {
-		return host.getPfttDir()+"/cache/working/SemanticMediaWiki1.8";
+	protected String getSourceRoot(ConsoleManager cm, AHost host) {
+		ensureAppDecompressed(cm, host, "SemanticMediaWiki.7z")
+		
+		return host.getPfttDir()+"/cache/working/SemanticMediaWiki";
 	}
 	
 	@Override

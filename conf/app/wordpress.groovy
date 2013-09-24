@@ -23,7 +23,9 @@ class WordpressPhpUnitTestPack extends RequiredDatabasePhpUnitSourceTestPack {
 	}
 	
 	@Override
-	protected String getSourceRoot(AHost host) {
+	protected String getSourceRoot(ConsoleManager cm, AHost host) {
+		ensureAppDecompressed(cm, host, "wordpress-tests.7z")
+		
 		return host.getPfttDir()+"/cache/working/wordpress-tests";
 	}
 	

@@ -7,7 +7,7 @@ class Typo3PhpUnitTestPack extends PhpUnitSourceTestPack {
 	}
 	
 	@Override
-	protected String getSourceRoot(AHost host) {
+	protected String getSourceRoot(ConsoleManager cm, AHost host) {
 		return host.getPfttDir()+"/cache/working/typo3";
 	}
 	

@@ -15,7 +15,9 @@ class AzureSDKPhpUnitTestPack extends PhpUnitSourceTestPack {
 	}
 	
 	@Override
-	protected String getSourceRoot(AHost host) {
+	protected String getSourceRoot(ConsoleManager cm, AHost host) {
+		ensureAppDecompressed(cm, host, "azure-sdk-for-php.7z")
+		
 		return host.getPfttDir()+"/cache/working/azure-sdk-for-php";
 	}
 	

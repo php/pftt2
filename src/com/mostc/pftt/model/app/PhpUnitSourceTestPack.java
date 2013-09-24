@@ -428,7 +428,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 
 	@Override
 	public PhpUnitActiveTestPack installInPlace(ConsoleManager cm, AHost host) throws Exception {
-		final String src_root = getSourceRoot(new LocalHost());
+		final String src_root = getSourceRoot(cm, new LocalHost());
 		addIncludeDirectory(src_root);
 		if (!new File(src_root).isDirectory()) {
 			throw new IOException("source-test-pack not found: "+src_root);
@@ -442,7 +442,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 
 	@Override
 	public PhpUnitActiveTestPack installNamed(ConsoleManager cm, AHost host, String string, List<PhpUnitTestCase> test_cases) throws IllegalStateException, IOException, Exception {
-		final String src_root = getSourceRoot(new LocalHost());
+		final String src_root = getSourceRoot(cm, new LocalHost());
 		addIncludeDirectory(src_root);
 		if (!new File(src_root).isDirectory()) {
 			throw new IOException("source-test-pack not found: "+src_root);
@@ -459,7 +459,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 			String local_test_pack_dir, String remote_test_pack_dir)
 			throws IllegalStateException, IOException, Exception {
 		LocalHost local_host = new LocalHost();
-		final String src_root = getSourceRoot(local_host);
+		final String src_root = getSourceRoot(cm, local_host);
 		addIncludeDirectory(src_root);
 		if (!new File(src_root).isDirectory()) {
 			throw new IOException("source-test-pack not found: "+src_root);
@@ -476,13 +476,27 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 		return new PhpUnitActiveTestPack(local_test_pack_dir, remote_test_pack_dir);
 	}
 	
+	private boolean decompressed = false;
+	protected void ensureAppDecompressed(ConsoleManager cm, AHost host, String zip7_file) throws IllegalStateException, IOException, Exception {
+		if (decompressed)
+			return;
+		decompressed = true;
+		if (!StringUtil.endsWithIC(zip7_file, ".7z"))
+			zip7_file += ".7z";
+		
+		host.decompress(cm, host, host.getPfttDir()+"/app/"+zip7_file, host.getPfttDir()+"/cache/working/");
+	}
+	
 	/** the base directory within the PFTT directory to find the phpunit and required php files
 	 * 
+	 * Typically, test-packs will call #ensureAppDecompressed
+	 * 
+	 * @param cm
 	 * @param host - determine the absolute path on this host
 	 * @see AHost#getPfttDir
 	 * @return
 	 */
-	protected abstract String getSourceRoot(AHost host);
+	protected abstract String getSourceRoot(ConsoleManager cm, AHost host);
 
 	/** installs the tests after they have been copied to storage (if needed)
 	 * 

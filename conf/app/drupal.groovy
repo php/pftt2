@@ -19,8 +19,10 @@ class DrupalPhpUnitTestPack extends RequiredDatabasePhpUnitSourceTestPack {
 	}
 	
 	@Override
-	protected String getSourceRoot(AHost host) {
-		return host.getPfttDir()+"/cache/working/drupal-8.x-dev";
+	protected String getSourceRoot(ConsoleManager cm, AHost host) {
+		ensureAppDecompressed(cm, host, "drupal-8.7z")
+		
+		return host.getPfttDir()+"/cache/working/drupal-8";
 	}
 	
 	@Override
