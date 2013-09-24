@@ -945,6 +945,9 @@ public class PhptTestCase extends TestCase {
 		return isNon8BitCharset(getName());
 	}
 	
+	// SOMEDAY put this in a test-pack configuration or default configuration
+	//         so that info specific to a specific test-pack isn't hard-coded here, instead configure it.
+	//         makes it easy to change, makes it more flexible for different test-packs.
 	public static boolean isNon8BitCharset(String test_name) {
 		// XXX use a Trie to speedup checking
 		for ( String tc : TESTS_BIT8) {
@@ -1016,6 +1019,7 @@ public class PhptTestCase extends TestCase {
 			"ext/standard/tests/general_functions/parse_ini_basic.phpt" // Apache
 		};
 	static final String[] TESTS_BIT8 = new String[] {
+			"ext/mbstring/tests/mb_decode_numericentity.phpt",
 			"ext/intl/tests/locale_get_display_language.phpt",
 			"ext/intl/tests/locale_get_display_name2.phpt",
 			"ext/intl/tests/locale_get_display_region2.phpt",

@@ -20,14 +20,12 @@ class SymfonyPhpUnitTestPack extends OptionalDatabasePhpUnitSourceTestPack {
 	}
 	
 	@Override
-	protected String getSourceRoot(AHost host) {
+	protected String getSourceRoot(ConsoleManager cm, AHost host) {
+		ensureAppDecompressed(cm, host, "symfony-standard.7z")
+				
 		return host.getPfttDir()+"/cache/working/symfony-standard";
 	}
-	@Override
-	protected Object clone() throws CloneNotSupportedException {
-		// TODO Auto-generated method stub
-		return super.clone();
-	}
+	
 	public String[][] getNonThreadSafeTestFileNames() {
 		return [
 			["Symfony/Component/HttpFoundation"],
@@ -39,6 +37,7 @@ class SymfonyPhpUnitTestPack extends OptionalDatabasePhpUnitSourceTestPack {
  
 	@Override
 	protected boolean openAfterInstall(ConsoleManager cm, AHost host) throws Exception {
+		
 		// 1. do initial install (if not done already)
 		if (!host.exists(getRoot()+"/vendor")) {
 			// TODO modified require_once __DIR__ in C:\php-sdk\PFTT\current\cache\working\symfony-standard\vendor\symfony\symfony\vendor\symfony\symfony\autoload.php.dist
@@ -63,7 +62,7 @@ class SymfonyPhpUnitTestPack extends OptionalDatabasePhpUnitSourceTestPack {
 							AHost.HALF_HOUR,
 							env,
 							// where cwd is symfony-standard
-							getSourceRoot(host)
+							getSourceRoot(cm, host)
 						);
 				}
 			} else {
