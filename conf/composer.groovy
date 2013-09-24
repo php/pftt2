@@ -1,0 +1,4 @@
+
+def describe() {
+	"Test Composer"
+}

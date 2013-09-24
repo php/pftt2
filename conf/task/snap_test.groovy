@@ -8,7 +8,7 @@ def processConsoleOptions(List options) {
 	//
 	options.add("-c")
 	// test these SAPIs
-	options.add("apache,cli,builtin_web")
+	options.add("apache,cli")//,builtin_web")
 	options.add("-c")
 	// test with and without opcache 
 	options.add("opcache,no_code_cache,not_opcache_builtin_web")
