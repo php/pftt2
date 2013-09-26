@@ -45,7 +45,7 @@ ECHO  Cleanup:
 ECHO  tka_apache    tka_php     tka_windbg     `net use`    stop
 @ECHO.
 ECHO  Useful:
-ECHO  ls            `start .`   windbg   npp   clear
+ECHO  ls            `start .`   windbg   npp   clear  taskmgr
 ECHO  php_sdk       sleep       pftt     cat   info
 @ECHO.
 @prompt $t %COMPUTERNAME% $M$p$g

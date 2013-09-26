@@ -20,7 +20,6 @@ import com.mostc.pftt.results.ConsoleManager;
  *
  */
 
-// TODO need to install sqlncli2008r2-x64.msi or sqlncli2012sp1-x64.msi or -x86 (need -x64 for php-x86 builds on Windows-x64)
 public class MSSQLScenario extends DatabaseScenario {
 	public static final int DEFAULT_MSSQL_PORT = 1433;
 	protected final String host_address;
@@ -45,6 +44,10 @@ public class MSSQLScenario extends DatabaseScenario {
 				public String getODBCDriverName() {
 					return "SQL Server Native Client 10.0";
 				}
+				@Override
+				public boolean isAny() {
+					return false;
+				}
 			},
 		DRIVER11 {
 				@Override
@@ -54,6 +57,10 @@ public class MSSQLScenario extends DatabaseScenario {
 				@Override
 				public String getODBCDriverName() {
 					return "SQL Server Native Client 11.0";
+				}
+				@Override
+				public boolean isAny() {
+					return false;
 				}
 			};
 		
@@ -91,16 +98,6 @@ public class MSSQLScenario extends DatabaseScenario {
 	}
 	
 	@Override
-	public boolean ignoreForShortName(EScenarioSetPermutationLayer layer) {
-		// make sure version is always included in the name of the ScenarioSet
-		return false;
-	}
-	
-	public boolean isPlaceholder(EScenarioSetPermutationLayer layer) {
-		return false; // TODO sometimes should return true?
-	}
-	
-	@Override
 	protected DatabaseScenarioSetup createScenarioSetup(boolean is_production_server) {
 		return new MSSQLDatabaseScenarioSetup();
 	}
@@ -114,8 +111,8 @@ public class MSSQLScenario extends DatabaseScenario {
 			String dll1 = ((EMSSQLVersion)version).getPhpPdoDllName(build.getVersionBranch(cm, host), build.getBuildType(host), base_dir);
 			String dll2 = ((EMSSQLVersion)version).getPhpDllName(build.getVersionBranch(cm, host), build.getBuildType(host), base_dir);
 			
-			host.copy(dll1, build.getDefaultExtensionDir()+"/php_pdo_sqlsrv.dll");
-			host.copy(dll2, build.getDefaultExtensionDir()+"/php_sqlsrv.dll");
+			host.copy(host.joinIntoOnePath(base_dir, dll1), build.getDefaultExtensionDir()+"/php_pdo_sqlsrv.dll");
+			host.copy(host.joinIntoOnePath(base_dir, dll2), build.getDefaultExtensionDir()+"/php_sqlsrv.dll");
 		}
 		
 		@Override
@@ -167,7 +164,7 @@ public class MSSQLScenario extends DatabaseScenario {
 		protected Connection createConnection() throws SQLException {
 			// @see http://jtds.sourceforge.net/faq.html
 			final String url_str = "jdbc:sqlserver://"+getHostname()+":"+getPort()+";user="+getUsername()+";password="+getPassword()+";integratedSecurity=false";
-			System.out.println("url_str "+url_str);
+			
 			return DriverManager.getConnection(url_str);
 		}
 
@@ -199,12 +196,6 @@ public class MSSQLScenario extends DatabaseScenario {
 		}
 		
 	} // end public class MSSQLDatabaseScenarioSetup
-
-	@Override
-	public String getName() {
-		// TODO temp DatabaseScenario should do this for all subclasses
-		return version.getNameWithVersionInfo();
-	}
 
 	@Override
 	public boolean isImplemented() {
