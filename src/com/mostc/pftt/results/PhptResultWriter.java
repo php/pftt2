@@ -135,6 +135,7 @@ public class PhptResultWriter extends AbstractPhptRW {
 			PhptTallyFile tally = new PhptTallyFile();
 			tally.os_name = ""; // TODO host.getOSNameLong();
 			tally.pass = count(EPhptTestStatus.PASS);
+			tally.timeout = count(EPhptTestStatus.TIMEOUT);
 			tally.fail = count(EPhptTestStatus.FAIL);
 			tally.crash = count(EPhptTestStatus.CRASH);
 			tally.skip = count(EPhptTestStatus.SKIP);

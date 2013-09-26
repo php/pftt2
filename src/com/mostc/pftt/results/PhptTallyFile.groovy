@@ -31,6 +31,7 @@ class PhptTallyFile {
 		xml.tally(
 				'os_name': tally.os_name,
 				'pass': tally.pass,
+				'timeout': tally.timeout,
 				'fail': tally.fail,
 				'crash': tally.crash,
 				'skip': tally.skip,

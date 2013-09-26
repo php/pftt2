@@ -160,6 +160,37 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		}
 	}
 	
+	protected boolean single_threaded = false;
+	public synchronized void setSingleThreaded(boolean single_threaded) {
+		if (this.single_threaded==single_threaded)
+			return;
+		this.single_threaded = single_threaded;
+		if (single_threaded) {
+			// kill off all but first thread
+			Iterator<TestPackThread<T>> it = threads.iterator();
+			if (it.hasNext()) {
+				it.next();
+				while (it.hasNext()) {
+					it.next().stopThisThread();
+					it.remove();
+				}
+			}
+		} else {
+			// create threads
+			for ( int i=0 ; i < init_thread_count ; i++ ) { 
+				try {
+					start_thread(false);
+				} catch (IllegalStateException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+	
 	/**
 	 * 
 	 * @param test_cases_read

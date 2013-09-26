@@ -180,6 +180,11 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 	}
 	
 	@Override
+	public boolean isNonInteractive() {
+		return false;
+	}
+	
+	@Override
 	public long getMaxRunTimeMillis() {
 		return 0;
 	}

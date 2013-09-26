@@ -9,6 +9,7 @@ import com.mostc.pftt.model.core.PhpDebugPack;
 
 public interface ConsoleManager {
 	
+	public boolean isNonInteractive();
 	public boolean isNoRestartAll();
 	public boolean isDisableDebugPrompt();
 	public boolean isOverwrite();

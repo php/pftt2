@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.codehaus.groovy.control.MultipleCompilationErrorsException;
 import org.codehaus.groovy.tools.shell.Groovysh;
@@ -48,6 +49,8 @@ import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.LocalConsoleManager;
 import com.mostc.pftt.results.PhpResultPackWriter;
+import com.mostc.pftt.runner.AbstractLocalTestPackRunner;
+import com.mostc.pftt.runner.AbstractTestPackRunner.ETestPackRunnerState;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner;
 import com.mostc.pftt.scenario.INIScenario;
@@ -392,6 +395,7 @@ public class PfttMain {
 		System.out.println("   === UI Options ===");
 		System.out.println(new AlignedTable(2, 85)
 				.addRow("-gui", "show gui for certain commands")
+				.addRow("-ni", "run non-interactive (otherwise can interact on the Console (enter letter, then press <ENTER>)")
 				.addRow("-pause", "after everything is done, PFTT will wait for user to press any key")
 				.addRow("-results_only", "displays only test results and no other information (for automation).")
 				.addRow("-pftt_debug", "shows additional information to help debug problems with PFTT itself"));
@@ -538,18 +542,22 @@ public class PfttMain {
 				test_pack.read(config, test_cases, test_names, tmgr.getConsoleManager(), tmgr, build, true);
 				cm.println(EPrintType.IN_PROGRESS, "PhpUnitSourceTestPack", "enumerated test cases.");
 				
-				
+				AtomicBoolean run_flag = new AtomicBoolean(true);
 				for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_APPLICATION)) {
 				
 					List<AHost> hosts = config.getHosts();
 					AHost host = hosts.isEmpty()?this.host:hosts.get(0);
 					LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, host, host);
 					cm.showGUI(r, test_pack);
+					if (!cm.isNonInteractive())
+						interactive(run_flag, r);
 					
 					r.runTestList(test_pack, test_cases);
 					
 					tmgr.notifyPhpUnitFinished(host, r.getScenarioSetSetup(), test_pack);
 					
+					if (!run_flag.get())
+						return;
 				} // end for (scenario_set)
 			}
 			if (cm.getRunTestPack()>1)
@@ -607,13 +615,19 @@ public class PfttMain {
 				if (!smoke(build, config, tmgr))
 					break;
 				
+				AtomicBoolean run_flag = new AtomicBoolean(true);
 				for (ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_APPLICATION)) {
 					List<AHost> hosts = config.getHosts();
 					AHost host = hosts.isEmpty()?this.host:hosts.get(0);
 					LocalPhpUnitTestPackRunner r = new LocalPhpUnitTestPackRunner(cm, tmgr, scenario_set, build, host, host);
+					if (!cm.isNonInteractive())
+						interactive(run_flag, r);
+					
 					cm.showGUI(r, test_pack);
 					r.runAllTests(config, test_pack);
 					tmgr.notifyPhpUnitFinished(host, r.getScenarioSetSetup(), test_pack);
+					if (!run_flag.get())
+						break;
 				}
 			}
 			if (cm.getRunTestPack()>1)
@@ -629,6 +643,7 @@ public class PfttMain {
 			hosts = new ArrayList<AHost>(1);
 			hosts.add(this.host);
 		}
+		AtomicBoolean run_flag = new AtomicBoolean(true);
 		for ( int i=0 ; i < cm.getRunTestPack() ; i++ ) {
 			if (!smoke(build, config, tmgr))
 				break;
@@ -637,10 +652,14 @@ public class PfttMain {
 				for ( AHost storage_host : hosts ) {
 					LocalPhptTestPackRunner test_pack_runner = new LocalPhptTestPackRunner(tmgr.getConsoleManager(), tmgr, scenario_set, build, storage_host, host, config);
 					cm.showGUI(test_pack_runner);
+					if (!cm.isNonInteractive())
+						interactive(run_flag, test_pack_runner);
 					
 					test_pack_runner.runAllTests(config, test_pack);
 				
 					tmgr.notifyPhptFinished(host, test_pack_runner.getScenarioSetSetup(), test_pack);
+					if (!run_flag.get())
+						return;
 				}
 				
 				//
@@ -672,6 +691,7 @@ public class PfttMain {
 			hosts = new ArrayList<AHost>(1);
 			hosts.add(this.host);
 		}
+		AtomicBoolean run_flag = new AtomicBoolean(true);
 		for ( int i=0 ; i < cm.getRunTestPack() ; i++ ) {
 			for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_CORE) ) {
 				//
@@ -705,11 +725,15 @@ public class PfttMain {
 				
 				for ( AHost storage_host : hosts ) {
 					LocalPhptTestPackRunner test_pack_runner = new LocalPhptTestPackRunner(tmgr.getConsoleManager(), tmgr, scenario_set, build, storage_host, host, config);
+					if (!cm.isNonInteractive())
+						interactive(run_flag, test_pack_runner);
 					cm.showGUI(test_pack_runner);
 					
 					test_pack_runner.runTestList(test_pack, test_cases);
 				
 					tmgr.notifyPhptFinished(host, test_pack_runner.getScenarioSetSetup(), test_pack);
+					if (!run_flag.get())
+						return;
 				}
 				
 				//
@@ -1237,6 +1261,41 @@ public class PfttMain {
 		walkConfDir(conf_dir, conf_dir, nonempty_description);
 	}
 	
+	/** simple console interactivity for AbstractLocalTestPackRunner
+	 * 
+	 * @param run_flag
+	 * @param runner
+	 */
+	protected static void interactive(final AtomicBoolean run_flag, final AbstractLocalTestPackRunner<?,?,?> runner) {
+		new Thread() {
+				public void run() {
+					try {
+						boolean started = false;
+						while (!started || runner.getState()==ETestPackRunnerState.RUNNING) {
+							char c = (char) System.in.read();
+							started = runner.getState()==ETestPackRunnerState.RUNNING;
+							if (c=='x'||c=='X'||c=='c'||c=='C') {
+								runner.setState(ETestPackRunnerState.NOT_RUNNING);
+								run_flag.set(false);
+							} else if (c=='1'||c=='0') {
+								runner.setSingleThreaded(true);
+							} else if (c=='9'||c=='m'||c=='M') {
+								runner.setSingleThreaded(false);
+							} else if (c=='s'||c=='S') {
+								runner.setState(ETestPackRunnerState.NOT_RUNNING);
+							} else if (c=='\n'||c=='\r') {
+							} else if (c>-1) {
+								System.out.println("Interactive Help: X<enter> - exit | S<enter> - skip ScenarioSet");
+								System.out.println("Interactive Help: 1<enter> - run 1 test-pack thread only | 9<enter> - run multiple test-pack threads");
+							}
+						}
+					} catch ( Exception ex ) {
+						ex.printStackTrace();
+					}
+				}
+			}.start();
+	}
+	
 	public static void main(String[] args) throws Throwable {
 		// 
 		if (args.length > 0 && args[0].equals("sleep")) {
@@ -1253,7 +1312,7 @@ public class PfttMain {
 		int args_i = 0;
 		
 		Config config = null;
-		boolean is_uac = false, debug = false, randomize_order = false, no_result_file_for_pass_xskip_skip = false, pftt_debug = false, show_gui = false, overwrite = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false, thread_safety = true, skip_smoke_tests = false, pause = false, restart_each_test_all = false, no_restart_all = false, ignore_unknown_option = false, ini_actual_all = false;
+		boolean is_uac = false, debug = false, randomize_order = false, no_result_file_for_pass_xskip_skip = false, pftt_debug = false, show_gui = false, overwrite = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false, thread_safety = true, skip_smoke_tests = false, pause = false, restart_each_test_all = false, no_restart_all = false, ignore_unknown_option = false, ini_actual_all = false, non_interactive = false;
 		long max_run_time_millis = 0;
 		int run_test_times_all = 1, run_test_pack = 1, delay_between_ms = 0, run_test_times_list_times = 1, run_group_times_all = 1, run_group_times_list_times = 1, max_test_read_count = 0, thread_count = 0, run_count = 0, suspend_seconds = 0;
 		LinkedList<String> debug_list = new LinkedList<String>();
@@ -1337,9 +1396,12 @@ public class PfttMain {
 				phpt_not_in_place = true;
 			} else if (args[args_i].equals("-dont_cleanup_test_pack")) {
 				dont_cleanup_test_pack = true;
+			} else if (args[args_i].equals("-ni")) {
+				non_interactive = true;
 			} else if (args[args_i].equals("-auto")) {
 				// change these defaults for automated testing
 				disable_debug_prompt = true;
+				non_interactive = true;
 				results_only = false;
 				dont_cleanup_test_pack = false;
 				phpt_not_in_place = true;
@@ -1500,7 +1562,7 @@ public class PfttMain {
 		cm = new LocalConsoleManager(source_pack, debug_pack, overwrite, debug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug, no_result_file_for_pass_xskip_skip, randomize_order, run_test_times_all, run_test_pack, 
 				thread_safety, run_test_times_list_times, run_group_times_all, run_group_times_list_times, debug_list, run_test_times_list, run_group_times_list, skip_list,
 				skip_smoke_tests, max_test_read_count, thread_count, restart_each_test_all, no_restart_all, delay_between_ms,
-				run_count, suspend_seconds, ini_actual_all, max_run_time_millis);
+				run_count, suspend_seconds, ini_actual_all, max_run_time_millis, non_interactive);
 		p.cm = cm;
 		
 		if (command!=null) {
