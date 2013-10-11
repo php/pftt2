@@ -465,7 +465,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 			host.download7ZipFileAndDecompress(cm, getClass(), test_pack, this.host, remote_test_pack_dir);
 		} else {
 			// installing from 1 remote host(src) to a different remote host (dst)
-			LocalHost local_host = new LocalHost();
+			LocalHost local_host = LocalHost.getInstance();
 			
 			// decide file names
 			String local_7zip_file = local_host.mktempname(getClass(), ".7z");
@@ -510,7 +510,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 				host.download(test_pack+"/"+test_case.getName(), test_pack_dir+"/"+test_case.getName());
 		} else {
 			// installing from 1 remote host to a different remote host
-			LocalHost local_host = new LocalHost();
+			LocalHost local_host = LocalHost.getInstance();
 			String local_dir = local_host.mktempname(getClass());
 			downloadNonTestCaseFiles(this.host, test_pack, test_pack_dir);
 			for ( PhptTestCase test_case : test_cases )

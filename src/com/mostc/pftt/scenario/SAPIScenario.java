@@ -142,6 +142,8 @@ public abstract class SAPIScenario extends AbstractSerialScenario {
 			"zend/tests/objects_010.phpt"
 		);
 	public static Trie RANDOMLY_FAIL = PhptTestCase.createNamed(
+			// this test (at least the CLI scenario on Windows) opens a text editor (blocks until user manually closes it)
+			"sapi/cli/tests/021.phpt",
 			// these tests randomly fail (ignore them)
 			"ext/standard/tests/network/gethostbyname_error006.phpt",
 			"ext/standard/tests/network/shutdown.phpt",

@@ -1,11 +1,13 @@
 package com.mostc.pftt.host;
 
 import java.lang.ref.SoftReference;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class CommonCommandManager {
-	protected SoftReference<String[]> process_table_query;
+	protected SoftReference<List<Win32ProcessInfo>> process_table_query;
 	protected final ReentrantLock process_table_query_lock, win_close_all_handles_lock, win_kill_process_lock;
 	
 	public CommonCommandManager() {
@@ -95,8 +97,18 @@ public class CommonCommandManager {
 		}
 	}
 	
+	protected static class Win32ProcessInfo {
+		public final String exe_path;
+		public final int pid, parent_pid;
+		
+		protected Win32ProcessInfo(String exe_path, int pid, int parent_pid) {
+			this.exe_path = exe_path;
+			this.pid = pid;
+			this.parent_pid = parent_pid;
+		}
+	}
 	
-	protected String[] getWindowsProcessTable(AHost host) {
+	protected List<Win32ProcessInfo> getWindowsProcessTable(AHost host) {
 		// lock if no other thread is waiting
 		final boolean no_other_thread_is_waiting = process_table_query_lock.tryLock();
 
@@ -105,27 +117,38 @@ public class CommonCommandManager {
 			process_table_query_lock.lock();
 		
 		
-		String[] lines = null;
+		List<Win32ProcessInfo> table = null;
 		if (process_table_query!=null)
-			lines = process_table_query.get();
+			table = process_table_query.get();
 		
-		if (lines==null||no_other_thread_is_waiting) {
+		if (table==null||no_other_thread_is_waiting) {
 			// only query again if:
 			//    a. no query result cached
 			//    b. didn't have to wait for another thread
 			//          if did have to wait for another thread, use the cached query result if available
 			//          to limit the number of WMIC processes that are launched
+			table = new ArrayList<Win32ProcessInfo>(400);
+			String[] lines;
 			try {
-				// run wmic to find all the werfault.exe processes
-				lines = host.execOut("WMIC path win32_process get Processid,Commandline", 20).getLines();
+				lines = host.execOut("WMIC path win32_process GET ExecutablePath,Processid,ParentProcessId", 20).getLines();
+			
+				for ( String line : lines ) {
+					String[] parts = line.split("[ |\\t]{2,}");
+					
+					if (parts.length!=3||parts[0].equals("ExecutablePath")||parts[0].length()==0)
+						continue;
+					
+					table.add(new Win32ProcessInfo(parts[0], Integer.parseInt(parts[2]), Integer.parseInt(parts[1])));
+				}
 			} catch ( Exception ex ) {
+				ex.printStackTrace();
 			}
 			
-			process_table_query = new SoftReference<String[]>(lines);
+			process_table_query = new SoftReference<List<Win32ProcessInfo>>(table);
 		}
 		process_table_query_lock.unlock();
 		
-		return lines;
+		return table;
 	}
 	
 	/** finds and kills any WERFault.exe processes (WER popup message) created for given process.
@@ -138,12 +161,12 @@ public class CommonCommandManager {
 	 * @param process_id
 	 */
 	public boolean ensureWERFaultIsNotRunning(AHost host, int process_id) {
-		String[] lines = getWindowsProcessTable(host);
+		List<Win32ProcessInfo> lines = getWindowsProcessTable(host);
 		
 		if (lines==null)
 			return false; // just in case
 		
-		String prev_line = "";
+		/* TODO temp String prev_line = "";
 		for ( String line : lines ) {
 			line = line.toLowerCase();
 			// search werfault.exe process list for a werfault.exe created for process_id
@@ -157,18 +180,18 @@ public class CommonCommandManager {
 				return true;
 			}
 			prev_line = line;
-		}
+		}*/
 		return false;
 	}
 	
 	public boolean ensureWinDebugIsNotRunning(LocalHost host, int pid) {
 		// look for `windbg [other args] -p <process id> [other args]`
-		String[] lines = getWindowsProcessTable(host);
+		List<Win32ProcessInfo> lines = getWindowsProcessTable(host);
 		
 		if (lines==null)
 			return false; // just in case
 		
-		String prev_line = "";
+		/* TODO temp String prev_line = "";
 		for ( String line : lines ) {
 			line = line.toLowerCase();
 			// @see WinDebugManager for command line args
@@ -185,7 +208,7 @@ public class CommonCommandManager {
 				return true;
 			}
 			prev_line = line;
-		}
+		}*/
 		return false;
 	}
 	

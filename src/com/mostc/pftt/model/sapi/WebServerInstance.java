@@ -248,7 +248,7 @@ public abstract class WebServerInstance extends SAPIInstance implements IWebServ
 	
 	@Override
 	protected String doGetIniActual(String php_code) throws IllegalStateException, IOException {
-		return httpGet("ini_get_all.php", php_code);
+		return httpGet("/ini_get_all.php", php_code);
 	}
 	
 } // end public abstract class WebServerInstance

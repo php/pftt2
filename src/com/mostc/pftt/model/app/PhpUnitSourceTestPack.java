@@ -428,7 +428,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 
 	@Override
 	public PhpUnitActiveTestPack installInPlace(ConsoleManager cm, AHost host) throws Exception {
-		final String src_root = getSourceRoot(cm, new LocalHost());
+		final String src_root = getSourceRoot(cm, LocalHost.getInstance());
 		addIncludeDirectory(src_root);
 		if (!new File(src_root).isDirectory()) {
 			throw new IOException("source-test-pack not found: "+src_root);
@@ -442,7 +442,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 
 	@Override
 	public PhpUnitActiveTestPack installNamed(ConsoleManager cm, AHost host, String string, List<PhpUnitTestCase> test_cases) throws IllegalStateException, IOException, Exception {
-		final String src_root = getSourceRoot(cm, new LocalHost());
+		final String src_root = getSourceRoot(cm, LocalHost.getInstance());
 		addIncludeDirectory(src_root);
 		if (!new File(src_root).isDirectory()) {
 			throw new IOException("source-test-pack not found: "+src_root);
@@ -458,7 +458,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	public PhpUnitActiveTestPack install(ConsoleManager cm, AHost host,
 			String local_test_pack_dir, String remote_test_pack_dir)
 			throws IllegalStateException, IOException, Exception {
-		LocalHost local_host = new LocalHost();
+		LocalHost local_host = LocalHost.getInstance();
 		final String src_root = getSourceRoot(cm, local_host);
 		addIncludeDirectory(src_root);
 		if (!new File(src_root).isDirectory()) {

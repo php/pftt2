@@ -343,7 +343,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 	public void close(ConsoleManager cm) {
 		super.close(cm);
 		
-		LocalHost host = new LocalHost();
+		LocalHost host = LocalHost.getInstance();
 		host.delete(host.getTempDir()+"/PFTT-ApacheManager-*");
 	}
 

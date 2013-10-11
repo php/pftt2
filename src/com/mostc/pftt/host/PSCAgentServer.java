@@ -50,7 +50,7 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 	protected final LinkedList<String> run_test_times_list, run_group_times_list, skip_list;
 	
 	public PSCAgentServer() {
-		host = new LocalHost();
+		host = LocalHost.getInstance();
 		
 		run_test_times_list = new LinkedList<String>();
 		run_group_times_list = new LinkedList<String>();

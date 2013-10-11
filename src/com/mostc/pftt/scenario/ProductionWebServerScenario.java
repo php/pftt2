@@ -21,22 +21,22 @@ public abstract class ProductionWebServerScenario extends WebServerScenario {
 	
 	@Override
 	public int getApprovedInitialThreadPoolSize(AHost host, int threads) {
-		return host.getCPUCount() * 8;
+		return host.getCPUCount() * 3;
 	}
 	
 	@Override
 	public int getApprovedMaximumThreadPoolSize(AHost host, int threads) {
-		return host.getCPUCount() * 16;
+		return host.getCPUCount() * 4;
 	}
 	
 	@Override
 	public int getSlowTestTimeSeconds() {
-		return 12;
+		return 3;
 	}
 	
 	@Override
 	public long getFastTestTimeSeconds() {
-		return 8;
+		return 9;
 	}
 	
 	@Override

@@ -1,5 +1,6 @@
 package com.mostc.pftt.model.sapi;
 
+import java.io.IOException;
 import java.util.Map;
 
 import com.mostc.pftt.host.AHost;
@@ -81,6 +82,11 @@ public class CrashedWebServerInstance extends WebServerInstance {
 	@Override
 	public String getDocroot() {
 		return null;
+	}
+	
+	@Override
+	protected String httpGet(String url_str, String php_code) throws IllegalStateException, IOException {
+		return "";
 	}
 
 	@Override

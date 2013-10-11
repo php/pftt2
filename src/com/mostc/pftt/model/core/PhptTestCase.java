@@ -125,6 +125,7 @@ public class PhptTestCase extends TestCase {
 	private PhptSourceTestPack test_pack;
 	private CharsetICU common_charset;
 	private CharsetEncoder ce;
+	public boolean redo; // TODO temp
 	
 	/** loads the named PHPT test from the given PhptSourceTestPack
 	 * 

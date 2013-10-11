@@ -121,6 +121,8 @@ public class PhptResultReader extends AbstractPhptRW {
 		StatusListEntry e = status_list_map.get(status);
 		if (e==null)
 			return 0;
+		else if (status==EPhptTestStatus.TIMEOUT||status==EPhptTestStatus.PASS)
+			return e.count;
 		check(status, e.test_names);
 		return e.test_names.size();
 	}

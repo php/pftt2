@@ -8,7 +8,7 @@ import java.util.LinkedList;
 
 import com.github.mattficken.io.ArrayUtil;
 import com.mostc.pftt.host.AHost;
-import com.mostc.pftt.host.LocalHost;
+import com.mostc.pftt.host.WindowsLocalHost;
 import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.PhpBuildInfo;
 import com.mostc.pftt.scenario.ScenarioSet;
@@ -472,7 +472,7 @@ public class PhpResultPackReader extends PhpResultPack {
 			if (f.isDirectory()) {
 				// TODO temp
 				final String name = f.getName();
-				hosts.add(new LocalHost() {
+				hosts.add(new WindowsLocalHost() {
 						public String getName() {
 							return name;
 						}

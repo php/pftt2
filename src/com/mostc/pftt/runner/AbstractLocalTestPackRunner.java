@@ -600,12 +600,13 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 					// run a timer task while the test is running to kill the test if it takes too long
 					//
 					// wait a while before killing it (double the max runtime for the test)
-					if (!thread.shouldRun()||(test_run_start_time>0&&Math.abs(System.currentTimeMillis()-test_run_start_time)>120000)) {
+					// TODO temp
+					if (!thread.shouldRun()||(test_run_start_time>0&&Math.abs(System.currentTimeMillis()-test_run_start_time)>PhptTestCase.MAX_TEST_TIME_SECONDS*2000)) {
 						// thread running too long
 						if (thread.isDebuggerAttached()) {
 							not_running = false; // keep running
 							break;
-						} else if (thread.jobs==null||!thread.jobs.isEmpty()||(thread.ext!=null&&!thread.ext.test_groups.isEmpty())) {
+						} else if ((thread.jobs!=null&&!thread.jobs.isEmpty())||(thread.ext!=null&&!thread.ext.test_groups.isEmpty())) {
 							thread.replaceThisThread();
 							threads.remove(thread);
 						} else {
@@ -614,7 +615,11 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 							threads.remove(thread);
 						}
 						continue;
-					} 
+					} else if (Math.abs(System.currentTimeMillis()-test_run_start_time)>=sapi_scenario.getSlowTestTimeSeconds()*1000) {
+						if (thread.canCreateNewThread()) {
+							thread.createNewThread();
+						}
+					}
 				}
 				if (not_running) {
 					// no threads have jobs left to do, stop waiting
@@ -754,19 +759,23 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			TestPackThread.this.interrupt();
 		}
 		
+		AtomicBoolean break_nts = new AtomicBoolean(false);
 		protected void runNonThreadSafe() throws InterruptedException {
 			while(shouldRun()) {
 				ext = non_thread_safe_exts.poll();
 				if (ext==null)
 					break;
 				
-				while (shouldRun()) {
+				break_nts.set(false);
+				while (shouldRun()&&!break_nts.get()) {
 					// #peek not #poll to leave group in ext.test_groups in case thread gets replaced (@see #stopThisThread)
 					group = ext.test_groups.peek();
 					if (group==null)
 						break;
 					
-					exec_jobs(group.group_key, group.test_cases);
+					exec_jobs(true, group.group_key, group.test_cases);
+					if (break_nts.get())
+						break;
 					while (ext.test_groups.remove(group)) {}
 				}
 			}
@@ -783,10 +792,23 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 				} else if (group.test_cases.isEmpty()) {
 					while (thread_safe_groups.remove(group)) {}
 				} else {
-					exec_jobs(group.group_key, group.test_cases);
+					exec_jobs(false, group.group_key, group.test_cases);
 				}
 			}
 		} // end protected void runThreadSafe
+		
+		public void redo(T test_case) {
+			test_count.decrementAndGet(); // TODO temp
+			if (ext==null) {
+				// ts
+				group.test_cases.add(test_case);
+			} else {
+				// nts
+				group.test_cases.add(test_case);
+				non_thread_safe_exts.add(ext);
+				break_nts.set(true);
+			}
+		}
 		
 		@Override
 		public UncaughtExceptionHandler getUncaughtExceptionHandler() {
@@ -804,7 +826,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		
 		protected abstract void prepareExec(TestCaseGroupKey group_key, PhpIni ini, Map<String,String> env, IScenarioSetup s);
 		
-		protected void exec_jobs(TestCaseGroupKey group_key, LinkedBlockingQueue<T> jobs) {
+		protected void exec_jobs(boolean nts, TestCaseGroupKey group_key, LinkedBlockingQueue<T> jobs) {
 			this.group_key = group_key;
 			LinkedList<T> completed_tests = new LinkedList<T>();
 			this.jobs = jobs;
@@ -814,7 +836,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 				prepareExec(group_key, group_key.getPhpIni(), group_key.getEnv(), s);
 			}
 			
-			while (shouldRun()) {
+			while (shouldRun()&&(!nts||!break_nts.get())) {
 				//
 				test_case = null;
 				try {
@@ -903,10 +925,11 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 						
 						// if test took too long OR tests are running fast now
 						// TODO temp test decreasing threads when getting lots of timeouts
-						if (Math.abs(System.currentTimeMillis() - test_run_start_time.get()) > 60
-								||
-								Math.abs(System.currentTimeMillis() - test_run_start_time.get()) < sapi_scenario.getFastTestTimeSeconds()) {
+						if (//Math.abs(System.currentTimeMillis() - test_run_start_time.get()) > 60
+								//||
+								Math.abs(System.currentTimeMillis() - test_run_start_time.get()) < sapi_scenario.getFastTestTimeSeconds()*1000) {
 							// scale back down (decrease number of threads)
+							cm.println(EPrintType.CLUE, getClass(), "Thread Pool: SCALE DOWN");
 							Iterator<TestPackThread<T>> it = scale_up_threads.iterator();
 							TestPackThread<T> slow;
 							while (it.hasNext()) {
@@ -969,6 +992,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		@Override
 		protected void createNewThread() {
 			// scale up to handle cluster of slower test cases
+			cm.println(EPrintType.CLUE, getClass(), "Thread Pool: SCALE UP");
 			try {
 				scale_up_threads.add(start_thread(parallel));
 			} catch ( Throwable t ) {

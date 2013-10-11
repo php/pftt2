@@ -29,7 +29,6 @@ import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 import com.mostc.pftt.scenario.CliScenario;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
-import com.mostc.pftt.util.NTStatus;
 
 /** one of the core classes. runs a PhptTestCase.
  * 
@@ -235,24 +234,32 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	@Override
 	protected String executeTest() throws Exception { 
 		String output_str = doExecuteTest();
-		
-		if (running_test_handle.isCrashed()
-				&& running_test_handle.getExitCode() != -2
-				&& running_test_handle.getExitCode() != NTStatus.STATUS_ACCESS_VIOLATION
-				) {
-			// try again to be sure
-			running_test_handle = null;
-			
-			output_str = doExecuteTest();
-		}
-		
+		System.out.println("237 "+test_case);
 		if (running_test_handle.isTimedOut() || (running_test_handle.getExitCode()==-1 && exe_type==EExecutableType.CGI)) {
 			// if test took longer than 1 minute, OR
 			// test is using php-cgi.exe and exited with -1
 			//    (which means file not found, but count it as a timeout)
 			is_timeout = true;
+		}
+		/*if (output_str.length()==0
+				|| is_timeout  
+				|| (running_test_handle.isCrashed()
+						&& running_test_handle.getExitCode() != -2
+						&& running_test_handle.getExitCode() != NTStatus.STATUS_ACCESS_VIOLATION
+				)) {
+			// try again to be sure
+			running_test_handle = null;
 			
-		} else if (running_test_handle.isCrashed()) {
+			output_str = doExecuteTest();
+			
+			if (running_test_handle.isTimedOut() || (running_test_handle.getExitCode()==-1 && exe_type==EExecutableType.CGI)) {
+				is_timeout = true;
+			} else {
+				is_timeout = false;
+			}
+		}*/
+		
+		if (!is_timeout && running_test_handle.isCrashed()) {
 			not_crashed = false; // @see #runTest
 			
 			int exit_code = running_test_handle.getExitCode();
@@ -264,6 +271,21 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		
 		return output_str;
 	} // end String executeTest
+	
+	@Override
+	protected PhptTestResult notifyNotPass(PhptTestResult result) {
+		// TODO temp
+		// try FAIL TIMEOUT XFAIL_WORKS
+		/*if (result.status!=EPhptTestStatus.CRASH && test_case.redo!=true) {
+			test_case.redo = true;
+			this.thread.redo(test_case);
+
+			// signal not to record this attempt
+			return null;
+		} else {*/
+			return super.notifyNotPass(result);
+		//}
+	}
 	
 	@Override
 	protected void executeClean() throws Exception {

@@ -500,52 +500,56 @@ public abstract class DatabaseScenario extends NetworkedServiceScenario {
 		private boolean close_called = false;
 		@Override
 		public final synchronized void close(final ConsoleManager cm) {
-			if (this instanceof ProxyDatabaseScenarioSetup) {
-				synchronized(((ProxyDatabaseScenarioSetup)this).r.proxies) {
-					((ProxyDatabaseScenarioSetup)this).r.proxies.remove(this);
+			try {
+				if (this instanceof ProxyDatabaseScenarioSetup) {
+					synchronized(((ProxyDatabaseScenarioSetup)this).r.proxies) {
+						((ProxyDatabaseScenarioSetup)this).r.proxies.remove(this);
+					}
+					// ask real to close (which it will do if this was the last proxy and it was already asked to close)
+					((ProxyDatabaseScenarioSetup)this).r.close(cm);
+					return;
 				}
-				// ask real to close (which it will do if this was the last proxy and it was already asked to close)
-				((ProxyDatabaseScenarioSetup)this).r.close(cm);
-				return;
-			}
-			if (close_called && proxies.isEmpty()) {
-				// now close
-			} else if (!proxies.isEmpty()) {
-				// wait for all proxies to be closed
-				close_called = true;
-				return;
-			}
-			
-			if (!(cm.isDebugAll()||cm.isDebugList()||cm.isPfttDebug())) {
-				TimerUtil.runThread(new Runnable() {
-						public void run() {
-							dropDatabase(db_name);
+				if (close_called && proxies.isEmpty()) {
+					// now close
+				} else if (!proxies.isEmpty()) {
+					// wait for all proxies to be closed
+					close_called = true;
+					return;
+				}
+				
+				if (!(cm.isDebugAll()||cm.isDebugList()||cm.isPfttDebug())) {
+					TimerUtil.runThread(new Runnable() {
+							public void run() {
+								dropDatabase(db_name);
+							}
+						});
+					TimerUtil.trySleepSeconds(2);
+				}
+				
+				synchronized(setups) {
+					setups.remove(this);
+				}
+				cm.println(EPrintType.IN_PROGRESS, getClass(), "Stopping database server...");
+				final boolean is_production_server = production_setup == this;
+				// sometimes #stopServer can take too long. call it in thread so it can be timed out if it takes too long
+				WaitableRunnable<Boolean> r = TimerUtil.runWaitSeconds("DatabaseServerStop", 30, new ObjectRunnable<Boolean>() {
+						public Boolean run() {
+							return stopServer(cm, is_production_server);
 						}
 					});
-				TimerUtil.trySleepSeconds(2);
+				if (r!=null&&r.getResult()) {
+					server_started = false;
+					cm.println(EPrintType.CLUE, getClass(), "Stopped database server");
+				} else {
+					server_started = true;
+					cm.println(EPrintType.CLUE, getClass(), "Failed to stop database server");
+				}
+				// disconnect after stopping the server: sometimes the disconnect process can fail
+				//      (sometimes tests really mess up the db server)
+				disconnect();
+			} catch ( Throwable t ) {
+				t.printStackTrace();
 			}
-			
-			synchronized(setups) {
-				setups.remove(this);
-			}
-			cm.println(EPrintType.IN_PROGRESS, getClass(), "Stopping database server...");
-			final boolean is_production_server = production_setup == this;
-			// sometimes #stopServer can take too long. call it in thread so it can be timed out if it takes too long
-			WaitableRunnable<Boolean> r = TimerUtil.runWaitSeconds("DatabaseServerStop", 30, new ObjectRunnable<Boolean>() {
-					public Boolean run() {
-						return stopServer(cm, is_production_server);
-					}
-				});
-			if (r.getResult()) {
-				server_started = false;
-				cm.println(EPrintType.CLUE, getClass(), "Stopped database server");
-			} else {
-				server_started = true;
-				cm.println(EPrintType.CLUE, getClass(), "Failed to stop database server");
-			}
-			// disconnect after stopping the server: sometimes the disconnect process can fail
-			//      (sometimes tests really mess up the db server)
-			disconnect();
 		}
 
 		@Override

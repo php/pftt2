@@ -148,7 +148,7 @@ public abstract class SMBScenario extends RemoteFileSystemScenario {
 		}
 		
 		protected void disposeForce(ActiveTestPack active_test_pack) {
-			closeForce(null, new LocalHost(), active_test_pack);
+			closeForce(null, LocalHost.getInstance(), active_test_pack);
 		}
 		
 		@Override

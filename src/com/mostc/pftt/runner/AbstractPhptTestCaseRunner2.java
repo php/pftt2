@@ -450,7 +450,12 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	 * @throws Throwable
 	 */
 	protected void evalTest(String output, Charset charset) throws Throwable {
-		// line endings are already made consistent by Host#exec
+		if (true) {
+			twriter.addResult(host, scenario_set, src_test_pack, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null, getSAPIOutput(), getSAPIConfig(), code_coverage)));
+			
+			return;
+		}
+		// Windows: line endings are already made consistent by AHost#exec*
 		String expected, preoverride_actual = null;
 	
 		if (test_case.containsSection(EPhptSection.EXPECTF) || test_case.containsSection(EPhptSection.EXPECTREGEX)) {
@@ -561,7 +566,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			output = remove_header_from_output(output);
 			String output_trim = output.trim();
 			
-			if (StringUtil.isEmpty(output_trim)||(output.contains("<html>")&&!output.contains("404"))) {
+			if (StringUtil.isEmpty(output_trim)||(this instanceof HttpPhptTestCaseRunner&&output.contains("<html>")&&!output.contains("404"))) {
 				twriter.addResult(host, scenario_set, src_test_pack, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual, getSAPIOutput(), getSAPIConfig(), code_coverage)));
 				
 				return;
@@ -589,6 +594,8 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		} else {
 			result = notifyNotPass(notifyFail(new PhptTestResult(host, is_timeout?EPhptTestStatus.TIMEOUT:EPhptTestStatus.FAIL, test_case, output, actual_lines, expected_lines, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), diff, expectf, preoverride_actual, getSAPIOutput(), getSAPIConfig(), code_coverage)));
 		}
+		if (result==null)
+			return; // redoing
 		
 		//
 		// set result#regex_compiler_dump and result#regex_output dump if test result is FAIL or XFAIL_WORKS and test has an EXPECTF or EXPECTREGEX section

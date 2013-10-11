@@ -31,6 +31,38 @@ public abstract class AbstractPhptRW extends AbstractTestResultRW {
 		if (status==EPhptTestStatus.FAIL) {
 			// TODO temp
 		 	
+			names.remove("ext/mbstring/tests/bug43841.phpt");
+			names.remove("ext/mbstring/tests/mb_strrchr_error2.phpt");
+			names.remove("ext/mbstring/tests/mb_substr_count_variation1.phpt");
+			names.remove("ext/standard/tests/file/fscanf_variation15.phpt");
+			names.remove("ext/standard/tests/streams/stream_set_chunk_size.phpt");
+			names.remove("ext/standard/tests/strings/bug25671.phpt");
+			names.remove("ext/standard/tests/strings/htmlentities01.phpt");
+			names.remove("ext/standard/tests/strings/htmlspecialchars_decode_error.phpt");
+			names.remove("ext/standard/tests/strings/strstr.phpt");
+			names.remove("ext/tokenizer/tests/token_get_all_variation13.phpt");
+			names.remove("zend/tests/bug31102.phpt");
+			names.remove("zend/tests/class_alias_005.phpt");
+			names.remove("ext/spl/tests/splfileobject_fputcsv_error.phpt");
+			names.remove("ext/intl/tests/msgfmt_format_error6.phpt");
+			names.remove("ext/ctype/tests/ctype_print_error.phpt");
+			names.remove("ext/mysqli/tests/mysqli_fetch_assoc_bit.phpt");
+			names.remove("ext/mysqli/tests/mysqli_field_tell.phpt");
+			names.remove("ext/mysqli/tests/mysqli_query_stored_proc.phpt");
+			names.remove("ext/standard/tests/network/gethostbyname_error004.phpt");
+			names.remove("tests/basic/029.phpt");
+			names.remove("ext/xsl/tests/xslt006.phpt");
+			names.remove("ext/xsl/tests/xsltprocessor_removeparameter.phpt");
+			names.remove("zend/tests/multibyte/multibyte_encoding_004.phpt");
+			names.remove("ext/mbstring/tests/mb_decode_numericentity.phpt");
+			names.remove("ext/standard/tests/array/array_diff_ukey_variation7.phpt");
+			names.remove("ext/standard/tests/array/end_basic.phpt");
+			names.remove("ext/standard/tests/class_object/get_class_methods_variation_002.phpt");
+			names.remove("ext/standard/tests/array/usort_variation7.phpt");
+			names.remove("ext/standard/tests/array/usort_variation4.phpt");
+			names.remove("ext/standard/tests/array/bug30266.phpt");
+			names.remove("ext/spl/tests/recursiveiteratoriterator_nextelement_error.phpt");
+			names.remove("ext/standard/tests/array/bug35821.phpt");
 			names.remove("ext/mysqli/tests/mysqli_disable_reads_from_master.phpt");
 			names.remove("ext/mysqli/tests/mysqli_fetch_field_direct.phpt");
 			names.remove("ext/mysqli/tests/mysqli_fetch_row.phpt");

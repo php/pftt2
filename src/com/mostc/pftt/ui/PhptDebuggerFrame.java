@@ -137,7 +137,7 @@ public class PhptDebuggerFrame extends JPanel {
 		menubar.add("right", telemetry_filter_panel); 
 		add("p left hfill", menubar);
 		
-		tabs.addTab("Localhost", localhost_tab = new PhptHostTab(new LocalHost(), phpt_test_pack_runner));
+		tabs.addTab("Localhost", localhost_tab = new PhptHostTab(LocalHost.getInstance(), phpt_test_pack_runner));
 	}
 	
 	public void showResult(AHost host, int total, int completed, PhptTestResult result) {

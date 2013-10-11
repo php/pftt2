@@ -58,12 +58,23 @@ public class CliScenario extends SAPIScenario {
 	
 	@Override
 	public int getApprovedInitialThreadPoolSize(AHost host, int threads) {
-		return host.getCPUCount() * 4;// TODO 12;
+		return host.getCPUCount() * 2;
 	}
 	
 	@Override
 	public int getApprovedMaximumThreadPoolSize(AHost host, int threads) {
-		return host.getCPUCount() * 8;//16;
+		return host.getCPUCount() * 4;
+	}
+	
+
+	@Override
+	public int getSlowTestTimeSeconds() {
+		return 4;
+	}
+
+	@Override
+	public long getFastTestTimeSeconds() {
+		return 10;
 	}
 	
 	@Override
@@ -276,16 +287,6 @@ public class CliScenario extends SAPIScenario {
 		}
 		return false;
 	} // end public boolean willSkip
-
-	@Override
-	public int getSlowTestTimeSeconds() {
-		return 15;
-	}
-
-	@Override
-	public long getFastTestTimeSeconds() {
-		return 7;
-	}
 
 	@Override
 	public void sortTestCases(List<PhptTestCase> test_cases) {

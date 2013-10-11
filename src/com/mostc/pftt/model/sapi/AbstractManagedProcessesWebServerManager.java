@@ -367,7 +367,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 	private static AtomicInteger active_debugger_count = new AtomicInteger();
 	private static int max_active_debuggers;
 	static {
-		max_active_debuggers = Math.max(2, Math.min(8, new LocalHost().getCPUCount()));
+		max_active_debuggers = Math.max(2, Math.min(8, LocalHost.getInstance().getCPUCount()));
 	}
 	
 	/** can have only a limited number of debuggers running, this will

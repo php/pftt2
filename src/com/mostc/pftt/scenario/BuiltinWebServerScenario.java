@@ -65,12 +65,22 @@ public class BuiltinWebServerScenario extends WebServerScenario {
 	@Override
 	public int getApprovedInitialThreadPoolSize(AHost host, int threads) {
 		// XXX update this calculation from time to time as this web server's performance improves (probably decrease number)
-		return host.getCPUCount() * 4;
+		return host.getCPUCount() * 3;
 	}
 	
 	@Override
 	public int getApprovedMaximumThreadPoolSize(AHost host, int threads) {
-		return host.getCPUCount() * 6;
+		return host.getCPUCount() * 4;
+	}
+	
+	@Override
+	public int getSlowTestTimeSeconds() {
+		return 15;
+	}
+	
+	@Override
+	public long getFastTestTimeSeconds() {
+		return 30;
 	}
 	
 	@Override
@@ -362,15 +372,5 @@ public class BuiltinWebServerScenario extends WebServerScenario {
 				"tests/lang/short_tags.002.phpt",*/
 				"zend/tests/errmsg_021.phpt"
 			);
-
-	@Override
-	public int getSlowTestTimeSeconds() {
-		return 40;
-	}
-	
-	@Override
-	public long getFastTestTimeSeconds() {
-		return 30;
-	}
 
 } // end public class BuiltinWebServerScenario
