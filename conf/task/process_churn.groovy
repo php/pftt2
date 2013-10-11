@@ -5,5 +5,5 @@ def describe() {
 
 def processConsoleOptions(List options) {
 	options.add("-thread_count");
-	options.add(""+( 24 * new LocalHost().getCPUCount()));
+	options.add(""+( 24 * LocalHost.getInstance().getCPUCount()));
 }

@@ -27,7 +27,7 @@ import java.util.Hashtable;
  * @author <a href="mailto:jonl@muppetlabs.com">Jonathan Locke</a>
  * @version $Id: REDebugCompiler.java 518169 2007-03-14 15:03:35Z vgritsenko $
  */
-public class REDebugCompiler extends RECompiler
+public class REDebugCompiler extends RECompiler 
 {
     /**
      * Mapping from opcodes to descriptive strings

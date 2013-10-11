@@ -29,7 +29,7 @@ def processConsoleOptions(List options) {
 	// threads take more CPU time to do the analysis, etc...
 	// so run fewer threads
 	options.add("-thread_count");
-	options.add(""+( 1 * new LocalHost().getCPUCount()));
+	options.add(""+( 1 * LocalHost.getInstance().getCPUCount()));
 }
 
 def processUITestResult() {

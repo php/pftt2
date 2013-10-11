@@ -9,7 +9,7 @@ def processConsoleOptions(List options) {
 	// (basically snap_test * 4 file-system scenarios)
 	options.add("smb,dfs,deduplication,localfs,not_remote_fs_builtin_web")
 	options.add("-c")
-	options.add("snap_test")
+	options.add("snap_test,wincacheu_only_user,wincacheu_only_file")
 	
 	// TODO iis wincacheu apcu mediawiki drupal joomla typo3 cake_php zend semantic_mediawiki
 }

@@ -2,6 +2,7 @@ package com.mostc.pftt.util;
 
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.LinkedList;
+import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.mostc.pftt.host.LocalHost;
@@ -11,7 +12,7 @@ public final class TimerUtil {
 	 
 	private static LinkedList<ThreadRunnableProxy> trp_pool = new LinkedList<ThreadRunnableProxy>();
 	static {
-		final int pool_size = Math.max(128, new LocalHost().getCPUCount() * 16);
+		final int pool_size = Math.max(128, LocalHost.getInstance().getCPUCount() * 16);
 		for ( int i = 0 ; i < pool_size ; i++ ) {
 			ThreadRunnableProxy trp = new ThreadRunnableProxy();
 			new Thread(trp).start();
@@ -82,10 +83,12 @@ public final class TimerUtil {
 	 */
 	public static Thread runThread(Runnable r) {
 		ThreadRunnableProxy trp = null;
-		synchronized(trp_pool) {
-			if (!trp_pool.isEmpty())
-				trp = trp_pool.removeLast();
-		}
+		try {
+			synchronized(trp_pool) {
+				if (!trp_pool.isEmpty())
+					trp = trp_pool.removeLast();
+			}
+		} catch ( NoSuchElementException e ) {}
 		if (trp==null) {
 			return new Thread(r);
 		} else {
@@ -112,10 +115,14 @@ public final class TimerUtil {
 	
 	public static <E extends Object> WaitableRunnable<E> runWaitSeconds(String name_prefix, int seconds, ObjectRunnable<E> or) {
 		WaitableRunnable<E> wr = new WaitableRunnable<E>(or);
-		Thread t = runThread(name_prefix, wr);
-		t.setUncaughtExceptionHandler(IGNORE);
-		wr.t = t;
-		wr.block(seconds);
+		try {
+			Thread t = runThread(name_prefix, wr);
+			t.setUncaughtExceptionHandler(IGNORE);
+			wr.t = t;
+			wr.block(seconds);
+		} catch ( Throwable t ) {
+			t.printStackTrace();
+		}
 		return wr;
 	}
 	

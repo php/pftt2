@@ -5,7 +5,7 @@ def describe() {
 }
 
 def scenarios() {
-	new MySQLScenario(new LocalHost());
+	new MySQLScenario(LocalHost.getInstance());
 }
 
 import com.mostc.pftt.model.core.PhpBuild;
@@ -17,8 +17,7 @@ import com.mostc.pftt.model.core.PhptSourceTestPack;
 //    should use $_ENV instead: modify `mysql` PHPTs to use $_ENV instead.
 //
 def processPHPTTestPack(PhptSourceTestPack test_pack, PhpResultPackWriter writer, PhpBuild build) {
-	LocalHost host = new LocalHost();
-	String php_code = host.readFileAsString(test_pack.getSourceDirectory()+"/ext/pdo/tests/pdo_test.inc");
+	String php_code = LocalHost.getInstance().readFileAsString(test_pack.getSourceDirectory()+"/ext/pdo/tests/pdo_test.inc");
 	
 	if (php_code.contains("function getenv")) {
 		// already modified
@@ -40,6 +39,6 @@ $php_code
 		php_file = test_pack.getSourceDirectory()+"/ext/pdo/tests/pdo_test.inc";
 	
 		System.out.println("local_mysql: modifying $php_file for MySQL scenario");
-		host.saveTextFile(php_file, php_code);
+		LocalHost.getInstance().saveTextFile(php_file, php_code);
 	}
 }

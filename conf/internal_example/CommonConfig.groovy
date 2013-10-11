@@ -1,7 +1,7 @@
 import com.mostc.pftt.host.*;
 
 static def getFileServerHost() {
-	String addr = new LocalHost().getAddress()
+	String addr = LocalHost.getInstance().getAddress()
 	// autodetect which network this is running on
 	if (addr.startsWith("192."))
 		// home network
@@ -12,7 +12,7 @@ static def getFileServerHost() {
 }
 
 static def getFileServerVolume() {
-	String addr = new LocalHost().getAddress()
+	String addr = LocalHost.getInstance().getAddress()
 	// autodetect which network this is running on
 	if (addr.startsWith("192."))
 		return "B:";
@@ -22,7 +22,7 @@ static def getFileServerVolume() {
 
 // database
 static def getDatabaseServerHost() {
-	String addr = new LocalHost().getAddress()
+	String addr = LocalHost.getInstance().getAddress()
 	// autodetect which network this is running on
 	if (addr.startsWith("192."))
 		// home network
@@ -34,7 +34,7 @@ static def getDatabaseServerHost() {
 
 // ftp
 static def getFTPServerHost() {
-	String addr = new LocalHost().getAddress()
+	String addr = LocalHost.getInstance().getAddress()
 	// autodetect which network this is running on
 	if (addr.startsWith("192."))
 		// home network
@@ -46,7 +46,7 @@ static def getFTPServerHost() {
 
 // http
 static def getHTTPServerHost() {
-	String addr = new LocalHost().getAddress()
+	String addr = LocalHost.getInstance().getAddress()
 	// autodetect which network this is running on
 	if (addr.startsWith("192."))
 		// home network
@@ -58,7 +58,7 @@ static def getHTTPServerHost() {
 
 // soap
 static def getSOAPServerHost() {
-	String addr = new LocalHost().getAddress()
+	String addr = LocalHost.getInstance().getAddress()
 	// autodetect which network this is running on
 	if (addr.startsWith("192."))
 		// home network
@@ -70,7 +70,7 @@ static def getSOAPServerHost() {
 
 // xmlrpc
 static def getXMLRPCServerHost() {
-	String addr = new LocalHost().getAddress()
+	String addr = LocalHost.getInstance().getAddress()
 	// autodetect which network this is running on
 	if (addr.startsWith("192."))
 		// home network
@@ -82,7 +82,7 @@ static def getXMLRPCServerHost() {
 
 // imap (email)
 static def getIMAPServerHost() {
-	String addr = new LocalHost().getAddress()
+	String addr = LocalHost.getInstance().getAddress()
 	// autodetect which network this is running on
 	if (addr.startsWith("192."))
 		// home network
@@ -94,7 +94,7 @@ static def getIMAPServerHost() {
 
 // ldap (directory)
 static def getLDAPServerHost() {
-	String addr = new LocalHost().getAddress()
+	String addr = LocalHost.getInstance().getAddress()
 	// autodetect which network this is running on
 	if (addr.startsWith("192."))
 		// home network
