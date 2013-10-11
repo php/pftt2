@@ -51,6 +51,10 @@ function smoke() {
 function info() {
 	pftt -ignore_unknown_option $* info $*
 }
+function run_tests() {
+	pftt -ignore_unknown_option $* run-test $*
+}
+alias run_test=run_tests
 alias aa=app_all
 alias al=app_list
 alias an=app_named

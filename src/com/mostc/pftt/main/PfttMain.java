@@ -31,6 +31,7 @@ import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.EBuildType;
 import com.mostc.pftt.model.core.ECPUArch;
+import com.mostc.pftt.model.core.ESAPIType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpDebugPack;
 import com.mostc.pftt.model.core.PhpIni;
@@ -42,6 +43,7 @@ import com.mostc.pftt.model.smoke.ESmokeTestStatus;
 import com.mostc.pftt.model.smoke.PhptTestCountsMatchSmokeTest;
 import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.model.smoke.RequiredFeaturesSmokeTest;
+import com.mostc.pftt.model.smoke.TempDirWritableSmokeTest;
 import com.mostc.pftt.model.ui.EUITestExecutionStyle;
 import com.mostc.pftt.model.ui.UITestPack;
 import com.mostc.pftt.model.ui.UITestRunner;
@@ -297,7 +299,7 @@ public class PfttMain {
 	public PfttMain(LocalConsoleManager cm, Config config) {
 		this.cm = cm;
 		this.config = config;
-		host = new LocalHost();
+		host = LocalHost.getInstance();
 		
 		writer_map = new HashMap<PhpBuild,PhpResultPackWriter>();
 	}
@@ -583,6 +585,14 @@ public class PfttMain {
 					}
 				}
 				{
+					TempDirWritableSmokeTest test = new TempDirWritableSmokeTest();
+					if (test.test(build, cm, host, SAPIScenario.getSAPIScenario(scenario_set).getSAPIType(), tmgr)==ESmokeTestStatus.FAIL) {
+						cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+						
+						return false;
+					}
+				}
+				{
 					RequiredFeaturesSmokeTest test = new RequiredFeaturesSmokeTest();
 					if (test.test(build, cm, host, tmgr)==ESmokeTestStatus.FAIL) {
 						cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
@@ -698,6 +708,14 @@ public class PfttMain {
 				if (!cm.isSkipSmokeTests()) {
 					{
 						RequiredExtensionsSmokeTest test = new RequiredExtensionsSmokeTest();
+						if (test.test(build, cm, host, SAPIScenario.getSAPIScenario(scenario_set).getSAPIType(), tmgr)==ESmokeTestStatus.FAIL) {
+							cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+
+							break;
+						}
+					}
+					{
+						TempDirWritableSmokeTest test = new TempDirWritableSmokeTest();
 						if (test.test(build, cm, host, SAPIScenario.getSAPIScenario(scenario_set).getSAPIType(), tmgr)==ESmokeTestStatus.FAIL) {
 							cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
 
@@ -1348,7 +1366,7 @@ public class PfttMain {
 			config_default = false;
 			System.out.println("PFTT: Config: loaded "+config_files);
 		} else {
-			File default_config_file = new File(new LocalHost().getPfttConfDir()+"/default.groovy");
+			File default_config_file = new File(LocalHost.getInstance().getPfttConfDir()+"/default.groovy");
 			config = Config.loadConfigFromFiles(cm, default_config_file);
 			System.out.println("PFTT: Config: no config files loaded... using default only ("+default_config_file+")");
 		}
@@ -1524,7 +1542,7 @@ public class PfttMain {
 					help_all();
 					System.exit(-255);
 					return;
-				} else if (StringUtil.containsAnyCS(args[args_i], new String[]{"core_all", "core_named", "core_list", "app_all", "app_named", "app_list", "ui_all", "ui_list", "ui_named", "release_get", "release_list", "list_config", "smoke", "info"})) {
+				} else if (StringUtil.containsAnyCS(args[args_i], new String[]{"run_test", "core_all", "core_named", "core_list", "app_all", "app_named", "app_list", "ui_all", "ui_list", "ui_named", "release_get", "release_list", "list_config", "smoke", "info"})) {
 					if (args[args_i].endsWith("_"))
 						// for setup, lc
 						args[args_i] = args[args_i].substring(0, args[args_i].length()-1);
@@ -1711,11 +1729,14 @@ public class PfttMain {
 					
 					for ( PhpBuild build : builds )
 						p.coreAll(build, test_pack, config, p.getWriter(build, test_pack));
-				} else if (command.equals("run-test")) {
-					cm.println(EPrintType.TIP, "PfttMain", "run-test is meant only for testing PHPT test patches to make sure they work with run-tests.php.\nFor serious testing of PHPTs, use `core_all` or `core_list` or `core_named`");
-					if (!(args.length > args_i+3)) {
-						System.err.println("User Error: must specify build, test-pack and test name(s)");
-						System.out.println("usage: pftt run-test <path to PHP build> <path to PHPT test-pack> <test case names(separated by spaces)>");
+				} else if (command.equals("run_test")) {
+					cm.println(EPrintType.TIP, "PfttMain", "`run_test` is meant only for testing PHPT test patches to make sure they work with run-tests.php.\nFor serious testing of PHPTs, use `core_all` or `core_list` or `core_named`");
+					if (!(args.length > args_i+2)) {
+						System.err.println("User Error: must specify build, test-pack. Test names and config files optional");
+						System.out.println("usage: run_test <path to PHP build> <path to PHPT test-pack> <test case names(separated by spaces)>");
+						System.out.println("usage: run_test -c <configs only to read INI from> <path to PHP build> <path to PHPT test-pack> <test case names>");
+						System.out.println("usage: run_test <path to PHP build> <path to PHPT test-pack>");
+						System.out.println("usage: run_test -c <configs only to read INI from> <path to PHP build> <path to PHPT test-pack>");
 						System.exit(-255);
 						return;
 					}
@@ -1739,26 +1760,43 @@ public class PfttMain {
 							name += ".phpt";
 						name = PhptTestCase.normalizeTestCaseName(name);
 						if (StringUtil.isEmpty(test_pack.getContents(p.host, name)))
-							cm.println(EPrintType.CLUE, "PfttMain", "Test not found: "+name);
+							cm.println(EPrintType.CLUE, "run_test", "Test not found: "+name);
 						names.add(name);
 					}
+					ScenarioSet set_to_use = null; // may be null
 					for ( ScenarioSet set : getScenarioSets(config, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_CORE) ) {
-						if (!set.getName().equalsIgnoreCase("Local-FileSystem_CLI")) {
-							cm.println(EPrintType.CANT_CONTINUE, "PfttMain", "run-tests.php only supports the Local-FileSystem_CLI ScenarioSet, not: "+set);
-							cm.println(EPrintType.TIP, "PfttMain", "remove -c console option (so PFTT only tests Local-FileSystem_CLI) and try again");
+						if (!set.getName().contains("Local-FileSystem_CLI")) {
+							cm.println(EPrintType.CANT_CONTINUE, "run_test", "run-tests.php only supports the Local-FileSystem_CLI ScenarioSet, not: "+set);
+							cm.println(EPrintType.TIP, "run_test", "remove -c console option (so PFTT only tests Local-FileSystem_CLI) and try again");
 							return;
+						} else {
+							set_to_use = set;
 						}
 					}
-										
-					final String test_list_file = p.host.mktempname(PfttMain.class, "Run-Test");
+					
+					// check builds out first ... run-tests takes a long time ... we want user to be able
+					// to start it and be able to leave it unattended for a few hours+ and know that it won't get interrupted by PFTT (it should finish)
+					if (set_to_use != null && !config_default) {
+						for ( PhpBuild build : builds ) {
+							final String ini_file = build.getDefaultPhpIniPath(p.host, ESAPIType.CLI);
+							if (p.host.exists(ini_file)) {
+								cm.println(EPrintType.CANT_CONTINUE, "run_test", "php.ini file already exists, but configuration to replace it given. Doing the safe thing and giving up.");
+								cm.println(EPrintType.TIP, "run_test", "Run `rm "+ini_file+"` and try again.");
+								return;
+							}
+						}
+					}
+					//
+					
+					final String test_list_file = p.host.mktempname(PfttMain.class, "run_test");
 					p.host.saveTextFile(test_list_file, StringUtil.join(names, "\n"));
 					
 					String run_test = p.host.joinIntoOnePath(test_pack.getSourceDirectory(), "run-tests.php");
 					if (!p.host.exists(run_test)) {
 						run_test = p.host.joinIntoOnePath(test_pack.getSourceDirectory(), "run-test.php");
 						if (!p.host.exists(run_test)) {
-							cm.println(EPrintType.CLUE, "PfttMain", "could not find run-test.php or run-tests.php in PHPT test-pack!");
-							cm.println(EPrintType.TIP, "PfttMain", "try replacing the PHPT test-pack with a new one (maybe some files were deleted from the test-pack you specified)");
+							cm.println(EPrintType.CLUE, "run_test", "could not find run-test.php or run-tests.php in PHPT test-pack!");
+							cm.println(EPrintType.TIP, "run_test", "try replacing the PHPT test-pack with a new one (maybe some files were deleted from the test-pack you specified)");
 							return;
 						}
 					}
@@ -1767,14 +1805,31 @@ public class PfttMain {
 					for ( PhpBuild build : builds ) {
 						env = new HashMap<String,String>();
 						env.put("TEST_PHP_EXECUTABLE", build.getPhpExe());
-
-						cm.println(EPrintType.IN_PROGRESS, "RunTest", "Running "+run_test+" with "+build.getPhpExe());
-						out = p.host.execOut(build.getPhpExe()+" "+run_test+" -r "+test_list_file, AHost.FOUR_HOURS, env, test_pack.getSourceDirectory());
 						
-						cm.println(EPrintType.CLUE, "RunTest", "cmd="+out.cmd);
-						cm.println(EPrintType.CLUE, "RunTest", "exit_code="+out.exit_code);
-						cm.println(EPrintType.IN_PROGRESS, "RunTest", out.output);
-					}
+						final String ini_file = build.getDefaultPhpIniPath(p.host, ESAPIType.CLI);
+						if (p.host.exists(ini_file)) {
+							cm.println(EPrintType.CLUE, "run_test", "Using MANUAL php.ini "+ini_file);
+						} else if (set_to_use!=null) {
+							ScenarioSetSetup setup = ScenarioSetSetup.setupScenarioSet(cm, p.host, build, set_to_use, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_CORE);
+							
+							PhpIni ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, p.host, build);
+							
+							setup.prepareINI(cm, p.host, build, ini);
+							
+							p.host.saveTextFile(ini_file, ini.toString());
+							
+							cm.println(EPrintType.CLUE, "run_test", "Using PFTT php.ini (from -config scenarios) "+ini_file);
+						} else {
+							cm.println(EPrintType.CLUE, "run_test", "Using No php.ini  Only builtin default values will be used for directives.");
+						}
+						
+						cm.println(EPrintType.IN_PROGRESS, "run_test", "Running "+run_test+" with "+build.getPhpExe());
+						out = p.host.execOut(build.getPhpExe()+" -c \""+p.host.fixPath(build.getBuildPath())+"\" "+run_test+" -r "+test_list_file, AHost.FOUR_HOURS, env, test_pack.getSourceDirectory());
+						
+						cm.println(EPrintType.CLUE, "run_test", out.output);
+						cm.println(EPrintType.CLUE, "run_test", "cmd="+out.cmd);
+						cm.println(EPrintType.CLUE, "run_test", "exit_code="+out.exit_code);
+					} // end for
 					
 					p.host.deleteIfExists(test_list_file); // cleanup
 				} else if (command.equals("list_config")||command.equals("list_configs")||command.equals("listconfigs")||command.equals("listconfig")||command.equals("lc")) {

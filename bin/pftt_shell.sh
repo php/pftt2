@@ -12,7 +12,7 @@ echo
 echo Command Aliases:
 echo core_all      core_named    core_list  ca cn cl  caaa  caaaua
 echo app_all       all_named     app_list   aa an al  caua  smoke  parse
-echo ui_all        ui_named      ui_list    ua un ul  aua   run-test
+echo ui_all        ui_named      ui_list    ua un ul  aua   run-tests
 echo
 echo Setup:
 echo lc            setup       info
