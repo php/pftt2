@@ -126,8 +126,7 @@ public final class HostEnvUtil {
 	 * PHP 5.3 and 5.4 require the VC9 x86 Runtime
 	 * PHP 5.5+ require the VC11 x86 Runtime
 	 * 
-	 * Windows 7+ already has the VC9 x86 Runtime
-	 * Windows 8+ already has the VC11 x86 Runtime 
+	 * Windows 8+ already has the VC9 x86 Runtime
 	 * 
 	 * @param host
 	 * @param cm
@@ -136,58 +135,74 @@ public final class HostEnvUtil {
 	 * @throws IllegalStateException 
 	 */
 	public static void installVCRuntime(AHost host, ConsoleManager cm, PhpBuild build) throws IllegalStateException, IOException, Exception {
-		if (host.isWindows()) {
+		if (!host.isWindows()) {
 			return;
 		}
 		
 		switch (build.getVersionBranch(cm, host)) {
 		case PHP_5_3:
 		case PHP_5_4:
-			if (host.isVistaOrBefore()) {
-				// install VC9 runtime (win7+ don't need this)
-				if (host.dirContainsFragment(host.getSystemRoot()+"\\WinSxS", "vc9")) {
-					cm.println(EPrintType.CLUE, HostEnvUtil.class, "VC9 Runtime alread installed");
-				} else {
-					String local_file = LocalHost.getLocalPfttDir()+"/bin/vc9_vcredist_x86.exe";
-					String remote_file = null;
-					if (host.isRemote()) {
-						remote_file = host.mktempname(HostEnvUtil.class, ".exe");
-						
-						cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Uploading VC9 Runtime");
-						host.upload(local_file, remote_file);
-					}
-					cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Installing VC9 Runtime");
-					host.execElevated(cm, HostEnvUtil.class, remote_file+" /Q", AHost.FOUR_HOURS);
-					if (remote_file!=null)
-						host.delete(remote_file);
-				}
-			}
+			installVCRT9(cm, host);
 			break;
 		default: 
-			// PHP_5_5+ and master
-			if (!host.isWin8OrLater()) {
-				if (host.dirContainsFragment(host.getSystemRoot()+"\\WinSxS", "vc11")) {
-					cm.println(EPrintType.CLUE, HostEnvUtil.class, "VC11 Runtime alread installed");
-				} else {
-					String local_file = LocalHost.getLocalPfttDir()+"/bin/vc11_vcredist_x86.exe";
-					String remote_file = null;
-					if (host.isRemote()) {
-						remote_file = host.mktempname(HostEnvUtil.class, ".exe");
-						
-						cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Uploading VC11 Runtime");
-						host.upload(local_file, remote_file);
-					}
-					cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Installing VC11 Runtime");
-					host.execElevated(cm, HostEnvUtil.class, remote_file+" /Q", AHost.FOUR_HOURS);
-					if (remote_file!=null)
-						host.delete(remote_file);
-				}
+			// PHP 5.5+ and PHP_Master
+			installVCRT9(cm, host); // just in case
+			installVCRT(cm, host, "VC10", "msvcr100.dll", "vc10_redist_x86.exe");
+			installVCRT(cm, host, "VC11", "msvcr110.dll", "vc11_redist_x86.exe");
+			if (build.isX64()) {
+				installVCRT(cm, host, "VC10", "msvcr100.dll", "vc10_redist_x64.exe");
+				installVCRT(cm, host, "VC11", "msvcr110.dll", "vc11_redist_x64.exe");
 			}
 			break;
 		} // end switch
 	} // end public static void installVCRuntime
 	
+	protected static void installVCRT9(ConsoleManager cm, AHost host) throws IllegalStateException, IOException, Exception {
+		// with VC9 (and before), checking WinSXS directory is the only way to tell
+		if (host.dirContainsFragment(host.getSystemRoot()+"\\WinSxS", "VC9")) {
+			cm.println(EPrintType.CLUE, HostEnvUtil.class, "VC9 Runtime already installed");
+		} else {
+			doInstallVCRT(cm, host, "VC9", "vc9_redist_x86.exe");
+		}
+	}
+	
+	protected static void installVCRT(ConsoleManager cm, AHost host, String name, String dll_name, String filename) throws IllegalStateException, IOException, Exception {
+		// starting with VCRT10, checking the registry is the only way to tell
+		if (host.exists(host.getSystemRoot()+"\\system32\\"+dll_name)) {
+			cm.println(EPrintType.CLUE, HostEnvUtil.class, name+" Runtime already installed");
+		} else {
+			doInstallVCRT(cm, host, name, filename);
+		}
+	}
+	
+	protected static void doInstallVCRT(ConsoleManager cm, AHost host, String name, String filename) throws IllegalStateException, IOException, Exception {
+		String local_file = LocalHost.getLocalPfttDir()+"/cache/dep/VCRedist/"+filename;
+		String remote_file = local_file;
+		if (host.isRemote()) {
+			remote_file = host.mktempname(HostEnvUtil.class, ".exe");
+			
+			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Uploading "+name+" Runtime");
+			host.upload(local_file, remote_file);
+		}
+		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Installing "+name+" Runtime");
+		host.execElevated(cm, HostEnvUtil.class, remote_file+" /Q /NORESTART", AHost.FOUR_HOURS);
+		if (remote_file!=null)
+			host.delete(remote_file);
+	}
+	
 	public static final String REG_DWORD = "REG_DWORD";
+	public static boolean regQuery(ConsoleManager cm, AHost host, String key, String name, String value, String type) throws Exception {
+		// check the registry first, to not edit the registry if we don't have too
+		String cmd = "REG QUERY \""+key+"\" /f "+name;
+		ExecOutput output = host.execOut(cmd, AHost.ONE_MINUTE);
+		output.printOutputIfCrash(HostEnvUtil.class, cm);
+		for ( String line : output.getLines() ) {
+			if (line.contains(name) && line.contains(type) && line.contains(value))
+				return true;
+		}
+		return false;
+	}
+	
 	/** checks if a registry key matches the given value. if it does, returns true.
 	 * 
 	 * if not, asks user for privilege elevation and changes the registry key.
@@ -204,13 +219,8 @@ public final class HostEnvUtil {
 	 * @throws Exception
 	 */
 	public static boolean regQueryAdd(ConsoleManager cm, AHost host, String key, String name, String value, String type) throws Exception {
-		// check the registry first, to not edit the registry if we don't have too		
-		ExecOutput output = host.execOut("REG QUERY \""+key+"\" /f "+name, AHost.ONE_MINUTE);
-		output.printOutputIfCrash(HostEnvUtil.class, cm);
-		for ( String line : output.getLines() ) {
-			if (line.contains(name) && line.contains(type) && line.contains(value))
-				return false;
-		}
+		if (regQuery(cm, host, key, name, value, type))
+			return false;
 		
 		// have to add the value, its not in registry
 		// (on Longhorn+ this will prompt the user to approve this action (approve elevating to administrator. 
