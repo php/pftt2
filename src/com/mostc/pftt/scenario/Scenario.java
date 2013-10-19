@@ -51,7 +51,7 @@ public abstract class Scenario {
 		return getClass();
 	}
 	
-	/** Provide directories and files containing debugging symbols to Symbolic Debugger.
+	/** Provide DIRECTORIES containing debugging symbols to Symbolic Debugger.
 	 * 
 	 * Ex: this is used to provide Apache debug symbols to WinDebug(on Windows).
 	 * 
@@ -155,11 +155,16 @@ public abstract class Scenario {
 	 * @param host
 	 * @param build
 	 * @param scenario_set
+	 * @param layer TODO
 	 * @return
 	 */
 	@Overridable
-	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
 		return true;
+	}
+	
+	public final boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+		return isSupported(cm, host, build, scenario_set, null);
 	}
 	
 	@Override

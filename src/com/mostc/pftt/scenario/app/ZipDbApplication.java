@@ -13,8 +13,17 @@ import com.mostc.pftt.scenario.ScenarioSet;
 public abstract class ZipDbApplication extends ZipApplication {
 	
 	@Override
-	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
-		return null != scenario_set.getScenario(MySQLScenario.class); 
+	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
+		if (layer==EScenarioSetPermutationLayer.FUNCTIONAL_TEST_CORE)
+			// for using `core_all,app_all` commands together (fe `caaa`)
+			return true;
+		if (!scenario_set.contains(MySQLScenario.class)) {
+			if (cm!=null) {
+				cm.println(EPrintType.CLUE, getClass(), "Requires MySQL Scenario. Try adding `local_mysql` to your -config.");
+			}
+			return false;
+		}
+		return true;
 	}
 	
 	protected MySQLScenario requireMySQLScenario(ConsoleManager cm, ScenarioSet scenario_set) {

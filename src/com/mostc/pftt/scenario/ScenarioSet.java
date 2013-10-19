@@ -11,6 +11,7 @@ import java.util.List;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.EPrintType;
 
 /** A Set of Scenarios to test PHP under.
  * 
@@ -191,14 +192,23 @@ public class ScenarioSet extends ArrayList<Scenario> {
 	 * @param cm
 	 * @param host
 	 * @param build
+	 * @param layer
 	 * @return
 	 */
-	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build) {
+	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, EScenarioSetPermutationLayer layer) {
 		for (Scenario s :this) {
-			if (!s.isSupported(cm, host, build, this))
+			if (!s.isSupported(cm, host, build, this, layer)) {
+				if (cm!=null) {
+					cm.println(EPrintType.CLUE, getClass(), "Not Supported");
+				}
 				return false;
+			}
 		}
 		return true;
+	}
+	
+	public final boolean isSupported(ConsoleManager cm, Host host, PhpBuild build) {
+		return isSupported(cm, host, build, null);
 	}
 	
 	@Override
@@ -284,7 +294,7 @@ public class ScenarioSet extends ArrayList<Scenario> {
 		ScenarioSet ss;
 		while (ss_it.hasNext()) {
 			ss = ss_it.next();
-			if (!ss.isSupported(cm, host, build))
+			if (!ss.isSupported(cm, host, build, layer))
 				ss_it.remove();
 		}
 		return scenario_sets;
