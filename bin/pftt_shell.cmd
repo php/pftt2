@@ -23,10 +23,22 @@ CALL ^\php-sdk^\PFTT^\current^\bin^\set_env
 @ECHO.                      /)                       _"., ,._'_.,)_(..,(. )_ _' )_') (._..( '..
 @ECHO.                     // 
 @ECHO.            .-------^| ^|--------------------------------------------.__
+REM display PFTT acronym
 @ECHO.            ^|WMWMWMW^| ^|^>^>^>^>^>^>^>^>^>^>^>^>^>^> Php Full Test Tool ^>^>^>^>^>^>^>^>^>^>^>^>^>:^>
 @ECHO.            `-------^| ^|--------------------------------------------'^^
 @ECHO.                     ^\^\
-@ECHO.                      ^\)    PFTT Shell - for testing the PHP Ecosystem
+REM display a PFTT slogan or motto
+REM random domain 0 to 32767
+SET DD=%RANDOM%
+IF %DD% LEQ 21000 (
+@ECHO.                      ^\^)    PFTT Shell - for testing the PHP Ecosystem
+) ELSE (
+	IF %DD% LEQ 29000 (
+@ECHO.                      ^\^)    Sustained Progress through better tools
+	) ELSE (
+@ECHO.                      ^\^)    Optimized for saving you time
+	)
+)
 @ECHO.
 ECHO  Type `pftt ^<enter^>` to get help with PFTT. ^<tab^> for auto-completion. 
 ECHO  ^<F7^> for history. Control+C to interrupt. Right-click for copy/paste menu.
