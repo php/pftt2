@@ -30,11 +30,14 @@ public class ApacheModPHPScenario extends ApacheScenario {
 	}
 	
 	@Override
-	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
-		if (build.isTS(host)||!host.isWindows())
+	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
+		if (!host.isWindows()) 
 			return true;
-		if (cm!=null)
+		if (build.isTS(host))
+			return true;
+		if (cm!=null) {
 			cm.println(EPrintType.CLUE, getClass(), "Must only use a TS build of PHP with Apache");
+		}
 		return false;
 	}
 

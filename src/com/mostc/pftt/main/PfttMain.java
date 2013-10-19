@@ -430,7 +430,7 @@ public class PfttMain {
 		System.out.println(new AlignedTable(2, 85)
 			.addRow("-debug_all", "runs all tests in Debugger")
 			.addRow("-debugger <gdb|windbg|valgrind>", "specify which Debugger to use (optional, or PFTT will decide)")
-			// TODO support name fragments in -debug_list (more consistent with core_name, etc...)
+			.addRow("-debug_name <name fragments,name2:name3;name4>", "runs named tests in list in Debugger (name fragment)")
 			.addRow("-debug_list <list files>", "runs tests in list in Debugger (exact name)")
 			.addRow("-src_pack <path>", "folder with the source code")
 			.addRow("-debug_pack <path>", "folder with debugger symbols (usually folder with .pdb files)"));
@@ -514,7 +514,7 @@ public class PfttMain {
 	protected void ensureLocalhostPrepared(PhpBuild build) throws Exception {
 		if (prepared==build)
 			return;
-		HostEnvUtil.prepareHostEnv(host, cm, build, !cm.isDisableDebugPrompt());
+		HostEnvUtil.prepareHostEnv(host, cm, build, !(cm.isDisableDebugPrompt()||cm.isDebugAll()||cm.isDebugList()));
 		prepared = build;
 	}
 	
@@ -579,15 +579,17 @@ public class PfttMain {
 					// @see PhpBuild#getExtensionList
 					if (test.test(build, cm, host, SAPIScenario.getSAPIScenario(scenario_set).getSAPIType(), tmgr)==ESmokeTestStatus.FAIL) {
 						// if this test fails, RequiredFeaturesSmokeTest will fail for sure
-						cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+						cm.println(EPrintType.CANT_CONTINUE, test.getName(), "Failed smoke test");
 						
 						return false;
+					} else {
+						cm.println(EPrintType.CLUE, test.getName(), "Smoke Test Passed");
 					}
 				}
 				{
 					TempDirWritableSmokeTest test = new TempDirWritableSmokeTest();
 					if (test.test(build, cm, host, SAPIScenario.getSAPIScenario(scenario_set).getSAPIType(), tmgr)==ESmokeTestStatus.FAIL) {
-						cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+						cm.println(EPrintType.CANT_CONTINUE, test.getName(), "Failed smoke test");
 						
 						return false;
 					}
@@ -595,9 +597,11 @@ public class PfttMain {
 				{
 					RequiredFeaturesSmokeTest test = new RequiredFeaturesSmokeTest();
 					if (test.test(build, cm, host, tmgr)==ESmokeTestStatus.FAIL) {
-						cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+						cm.println(EPrintType.CANT_CONTINUE, test.getName(), "Failed smoke test");
 						
 						return false;
+					} else {
+						cm.println(EPrintType.CLUE, test.getName(), "Smoke Test Passed");
 					}
 				}
 			}
@@ -709,15 +713,17 @@ public class PfttMain {
 					{
 						RequiredExtensionsSmokeTest test = new RequiredExtensionsSmokeTest();
 						if (test.test(build, cm, host, SAPIScenario.getSAPIScenario(scenario_set).getSAPIType(), tmgr)==ESmokeTestStatus.FAIL) {
-							cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+							cm.println(EPrintType.CANT_CONTINUE, test.getName(), "Failed smoke test");
 
 							break;
+						} else {
+							cm.println(EPrintType.CLUE, test.getName(), "Smoke Test Passed");
 						}
 					}
 					{
 						TempDirWritableSmokeTest test = new TempDirWritableSmokeTest();
 						if (test.test(build, cm, host, SAPIScenario.getSAPIScenario(scenario_set).getSAPIType(), tmgr)==ESmokeTestStatus.FAIL) {
-							cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+							cm.println(EPrintType.CANT_CONTINUE, test.getName(), "Failed smoke test");
 
 							break;
 						}
@@ -725,9 +731,11 @@ public class PfttMain {
 					{
 						RequiredFeaturesSmokeTest test = new RequiredFeaturesSmokeTest();
 						if (test.test(build, cm, host, tmgr)==ESmokeTestStatus.FAIL) {
-							cm.println(EPrintType.CANT_CONTINUE, "Main", "Failed smoke test: "+test.getName());
+							cm.println(EPrintType.CANT_CONTINUE, test.getName(), "Failed smoke test");
 							
 							break;
+						} else {
+							cm.println(EPrintType.CLUE, test.getName(), "Smoke Test Passed");
 						}
 					}
 				}
@@ -1314,6 +1322,13 @@ public class PfttMain {
 			}.start();
 	}
 	
+	protected static void warnDebugAll(ConsoleManager cm) {
+		if (cm.isDebugAll()) {
+			cm.println(EPrintType.WARNING, PfttMain.class, "You should NOT use -debug_all with `core_all` or `app_all`. It causes lots of debuggers to be launched!");
+			cm.println(EPrintType.TIP, PfttMain.class, "Instead, use `core_all` or `app_all` (maybe with `-c test_pack5`) to find all the crashes (constant and intermittent) then run that list with `core_list` or `app_list`");
+		}
+	}
+	
 	public static void main(String[] args) throws Throwable {
 		// 
 		if (args.length > 0 && args[0].equals("sleep")) {
@@ -1494,6 +1509,12 @@ public class PfttMain {
 			} else if (args[args_i].equals("-debug_list")) {
 				args_i++;
 				readStringListFromFile(debug_list, args[args_i]);
+			} else if (args[args_i].equals("-debug_name")||args[args_i].equals("-debug_named")) {
+				args_i++;
+				
+				for ( String name : args[args_i].split("[\\,\\;\\:]+") ) {
+					debug_list.add(name);
+				}
 			} else if (args[args_i].equals("-skip_list")) {
 				args_i++;
 				readStringListFromFile(skip_list, args[args_i]);
@@ -1525,8 +1546,9 @@ public class PfttMain {
 			} else if (args[args_i].equals("-src_pack")) {
 				source_pack = args[args_i++];
 			} else if (args[args_i].equals("-debug_pack")) {
-				if (null == ( debug_pack = PhpDebugPack.open(p.host, args[args_i++]))) {
-					System.err.println("PFTT: debug-pack not found: "+args[args_i-1]);
+				args_i++;
+				if (null == ( debug_pack = PhpDebugPack.open(p.host, args[args_i]))) {
+					System.err.println("PFTT: debug-pack not found: "+args[args_i]);
 					System.exit(-250);
 				}
 			} else if (args[args_i].equals("-h")||args[args_i].equals("--h")||args[args_i].equals("-help")||args[args_i].equals("--help")) {
@@ -1639,6 +1661,7 @@ public class PfttMain {
 						return;
 					}
 					
+					warnDebugAll(cm);
 					checkUAC(is_uac, false, config, cm, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_APPLICATION);
 					
 					PhpBuild[] builds = newBuilds(cm, p.host, args[args_i+1]);
@@ -1714,6 +1737,7 @@ public class PfttMain {
 						System.exit(-255);
 						return;
 					}
+					warnDebugAll(cm);
 					
 					PhpBuild[] builds = newBuilds(cm, p.host, args[args_i+1]);
 					

@@ -202,7 +202,7 @@ public class MySQLScenario extends DatabaseScenario {
 					final String cmd = "\""+mysql_dir+"\\bin\\mysqld\" --standalone --console --bind-address="+hostname+" --port="+port+" --datadir="+datadir;
 					
 					cm.println(EPrintType.IN_PROGRESS, getClass(), "Starting MySQL in standalone mode (directly, using default config)...");
-					mysqld_handle = ((AHost)host).execThread(cmd);
+					mysqld_handle = ((AHost)host).execThread(cmd, null, null, null, true);
 					
 					// wait for server to output that is running before checking below
 					while (mysqld_handle.isRunning()) {
@@ -259,7 +259,7 @@ public class MySQLScenario extends DatabaseScenario {
 				cm.println(EPrintType.IN_PROGRESS, getClass(), "Stopping production MySQL Windows Service...");
 				host.execElevated(cm, getClass(), "net stop MySQL56", AHost.ONE_MINUTE);
 			} else {
-				cm.println(EPrintType.IN_PROGRESS, getClass(), "Stopping MySQL stanadlone process");
+				cm.println(EPrintType.IN_PROGRESS, getClass(), "Stopping MySQL standalone process");
 				mysqld_handle.close(cm, true);
 			}
 		}

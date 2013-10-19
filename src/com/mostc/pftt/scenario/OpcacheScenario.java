@@ -190,8 +190,14 @@ public class OpcacheScenario extends CodeCacheScenario {
 	} // end protected DllVersion getDllPath
 	
 	@Override
-	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
-		return getDllPath(cm, host, build) != null;
+	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
+		if (getDllPath(cm, host, build) == null) {
+			if (cm!=null) {
+				cm.println(EPrintType.CLUE, getClass(), "Unable to find Opcache DLL or SO. Can NOT run this Scenario.");
+			}
+			return false;
+		}
+		return true;
 	}
 
 	public class OpcacheSetup extends SimpleScenarioSetup {

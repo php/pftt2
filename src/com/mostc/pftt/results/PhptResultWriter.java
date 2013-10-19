@@ -203,7 +203,7 @@ public class PhptResultWriter extends AbstractPhptRW {
 				out.close();
 				
 			} catch ( Exception ex ) {
-				ex.printStackTrace();
+				// TODO temp ex.printStackTrace();
 				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "handleResult", ex, "", dir, test_case_base_name);
 			}
 		}

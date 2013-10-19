@@ -78,7 +78,7 @@ class WordpressPhpUnitTestPack extends RequiredDatabasePhpUnitSourceTestPack {
 	public int getThreadCount(AHost host, ScenarioSet scenario_set, int default_thread_count) {
 		// Wordpress-Tests install wordpress on every test and do all-up tests (instead of propper unit tests)
 		// so they're slow... run with fewer threads
-		return default_thread_count / 4;
+		return default_thread_count / 2;
 	}
 	@Override
 	public String getPreBootstrapCode(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build) {

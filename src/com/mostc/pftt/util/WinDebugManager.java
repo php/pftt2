@@ -54,25 +54,23 @@ public class WinDebugManager extends DebuggerManager {
 		ensureFindWinDbgExe(cm, host, build);
 		
 		WinDebug dbg = null;
-		if (StringUtil.isEmpty(win_dbg_exe)) {
-			// TODO tell user first time
-		} else {
-			ensureFindSourceAndDebugPack(cm, host, scenario_set, build);
-			
-			try {
-				dbg = new WinDebug(host, win_dbg_exe, toServerName(server_name), src_path, debug_path, build.getBuildPath(), process_id, process);
-			} catch ( Exception ex ) {
-				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "newDebugger", ex, "", host, win_dbg_exe);
-			}
-			
-			if (dbg != null && dbg.attached) {
-				if (!displayed_windbg_tips) {
-					displayed_windbg_tips = true;
-					
-					displayWindebugTips(cm);
-				}
-			}			
+		ensureFindSourceAndDebugPack(cm, host, scenario_set, build);
+		
+		try {
+			dbg = new WinDebug(host, win_dbg_exe, toServerName(server_name), src_path, debug_path, build.getBuildPath(), process_id, process);
+		} catch ( Exception ex ) {
+			cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "newDebugger", ex, "", host, win_dbg_exe);
 		}
+		
+		if (dbg != null && dbg.attached) {
+			if (!displayed_windbg_tips) {
+				displayed_windbg_tips = true;
+				
+				if (cm!=null)
+					displayWindebugTips(cm);
+			}
+		}
+		
 		return dbg;
 	}
 	

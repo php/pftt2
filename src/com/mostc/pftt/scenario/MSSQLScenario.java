@@ -13,6 +13,7 @@ import com.mostc.pftt.model.core.EBuildType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.EPrintType;
 
 /** Tests the mssql and pdo_mssql extensions against a Microsoft SQL Server. (NOT IMPLEMENTED)
  * 
@@ -92,9 +93,14 @@ public class MSSQLScenario extends DatabaseScenario {
 	} // end public static enum EMSSQLVersion
 	
 	@Override
-	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
 		// PHP driver for MS SQL currently only supported on Windows
-		return host.isWindows();
+		if (host.isWindows())
+			return true;
+		if (cm!=null) {
+			cm.println(EPrintType.CLUE, getClass(), "Only supported on Windows");
+		}
+		return false;
 	}
 	
 	@Override

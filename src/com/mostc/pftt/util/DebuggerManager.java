@@ -75,13 +75,13 @@ public abstract class DebuggerManager {
 		for ( Scenario s : scenario_set ) {
 			s.addToDebugPath(cm, host, build, paths);
 		}
-		if (this.debug_path==null)
-			this.debug_path = "";
-		for ( String path : paths ) {
-			if (this.debug_path.length()>0)
-				this.debug_path += host.dirSeparator();
-			this.debug_path += path;
+		for ( int i=0 ; i < paths.size() ; i++ ) {
+			paths.set(i, AHost.dirname(host.fixPath(paths.get(i))));
 		}
+		if (StringUtil.isEmpty(this.debug_path))
+			this.debug_path = host.joinIntoMultiplePath(paths);
+		else
+			this.debug_path = this.debug_path + host.pathsSeparator() + host.joinIntoMultiplePath(paths);
 	}
 	
 	/** guesses the source pack and debug pack locations based on build, unless
@@ -98,15 +98,15 @@ public abstract class DebuggerManager {
 		this.found_src_debug_pack_build = build; // cache
 		if (!host.isWindows()) {
 			// only PHP on Windows has standard conventions for naming/locating source and debug packs
-			this.src_path = cm.getSourcePack();
-			this.debug_path = cm.getDebugPack().getPath();
+			this.src_path = cm==null?null:cm.getSourcePack();
+			this.debug_path = cm==null||cm.getDebugPack()==null?null:cm.getDebugPack().getPath();
 			addToDebugPathFromScenarios(cm, host, build, scenario_set);
 			return;
 		}
 		
 		// use any source and debug packs given on command line
-		String def_source_path = cm.getSourcePack();
-		String def_debug_path = cm.getDebugPack().getPath();
+		String def_source_path = cm==null?null:cm.getSourcePack();
+		String def_debug_path = cm==null||cm.getDebugPack()==null?null:cm.getDebugPack().getPath();
 		
 		// (in addition to )guessing the source pack and debug pack from the build (PHP-on-Windows follows conventions that allow this)
 		try {

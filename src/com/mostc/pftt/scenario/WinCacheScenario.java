@@ -5,6 +5,7 @@ import com.mostc.pftt.model.core.EAcceleratorType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.EPrintType;
 
 /** Tests the WinCache code caching extension (NOT IMPLEMENTED)
  * 
@@ -35,11 +36,17 @@ public class WinCacheScenario extends CodeCacheScenario {
 	}
 
 	@Override
-	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
 		// don't run WinCache on Apache-ModPHP (Apache CGI probably ok)
 		//
 		// not sure if its supported on scenarios other than CLI or IIS (so allow it)
-		return !scenario_set.contains(ApacheModPHPScenario.class);
+		if (scenario_set.contains(ApacheModPHPScenario.class)) {
+			if (cm!=null) {
+				cm.println(EPrintType.CLUE, getClass(), "Can NOT run with any Apache Scenario");
+			}
+			return false;
+		}
+		return true;
 	}
 
 	@Override

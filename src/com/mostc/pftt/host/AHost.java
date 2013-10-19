@@ -70,10 +70,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 		os_name = os_name.replace("Home", "");
 		os_name = os_name.replace("Basic", "");
 		//
-		os_name = os_name.replace("  ", " ");
-		os_name = os_name.replace("  ", " ");
-		os_name = os_name.replace("  ", " ");
-		os_name = os_name.replace("  ", " ");
+		os_name = os_name.replaceAll("\\w+", " ");
 		return os_name.trim();
 	}
 	
@@ -150,11 +147,15 @@ public abstract class AHost extends Host implements IProgramRunner {
 	 * @param stdin_post - bytes to pass to program's STDIN
 	 * @param charset - character set to assume program's output is - otherwise it'll autodetect it, which is slower 
 	 * @param current_dir - current directory for the program
+	 * @param wrap_child
 	 * @return
 	 * @throws IllegalStateException
 	 * @throws Exception
 	 */
-	public abstract ExecOutput execOut(String cmd, int timeout_sec, Map<String,String> object, byte[] stdin_post, Charset charset, String current_dir) throws IllegalStateException, Exception;
+	public abstract ExecOutput execOut(String cmd, int timeout_sec, Map<String,String> object, byte[] stdin_post, Charset charset, String current_dir, boolean wrap_child) throws IllegalStateException, Exception;
+	public ExecOutput execOut(String cmd, int timeout_sec, Map<String,String> object, byte[] stdin_post, Charset charset, String current_dir) throws IllegalStateException, Exception {
+		return execOut(cmd, timeout_sec, object, stdin_post, charset, current_dir, false);
+	}
 	/** executes the given program. if thread_slow_sec time is exceeded, calls TestPackRunnerThread#slowTest so that the TestPackRunner
 	 * can compensate
 	 * 
@@ -169,24 +170,48 @@ public abstract class AHost extends Host implements IProgramRunner {
 	 * @return
 	 * @throws Exception
 	 */
-	public abstract ExecOutput execOut(String commandline, int timeout, Map<String,String> env, byte[] stdin, Charset charset, String chdir, TestPackRunnerThread thread, int thread_slow_sec) throws Exception;
-	public ExecOutput execOut(String commandline, int timeout, String chdir) throws Exception {
+	public abstract ExecOutput execOut(String commandline, int timeout, Map<String,String> env, byte[] stdin, Charset charset, String chdir, @SuppressWarnings("rawtypes") TestPackRunnerThread thread, int thread_slow_sec, boolean wrap_child) throws Exception;
+	public ExecOutput execOut(String commandline, int timeout, Map<String,String> env, byte[] stdin, Charset charset, String chdir, @SuppressWarnings("rawtypes") TestPackRunnerThread thread, int thread_slow_sec) throws Exception {
+		return execOut(commandline, timeout, env, stdin, charset, chdir, thread, thread_slow_sec, false);
+	}
+	public ExecOutput execOut(String commandline, int timeout, String chdir, boolean wrap_child) throws Exception {
 		return execOut(commandline, timeout, null, null, null, chdir);
 	}	
+	public ExecOutput execOut(String commandline, int timeout, String chdir) throws Exception {
+		return execOut(commandline, timeout, chdir, false);
+	}
+	public ExecOutput execOut(String commandline, int timeout, Map<String,String> env, Charset charset, String chdir, boolean wrap_child) throws Exception {
+		return execOut(commandline, timeout, env, null, charset, chdir, wrap_child);
+	}
 	public ExecOutput execOut(String commandline, int timeout, Map<String,String> env, Charset charset, String chdir) throws Exception {
-		return execOut(commandline, timeout, env, null, charset, chdir);
+		return execOut(commandline, timeout, env, null, charset, chdir, false);
+	}
+	public ExecOutput execOut(String commandline, int timeout, Map<String,String> env, boolean wrap_child) throws Exception {
+		return execOut(commandline, timeout, env, (String)null, wrap_child);
 	}
 	public ExecOutput execOut(String commandline, int timeout, Map<String,String> env) throws Exception {
-		return execOut(commandline, timeout, env, (String)null);
+		return execOut(commandline, timeout, env, (String)null, false);
+	}
+	public ExecOutput execOut(String commandline, int timeout, Map<String,String> env, String chdir, boolean wrap_child) throws Exception {
+		return execOut(commandline, timeout, env, null, chdir, wrap_child);
 	}
 	public ExecOutput execOut(String commandline, int timeout, Map<String,String> env, String chdir) throws Exception {
-		return execOut(commandline, timeout, env, null, chdir);
+		return execOut(commandline, timeout, env, null, chdir, false);
+	}
+	public ExecOutput execElevatedOut(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String chdir, @SuppressWarnings("rawtypes") TestPackRunnerThread test_thread, int slow_timeout_sec) throws Exception {
+		return execElevatedOut(cmd, timeout_sec, env, stdin_data, charset, chdir, test_thread, slow_timeout_sec, false);
+	}
+	public ExecOutput execElevatedOut(String commandline, int timeout, Map<String,String> env, boolean wrap_child) throws Exception {
+		return execElevatedOut(commandline, timeout, env, (String)null, wrap_child);
 	}
 	public ExecOutput execElevatedOut(String commandline, int timeout, Map<String,String> env) throws Exception {
-		return execElevatedOut(commandline, timeout, env, (String)null);
+		return execElevatedOut(commandline, timeout, env, (String)null, false);
+	}
+	public ExecOutput execElevatedOut(String commandline, int timeout, Map<String,String> env, String chdir, boolean wrap_child) throws Exception {
+		return execElevatedOut(commandline, timeout, env, null, chdir, wrap_child);
 	}
 	public ExecOutput execElevatedOut(String commandline, int timeout, Map<String,String> env, String chdir) throws Exception {
-		return execElevatedOut(commandline, timeout, env, null, chdir);
+		return execElevatedOut(commandline, timeout, env, null, chdir, false);
 	}
 	/** gets value of environment variable
 	 * 
@@ -345,18 +370,25 @@ public abstract class AHost extends Host implements IProgramRunner {
 	 * @param chdir
 	 * @param test_thread
 	 * @param slow_timeout_sec
+	 * @param wrap_child
 	 * @return
 	 * @throws Exception
 	 */
-	public abstract ExecOutput execElevatedOut(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread test_thread, int slow_timeout_sec) throws Exception;
+	public abstract ExecOutput execElevatedOut(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String chdir, @SuppressWarnings("rawtypes") TestPackRunnerThread test_thread, int slow_timeout_sec, boolean wrap_child) throws Exception;
 	public ExecOutput execElevatedOut(String cmd, int timeout_sec, Map<String, String> env, Charset charset) throws Exception {
 		return execElevatedOut(cmd, timeout_sec, env, null, charset, null, null, FOUR_HOURS);
 	}
-	public ExecOutput execElevatedOut(String cmd, int timeout_sec, Map<String, String> env, Charset charset, String chdir) throws Exception {
+	public ExecOutput execElevatedOut(String cmd, int timeout_sec, Map<String, String> env, Charset charset, String chdir, boolean wrap_child) throws Exception {
 		return execElevatedOut(cmd, timeout_sec, env, null, charset, chdir, null, FOUR_HOURS);
 	}
-	public ExecOutput execElevatedOut(String cmd, int timeout_sec, String chdir) throws Exception {
+	public ExecOutput execElevatedOut(String cmd, int timeout_sec, Map<String, String> env, Charset charset, String chdir) throws Exception {
+		return execElevatedOut(cmd, timeout_sec, env, charset, chdir, false);
+	}
+	public ExecOutput execElevatedOut(String cmd, int timeout_sec, String chdir, boolean wrap_child) throws Exception {
 		return execElevatedOut(cmd, timeout_sec, null, null, null, chdir, null, FOUR_HOURS);
+	}
+	public ExecOutput execElevatedOut(String cmd, int timeout_sec, String chdir) throws Exception {
+		return execElevatedOut(cmd, timeout_sec, chdir, false);
 	}
 	@ThreadSafe
 	public abstract class ExecHandle {
@@ -432,7 +464,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 		
 		
 		// TODO
-		public abstract void run(ConsoleManager cm, StringBuilder output_sb, Charset charset, int timeout_sec, TestPackRunnerThread thread, int slow_sec, int suspend_seconds, int max_chars) throws IOException, InterruptedException;
+		public abstract void run(ConsoleManager cm, StringBuilder output_sb, Charset charset, int timeout_sec, @SuppressWarnings("rawtypes") TestPackRunnerThread thread, int slow_sec, int suspend_seconds, int max_chars) throws IOException, InterruptedException;
 	} // end public abstract class ExecHandle
 	
 	/** checks exit code to see if it means process crashed
@@ -503,20 +535,32 @@ public abstract class AHost extends Host implements IProgramRunner {
 	public ExecHandle execThread(String commandline) throws Exception {
 		return execThread(commandline, null, null, null);
 	}
+	public ExecHandle execThread(String commandline, byte[] stdin_data, boolean wrap_child) throws Exception {
+		return execThread(commandline, null, null, stdin_data, wrap_child);
+	}
 	public ExecHandle execThread(String commandline, byte[] stdin_data) throws Exception {
-		return execThread(commandline, null, null, stdin_data);
+		return execThread(commandline, null, null, stdin_data, false);
 	}
 	public ExecHandle execThread(String commandline, String chdir) throws Exception {
 		return execThread(commandline, null, chdir, null);
 	}
-	public ExecHandle execThread(String commandline, String chdir, byte[] stdin_data) throws Exception {
+	public ExecHandle execThread(String commandline, String chdir, byte[] stdin_data, boolean wrap_child) throws Exception {
 		return execThread(commandline, null, chdir, stdin_data);
 	}
-	public ExecHandle execThread(String commandline, Map<String,String> env, byte[] stdin_data) throws Exception {
+	public ExecHandle execThread(String commandline, String chdir, byte[] stdin_data) throws Exception {
+		return execThread(commandline, null, chdir, stdin_data, false);
+	}
+	public ExecHandle execThread(String commandline, Map<String,String> env, byte[] stdin_data, boolean wrap_child) throws Exception {
 		return execThread(commandline, env, null, stdin_data);
 	}
+	public ExecHandle execThread(String commandline, Map<String,String> env, byte[] stdin_data) throws Exception {
+		return execThread(commandline, env, null, stdin_data, false);
+	}
+	public ExecHandle execThread(String commandline, Map<String,String> env, String chdir, boolean wrap_child) throws Exception {
+		return execThread(commandline, env, chdir, null, wrap_child);
+	}
 	public ExecHandle execThread(String commandline, Map<String,String> env, String chdir) throws Exception {
-		return execThread(commandline, env, chdir, null);
+		return execThread(commandline, env, chdir, null, false);
 	}
 	/** executes command, returning immediately before it ends, returning a handle to asynchronously monitor
 	 * the process.
@@ -525,10 +569,15 @@ public abstract class AHost extends Host implements IProgramRunner {
 	 * @param env
 	 * @param chdir
 	 * @param stdin_data
+	 * @param wrap_child - wraps process in another process (so commandline is a grandchild process of this)
+	 *                   - sometimes needed to reliably kill processes on Windows (when running lots of tests, etc... get dangling handles)
 	 * @return
 	 * @throws Exception
 	 */
-	public abstract ExecHandle execThread(String commandline, Map<String,String> env, String chdir, byte[] stdin_data) throws Exception;
+	public abstract ExecHandle execThread(String commandline, Map<String,String> env, String chdir, byte[] stdin_data, boolean wrap_child) throws Exception;
+	public ExecHandle execThread(String commandline, Map<String,String> env, String chdir, byte[] stdin_data) throws Exception {
+		return execThread(commandline, env, chdir, stdin_data, false);
+	}
 	public ExecOutput execOut(String cmd, int timeout_sec, Map<String,String> object, byte[] stdin_post, Charset charset) throws IllegalStateException, Exception {
 		return execOut(cmd, timeout_sec, object, stdin_post, charset, (String)null);
 	}
@@ -1085,12 +1134,12 @@ public abstract class AHost extends Host implements IProgramRunner {
 	}
 
 	@Override
-	public boolean exec(ConsoleManager cm, String ctx_str, String commandline, int timeout, Map<String, String> env, byte[] stdin, Charset charset, String chdir, TestPackRunnerThread thread, int thread_slow_sec) throws Exception {
+	public boolean exec(ConsoleManager cm, String ctx_str, String commandline, int timeout, Map<String, String> env, byte[] stdin, Charset charset, String chdir, @SuppressWarnings("rawtypes") TestPackRunnerThread thread, int thread_slow_sec) throws Exception {
 		return execOut(commandline, timeout, env, stdin, charset, chdir, thread, thread_slow_sec).printOutputIfCrash(ctx_str, cm).isSuccess();
 	}
 
 	@Override
-	public boolean execElevated(ConsoleManager cm, String ctx_str, String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread test_thread, int slow_timeout_sec) throws Exception {
+	public boolean execElevated(ConsoleManager cm, String ctx_str, String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String chdir, @SuppressWarnings("rawtypes") TestPackRunnerThread test_thread, int slow_timeout_sec) throws Exception {
 		return execElevatedOut(cmd, timeout_sec, env, stdin_data, charset, chdir, test_thread, slow_timeout_sec).printOutputIfCrash(ctx_str, cm).isSuccess();
 	}
 

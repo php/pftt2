@@ -27,7 +27,7 @@ public class WindowsLocalHost extends LocalHost {
 	}
 	
 	@Override
-	public ExecOutput execElevatedOut(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread test_thread, int slow_timeout_sec) throws Exception {
+	public ExecOutput execElevatedOut(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String chdir, @SuppressWarnings("rawtypes") TestPackRunnerThread test_thread, int slow_timeout_sec, boolean wrap_child) throws Exception {
 		if (StringUtil.isEmpty(getEnvValue("PFTT_SHELL"))) {
 			// check if %PFTT_SHELL% is defined then PFTT is running in the
 			// PFTT shell which is already elevated, so don't run elevate.exe
@@ -45,6 +45,20 @@ public class WindowsLocalHost extends LocalHost {
 		}
 		
 		return execOut(cmd, timeout_sec, env, stdin_data, charset, chdir, test_thread, slow_timeout_sec);
+	}
+	
+	@Override
+	protected String[] wrapSplitCmdString(boolean wrap_child, String command) {
+		if (wrap_child) {
+			return new String[]{
+					"cmd",
+					"/S",
+					"/C",
+					"\""+command+" & EXIT\""
+				};
+		} else {
+			return splitCmdString(command);
+		}
 	}
 	
 	@Override

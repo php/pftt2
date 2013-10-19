@@ -48,7 +48,8 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	protected PrintWriter global_exception_writer;
 	protected LocalConsoleManager cm;
 	protected PhpBuild build;
-	protected LinkedBlockingQueue<ResultQueueEntry> results;
+	//protected LinkedBlockingQueue<ResultQueueEntry> results;
+	protected LinkedList<ResultQueueEntry> results;
 	protected boolean run_writer_thread = true;
 	protected final PhpBuildInfo build_info;
 	protected final EBuildBranch test_pack_branch;
@@ -145,7 +146,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 			ex.printStackTrace();
 		}
 		
-		results = new LinkedBlockingQueue<ResultQueueEntry>();
+		results = new LinkedList<ResultQueueEntry>();//new LinkedBlockingQueue<ResultQueueEntry>();
 		
 		global_exception_writer = new PrintWriter(new FileWriter(this.telem_dir+"/GLOBAL_EXCEPTIONS.txt"));
 		
@@ -156,17 +157,24 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 					
 					while (run_writer_thread || !results.isEmpty()) {
 						try {
-							q = results.take();
+							synchronized(results) {
+								q = results.isEmpty() ? null : results.removeFirst();
+							}
 						} catch ( Exception ex ) {
 						}
-						if (q==null)
+						if (q==null) {
+							try {
+								Thread.sleep(500);
+							} catch (InterruptedException e) {
+							}
 							continue;
+						}
 						try {
 							q.handle();
 						} catch ( Exception ex ) {
-							ex.printStackTrace();
+							// TODO temp ex.printStackTrace();
 						}
-						q = null;
+						q = null; // for gc
 					}
 				}
 			};
@@ -537,17 +545,26 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	
 	@Override
 	public void notifyStart(AHost host, ScenarioSetSetup scenario_set_setup, PhptSourceTestPack src_test_pack, PhptTestCase test_case) {
-		results.add(new PhptTestStartQueueEntry(host, scenario_set_setup, src_test_pack, test_case.getName()));
+		PhptTestStartQueueEntry e = new PhptTestStartQueueEntry(host, scenario_set_setup, src_test_pack, test_case.getName());
+		synchronized(results) {
+			results.add(e);
+		}
 	}
 	
 	@Override
 	public void notifyStart(AHost host, ScenarioSetSetup scenario_set_setup, PhpUnitSourceTestPack src_test_pack, PhpUnitTestCase test_case) {
-		results.add(new PhpUnitTestStartQueueEntry(host, scenario_set_setup, src_test_pack, test_case.getName()));
+		PhpUnitTestStartQueueEntry e = new PhpUnitTestStartQueueEntry(host, scenario_set_setup, src_test_pack, test_case.getName());
+		synchronized(results) {
+			results.add(e);
+		}
 	}
 	
 	@Override
 	public void notifyStart(AHost host, ScenarioSetSetup scenario_set_setup, UITestPack test_pack, String web_browser_name_and_version, String test_name) {
-		results.add(new UITestStartQueueEntry(host, scenario_set_setup, test_pack, web_browser_name_and_version, test_name));
+		UITestStartQueueEntry e = new UITestStartQueueEntry(host, scenario_set_setup, test_pack, web_browser_name_and_version, test_name);
+		synchronized(e) {
+			results.add(e);
+		}
 	}
 	
 	public File getResultPackPath() {
@@ -559,7 +576,10 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	}
 	
 	public void addResult(AHost this_host, ScenarioSetSetup this_scenario_set_setup, String test_name, String comment, EUITestStatus status, String verified_html, byte[] screenshot_png, UITestPack test_pack, String web_browser_name_and_version, String sapi_output, String sapi_config) {
-		results.add(new UIResultQueueEntry(this_host, this_scenario_set_setup, test_name, comment, status, verified_html, screenshot_png, test_pack, web_browser_name_and_version, sapi_output, sapi_config));
+		UIResultQueueEntry e = new UIResultQueueEntry(this_host, this_scenario_set_setup, test_name, comment, status, verified_html, screenshot_png, test_pack, web_browser_name_and_version, sapi_output, sapi_config);
+		synchronized(e) {
+			results.add(e);
+		}
 	}
 	
 	public void addTestException(AHost this_host, ScenarioSetSetup this_scenario_set_setup, PhptTestCase test_file, Throwable ex, Object a) {
@@ -591,7 +611,10 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	@Override
 	public void addResult(AHost this_host, ScenarioSetSetup this_scenario_set_setup, PhptSourceTestPack src_test_pack, PhptTestResult result) {
 		// enqueue result to be handled by another thread to avoid delaying every phpt thread
-		results.add(new PhptResultQueueEntry(this_host, this_scenario_set_setup, src_test_pack, result));
+		PhptResultQueueEntry e = new PhptResultQueueEntry(this_host, this_scenario_set_setup, src_test_pack, result);
+		synchronized(results) {
+			results.add(e);
+		}
 	}
 	
 	// TODO rename these
@@ -630,7 +653,10 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	
 	@Override
 	public void addResult(AHost host, ScenarioSetSetup scenario_set_setup, PhpUnitTestResult result) {
-		results.add(new PhpUnitResultQueueEntry(host, scenario_set_setup, result));
+		PhpUnitResultQueueEntry e = new PhpUnitResultQueueEntry(host, scenario_set_setup, result);
+		synchronized(results) {
+			results.add(e);
+		}
 	}
 	
 	protected class NotifyPhptFinishedEntry extends PhptQueueEntry {
@@ -647,7 +673,10 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	}
 	
 	public void notifyPhptFinished(AHost host, ScenarioSetSetup scenario_set, PhptSourceTestPack src_test_pack) {
-		results.add(new NotifyPhptFinishedEntry(host, scenario_set, src_test_pack));
+		NotifyPhptFinishedEntry e = new NotifyPhptFinishedEntry(host, scenario_set, src_test_pack);
+		synchronized(e) {
+			results.add(e);
+		}
 	}
 	
 	protected class NotifyPhpUnitFinishedEntry extends PhpUnitQueueEntry {
@@ -666,7 +695,10 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	}
 	
 	public void notifyPhpUnitFinished(AHost host, ScenarioSetSetup scenario_set_setup, PhpUnitSourceTestPack src_test_pack) {
-		results.add(new NotifyPhpUnitFinishedEntry(host, scenario_set_setup, src_test_pack));
+		NotifyPhpUnitFinishedEntry e = new NotifyPhpUnitFinishedEntry(host, scenario_set_setup, src_test_pack);
+		synchronized(results) {
+			results.add(e);
+		}
 	}
 	
 	protected class NotifyUITestFinishedEntry extends UIQueueEntry {
@@ -684,7 +716,10 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	}
 	
 	public void notifyUITestFinished(AHost host, ScenarioSetSetup scenario_set_setup, UITestPack test_pack, String web_browser_name_and_version) {
-		results.add(new NotifyUITestFinishedEntry(host, scenario_set_setup, test_pack, web_browser_name_and_version));
+		NotifyUITestFinishedEntry e = new NotifyUITestFinishedEntry(host, scenario_set_setup, test_pack, web_browser_name_and_version);
+		synchronized(results) {
+			results.add(e);
+		}
 	}
 	
 	protected class CloseQueueEntry extends ResultQueueEntry {
@@ -703,7 +738,11 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	
 	public void close(boolean block) {
 		if (run_writer_thread) {
-			results.add(new CloseQueueEntry());
+			run_writer_thread = false;
+			CloseQueueEntry e = new CloseQueueEntry();
+			synchronized(results) {
+				results.add(e);
+			}
 			if (block) {
 				while (!results.isEmpty()) {
 					if (!TimerUtil.trySleepMillis(100))

@@ -81,7 +81,7 @@ public class NoCodeCacheScenario extends CodeCacheScenario {
 	}
 
 	@Override
-	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
+	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
 		return true;
 	}
 

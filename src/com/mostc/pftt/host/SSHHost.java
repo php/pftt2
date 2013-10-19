@@ -409,7 +409,7 @@ public class SSHHost extends RemoteHost {
 	} // end public SessionChannelClient createSessionChannelClient
 	
 	@Override
-	public ExecHandle execThread(String cmd, Map<String, String> env, String chdir, byte[] stdin_post) throws Exception {
+	public ExecHandle execThread(String cmd, Map<String, String> env, String chdir, byte[] stdin_post, boolean wrap_child) throws Exception {
 		ByteArrayOutputStream out = new ByteArrayOutputStream(1024);
 		SessionChannelClient session = createSessionChannelClient(cmd, env, chdir, stdin_post, out);
 		
@@ -465,7 +465,7 @@ public class SSHHost extends RemoteHost {
 		}
 
 		@Override
-		public void run(ConsoleManager cm, StringBuilder output_sb, Charset charset, int timeout_sec, final TestPackRunnerThread thread, int slow_sec, int suspend_seconds, int max_chars) throws IOException, InterruptedException {
+		public void run(ConsoleManager cm, StringBuilder output_sb, Charset charset, int timeout_sec, @SuppressWarnings("rawtypes") final TestPackRunnerThread thread, int slow_sec, int suspend_seconds, int max_chars) throws IOException, InterruptedException {
 			do_run(this, session, charset, timeout_sec, thread, slow_sec);
 			output_sb.append(out.toString());
 		}
@@ -478,7 +478,7 @@ public class SSHHost extends RemoteHost {
 	} // end protected class SSHExecHandle
 	
 	@Override
-	public ExecOutput execOut(final String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_post, Charset charset, String chdir, final TestPackRunnerThread thread, int slow_sec) throws Exception {
+	public ExecOutput execOut(final String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_post, Charset charset, String chdir, @SuppressWarnings("rawtypes") final TestPackRunnerThread thread, int slow_sec, boolean wrap_child) throws Exception {
 		final ByteArrayIOStream out = new ByteArrayIOStream(1024);
 		
 		final ExecOutput eo = new ExecOutput();
@@ -500,7 +500,7 @@ public class SSHHost extends RemoteHost {
 		return eo;
 	} // end public ExecOutput execOut
 	
-	protected void do_run(final SSHExecHandle h, final SessionChannelClient session, Charset charset, int timeout_sec, final TestPackRunnerThread thread, int slow_sec) throws InvalidStateException, InterruptedException {
+	protected void do_run(final SSHExecHandle h, final SessionChannelClient session, Charset charset, int timeout_sec, @SuppressWarnings("rawtypes") final TestPackRunnerThread thread, int slow_sec) throws InvalidStateException, InterruptedException {
 		final AtomicBoolean run = new AtomicBoolean(true);
 		if (timeout_sec>NO_TIMEOUT) {
 			timer.schedule(new TimerTask() {
@@ -547,16 +547,6 @@ public class SSHHost extends RemoteHost {
 		
 		// wait for exit
 		session.getState().waitForState(ChannelState.CHANNEL_CLOSED);
-	}
-
-	@Override
-	public ExecOutput execOut(String cmd, int timeout, String chdir) throws Exception {
-		return execOut(cmd, timeout, null, null, chdir);
-	}
-
-	@Override
-	public ExecOutput execOut(String cmd, int timeout, Map<String, String> env, Charset charset, String chdir) throws Exception {
-		return execOut(cmd, timeout, env, null, charset, chdir);
 	}
 
 	@Override
@@ -665,7 +655,7 @@ public class SSHHost extends RemoteHost {
 	}
 
 	@Override
-	public ExecOutput execOut(String cmd, int timeout, Map<String, String> env, byte[] stdin_post, Charset charset, String chdir) throws Exception {
+	public ExecOutput execOut(String cmd, int timeout, Map<String, String> env, byte[] stdin_post, Charset charset, String chdir, boolean wrap_child) throws Exception {
 		return execOut(cmd, timeout, env, stdin_post, charset, chdir, null, FOUR_HOURS);
 	}
 
@@ -873,6 +863,14 @@ public class SSHHost extends RemoteHost {
 	public boolean isBusy() {
 		// hard to check so don't check for now
 		return false;
+	}
+
+	@Override
+	public ExecOutput execElevatedOut(String cmd, int timeout_sec,
+			Map<String, String> env, byte[] stdin_data, Charset charset,
+			String chdir, @SuppressWarnings("rawtypes") TestPackRunnerThread test_thread,
+			int slow_timeout_sec, boolean wrap_child) throws Exception {
+		return execOut(cmd, timeout_sec, env, stdin_data, charset, chdir, test_thread, slow_timeout_sec, wrap_child);
 	}
 
 } // end public class SSHHost

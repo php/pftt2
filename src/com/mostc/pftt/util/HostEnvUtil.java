@@ -53,7 +53,7 @@ public final class HostEnvUtil {
 			wer_value = "0x0";
 			em_value = "0x0";
 		} else {
-			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "disabling Windows Error Reporting...");
+			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "disabling Windows Error Reporting and debugging...");
 			wer_value = "0x1";
 			em_value = "0x2";
 		}
@@ -72,13 +72,15 @@ public final class HostEnvUtil {
 			regQueryAdd(cm, host, "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting", "ForceQueue", "0x0", REG_DWORD);
 			regQueryAdd(cm, host, "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting", "LoggingDisabled", "0x1", REG_DWORD);
 			
+			// these keys affect builds for platform (x86 builds on x86 Windows; x64 builds on x64 Windows)
 			regDel(cm, host, "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug", "Debugger");
-			// IMPORTANT: don't delete this key, change the value otherwise (if windbg installed) werfault.exe will
-			//            still launch windbg... won't if set to 0x1
-			regQueryAdd(cm, host, "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug", "Auto", "0x1", REG_DWORD);
+			regQueryAdd(cm, host, "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug", "Auto", "0x0", REG_DWORD);
+			// Important: these keys are affect x86 builds on x64 Windows
+			regDel(cm, host, "HKLM\\Software\\Wow6432Node\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug", "Debugger");
+			regQueryAdd(cm, host, "HKLM\\Software\\Wow6432Node\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug", "Auto", "0x0", REG_DWORD);
 		}
 		
-		if ( a || b || c ) {
+		if ( a || b || c || enable_debug_prompt) {
 			// assume if registry had to be edited, the rest of this has to be done, otherwise assume this is all already done
 			// (avoid doing this if possible because it requires user to approve elevation)
 			

@@ -239,7 +239,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			cm.println(EPrintType.SKIP_OPERATION, getClass(), "Scenario Set not implemented: "+scenario_set_setup.getNameWithVersionInfo());
 			close();
 			return false;
-		} else if (!scenario_set.isSupported(cm, runner_host, build)) {
+		} else if (!scenario_set.isSupported(cm, runner_host, build, getScenarioSetPermutationLayer())) {
 			// ex: PHP NTS build can't be run with Apache
 			cm.println(EPrintType.SKIP_OPERATION, getClass(), "Scenario Set not supported: "+scenario_set+" host: "+runner_host+" build: "+build);
 			close();
@@ -551,13 +551,12 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		if (cm.isDebugAll()) {
 			// run fewer threads b/c we're running WinDebug
 			// (can run WinDebug w/ same number of threads, but UI responsiveness will be really SLoow)
-			init_thread_count = Math.max(1, init_thread_count / 4);
+			init_thread_count = max_thread_count = Math.max(1, init_thread_count / 4);
 		}
 		if (cm.getThreadCount()>0) {
 			// let user override SAPI and debug thread count checks
-			init_thread_count = cm.getThreadCount();
+			init_thread_count = max_thread_count = cm.getThreadCount();
 		} 
-		
 		checkThreadCountLimit();
 	} // end protected void decideThreadCount
 	
@@ -865,10 +864,9 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 					try {
 						group_key.prepare();
 						
+						// -debug_all and -debug_list and -debug_named console options
+						final boolean debugger_attached = (cm.isDebugAll() || cm.isInDebugList(test_case));
 						if (parallel) {
-							// -debug_all and -debug_list console options
-							final boolean debugger_attached = (cm.isDebugAll() || cm.isInDebugList(test_case));
-							
 							
 							// TODO create better mechanism to send `sa` to each test case runner
 							// @see HttpTestCaseRunner#http_execute which calls #notifyCrash
@@ -921,13 +919,14 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 						
 					
 						// finally: create the test case runner and run the actual test
-						runTest(group_key, test_case);
+						runTest(group_key, test_case, debugger_attached);
 						
 						// if test took too long OR tests are running fast now
 						// TODO temp test decreasing threads when getting lots of timeouts
 						if (//Math.abs(System.currentTimeMillis() - test_run_start_time.get()) > 60
 								//||
-								Math.abs(System.currentTimeMillis() - test_run_start_time.get()) < sapi_scenario.getFastTestTimeSeconds()*1000) {
+								Math.abs(System.currentTimeMillis() - test_run_start_time.get()) < sapi_scenario.getFastTestTimeSeconds()*1000
+								&&threads.size()>1) {
 							// scale back down (decrease number of threads)
 							cm.println(EPrintType.CLUE, getClass(), "Thread Pool: SCALE DOWN");
 							Iterator<TestPackThread<T>> it = scale_up_threads.iterator();
@@ -982,7 +981,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			} // end while
 		} // end protected void exec_jobs
 		
-		protected abstract void runTest(TestCaseGroupKey group_key, T test_case) throws IOException, Exception, Throwable;
+		protected abstract void runTest(TestCaseGroupKey group_key, T test_case, boolean debugger_attached) throws IOException, Exception, Throwable;
 
 		@Override
 		protected boolean canCreateNewThread() {

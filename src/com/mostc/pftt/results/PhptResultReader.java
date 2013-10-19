@@ -60,7 +60,7 @@ public class PhptResultReader extends AbstractPhptRW {
 	
 	protected class StatusListEntry {
 		/** count reported in tally file. should match test_names#size */
-		protected int count;
+		protected final int count;
 		/** list of tests... test_names#size should == count */
 		protected final ArrayList<String> test_names;
 		
@@ -83,9 +83,9 @@ public class PhptResultReader extends AbstractPhptRW {
 			if (count!=test_names.size()) {
 				cm.println(EPrintType.WARNING, getClass(), "Count does not match list of test names... previous test run interrupted?");
 				
-				if (count==0)
+				/* TODO temp if (count==0)
 					// fallback
-					count = test_names.size();
+					count = test_names.size(); */
 			}
 		}
 		

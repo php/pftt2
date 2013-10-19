@@ -177,6 +177,7 @@ public class LocalConsoleManager implements ConsoleManager {
 	}
 	
 	private WeakReference<String> last_clue_msg;
+	private EPrintType last_type;
 	@Override
 	public void println(EPrintType type, String ctx_str, String string) {
 		if (results_only)
@@ -186,7 +187,7 @@ public class LocalConsoleManager implements ConsoleManager {
 		case SKIP_OPERATION: 
 		case CANT_CONTINUE:
 		case OPERATION_FAILED_CONTINUING:
-			doPrintMultiline(type+": "+ctx_str+": ", string);
+			doPrintMultiline(last_type == EPrintType.CLUE, type+": "+ctx_str+": ", string);
 			break;
 		case WARNING:
 		case CLUE:
@@ -196,17 +197,20 @@ public class LocalConsoleManager implements ConsoleManager {
 				if (last_str!=null && last_str.equals(string))
 					break;
 			}
-			doPrintMultiline(type+": "+ctx_str+": ", string);
+			doPrintMultiline(last_type != EPrintType.CLUE, type+": "+ctx_str+": ", string);
 			last_clue_msg = new WeakReference<String>(string);
 			break;
 		case TIP:
-			doPrintMultiline("TIP: ", string);
+			doPrintMultiline(last_type == EPrintType.CLUE, "TIP: ", string);
 			break;
 		default:
-			doPrintMultiline("PFTT: "+ctx_str+": ", string);
+			doPrintMultiline(last_type == EPrintType.CLUE, "PFTT: "+ctx_str+": ", string);
 		}
+		last_type = type;
 	}
-	protected void doPrintMultiline(String pre, String str) {
+	protected void doPrintMultiline(boolean pre_blank, String pre, String str) {
+		if (pre_blank)
+			System.out.println();
 		for ( String line : StringUtil.splitLines(str))
 			System.out.println(pre+line);
 	}
@@ -317,7 +321,17 @@ public class LocalConsoleManager implements ConsoleManager {
 
 	@Override
 	public boolean isInDebugList(TestCase test_case) {
-		return debug_list != null && debug_list.contains(test_case.getName());
+		if (debug_list==null)
+			return false;
+		final String tc_name = test_case.getName().toLowerCase();
+		if (debug_list.contains(tc_name))
+			return true;
+		for ( String name : debug_list ) {
+			if (tc_name.contains(name.toLowerCase())) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	@Override

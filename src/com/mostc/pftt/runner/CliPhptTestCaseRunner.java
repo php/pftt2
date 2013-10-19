@@ -40,13 +40,15 @@ import com.mostc.pftt.scenario.ScenarioSetSetup;
 
 public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected final CliSAPIInstance sapi;
+	protected final boolean debugger_attached;
 	protected EExecutableType exe_type = EExecutableType.CLI;
 	protected ExecOutput output;
 	protected String query_string, shell_script, test_cmd, shell_file;
 	
-	public CliPhptTestCaseRunner(boolean xdebug, CliScenario sapi_scenario, CliSAPIInstance sapi, PhpIni ini, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+	public CliPhptTestCaseRunner(boolean xdebug, CliScenario sapi_scenario, CliSAPIInstance sapi, PhpIni ini, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack, boolean debugger_attached) {
 		super(xdebug, sapi_scenario, ini, thread, test_case, cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack);
 		this.sapi = sapi;
+		this.debugger_attached = debugger_attached;
 	}
 	
 	@Override
@@ -211,10 +213,14 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		// execute PHP to execute the TEST code ... allow up to 60 seconds for execution
 		//      if test is taking longer than 30 seconds to run, spin up an additional thread to compensate (so other non-slow tests can be executed)
 		running_test_handle = sapi.execThread(
+					cm,
+					test_case.getBaseName(),
+					scenario_set.getScenarioSet(),
 					test_cmd, 
 					active_test_pack.getStorageDirectory(),
 					env,
-					stdin_post
+					stdin_post,
+					debugger_attached
 				);
 		StringBuilder output_sb = new StringBuilder(1024);
 		
@@ -234,7 +240,6 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	@Override
 	protected String executeTest() throws Exception { 
 		String output_str = doExecuteTest();
-		System.out.println("237 "+test_case);
 		if (running_test_handle.isTimedOut() || (running_test_handle.getExitCode()==-1 && exe_type==EExecutableType.CGI)) {
 			// if test took longer than 1 minute, OR
 			// test is using php-cgi.exe and exited with -1
@@ -272,20 +277,20 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		return output_str;
 	} // end String executeTest
 	
-	@Override
+	/*@Override
 	protected PhptTestResult notifyNotPass(PhptTestResult result) {
 		// TODO temp
 		// try FAIL TIMEOUT XFAIL_WORKS
-		/*if (result.status!=EPhptTestStatus.CRASH && test_case.redo!=true) {
+		if (result.status!=EPhptTestStatus.CRASH && test_case.redo!=true) {
 			test_case.redo = true;
 			this.thread.redo(test_case);
 
 			// signal not to record this attempt
 			return null;
-		} else {*/
+		} else {
 			return super.notifyNotPass(result);
-		//}
-	}
+		}
+	}*/
 	
 	@Override
 	protected void executeClean() throws Exception {

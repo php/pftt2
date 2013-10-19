@@ -450,11 +450,6 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	 * @throws Throwable
 	 */
 	protected void evalTest(String output, Charset charset) throws Throwable {
-		if (true) {
-			twriter.addResult(host, scenario_set, src_test_pack, notifyPassOrXFail(new PhptTestResult(host, test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, null, getSAPIOutput(), getSAPIConfig(), code_coverage)));
-			
-			return;
-		}
 		// Windows: line endings are already made consistent by AHost#exec*
 		String expected, preoverride_actual = null;
 	

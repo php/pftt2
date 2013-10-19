@@ -622,12 +622,38 @@ public abstract class Host {
 			return StringUtil.EMPTY;
 		
 		StringBuilder sb = new StringBuilder(Math.max(1024, parts[0].length()*2));
-		sb.append(parts[0]);
+		sb.append(fixPath(parts[0]));
 		for ( int i=1 ; i < parts.length ; i++ ) {
 			if (parts[i]==null)
 				continue;
 			sb.append(dirSeparator());
-			sb.append(parts[i]);
+			sb.append(fixPath(parts[i]));
+		}
+		return sb.toString();
+	}
+	
+	public String joinIntoOnePath(List<String> parts) {
+		if (parts==null||parts.isEmpty())
+			return StringUtil.EMPTY;
+		
+		StringBuilder sb = new StringBuilder(Math.max(1024, parts.get(0).length()*2));
+		sb.append(fixPath(parts.get(0)));
+		for ( int i=1 ; i < parts.size() ; i++ ) {
+			sb.append(dirSeparator());
+			sb.append(fixPath(parts.get(i)));
+		}
+		return sb.toString();
+	}
+	
+	public String joinIntoMultiplePath(List<String> parts) {
+		if (parts==null||parts.isEmpty())
+			return StringUtil.EMPTY;
+		
+		StringBuilder sb = new StringBuilder(Math.max(1024, parts.get(0).length()*2));
+		sb.append(fixPath(parts.get(0)));
+		for ( int i=1 ; i < parts.size() ; i++ ) {
+			sb.append(pathsSeparator());
+			sb.append(fixPath(parts.get(i)));
 		}
 		return sb.toString();
 	}

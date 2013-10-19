@@ -5,10 +5,13 @@ import java.util.Map;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.AHost.ExecHandle;
 import com.mostc.pftt.host.ExecOutput;
+import com.mostc.pftt.host.LocalHost.LocalExecHandle;
 import com.mostc.pftt.model.core.EExecutableType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.util.WinDebugManager;
 
 public class CliSAPIInstance extends SAPIInstance {
 	protected final PhpBuild build;
@@ -59,11 +62,18 @@ public class CliSAPIInstance extends SAPIInstance {
 	}
 
 	public ExecOutput execute(EExecutableType exe_type, String php_filename, String extra_args, int timeout_sec, Map<String,String> env, String chdir) throws Exception {
-		return host.execOut(createPhpCommand(exe_type, php_filename, extra_args), timeout_sec, env, chdir);
+		return host.execOut(createPhpCommand(exe_type, php_filename, extra_args), timeout_sec, env, chdir, true);
 	}
 	
-	public ExecHandle execThread(String cmd, String chdir, Map<String,String> env, byte[] stdin_data) throws Exception {
-		return host.execThread(cmd, env, chdir, stdin_data);
+	WinDebugManager db_mgr = new WinDebugManager();
+	public ExecHandle execThread(ConsoleManager cm, String name, ScenarioSet scenario_set, String cmd, String chdir, Map<String,String> env, byte[] stdin_data, boolean debugger_attached) throws Exception {
+		// TODO use this with CliPhpUnitTestCaseRunner
+		
+		LocalExecHandle eh = (LocalExecHandle) host.execThread(cmd, env, chdir, stdin_data, !debugger_attached);
+		if (debugger_attached) {
+			db_mgr.newDebugger(cm, host, scenario_set, name, build, eh);
+		}
+		return eh;
 	}
 	
 	@Override

@@ -72,9 +72,15 @@ public class PosixLocalHost extends LocalHost {
 		}
 	}
 
+	@SuppressWarnings("rawtypes")
 	@Override
-	public ExecOutput execElevatedOut(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread test_thread, int slow_timeout_sec) throws Exception {
-		return execOut(cmd, timeout_sec, env, stdin_data, charset, chdir, test_thread, slow_timeout_sec);
+	public ExecOutput execElevatedOut(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread test_thread, int slow_timeout_sec, boolean wrap_child) throws Exception {
+		return execOut(cmd, timeout_sec, env, stdin_data, charset, chdir, test_thread, slow_timeout_sec, wrap_child);
+	}
+	
+	@Override
+	protected String[] wrapSplitCmdString(boolean wrap_child, String command) {
+		return splitCmdString(command);
 	}
 	
 	@Override

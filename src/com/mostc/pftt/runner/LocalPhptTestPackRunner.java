@@ -255,8 +255,8 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 		}
 
 		@Override
-		protected void runTest(TestCaseGroupKey group_key, PhptTestCase test_case) throws IOException, Exception, Throwable {
-			r = sapi_scenario.createPhptTestCaseRunner(this, group_key, test_case, cm, twriter, runner_host, scenario_set_setup, build, src_test_pack, active_test_pack, xdebug);
+		protected void runTest(TestCaseGroupKey group_key, PhptTestCase test_case, boolean debugger_attached) throws IOException, Exception, Throwable {
+			r = sapi_scenario.createPhptTestCaseRunner(this, group_key, test_case, cm, twriter, runner_host, scenario_set_setup, build, src_test_pack, active_test_pack, xdebug, debugger_attached);
 			twriter.notifyStart(runner_host, scenario_set_setup, src_test_pack, test_case);
 			r.runTest(cm, this, LocalPhptTestPackRunner.this);
 		}

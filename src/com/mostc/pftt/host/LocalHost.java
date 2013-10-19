@@ -222,18 +222,17 @@ public abstract class LocalHost extends AHost {
 	}
 
 	@Override
-	public ExecOutput execOut(String commandline, int timeout, Map<String,String> env, byte[] stdin, Charset charset, String chdir) throws Exception {
-		return execOut(commandline, timeout, env, stdin, charset, chdir, null, NO_TIMEOUT);
+	public ExecOutput execOut(String commandline, int timeout, Map<String,String> env, byte[] stdin, Charset charset, String chdir, boolean wrap_child) throws Exception {
+		return execOut(commandline, timeout, env, stdin, charset, chdir, null, NO_TIMEOUT, wrap_child);
 	}
 	@Override
-	public LocalExecHandle execThread(String commandline, Map<String,String> env, String chdir, byte[] stdin_data) throws Exception {
-		return exec_impl(splitCmdString(commandline), env, chdir, stdin_data);
+	public LocalExecHandle execThread(String commandline, Map<String,String> env, String chdir, byte[] stdin_data, boolean wrap_child) throws Exception {
+		return exec_impl(wrapSplitCmdString(wrap_child, commandline), env, chdir, stdin_data);
 	}
+	@SuppressWarnings("rawtypes")
 	@Override
-	public ExecOutput execOut(final String commandline, int timeout, Map<String,String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread thread, int thread_slow_sec) throws Exception {
-		
-
-		LocalExecHandle eh = exec_impl(splitCmdString(commandline), env, chdir, stdin_data); 
+	public ExecOutput execOut(final String commandline, int timeout, Map<String,String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread thread, int thread_slow_sec, boolean wrap_child) throws Exception {
+		LocalExecHandle eh = exec_impl(wrapSplitCmdString(wrap_child, commandline), env, chdir, stdin_data); 
 			
 		StringBuilder output_sb = new StringBuilder(1024);
 		
@@ -251,9 +250,10 @@ public abstract class LocalHost extends AHost {
 	}
 	
 	protected static class ThreadSlowTask implements Runnable {
+		@SuppressWarnings("rawtypes")
 		protected final TestPackRunnerThread thread;
 		
-		protected ThreadSlowTask(TestPackRunnerThread thread) {
+		protected ThreadSlowTask(@SuppressWarnings("rawtypes") TestPackRunnerThread thread) {
 			this.thread = thread;
 		}
 		
@@ -529,7 +529,7 @@ public abstract class LocalHost extends AHost {
 		}
 
 		@Override
-		public void run(ConsoleManager cm, StringBuilder output_sb, Charset charset, int timeout_sec, TestPackRunnerThread thread, int thread_slow_sec, int suspend_seconds, int max_chars) throws IOException, InterruptedException {
+		public void run(ConsoleManager cm, StringBuilder output_sb, Charset charset, int timeout_sec, @SuppressWarnings("rawtypes") TestPackRunnerThread thread, int thread_slow_sec, int suspend_seconds, int max_chars) throws IOException, InterruptedException {
 			TimerThread a = null, b = null;
 			if (thread!=null && thread_slow_sec>NO_TIMEOUT) {
 				b = TimerUtil.waitSeconds(thread_slow_sec, new ThreadSlowTask(thread));
@@ -593,18 +593,10 @@ public abstract class LocalHost extends AHost {
 		return 0;
 	} // end protected static int getWindowsProcessIDReflection
 	
+	protected abstract String[] wrapSplitCmdString(boolean wrap_child, String command);
+	
 	private static final Pattern PAT_QUOTE = Pattern.compile("\\\"");
 	public static String[] splitCmdString(String command) {
-		if (command.contains("php.exe")||command.contains("php-cgi.exe")||command.contains("httpd.exe")) {
-			// TODO temp
-			return new String[]{
-					"cmd",
-					"/S",
-					"/C",
-					"\""+command+" & EXIT\""
-			};
-		}
-		
 		LinkedList<String> parts = new LinkedList<String>();
 		String buf = "";
 		char c;
@@ -647,23 +639,6 @@ public abstract class LocalHost extends AHost {
 	protected LocalExecHandle exec_impl(String[] cmd_array, Map<String,String> env, String chdir, byte[] stdin_data) throws Exception, InterruptedException {
 		Process process = null;
 		{
-			/*if (cmd_array.length>0&&
-					(cmd_array[0].equals("C:\\php-sdk\\php-5.5.5RC1-nts-Win32-VC11-x86\\php.exe")
-							||cmd_array[0].equals("C:\\Apache244-VC11-OpenSSL1.0.1e-x86\\bin\\httpd.exe")
-							||cmd_array[0].equals("C:\\php-sdk\\php-5.5.5RC1-nts-Win32-VC11-x86\\php-cgi.exe")
-							||cmd_array[0].equals("C:\\php-sdk\\php-5.5.5RC1-Win32-VC11-x86\\php.exe")
-							||cmd_array[0].equals("C:\\php-sdk\\php-5.5.5RC1-Win32-VC11-x86\\php-cgi.exe"))) {
-				// TODO temp
-				String[] new_cmd_array = new String[5+cmd_array.length];
-				new_cmd_array[0] = "cmd.exe";
-				new_cmd_array[1] = "/S";
-				new_cmd_array[2] = "/C";
-				new_cmd_array[3] = "\"";
-				System.arraycopy(cmd_array, 0, new_cmd_array, 4, cmd_array.length);
-				cmd_array = new_cmd_array;
-				new_cmd_array[new_cmd_array.length-1] = "\"";
-			}
-			System.out.println("791 "+StringUtil.toString(cmd_array));*/
 			ProcessBuilder builder = new ProcessBuilder(cmd_array);
 			if (env!=null) {
 				//
@@ -727,7 +702,6 @@ public abstract class LocalHost extends AHost {
 		
 		@Override
 		public void run() {
-			System.out.println("730 "+getWindowsProcessID(h.process.get()));
 			// go further trying to kill the process
 			//
 			// WindowsLocalHostExecHandle#close checks for WerFault.exe blocking on Windows

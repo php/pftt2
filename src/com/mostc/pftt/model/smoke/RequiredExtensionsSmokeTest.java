@@ -3,6 +3,7 @@ package com.mostc.pftt.model.smoke;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.ESAPIType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
@@ -141,7 +142,7 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 		ini.putMulti(PhpIni.OUTPUT_BUFFERING, PhpIni.ON);
 		
 		// CRITICAL PhpUnit tests w/ remote fs scenarios
-		ini.putSingle("max_execution_time", 60); // default is 30
+		ini.putSingle("max_execution_time", PhpUnitTestCase.MAX_TEST_TIME_SECONDS); // default is 30
 		
 		//
 		// CRITICAL

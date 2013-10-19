@@ -186,7 +186,7 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 		}
 
 		@Override
-		protected void runTest(TestCaseGroupKey group_key, PhpUnitTestCase test_case) throws IOException, Exception, Throwable {
+		protected void runTest(TestCaseGroupKey group_key, PhpUnitTestCase test_case, boolean debugger_attached) throws IOException, Exception, Throwable {
 			r = sapi_scenario.createPhpUnitTestCaseRunner(
 					this,
 					group_key,

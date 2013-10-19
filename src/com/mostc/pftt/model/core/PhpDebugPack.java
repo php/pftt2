@@ -1,5 +1,7 @@
 package com.mostc.pftt.model.core;
 
+import java.io.File;
+
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.DebugPack;
@@ -16,6 +18,7 @@ public class PhpDebugPack extends DebugPack {
 	}
 
 	public static PhpDebugPack open(AHost host, String path) {
+		path = new File(path).getAbsolutePath();
 		if (StringUtil.endsWithIC(path, ".zip")) {
 			// automatically decompress
 			String zip_file = path;

@@ -5,6 +5,7 @@ import com.mostc.pftt.model.core.EAcceleratorType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.EPrintType;
 
 /** tests the APC code cache (NOT IMPLEMENTED)
  * 
@@ -47,8 +48,14 @@ public class APCScenario extends CodeCacheScenario {
 	}
 	
 	@Override
-	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
-		return !scenario_set.contains(IISScenario.class);
+	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
+		if (scenario_set.contains(IISScenario.class)) {
+			if (cm!=null) {
+				cm.println(EPrintType.CLUE, getClass(), "Can NOT run this with IIS Scenario");
+			}
+			return false;
+		}
+		return true;
 	}
 
 } // end public class APCScenario
