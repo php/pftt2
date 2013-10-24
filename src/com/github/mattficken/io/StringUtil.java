@@ -283,6 +283,7 @@ public final class StringUtil {
 			case '\\':
 			case '$':
 			case '+':
+			case ':':
 				sb.append("\\");
 			}
 			sb.append(c);

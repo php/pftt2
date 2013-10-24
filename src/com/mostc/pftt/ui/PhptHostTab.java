@@ -39,13 +39,13 @@ public class PhptHostTab extends JSplitPane {
 	protected JPanel panel, button_panel;
 	protected JProgressBar progress_bar, pass_bar;
 	protected JButton stop_button, prev_file_button, prev_button, next_file_button, next_button, to_actual_button, to_expect_button, ignore_button, skip_button, pass_button;
-	protected JLabel pass_label, total_label, fail_label, crash_label, xfail_label, xfail_works_label, skip_label, xskip_label, bork_label, unsupported_label, test_exceptions_label;
+	protected JLabel pass_label, total_label, fail_label, crash_label, xfail_label, xfail_works_label, skip_label, xskip_label, bork_label, timeout_label, unsupported_label, test_exceptions_label;
 	protected JMenuBar jmb;
 	protected JMenu options_menu, status_list_menu;
 	protected ExpectedActualDiffPHPTDisplay eat_display;
 	protected JCheckBoxMenuItem host_console_cb;
 	protected JSplitPane jsp;
-	protected final DefaultListModel fail_list_model, crash_list_model, xfail_list_model, xfail_works_list_model, xskip_list_model, skip_list_model, pass_list_model, bork_list_model, unsupported_list_model, test_exceptions_list_model;
+	protected final DefaultListModel fail_list_model, crash_list_model, xfail_list_model, xfail_works_list_model, xskip_list_model, skip_list_model, pass_list_model, bork_list_model, timeout_list_model, unsupported_list_model, test_exceptions_list_model;
 	protected JList test_list;
 	protected JScrollPane test_list_jsp;
 	protected ConsoleTextEditor host_console;
@@ -69,6 +69,7 @@ public class PhptHostTab extends JSplitPane {
 		skip_list_model = new DefaultListModel();
 		pass_list_model = new DefaultListModel();
 		bork_list_model = new DefaultListModel();
+		timeout_list_model = new DefaultListModel();
 		unsupported_list_model = new DefaultListModel();
 		test_exceptions_list_model = new DefaultListModel();
 		
@@ -102,6 +103,8 @@ public class PhptHostTab extends JSplitPane {
 		panel.add("left", fail_label = new JLabel("0"));
 		panel.add(new JLabel("CRASH"));
 		panel.add(crash_label = new JLabel("0"));
+		panel.add(new JLabel("Timeout"));
+		panel.add(timeout_label = new JLabel("0"));
 		panel.add(new JLabel("Bork"));
 		panel.add(bork_label = new JLabel("0"));
 		panel.add("left", new JLabel("XFail Works"));
@@ -287,7 +290,7 @@ public class PhptHostTab extends JSplitPane {
 		jsp.setDividerLocation(0.75d);
 	}
 	
-	protected int crash, pass, fail, xfail, xfail_works, skip, xskip, bork, unsupported, test_exceptions; // XXX duplicates functionality from PhptTelemetry
+	protected int crash, pass, fail, xfail, xfail_works, skip, xskip, bork, unsupported, timeout, test_exceptions; // XXX duplicates functionality from PhptTelemetry
 	
 	public void showResult(final int total, final int completed, final PhptTestResult result) {
 		SwingUtilities.invokeLater(new Runnable() {
@@ -359,6 +362,12 @@ public class PhptHostTab extends JSplitPane {
 						total_label.setText(""+(fail+pass));
 						
 						pass_list_model.addElement(result);
+						break;
+					case TIMEOUT:
+						timeout++;
+						timeout_label.setText(Integer.toString(unsupported));
+						
+						timeout_list_model.addElement(result);
 						break;
 					default:
 						unsupported++;
