@@ -28,6 +28,7 @@ import com.mostc.pftt.runner.BuiltinWebHttpPhpUnitTestCaseRunner;
 import com.mostc.pftt.runner.BuiltinWebHttpPhptTestCaseRunner;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
+import com.mostc.pftt.runner.PhptTestPreparer.PreparedPhptTestCase;
 
 /** Tests PHP using PHP's builtin web server.
  * 
@@ -99,6 +100,13 @@ public class BuiltinWebServerScenario extends WebServerScenario {
 	}
 	
 	public static final Trie BUILTIN_WEB_EXPECTED_CRASHES = PhptTestCase.createNamed(
+			"ext/mbstring/tests/mb_output_handler_euc_jp.phpt",
+			"ext/mbstring/tests/mb_output_handler_pattern-04.phpt",
+			"ext/mbstring/tests/mb_output_handler_pattern-10.phpt",
+			"ext/mbstring/tests/mb_output_handler_runtime_ini_alteration-02.phpt",
+			"ext/tidy/tests/020.phpt",
+			"ext/zlib/tests/ob_004.phpt",
+			"ext/zlib/tests/ob_003.phpt",
 			"ext/standard/tests/network/udp6loop.phpt",
 			"ext/standard/tests/serialize/serialization_objects_003.phpt",
 			"tests/basic/rfc1867_anonymous_upload.phpt",
@@ -270,8 +278,8 @@ public class BuiltinWebServerScenario extends WebServerScenario {
 	}
 	
 	@Override
-	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack, boolean xdebug, boolean debugger_attached) {
-		return new BuiltinWebHttpPhptTestCaseRunner(xdebug, this, group_key.getPhpIni(), group_key.getEnv(), params, httpproc, httpexecutor, smgr, thread.getThreadWebServerInstance(), thread, test_case, cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack);
+	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PreparedPhptTestCase prep, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack, boolean xdebug, boolean debugger_attached) {
+		return new BuiltinWebHttpPhptTestCaseRunner(xdebug, this, group_key.getPhpIni(), group_key.getEnv(), params, httpproc, httpexecutor, smgr, thread.getThreadWebServerInstance(), thread, prep, cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack);
 	}
 	
 	

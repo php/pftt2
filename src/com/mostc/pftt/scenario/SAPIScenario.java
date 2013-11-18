@@ -24,6 +24,7 @@ import com.mostc.pftt.runner.AbstractPhpUnitTestCaseRunner;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
+import com.mostc.pftt.runner.PhptTestPreparer.PreparedPhptTestCase;
 
 /** Different scenarios for how PHP can be run
  * 
@@ -72,7 +73,7 @@ public abstract class SAPIScenario extends AbstractSerialScenario {
 	 * 
 	 * @param thread
 	 * @param group_key
-	 * @param test_case
+	 * @param prep
 	 * @param cm
 	 * @param twriter
 	 * @param host
@@ -84,7 +85,7 @@ public abstract class SAPIScenario extends AbstractSerialScenario {
 	 * @param debugger_attached TODO
 	 * @return
 	 */
-	public abstract AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack, boolean xdebug, boolean debugger_attached);
+	public abstract AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PreparedPhptTestCase prep, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack, boolean xdebug, boolean debugger_attached);
 	
 	public void close(ConsoleManager cm, boolean debug) {
 		
@@ -206,7 +207,58 @@ public abstract class SAPIScenario extends AbstractSerialScenario {
 			"ext/standard/tests/strings/htmlentities05.phpt",
 			"ext/wddx/tests/004.phpt",
 			"ext/wddx/tests/005.phpt",
-			"ext/zlib/tests/bug65391.phpt"
+			"ext/zlib/tests/bug65391.phpt",
+			"ext/standard/tests/array/compact.phpt",
+			"ext/standard/tests/file/bug45181.phpt",
+			"ext/standard/tests/file/file_get_contents_error002.phpt",
+			"ext/standard/tests/file/glob_variation2.phpt",
+			"ext/standard/tests/file/readfile_variation3.phpt",
+			"ext/standard/tests/file/rename_variation9.phpt",
+			"ext/standard/tests/network/gethostbyname_error005.phpt",
+			"ext/standard/tests/serialize/bug64146.phpt",
+			"ext/standard/tests/strings/crypt_chars.phpt",
+			"ext/standard/tests/strings/quoted_printable_encode_002.phpt",
+			"ext/xsl/tests/bug26384.phpt",
+			"ext/xsl/tests/xslt009.phpt",
+			"ext/xsl/tests/xslt010.phpt",
+			"tests/classes/factory_and_singleton_002.phpt",
+			"tests/func/005a.phpt",
+			"tests/output/bug60321.phpt",
+			"tests/output/ob_get_status.phpt",
+			"zend/tests/bug39542.phpt",
+			"zend/tests/exception_009.phpt",
+			"zend/tests/multibyte/multibyte_encoding_001.phpt",
+			"zend/tests/multibyte/multibyte_encoding_005.phpt",
+			"zend/tests/ns_086.phpt",
+			"ext/curl/tests/curl_copy_handle_basic_008.phpt",
+			"ext/curl/tests/curl_curlopt_readdata.phpt",
+			"ext/curl/tests/curl_writeheader_callback.phpt",
+			"ext/date/tests/bug28024.phpt",
+			"ext/date/tests/bug32086.phpt",
+			"ext/date/tests/bug35425.phpt",
+			"ext/date/tests/date_default_timezone_get-3.phpt",
+			"ext/dom/tests/domdocument_load_variation4.phpt",
+			"ext/dom/tests/domdocument_loadxml_variation4.phpt",
+			"ext/filter/tests/bug52209.phpt",
+			"ext/gettext/tests/gettext_basic.phpt",
+			"ext/intl/tests/timezone_getdisplayname_variant3.phpt",
+			"ext/mbstring/tests/mb_http_input.phpt",
+			"ext/pdo_sqlite/tests/bug_63916.phpt",
+			"ext/sqlite3/tests/bug63921-64bit.phpt",
+			"ext/standard/tests/general_functions/002.phpt",
+			"ext/standard/tests/general_functions/006.phpt",
+			"ext/standard/tests/strings/htmlentities.phpt",
+			"ext/zlib/tests/bug55544.phpt",
+			"ext/zlib/tests/bug_52944-darwin.phpt",
+			"ext/zlib/tests/ob_001.phpt",
+			"sapi/cli/tests/bug65066_100.phpt",
+			"ext/date/tests/bug32555.phpt",
+			"ext/standard/tests/strings/fprintf_variation_007.phpt",
+			"ext/reflection/tests/005.phpt",
+			"zend/tests/bug64720.phpt",
+			"ext/zip/tests/bug40228.phpt",
+			"ext/zip/tests/bug7214.phpt",
+			"zend/tests/bug40236.phpt"
 		);
 	public static Trie NON_WINDOWS_EXTS = PhptTestCase.createExtensions("sysvsem", "sysvmsg", "sysvshm", "gettext", "exif", "readline", "posix", "shmop");
 	public static Trie SCENARIO_EXTS = PhptTestCase.createExtensions("dba", "sybase", "snmp", "interbase", "ldap", "imap", "oci8", "pcntl", "soap", "xmlrpc", "pdo", "odbc", "pdo_mssql", "mssql", "pdo_pgsql", "sybase_ct", "ftp", "curl");

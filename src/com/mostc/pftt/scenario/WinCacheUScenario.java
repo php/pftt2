@@ -10,6 +10,7 @@ import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
+import com.mostc.pftt.util.DllVersion;
 
 /** Using only the user, object and file caching components of WinCache, NOT the code caching.
  * Can be used with Opcache just like APCU (but its designed for Windows, so for CLI and IIS
@@ -21,24 +22,37 @@ import com.mostc.pftt.results.EPrintType;
 // TODO http://us.php.net/manual/en/wincache.stats.php
 // TODO mediawiki support
 public abstract class WinCacheUScenario extends UserCacheScenario {
+	protected final DllVersion set_dll;
+	
+	public WinCacheUScenario() {
+		this.set_dll = null;
+	}
+	
+	public WinCacheUScenario(DllVersion dll) {
+		this.set_dll = dll;
+	}
 	
 	@Override
 	public void addToDebugPath(ConsoleManager cm, AHost host, PhpBuild build, Collection<String> debug_path) {
-		try {
-			switch(build.getVersionBranch(cm, host)) {
-			case PHP_5_3:
-				debug_path.add( host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.4-5.3-nts-vc11-x86/php_wincache.pdb" );
-				break;
-			case PHP_5_4:
-				debug_path.add( host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.4-5.4-nts-vc11-x86/php_wincache.pdb" );
-				break;
-			case PHP_5_5:
-			default:
-				debug_path.add( host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.5-5.5-nts-vc11-x86/php_wincache.pdb" );
-				break;
+		if (this.set_dll!=null) {
+			debug_path.add(set_dll.getDebugPath());
+		} else {
+			try {
+				switch(build.getVersionBranch(cm, host)) {
+				case PHP_5_3:
+					debug_path.add( host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.4-5.3-nts-vc11-x86/php_wincache.pdb" );
+					break;
+				case PHP_5_4:
+					debug_path.add( host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.4-5.4-nts-vc11-x86/php_wincache.pdb" );
+					break;
+				case PHP_5_5:
+				default:
+					debug_path.add( host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.5-5.5-nts-vc11-x86/php_wincache.pdb" );
+					break;
+				}
+			} catch ( Exception ex ) {
+				ex.printStackTrace();
 			}
-		} catch ( Exception ex ) {
-			ex.printStackTrace();
 		}
 	}
 	
@@ -64,24 +78,22 @@ public abstract class WinCacheUScenario extends UserCacheScenario {
 	protected String getDllPath53(Host host) {
 		return host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.4-5.3-nts-vc9-x86/php_wincache.dll";
 	}
-	
-	// @see http://us.php.net/manual/en/wincache.configuration.php
-	boolean first = true;
-	@Override
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
+
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
 		if (!host.isWindows() || !build.isNTS(host))
 			return SETUP_FAILED;
 		
-		// TODO temp
-		if (first) {
-			String dll_path;
-			EBuildBranch branch;
-			try {
-				branch = build.getVersionBranch(cm, host);
-			} catch ( Exception ex ) {
-				ex.printStackTrace();
-				return SETUP_FAILED;
-			}
+		String dll_path;
+		EBuildBranch branch;
+		try {
+			branch = build.getVersionBranch(cm, host);
+		} catch ( Exception ex ) {
+			ex.printStackTrace();
+			return SETUP_FAILED;
+		}
+		if (set_dll!=null) {
+			dll_path = set_dll.getPath();
+		} else {
 			switch(branch) {
 			case PHP_5_3:
 				dll_path = getDllPath53(host);
@@ -93,27 +105,25 @@ public abstract class WinCacheUScenario extends UserCacheScenario {
 				dll_path = getDllPath55Plus(host);
 				break;
 			}
-			// install wincache
-			try {
-				host.copy(dll_path, build.getDefaultExtensionDir()+"/php_wincache.dll");
-			} catch ( Exception ex ) {
-				ex.printStackTrace();
-				return SETUP_FAILED;
-			}
-			
-			cm.println(EPrintType.CLUE, getClass(), "Found WinCache in: "+dll_path);
-			first = false;
+		}
+		// install wincache
+		try {
+			host.copy(dll_path, build.getDefaultExtensionDir()+"/php_wincache.dll");
+		} catch ( Exception ex ) {
+			ex.printStackTrace();
+			return SETUP_FAILED;
 		}
 		
-		// enable wincache
-		ini.putMulti(PhpIni.EXTENSION, "php_wincache.dll");
+		cm.println(EPrintType.CLUE, getClass(), "Found WinCache in: "+dll_path);
 		
-		ini.putSingle("wincache.enablecli", "1");
+		return new WinCacheUScenarioSetup();
+	}
+	@Override
+	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
+		if (!host.isWindows() || !build.isNTS(host))
+			return SETUP_FAILED;
 		
 		configure(ini);
-		
-		// DISABLE opcode caching (required to use wincacheu with opcache scenarios)
-		ini.putSingle("wincache.ocenabled", "0");
 		
 		return new WinCacheUScenarioSetup();
 	}
@@ -137,7 +147,17 @@ public abstract class WinCacheUScenario extends UserCacheScenario {
 		
 	} // end public class WinCacheUScenarioSetup
 	
-	protected abstract void configure(PhpIni ini);
+	// @see http://us.php.net/manual/en/wincache.configuration.php
+	@Overridable
+	protected void configure(PhpIni ini) {
+		// enable wincache
+		ini.putMulti(PhpIni.EXTENSION, "php_wincache.dll");
+		
+		ini.putSingle("wincache.enablecli", "1");
+		
+		// DISABLE opcode caching (required to use wincacheu with opcache scenarios)
+		ini.putSingle("wincache.ocenabled", "0");
+	}
 	
 	@Override
 	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
@@ -179,4 +199,4 @@ public abstract class WinCacheUScenario extends UserCacheScenario {
 		return true;
 	}
 
-}
+} // end public abstract class WinCacheUScenario

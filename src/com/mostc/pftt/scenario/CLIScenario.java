@@ -29,6 +29,7 @@ import com.mostc.pftt.runner.CliPhpUnitTestCaseRunner;
 import com.mostc.pftt.runner.CliPhptTestCaseRunner;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
+import com.mostc.pftt.runner.PhptTestPreparer.PreparedPhptTestCase;
 
 /** Tests the Command Line Interface(CLI) for running PHP.
  * 
@@ -50,15 +51,15 @@ public class CliScenario extends SAPIScenario {
 
 	@Override
 	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(
-			PhptThread thread, TestCaseGroupKey group_key, PhptTestCase test_case,
+			PhptThread thread, TestCaseGroupKey group_key, PreparedPhptTestCase prep,
 			ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup,
 			PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack, boolean xdebug, boolean debugger_attached) {
-		return new CliPhptTestCaseRunner(xdebug, this, ((CliTestCaseGroupKey)group_key).getCliSAPIInstance(), group_key.getPhpIni(), thread, test_case, cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack, debugger_attached);
+		return new CliPhptTestCaseRunner(xdebug, this, ((CliTestCaseGroupKey)group_key).getCliSAPIInstance(), group_key.getPhpIni(), thread, prep, cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack, debugger_attached);
 	}
 	
 	@Override
 	public int getApprovedInitialThreadPoolSize(AHost host, int threads) {
-		return host.getCPUCount() * 2;
+		return host.getCPUCount() * 3;
 	}
 	
 	@Override
@@ -117,7 +118,7 @@ public class CliScenario extends SAPIScenario {
 			//      -for WEB SERVERS, have to set ENV vars on each web server instance
 			// @see CliPhptTestCaseRunner#prepare
 			//
-			CliSAPIInstance sapi = new CliSAPIInstance(host, build, ini);
+			CliSAPIInstance sapi = new CliSAPIInstance(cm, host, build, ini);
 			
 			return new CliTestCaseGroupKey(sapi, ini, null);
 		} else if (group_key!=null && group_key.getPhpIni().isDefault()) {
@@ -127,7 +128,7 @@ public class CliScenario extends SAPIScenario {
 			
 			filter.prepareIni(cm, ini);
 			
-			CliSAPIInstance sapi = new CliSAPIInstance(host, build, ini);
+			CliSAPIInstance sapi = new CliSAPIInstance(cm, host, build, ini);
 			
 			return new CliTestCaseGroupKey(sapi, ini, null);
 		}
@@ -270,7 +271,17 @@ public class CliScenario extends SAPIScenario {
 			"ext/standard/tests/file/fgets_socket_variation2.phpt",
 			"ext/standard/tests/network/tcp4loop.phpt",
 			"zend/tests/multibyte/multibyte_encoding_003.phpt",
-			"zend/tests/multibyte/multibyte_encoding_002.phpt"
+			"zend/tests/multibyte/multibyte_encoding_002.phpt",
+			"ext/pdo_sqlite/tests/bug33841.phpt",
+			"ext/pdo_sqlite/tests/bug46139.phpt",
+			"ext/pdo_sqlite/tests/bug52487.phpt",
+			"ext/pdo_pgsql/tests/bug64953.phpt",
+			"ext/pdo_pgsql/tests/bug_33876.phpt",
+			"ext/pdo_pgsql/tests/copy_from.phpt",
+			"ext/pdo_pgsql/tests/copy_to.phpt",
+			"ext/pdo_pgsql/tests/is_in_transaction.phpt",
+			"ext/pdo_pgsql/tests/bug48764.phpt",
+			"ext/pdo_pgsql/tests/large_objects.phpt"
 		);
 	@Override
 	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup setup, ESAPIType type, PhpBuild build, PhptSourceTestPack src_test_pack, PhptTestCase test_case) throws Exception {

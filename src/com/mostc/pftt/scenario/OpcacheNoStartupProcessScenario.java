@@ -7,6 +7,14 @@ import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.util.DllVersion;
 
 public class OpcacheNoStartupProcessScenario extends OpcacheScenario {
+	
+	public OpcacheNoStartupProcessScenario() {
+		super();
+	}
+	
+	public OpcacheNoStartupProcessScenario(DllVersion dll) {
+		super(dll);
+	}
 
 	@Override
 	protected boolean shouldUseStartupProcess(Host host) {

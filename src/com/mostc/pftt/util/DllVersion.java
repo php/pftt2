@@ -10,6 +10,10 @@ public class DllVersion {
 		this.version = version;
 	}
 	
+	public DllVersion(String base, String dll_name, String version) {
+		this(base, dll_name, dll_name.replace(".dll", ".pdb"), version);
+	}
+	
 	public String getVersion() {
 		return version;
 	}

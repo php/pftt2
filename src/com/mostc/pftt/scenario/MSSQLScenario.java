@@ -14,6 +14,7 @@ import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
+import com.mostc.pftt.util.DllVersion;
 
 /** Tests the mssql and pdo_mssql extensions against a Microsoft SQL Server. (NOT IMPLEMENTED)
  * 
@@ -24,6 +25,17 @@ import com.mostc.pftt.results.EPrintType;
 public class MSSQLScenario extends DatabaseScenario {
 	public static final int DEFAULT_MSSQL_PORT = 1433;
 	protected final String host_address;
+	protected DllVersion set_dll;
+	
+	public MSSQLScenario(DllVersion dll, AHost host, String default_username, String default_password) {
+		this(EMSSQLVersion.DRIVER11, host, default_username, default_password);
+		this.set_dll = dll;
+	}
+	
+	public MSSQLScenario(DllVersion dll, String host_address, String default_username, String default_password) {
+		this(EMSSQLVersion.DRIVER11, host_address, default_username, default_password);
+		this.set_dll = dll;
+	}
 	
 	public MSSQLScenario(EMSSQLVersion version, AHost host, String default_username, String default_password) {
 		super(version, host, default_username, default_password);
@@ -115,7 +127,7 @@ public class MSSQLScenario extends DatabaseScenario {
 			String base_dir = host.getPfttCacheDir()+"/dep/MSSQL/";
 			
 			String dll1 = ((EMSSQLVersion)version).getPhpPdoDllName(build.getVersionBranch(cm, host), build.getBuildType(host), base_dir);
-			String dll2 = ((EMSSQLVersion)version).getPhpDllName(build.getVersionBranch(cm, host), build.getBuildType(host), base_dir);
+			String dll2 = set_dll!=null?set_dll.getPath():((EMSSQLVersion)version).getPhpDllName(build.getVersionBranch(cm, host), build.getBuildType(host), base_dir);
 			
 			host.copy(host.joinIntoOnePath(base_dir, dll1), build.getDefaultExtensionDir()+"/php_pdo_sqlsrv.dll");
 			host.copy(host.joinIntoOnePath(base_dir, dll2), build.getDefaultExtensionDir()+"/php_sqlsrv.dll");
