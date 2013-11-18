@@ -14,12 +14,12 @@ import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.core.PhptActiveTestPack;
 import com.mostc.pftt.model.core.PhptSourceTestPack;
-import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.model.sapi.WebServerInstance;
 import com.mostc.pftt.model.sapi.WebServerManager;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
+import com.mostc.pftt.runner.PhptTestPreparer.PreparedPhptTestCase;
 import com.mostc.pftt.scenario.BuiltinWebServerScenario;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.TimerUtil;
@@ -29,12 +29,12 @@ public class BuiltinWebHttpPhptTestCaseRunner extends HttpPhptTestCaseRunner {
 	public BuiltinWebHttpPhptTestCaseRunner(boolean xdebug, BuiltinWebServerScenario sapi_scenario, PhpIni ini,
 			Map<String, String> env, HttpParams params, HttpProcessor httpproc,
 			HttpRequestExecutor httpexecutor, WebServerManager smgr,
-			WebServerInstance web, PhptThread thread, PhptTestCase test_case,
+			WebServerInstance web, PhptThread thread, PreparedPhptTestCase prep,
 			ConsoleManager cm, ITestResultReceiver twriter, AHost host,
 			ScenarioSetSetup scenario_set_setup, PhpBuild build,
 			PhptSourceTestPack src_test_pack,
 			PhptActiveTestPack active_test_pack) {
-		super(xdebug, sapi_scenario, ini, env, params, httpproc, httpexecutor, smgr, web, thread, test_case,
+		super(xdebug, sapi_scenario, ini, env, params, httpproc, httpexecutor, smgr, web, thread, prep,
 				cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack);
 	}
 	
@@ -66,12 +66,6 @@ public class BuiltinWebHttpPhptTestCaseRunner extends HttpPhptTestCaseRunner {
 			}
 		});
 		test_socket = null;
-	}
-	
-	@Override
-	protected String createBaseName() {
-		// some intl tests have + in their name... sending this to the builtin web server breaks it (HTTP 404)
-		return super.createBaseName().replace("+", "");
 	}
 		
 	@Override
@@ -116,7 +110,7 @@ public class BuiltinWebHttpPhptTestCaseRunner extends HttpPhptTestCaseRunner {
 		sb.append("PFTT: 3 more attempts, each 1 minute, with 10 seconds between each attempt\n");
 		sb.append("PFTT: This test case breaks the web server!\n");
 		sb.append("PFTT: was trying to run ("+section+" section of): ");
-		sb.append(test_case.getName());
+		sb.append(prep.test_case.getName());
 		sb.append("\n");
 		sb.append("PFTT: these two lists refer only to second web server (created for specifically for only this test)\n");
 		web.getActiveTestListString(sb);

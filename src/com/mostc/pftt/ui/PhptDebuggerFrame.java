@@ -66,7 +66,7 @@ public class PhptDebuggerFrame extends JPanel {
 		}
 		//
 		
-		menubar.add("right", report_button = new JButton("FBC Report"));
+		menubar.add("right", report_button = new JButton("Report"));
 		
 		menubar.add("right", exit_button = new JButton("Exit"));
 		exit_button.addActionListener(new ActionListener() {

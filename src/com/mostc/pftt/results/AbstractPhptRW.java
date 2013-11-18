@@ -28,10 +28,35 @@ public abstract class AbstractPhptRW extends AbstractTestResultRW {
 	public abstract String getPath();
 	
 	protected void check(EPhptTestStatus status, List<String> names) {
-		if (status==EPhptTestStatus.FAIL) {
-			// TODO temp
-		 	
-
+		/*if (status==EPhptTestStatus.FAIL) {
+			names.remove("ext/reflection/tests/bug36308.phpt");
+			names.remove("ext/zlib/tests/ob_004.phpt");
+			names.remove("zend/tests/bug40236.phpt");
+			names.remove("ext/curl/tests/curl_curlopt_readdata.phpt");
+			names.remove("ext/openssl/tests/openssl_spki_verify.phpt");
+			names.remove("ext/zlib/tests/bug55544.phpt");
+			names.remove("ext/zlib/tests/bug_52944-darwin.phpt");
+			names.remove("zend/tests/bug64720.phpt");
+			names.remove("ext/curl/tests/curl_copy_handle_basic_008.phpt");
+			names.remove("ext/curl/tests/curl_writeheader_callback.phpt");
+			names.remove("ext/filter/tests/bug52209.phpt");
+			names.remove("ext/gettext/tests/gettext_basic.phpt");
+			names.remove("ext/intl/tests/timezone_getdisplayname_variant3.phpt");
+			names.remove("ext/mbstring/tests/mb_http_input.phpt");
+			names.remove("ext/pdo_sqlite/tests/bug_63916.phpt");
+			names.remove("ext/sqlite3/tests/bug63921-64bit.phpt");
+			names.remove("ext/mysqli/tests/mysqli_explain_metadata.phpt");
+			names.remove("ext/mysqli/tests/mysqli_fetch_assoc_oo.phpt");
+			names.remove("ext/mysqli/tests/mysqli_fetch_all_oo.phpt");
+			names.remove("ext/mysqli/tests/mysqli_poll_mixing_insert_select.phpt");
+			names.remove("ext/mysqli/tests/mysqli_set_charset.phpt");
+			names.remove("ext/mysqli/tests/mysqli_stmt_fetch_bit.phpt");
+			names.remove("ext/mysqli/tests/mysqli_fetch_array.phpt");
+			names.remove("ext/mysqli/tests/mysqli_fetch_array_assoc.phpt");
+			names.remove("ext/mysqli/tests/mysqli_options_openbasedir.phpt");
+			names.remove("ext/mysqli/tests/mysqli_real_escape_string.phpt");
+			names.remove("ext/mysqli/tests/mysqli_stmt_bind_param.phpt");
+			names.remove("ext/mysqli/tests/mysqli_stmt_get_result_bit.phpt");
 			names.remove("ext/bcmath/tests/bcsqrt.phpt");
 			names.remove("ext/spl/tests/spldoublylinkedlist_offsetset_invalid_parameter.phpt");
 			names.remove("ext/spl/tests/spldoublylinkedlist_offsetset_one_invalid_parameter.phpt");
@@ -168,6 +193,48 @@ names.remove("ext/standard/tests/file/windows_links/bug48746_2.phpt");
 			names.remove("ext/phar/tests/tar/phar_commitwrite.phpt");
 			names.remove("ext/phar/tests/tar/phar_setsignaturealgo2.phpt");
 			names.remove("ext/phar/tests/zip/phar_commitwrite.phpt");
-		}
+			names.remove("ext/bcmath/tests/bcdiv.phpt");
+			names.remove("ext/mysqli/tests/mysqli_multi_query.phpt");
+			names.remove("ext/mysqli/tests/mysqli_rollback.phpt");
+			names.remove("ext/zlib/tests/zlib_filter_deflate2.phpt");
+			names.remove("ext/curl/tests/bug52202.phpt");
+			names.remove("ext/curl/tests/curl_basic_008.phpt");
+			names.remove("ext/curl/tests/curl_basic_010.phpt");
+			names.remove("ext/curl/tests/curl_copy_handle_basic_002.phpt");
+			names.remove("ext/curl/tests/curl_multi_segfault.phpt");
+			names.remove("ext/curl/tests/curl_write_file.phpt");
+			names.remove("ext/date/tests/big_year.phpt");
+			names.remove("ext/date/tests/date_diff.phpt");
+			names.remove("ext/ereg/tests/sql_regcase_error_001.phpt");
+			names.remove("ext/filter/tests/033.phpt");
+			names.remove("ext/intl/tests/locale_get_display_language.phpt");
+			names.remove("ext/sockets/tests/bug46360.phpt");
+			names.remove("ext/standard/tests/array/count_variation3.phpt");
+			names.remove("ext/standard/tests/assert/assert_basic6.phpt");
+			names.remove("ext/standard/tests/file/file_get_contents_error001.phpt");
+			names.remove("ext/standard/tests/file/filetype_variation3.phpt");
+			names.remove("ext/standard/tests/file/windows_acls/bug44859.phpt");
+			names.remove("ext/standard/tests/file/windows_acls/bug44859_2.phpt");
+			names.remove("ext/standard/tests/file/windows_acls/bug44859_3.phpt");
+			names.remove("ext/standard/tests/file/windows_acls/bug44859_4.phpt");
+			names.remove("ext/standard/tests/math/mt_srand_variation1.phpt");
+			names.remove("ext/standard/tests/network/gethostbyname_basic001.phpt");
+			names.remove("ext/standard/tests/network/gethostbyname_error004.phpt");
+			names.remove("ext/standard/tests/network/http-stream.phpt");
+			names.remove("ext/standard/tests/strings/strtok_variation7.phpt");
+			names.remove("ext/xmlwriter/tests/002.phpt");
+			names.remove("ext/zip/tests/bug51353.phpt");
+			names.remove("sapi/cli/tests/php_cli_server_004.phpt");
+			names.remove("tests/classes/private_003.phpt");
+			names.remove("tests/classes/visibility_001c.phpt");
+			names.remove("zend/tests/bug40770.phpt");
+			names.remove("ext/mysqli/tests/010.phpt");
+			names.remove("ext/mysqli/tests/mysqli_fetch_all.phpt");
+			names.remove("ext/mysqli/tests/mysqli_fetch_lengths.phpt");
+			names.remove("ext/mysqli/tests/mysqli_query_iterators.phpt");
+			names.remove("tests/lang/passbyreference_012.phpt");
+			names.remove("tests/lang/returnbyreference.001.phpt");
+			names.remove("tests/lang/returnbyreference.003.phpt");
+		}*/
 	}
 }

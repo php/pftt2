@@ -38,6 +38,7 @@ import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
+import com.mostc.pftt.runner.PhptTestPreparer.PreparedPhptTestCase;
 import com.mostc.pftt.scenario.WebServerScenario;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.ErrorUtil;
@@ -62,8 +63,8 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected final HttpRequestExecutor httpexecutor;
 	protected Socket test_socket;
 
-	public HttpPhptTestCaseRunner(boolean xdebug, WebServerScenario sapi_scenario, PhpIni ini, Map<String,String> env, HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web, PhptThread thread, PhptTestCase test_case, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
-		super(xdebug, sapi_scenario, ini, thread, test_case, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
+	public HttpPhptTestCaseRunner(boolean xdebug, WebServerScenario sapi_scenario, PhpIni ini, Map<String,String> env, HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web, PhptThread thread, PreparedPhptTestCase prep, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+		super(xdebug, sapi_scenario, ini, thread, prep, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 		this.params = params;
 		this.httpproc = httpproc;
 		this.httpexecutor = httpexecutor;
@@ -75,8 +76,8 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			this.env = new HashMap<String,String>(7);
 			this.env.putAll(env);
 			
-			this.env.put("TEMP", active_test_pack.getStorageDirectory()+"/"+AHost.dirname(test_case.getName()));
-			this.env.put("TMP", active_test_pack.getStorageDirectory()+"/"+AHost.dirname(test_case.getName()));
+			this.env.put("TEMP", active_test_pack.getStorageDirectory()+"/"+AHost.dirname(prep.test_case.getName()));
+			this.env.put("TMP", active_test_pack.getStorageDirectory()+"/"+AHost.dirname(prep.test_case.getName()));
 		} else {
 			this.env = env;
 		}
@@ -92,7 +93,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected void prepareTest() throws Exception {
 		super.prepareTest();
 		
-		cookie_str = test_case.get(EPhptSection.COOKIE);
+		cookie_str = prep.test_case.get(EPhptSection.COOKIE);
 	}
 	
 	protected void markTestAsCrash() throws Exception {
@@ -102,7 +103,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			return;
 		not_crashed = false; // @see #runTest
 		
-		twriter.addResult(host, scenario_set, src_test_pack, notifyNotPass(new PhptTestResult(host, EPhptTestStatus.CRASH, test_case, null, null, null, null, ini, env, null, stdin_post, null, null, null, null, web==null?null:web.getSAPIOutput(), web==null?null:web.getSAPIConfig())));
+		twriter.addResult(host, scenario_set, src_test_pack, notifyNotPass(new PhptTestResult(host, EPhptTestStatus.CRASH, prep.test_case, null, null, null, null, ini, env, null, stdin_post, null, null, null, null, web==null?null:web.getSAPIOutput(), web==null?null:web.getSAPIConfig())));
 	}
 	
 	/** executes SKIPIF, TEST or CLEAN over http.
@@ -144,7 +145,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 					return null;
 				}
 				
-				cm.restartingAndRetryingTest(test_case);
+				cm.restartingAndRetryingTest(prep.test_case);
 				
 				// get #do_http_execute to make a new server
 				// this will make a new WebServerInstance that will only be used to run this 1 test
@@ -174,7 +175,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		sb.append("PFTT: created new web server only for running this test which did not respond after\n");
 		sb.append("PFTT: another One Minute timeout. This test case breaks the web server!\n");
 		sb.append("PFTT: was trying to run ("+section+" section of): ");
-		sb.append(test_case.getName());
+		sb.append(prep.test_case.getName());
 		sb.append("\n");
 		sb.append("PFTT: these two lists refer only to second web server (created for specifically for only this test)\n");
 		web.getActiveTestListString(sb);
@@ -208,7 +209,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			path = "/s"+path; // TODO for -phpt_not_in_place
 		else if (!path.startsWith("/"))
 			path = "/" + path;
-		if (test_case.getName().contains("phar")) {
+		if (prep.test_case.getName().contains("phar")) {
 			if (!path.startsWith("/ext/phar/")) {// TODO tests/") && !path.startsWith("/ext/phar//tests/") && !path.startsWith("/ext/phar/tests//") && !path.startsWith("/ext/phar//tests//")) {
 				if (!path.startsWith("/tests/"))
 					path = "/tests/" + path;
@@ -228,7 +229,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		try {
 			if (web!=null) {
 				synchronized(web) {
-					WebServerInstance _web = smgr.getWebServerInstance(cm, host, scenario_set.getScenarioSet(), build, ini, env, active_test_pack.getStorageDirectory(), web, false, test_case);
+					WebServerInstance _web = smgr.getWebServerInstance(cm, host, scenario_set.getScenarioSet(), build, ini, env, active_test_pack.getStorageDirectory(), web, false, prep);
 					if (_web!=this.web) {
 						this.web.close(cm);
 						this.web = _web;
@@ -240,7 +241,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 							// test will fail (because this(`PFTT: server...`) is the actual output which won't match the expected output)
 							//
 							// return server's crash output and an additional message about this test
-							return web.getSAPIOutput() + "PFTT: server crashed already (server was created to replace a crashed web server. server was created to run this 1 test and didn't run any other tests before this one), didn't bother trying to execute test: "+test_case.getName();
+							return web.getSAPIOutput() + "PFTT: server crashed already (server was created to replace a crashed web server. server was created to run this 1 test and didn't run any other tests before this one), didn't bother trying to execute test: "+prep.test_case.getName();
 						}
 					}
 				} // end sync
@@ -248,7 +249,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			if (web==null) {
 				// test should be a FAIL or CRASH
 				// its certainly the fault of a test (not PFTT) if not this test
-				this.web = smgr.getWebServerInstance(cm, host, scenario_set.getScenarioSet(), build, ini, env, active_test_pack.getStorageDirectory(), web, false, test_case);
+				this.web = smgr.getWebServerInstance(cm, host, scenario_set.getScenarioSet(), build, ini, env, active_test_pack.getStorageDirectory(), web, false, prep);
 				
 				if (web==null||web.isCrashedOrDebuggedAndClosed()) {
 					markTestAsCrash();
@@ -258,7 +259,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			}
 				
 			// CRITICAL: keep track of test cases running on web server
-			web.notifyTestPreRequest(test_case);
+			web.notifyTestPreRequest(prep.test_case);
 			
 			if (stdin_post==null || section != EPhptSection.TEST)
 				return do_http_get(path);
@@ -268,7 +269,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		} finally {
 			// CRITICAL: keep track of test cases running on web server
 			if (web!=null) {
-				web.notifyTestPostResponse(test_case);
+				web.notifyTestPostResponse(prep.test_case);
 			
 				if (web.isCrashedOrDebuggedAndClosed())
 					markTestAsCrash();
@@ -412,8 +413,11 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				break;
 			default:
 			}
-			
-			return IOUtil.toString(response.getEntity().getContent(), IOUtil.HALF_MEGABYTE);
+			if (cm.isIgnoreOutput()) {
+				return "";
+			} else {
+				return IOUtil.toString(response.getEntity().getContent(), IOUtil.HALF_MEGABYTE);
+			}
 		} finally {
 			try {
 			if (test_socket!=null)
@@ -522,8 +526,11 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				break;
 			default:
 			}
-			
-			return IOUtil.toString(response.getEntity().getContent(), IOUtil.HALF_MEGABYTE);
+			if (cm.isIgnoreOutput()) {
+				return "";
+			} else {
+				return IOUtil.toString(response.getEntity().getContent(), IOUtil.HALF_MEGABYTE);
+			}
 		} finally {
 			try {
 			if (test_socket!=null)
@@ -551,21 +558,21 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	
 	@Override
 	protected String executeSkipIf() throws Exception {
-		return http_execute(skipif_file, EPhptSection.SKIPIF);
+		return http_execute(prep.skipif_file, EPhptSection.SKIPIF);
 	}
 
 	@SuppressWarnings("deprecation")
 	@Override
 	protected String executeTest() throws Exception {
-		String request_uri = this.test_file;
+		String request_uri = prep.test_file;
 		
 		if (env!=null&&env.containsKey("REQUEST_URI")) {
 			// ex: ext/phar/tests/frontcontroller17.phpt
 			request_uri = AHost.dirname(request_uri)+"/"+env.get("REQUEST_URI");
 		}
 		
-		if (test_case.containsSection(EPhptSection.GET)) {
-			String query_string = test_case.getTrim(EPhptSection.GET);
+		if (prep.test_case.containsSection(EPhptSection.GET)) {
+			String query_string = prep.test_case.getTrim(EPhptSection.GET);
 			// query_string needs to be added to the GET path
 			if (StringUtil.isNotEmpty(query_string)) {
 				// a good, complex example for this is ext/filter/tests/004.skip.php
@@ -588,7 +595,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 						query_string_sb.append(URLEncoder.encode(names_and_values[i+1]));
 				}
 				
-				request_uri = test_file + "?" + query_string_sb;
+				request_uri = prep.test_file + "?" + query_string_sb;
 			}
 		} // end if containsSection(GET)
 		
@@ -597,7 +604,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 
 	@Override
 	protected void executeClean() throws Exception {
-		http_execute(test_clean, EPhptSection.CLEAN);
+		http_execute(prep.test_clean, EPhptSection.CLEAN);
 	}
 
 	@Override

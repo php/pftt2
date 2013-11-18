@@ -578,11 +578,19 @@ public class PhpIni {
 				if (host.isWindows())
 					value = StringUtil.replaceAll(PAT_per, "\\%\\%", value);
 				
-				sb.append(" -d \"");
-				sb.append(directive);
-				sb.append("=");
-				sb.append(value);
-				sb.append("\"");
+				// without quoting only when needed, will get parse errors from php (blocking winpopups on Windows)
+				if (value.contains(" ")) {
+					sb.append(" -d \"");
+					sb.append(directive);
+					sb.append("=");
+					sb.append(value);
+					sb.append("\"");	
+				} else {
+					sb.append(" -d ");
+					sb.append(directive);
+					sb.append("=");
+					sb.append(value);
+				}
 			}
 		}
 		String cli_arg_str = sb.toString();

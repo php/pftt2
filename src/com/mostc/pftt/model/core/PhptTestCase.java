@@ -30,6 +30,7 @@ import com.mostc.pftt.model.TestCase;
 import com.mostc.pftt.model.core.PhpBuild.PHPOutput;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
+import com.mostc.pftt.runner.PhptTestPreparer.PreparedPhptTestCase;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.apache.regexp.RE;
 import com.mostc.pftt.util.apache.regexp.RECompiler;
@@ -126,6 +127,7 @@ public class PhptTestCase extends TestCase {
 	private CharsetICU common_charset;
 	private CharsetEncoder ce;
 	public boolean redo = false; // TODO temp
+	public PreparedPhptTestCase prep; // TODO temp
 	
 	/** loads the named PHPT test from the given PhptSourceTestPack
 	 * 

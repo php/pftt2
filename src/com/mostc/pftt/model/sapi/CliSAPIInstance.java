@@ -11,15 +11,18 @@ import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.scenario.ScenarioSet;
-import com.mostc.pftt.util.WinDebugManager;
+import com.mostc.pftt.util.DebuggerManager;
 
 public class CliSAPIInstance extends SAPIInstance {
 	protected final PhpBuild build;
 	protected String ini_dir;
+	protected DebuggerManager db_mgr;
 	
-	public CliSAPIInstance(AHost host, PhpBuild build, PhpIni ini) {
+	public CliSAPIInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini) {
 		super(host, ini);
 		this.build = build;
+		
+		db_mgr = cm.getDebuggerManager();
 	}
 	
 	@Override
@@ -41,12 +44,14 @@ public class CliSAPIInstance extends SAPIInstance {
 		host.saveTextFile(host.joinIntoOnePath(ini_dir, "php.ini"), ini.toString());
 	}
 	
-	public ExecOutput execute(EExecutableType exe_type, String php_filename, String extra_args, Map<String,String> env, int timeout_sec) throws Exception {
-		return execute(exe_type, php_filename, extra_args, timeout_sec, env, null);
+	public ExecOutput execute(EExecutableType exe_type, String name, String php_filename, String extra_args, Map<String,String> env, int timeout_sec, boolean debugger_attached) throws Exception {
+		return execute(exe_type, name, php_filename, extra_args, timeout_sec, env, null, debugger_attached);
 	}
 	
-	public String createPhpCommand(EExecutableType exe_type, String php_filename, String extra_args) {
+	public String createPhpCommand(EExecutableType exe_type, String php_filename, String extra_args, boolean debugger_attached) {
 		StringBuilder sb = new StringBuilder();
+		
+		//
 		sb.append(build.getPhpExe(exe_type));
 		if (exe_type==EExecutableType.CGI) {
 			// -C => important: don't chdir
@@ -58,20 +63,24 @@ public class CliSAPIInstance extends SAPIInstance {
 		sb.append(host.fixPath(php_filename));
 		if (extra_args!=null)
 			sb.append(extra_args);
+		
 		return sb.toString();
 	}
 
-	public ExecOutput execute(EExecutableType exe_type, String php_filename, String extra_args, int timeout_sec, Map<String,String> env, String chdir) throws Exception {
-		return host.execOut(createPhpCommand(exe_type, php_filename, extra_args), timeout_sec, env, chdir, true);
+	public ExecOutput execute(EExecutableType exe_type, String name, String php_filename, String extra_args, int timeout_sec, Map<String,String> env, String chdir, boolean debugger_attached) throws Exception {
+		return db_mgr == null ?
+				host.execOut(createPhpCommand(exe_type, php_filename, extra_args, debugger_attached), timeout_sec, env, chdir, true) :
+				db_mgr.execOut(host, name, createPhpCommand(exe_type, php_filename, extra_args, debugger_attached), timeout_sec, env, chdir, true);
 	}
 	
-	WinDebugManager db_mgr = new WinDebugManager();
 	public ExecHandle execThread(ConsoleManager cm, String name, ScenarioSet scenario_set, String cmd, String chdir, Map<String,String> env, byte[] stdin_data, boolean debugger_attached) throws Exception {
 		// TODO use this with CliPhpUnitTestCaseRunner
 		
-		LocalExecHandle eh = (LocalExecHandle) host.execThread(cmd, env, chdir, stdin_data, !debugger_attached);
-		if (debugger_attached) {
-			db_mgr.newDebugger(cm, host, scenario_set, name, build, eh);
+		ExecHandle eh = db_mgr == null ?
+				host.execThread(cmd, env, chdir, stdin_data, !debugger_attached) :
+				db_mgr.execThread(host, name, cmd, env, chdir, stdin_data, !debugger_attached);
+		if (debugger_attached && eh instanceof LocalExecHandle) {
+			db_mgr.newDebugger(cm, host, scenario_set, name, build, (LocalExecHandle)eh);
 		}
 		return eh;
 	}

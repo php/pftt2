@@ -711,7 +711,7 @@ public class PhpBuild extends SAPIManager {
 	 * @see PHPOutput#cleanup
 	 */
 	public PHPOutput eval(AHost host, PhpIni ini, String code, boolean auto_cleanup) throws Exception {
-		return eval(host, ini, code, Host.FOUR_HOURS, auto_cleanup);
+		return eval(host, ini, code, Host.ONE_MINUTE*4, auto_cleanup);
 	}
 	
 	public PHPOutput eval(AHost host, String code, boolean auto_cleanup) throws Exception {

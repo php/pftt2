@@ -10,9 +10,20 @@ abstract class AbstractReportGen {
 	// so the actual size of the mail message may be as much as double the size here
 	static int ABBREVIATED_MAX_LENGTH = IOUtil.HALF_MEGABYTE;
  
-	abstract void run(ConsoleManager cm, boolean abbreviated);
+	abstract void run(ConsoleManager cm, boolean abbreviated, BuilderSupport html);
 	
-	abstract String getHTMLString(ConsoleManager cm, boolean abbreviated);
+	protected StringWriter sw;
+	public String getHTMLString(ConsoleManager cm, boolean abbreviated) {
+		sw = new StringWriter();
+		run(cm, abbreviated, new groovy.xml.MarkupBuilder(sw));
+		return sw.toString();
+	}
+	
+	public String getPlainTextString(ConsoleManager cm, boolean abbreviated) {
+		sw = new StringWriter();
+		run(cm, abbreviated, new TextBuilder(sw));
+		return sw.toString();
+	}
 	
 	String createHTMLTempFile(AHost host) {
 		String html_str = getHTMLString();

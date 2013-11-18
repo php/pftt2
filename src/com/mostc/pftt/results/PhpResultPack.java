@@ -111,6 +111,15 @@ public abstract class PhpResultPack {
 		else
 			return ret;
 	}
+	
+	public static double round1(double value) {
+		double ret = ( (double) Math.round( value * 10.0f ) ) / 10.0f;
+		if (ret==100.0f && value<100.0f)
+			// only show 100% if its really 100%
+			return 99.9f;
+		else
+			return ret;
+	}
 
 	public abstract Collection<AHost> getHosts();
 	public abstract Collection<String> getPhptTestPacks(AHost host);

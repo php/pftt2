@@ -32,6 +32,7 @@ import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
+import com.mostc.pftt.util.DebuggerManager;
 import com.mostc.pftt.util.ErrorUtil;
 
 /**
@@ -177,6 +178,11 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 		try {
 			serial.flush();
 		} catch ( Exception ex ) {}
+	}
+	
+	@Override
+	public boolean isIgnoreOutput() {
+		return false;
 	}
 	
 	@Override
@@ -564,6 +570,16 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 	public int getDelayBetweenMS() {
 		// TODO Auto-generated method stub
 		return 0;
+	}
+	
+	@Override
+	public String getDebuggerName() {
+		return null;
+	}
+
+	@Override
+	public DebuggerManager getDebuggerManager() {
+		return null;
 	}
 	
 } // end public abstract class PSCAgentServer

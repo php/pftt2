@@ -61,9 +61,9 @@ public abstract class AbstractTestPackRunner<S extends SourceTestPack<?, T>, T e
 		
 		@Override
 		public void notifySlowTest() {
-			if (canCreateNewThread()) {
+			/*if (canCreateNewThread()) {
 				createNewThread();
-			}
+			}*/
 		}
 		
 		

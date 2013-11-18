@@ -346,9 +346,13 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 				if (test_name.startsWith("/") || test_name.startsWith("\\"))
 					test_name = test_name.substring(1);
 				
-				PhptTestCase test_case = PhptTestCase.load(host, this, false, test_name, twriter, redirect_parent);
+				try {
+					PhptTestCase test_case = PhptTestCase.load(host, this, false, test_name, twriter, redirect_parent);
 				
-				add_test_case(config, test_case, test_files, names, cm, twriter, build, redirect_parent, redirect_targets);
+					add_test_case(config, test_case, test_files, names, cm, twriter, build, redirect_parent, redirect_targets);
+				} catch ( Exception ex ) {
+					ex.printStackTrace();
+				}
 			} else if (f.isFile()) {
 				String n = f.getName().toLowerCase();
 				if (!(n.endsWith(".sh") && n.endsWith(".php") && n.endsWith(".diff") && n.endsWith(".out") && n.endsWith(".exp") && n.endsWith(".cmd") && n.endsWith(".stdin"))) {

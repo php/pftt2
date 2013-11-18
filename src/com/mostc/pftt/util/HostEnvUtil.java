@@ -149,11 +149,11 @@ public final class HostEnvUtil {
 		default: 
 			// PHP 5.5+ and PHP_Master
 			installVCRT9(cm, host); // just in case
-			installVCRT(cm, host, "VC10", "msvcr100.dll", "vc10_redist_x86.exe");
-			installVCRT(cm, host, "VC11", "msvcr110.dll", "vc11_redist_x86.exe");
+			installVCRT(cm, host, "VC10 x86", "msvcr100.dll", "vc10_redist_x86.exe");
+			installVCRT(cm, host, "VC11 x86", "msvcr110.dll", "vc11_redist_x86.exe");
 			if (build.isX64()) {
-				installVCRT(cm, host, "VC10", "msvcr100.dll", "vc10_redist_x64.exe");
-				installVCRT(cm, host, "VC11", "msvcr110.dll", "vc11_redist_x64.exe");
+				installVCRT(cm, host, "VC10 x64", "msvcr100.dll", "vc10_redist_x64.exe");
+				installVCRT(cm, host, "VC11 x64", "msvcr110.dll", "vc11_redist_x64.exe");
 			}
 			break;
 		} // end switch

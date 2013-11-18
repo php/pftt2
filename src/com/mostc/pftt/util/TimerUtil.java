@@ -12,7 +12,7 @@ public final class TimerUtil {
 	 
 	private static LinkedList<ThreadRunnableProxy> trp_pool = new LinkedList<ThreadRunnableProxy>();
 	static {
-		final int pool_size = Math.max(128, LocalHost.getInstance().getCPUCount() * 16);
+		final int pool_size = Math.min(16, LocalHost.getInstance().getCPUCount() * 2);
 		for ( int i = 0 ; i < pool_size ; i++ ) {
 			ThreadRunnableProxy trp = new ThreadRunnableProxy();
 			new Thread(trp).start();
@@ -82,6 +82,11 @@ public final class TimerUtil {
 	 * @return
 	 */
 	public static Thread runThread(Runnable r) {
+		try {
+			Thread t = new Thread(r);
+			t.start();
+			return t;
+		} catch ( Throwable t ) {}
 		ThreadRunnableProxy trp = null;
 		try {
 			synchronized(trp_pool) {
@@ -90,7 +95,10 @@ public final class TimerUtil {
 			}
 		} catch ( NoSuchElementException e ) {}
 		if (trp==null) {
-			return new Thread(r);
+			// try again
+			Thread t = new Thread(r);
+			t.start();
+			return t;
 		} else {
 			trp.setRunnable(r);
 			return trp.thread;
@@ -148,12 +156,25 @@ public final class TimerUtil {
 		}
 		
 		protected void block(int seconds) {
+			int r = 0;
+			int m = ( seconds * 1000 );
+			while (ran && m > r) {
+				try {
+					Thread.sleep(100);
+				} catch ( InterruptedException ex ) {
+					break;
+				}
+				r += 100;
+			}
+			m = m - r;
+			if (m>0) {
 			synchronized(lock) {
 				if (this.ran==false) {
 					try {
-						lock.wait(seconds*1000);
+						lock.wait(m);
 					} catch ( Exception ex ) {}
 				}
+			}
 			}
 		}
 		

@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -599,7 +598,6 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 					// run a timer task while the test is running to kill the test if it takes too long
 					//
 					// wait a while before killing it (double the max runtime for the test)
-					// TODO temp
 					if (!thread.shouldRun()||(test_run_start_time>0&&Math.abs(System.currentTimeMillis()-test_run_start_time)>PhptTestCase.MAX_TEST_TIME_SECONDS*2000)) {
 						// thread running too long
 						if (thread.isDebuggerAttached()) {
@@ -680,7 +678,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 				
 		@Override
 		public void uncaughtException(java.lang.Thread arg0, java.lang.Throwable arg1) {
-			arg1.printStackTrace();
+			//arg1.printStackTrace();
 			// wait for #executeTestCases to remove this thread from group
 			System.out.println("END_THREAD " +arg1+" "+Thread.currentThread());
 			if (arg1 instanceof TestTimeoutException)
@@ -722,6 +720,8 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 						thread_wsi.close(cm);
 					}
 				}
+				
+				cm.println(EPrintType.CLUE, getClass(), "Thread Pool: THREAD FINISHED. pool size="+threads.size());
 			}
 		} // end public void run
 		
@@ -796,19 +796,6 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			}
 		} // end protected void runThreadSafe
 		
-		public void redo(T test_case) {
-			test_count.decrementAndGet(); // TODO temp
-			if (ext==null) {
-				// ts
-				group.test_cases.add(test_case);
-			} else {
-				// nts
-				group.test_cases.add(test_case);
-				non_thread_safe_exts.add(ext);
-				break_nts.set(true);
-			}
-		}
-		
 		@Override
 		public UncaughtExceptionHandler getUncaughtExceptionHandler() {
 			return this;
@@ -839,8 +826,8 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 				//
 				test_case = null;
 				try {
-					test_case = jobs.poll(5, TimeUnit.SECONDS);
-				} catch ( InterruptedException ex ) {}
+					test_case = jobs.poll();//.poll(5, TimeUnit.SECONDS);
+				} catch ( Exception ex ) {}
 				if (test_case==null) {
 					if (shouldRun() && !jobs.isEmpty())
 						continue;
@@ -865,7 +852,10 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 						group_key.prepare();
 						
 						// -debug_all and -debug_list and -debug_named console options
-						final boolean debugger_attached = (cm.isDebugAll() || cm.isInDebugList(test_case));
+						final boolean debugger_attached = 
+								//test_case.getName().contains("mkdir")
+								//||
+								(cm.isDebugAll() || cm.isInDebugList(test_case));
 						if (parallel) {
 							
 							// TODO create better mechanism to send `sa` to each test case runner
@@ -922,31 +912,15 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 						runTest(group_key, test_case, debugger_attached);
 						
 						// if test took too long OR tests are running fast now
-						// TODO temp test decreasing threads when getting lots of timeouts
-						if (//Math.abs(System.currentTimeMillis() - test_run_start_time.get()) > 60
-								//||
-								Math.abs(System.currentTimeMillis() - test_run_start_time.get()) < sapi_scenario.getFastTestTimeSeconds()*1000
-								&&threads.size()>1) {
-							// scale back down (decrease number of threads)
+						if (
+								ext==null
+								&&Math.abs(System.currentTimeMillis() - test_run_start_time.get()) < 4*sapi_scenario.getFastTestTimeSeconds()*1000
+								&&threads.size()>1
+								&&scale_up_threads.contains(Thread.currentThread())) {
 							cm.println(EPrintType.CLUE, getClass(), "Thread Pool: SCALE DOWN");
-							Iterator<TestPackThread<T>> it = scale_up_threads.iterator();
-							TestPackThread<T> slow;
-							while (it.hasNext()) {
-								slow = it.next();
-								it.remove();
-								if (slow.ext==null) {
-									// stop after current test case finished
-									slow.run_thread.set(false);
-									// remove 1 NTS thread at a time 
-									// (each NTS thread can remove 1 at a time, so several can get removed at same time)
-									break;
-								} else {
-									// don't stop this one because ext has been dequeued
-									// and would have gotten lost
-								}
-							}
+							this.stopThisThread();
+							break;
 						}
-						
 					} catch ( InterruptedException ex ) {
 						if (cm.isPfttDebug())
 							ex.printStackTrace();
@@ -991,12 +965,12 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		@Override
 		protected void createNewThread() {
 			// scale up to handle cluster of slower test cases
-			cm.println(EPrintType.CLUE, getClass(), "Thread Pool: SCALE UP");
 			try {
 				scale_up_threads.add(start_thread(parallel));
 			} catch ( Throwable t ) {
 				twriter.addGlobalException(runner_host, ErrorUtil.toString(t));
 			}
+			cm.println(EPrintType.CLUE, getClass(), "Thread Pool: SCALE UP. pool size="+threads.size());
 		}
 		
 		protected abstract void stopRunningCurrentTest();

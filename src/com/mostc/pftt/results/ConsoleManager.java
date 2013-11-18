@@ -6,6 +6,7 @@ import javax.annotation.Nonnegative;
 
 import com.mostc.pftt.model.TestCase;
 import com.mostc.pftt.model.core.PhpDebugPack;
+import com.mostc.pftt.util.DebuggerManager;
 
 public interface ConsoleManager {
 	
@@ -102,5 +103,8 @@ public interface ConsoleManager {
 	public int getSuspendSeconds();
 	public boolean isGetActualIniAll();
 	public long getMaxRunTimeMillis();
+	public boolean isIgnoreOutput();
+	public String getDebuggerName();
+	public DebuggerManager getDebuggerManager();
 	
 } // end public class ConsoleManager

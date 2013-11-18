@@ -92,9 +92,6 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //
 // no component should be allowed to run forever(implicitly it will eventually break), always have explicit timeouts
 
-// TODO enchant scenario
-//      skips on 5.4 cli apache ts
-//      skips on 5.5 cli apache ts 
 // TODO linux apache support
 // TODO linux .sh installer
 // TODO iis support
@@ -108,11 +105,6 @@ import com.mostc.pftt.util.WindowsSnapshotDownloadUtil.FindBuildTestPackPair;
 //         -don't change PHPT report form though
 //     -for console-args
 // TODO get custom DLL from custom test-pack
-// TODO mssql scenario
-//     -for both `sql server` and `azure sql`?
-//     -supply mssql binary using console args (custom_ext task)
-//           -or include in pftt's cache/dep
-//     -use mssql PHPTs as a separate PhptTestPack until they are integrated with PhpCore
 // TODO xdebug only for 5.4-ts
 // TODO get code coverage data of Symfony demo app (UI?)
 //      -get list of builtin functions
@@ -429,7 +421,7 @@ public class PfttMain {
 		System.out.println("   === Crash Debugging ===");
 		System.out.println(new AlignedTable(2, 85)
 			.addRow("-debug_all", "runs all tests in Debugger")
-			.addRow("-debugger <gdb|windbg|valgrind>", "specify which Debugger to use (optional, or PFTT will decide)")
+			.addRow("-debugger <gdb|windbg|TTT|valgrind>", "specify which Debugger to use (optional, or PFTT will decide)")
 			.addRow("-debug_name <name fragments,name2:name3;name4>", "runs named tests in list in Debugger (name fragment)")
 			.addRow("-debug_list <list files>", "runs tests in list in Debugger (exact name)")
 			.addRow("-src_pack <path>", "folder with the source code")
@@ -462,6 +454,7 @@ public class PfttMain {
 		System.out.println();
 		System.out.println("   === Debugging ===");
 		System.out.println(new AlignedTable(2, 85)
+			.addRow("-ignore_output", "Ignores test output to speed up test running (to help repro concurrency crashes)")
 			.addRow("-ini_actual_all", "includes INI for all tests (default=only for failures)... SLOW but helps verify")
 			.addRow("-suspend_seconds <seconds>", "suspends test process for <seconds> before running test so you can check the process first (1 minute timeout after resume)")
 			.addRow("-run_count <N>", "runs N number of tests. does not count early SKIP'd tests (whereas -max_test_read_count does)")
@@ -659,8 +652,8 @@ public class PfttMain {
 		}
 		AtomicBoolean run_flag = new AtomicBoolean(true);
 		for ( int i=0 ; i < cm.getRunTestPack() ; i++ ) {
-			if (!smoke(build, config, tmgr))
-				break;
+			// TODO temp if (!smoke(build, config, tmgr))
+				//break;
 			for ( ScenarioSet scenario_set : getScenarioSets(config, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_CORE) ) {
 				//
 				for ( AHost storage_host : hosts ) {
@@ -1293,6 +1286,8 @@ public class PfttMain {
 	 * @param runner
 	 */
 	protected static void interactive(final AtomicBoolean run_flag, final AbstractLocalTestPackRunner<?,?,?> runner) {
+		if (true)
+			return; // TODO temp
 		new Thread() {
 				public void run() {
 					try {
@@ -1345,7 +1340,8 @@ public class PfttMain {
 		int args_i = 0;
 		
 		Config config = null;
-		boolean is_uac = false, debug = false, randomize_order = false, no_result_file_for_pass_xskip_skip = false, pftt_debug = false, show_gui = false, overwrite = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false, thread_safety = true, skip_smoke_tests = false, pause = false, restart_each_test_all = false, no_restart_all = false, ignore_unknown_option = false, ini_actual_all = false, non_interactive = false;
+		String debugger_name = null;
+		boolean is_uac = false, debug = false, randomize_order = false, no_result_file_for_pass_xskip_skip = false, pftt_debug = false, show_gui = false, overwrite = false, disable_debug_prompt = false, results_only = false, dont_cleanup_test_pack = false, phpt_not_in_place = false, thread_safety = true, skip_smoke_tests = false, pause = false, restart_each_test_all = false, no_restart_all = false, ignore_unknown_option = false, ini_actual_all = false, non_interactive = false, ignore_output = false;
 		long max_run_time_millis = 0;
 		int run_test_times_all = 1, run_test_pack = 1, delay_between_ms = 0, run_test_times_list_times = 1, run_group_times_all = 1, run_group_times_list_times = 1, max_test_read_count = 0, thread_count = 0, run_count = 0, suspend_seconds = 0;
 		LinkedList<String> debug_list = new LinkedList<String>();
@@ -1446,6 +1442,8 @@ public class PfttMain {
 				no_result_file_for_pass_xskip_skip = true;
 			} else if (args[args_i].equals("-no_result_file_for_pass_xskip_skip")||args[args_i].equals("-q")) {
 				no_result_file_for_pass_xskip_skip = true;
+			} else if (args[args_i].equals("-ignore_output")) {
+				ignore_output = true;
 			} else if (args[args_i].equals("-randomize_order")) {
 				randomize_order = true;
 			} else if (args[args_i].equals("-run_test_pack")) {
@@ -1526,11 +1524,11 @@ public class PfttMain {
 				// also intercepted and handled by bin/pftt.cmd batch script
 				debug = true;
 				
-			} else if (args[args_i].startsWith("-debugger")) {
+			} else if (args[args_i].startsWith("-debugger")||args[args_i].startsWith("-debugger_name")) {
 				// also intercepted and handled by bin/pftt.cmd batch script
 				debug = true;
 				args_i++;
-				// TODO debugger = args[args_i];
+				debugger_name = args[args_i];
 				
 			} else if (args[args_i].equals("-disable_debug_prompt")||args[args_i].equals("-debug_none")||args[args_i].equals("-d")) {
 				disable_debug_prompt = true; 
@@ -1602,7 +1600,7 @@ public class PfttMain {
 		cm = new LocalConsoleManager(source_pack, debug_pack, overwrite, debug, results_only, show_gui, disable_debug_prompt, dont_cleanup_test_pack, phpt_not_in_place, pftt_debug, no_result_file_for_pass_xskip_skip, randomize_order, run_test_times_all, run_test_pack, 
 				thread_safety, run_test_times_list_times, run_group_times_all, run_group_times_list_times, debug_list, run_test_times_list, run_group_times_list, skip_list,
 				skip_smoke_tests, max_test_read_count, thread_count, restart_each_test_all, no_restart_all, delay_between_ms,
-				run_count, suspend_seconds, ini_actual_all, max_run_time_millis, non_interactive);
+				run_count, suspend_seconds, ini_actual_all, max_run_time_millis, non_interactive, ignore_output, debugger_name);
 		p.cm = cm;
 		
 		if (command!=null) {
