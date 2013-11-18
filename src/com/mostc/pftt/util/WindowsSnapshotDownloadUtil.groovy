@@ -37,7 +37,7 @@ final class WindowsSnapshotDownloadUtil {
 	static File snapshotURLtoLocalFile(AHost host, URL url) {
 		String local_path = null;
 		if (url.getHost().equals("windows.php.net")) {
-			if (url.getPath().contains("release")||url.getPath().contains("qa")||url.getPath().contains("/snaps/php-5.3/")||url.getPath().contains("/snaps/php-5.4/")||url.getPath().contains("/snaps/php-5.5/")||url.getPath().contains("/snaps/master/")) {
+			if (url.getPath().contains("release")||url.getPath().contains("qa")||url.getPath().contains("/snaps/")) {
 				local_path = AHost.basename(url.getPath());
 			} else if (url.getPath().startsWith("/downloads/")) {
 				// some special build being shared on windows.php.net (probably unstable, expiremental, etc...)
