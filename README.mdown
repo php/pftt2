@@ -20,9 +20,6 @@ test what will happen in production.
 		iii. C:\Apache244-VC9-OpenSSL0.9.8y-x86\bin\httpd.exe
 		iv. C:\ Apache224-VC9-OpenSSL0.9.8y-x86\bin\httpd.exe
 	d. PFTT will assume they’re there and fail if they aren’t
-	e. If the system doesn’t have the VC runtimes (ex: VC11 x64) installed, see: C:\php-sdk\PFTT\current\cache\dep\VCRedist (Windows)
-		i. Currently, these also must be manually installed.
-		ii. Note: for Apache-VC11, you must install BOTH the VC10-x64 and VC11-x64 runtimes
 
 
 ## USAGE
@@ -117,7 +114,15 @@ For tests that crash occasionally
 run tests 100 times each, 32 threads, no thread safety = so multiple instances of a test may be run at the same time (depending on size of list/speed of test)
 	> cl –run_test_times_all 100 –no_thread_safety –thread_count 32 –c apache,opcache php-5.5 php-5.5.0beta4-nts-Win32-VC11-x64 php-test-pack-5.5.0beta4 list_of_crashing_tests.txt
 
-These options may be useful with core_list or core_all or core_named. -run_group_times_all, -run_test_times and -debug_list especially. 
+Stress, running listed tests 1000 times and all other tests once each
+
+	> ca -run_test_times_list 1000 wincache_crash.txt -ignore_output -randomize_order -no_thread_safety -thread_count 192 -c wincacheu_file_and_user,opcache,cli -debug_pack php-debug-pack-5.5-nts-windows-vc11-x86-rdb61685 php-5.5-nts-windows-vc11-x86-rdb61685 php-test-pack-5.5-ts-windows-vc11-x86-rdb61685
+	
+On Windows, with the Debuggint Tools installed, you can use Time-Travel-Tracing (TTT) to trace bugs
+
+	> ca -debugger ttt -run_test_times_list 1000 wincache_crash.txt -ignore_output -randomize_order -no_thread_safety -thread_count 192 -c wincacheu_file_and_user,opcache,cli -debug_pack php-debug-pack-5.5-nts-windows-vc11-x86-rdb61685 php-5.5-nts-windows-vc11-x86-rdb61685 php-test-pack-5.5-ts-windows-vc11-x86-rdb61685
+
+These options may be useful with core_list or core_all or core_named: 
 
 -no_restart_all - will not restart any web server. this allows the web server to be stressed more and for longer amounts of time (this will invalidate any functional testing results!).
 -run_test_times_all <N> - runs each test N times in a row/consecutively
@@ -137,6 +142,22 @@ Use `taskkill /im:php.exe /f /t` or `taskkill /im:httpd.exe /f /t` to kill off r
 
 Check `net use` and use `net use z: /delete` to take care of remaining remote file systems
 
+
+#### Windows PHP Extensions
+
+##### WinCacheU
+
+Run WinCacheU, with file-cache and user-cache, only file-cache, only user-cache and with opcache and with no code cache (all on CLI) 
+
+	> ca -c wincacheu_file_and_user,wincacheu_only_user,wincacheu_only_file,opcache,no_code_cache,cli php-5.5.6RC1-nts-Win32-VC11-x86 php-test-pack-5.5.6RC1
+
+##### MS SQL Server
+
+Edit conf/internal_example/mssql11 and save it to conf/internal/mssql11 (also optionally mssql10). Then you can run this: 
+
+	> ca -c mssql11,mssql10,cli php-5.5.6RC1-nts-Win32-VC11-x86 php_sqlsvr-test-pack-2013-09-03
+
+Note: The MSSQL extension and its test-pack are not in PHP Core. They are currently in Microsoft's Codeplex.
 
 ### Unattended Automation
 
