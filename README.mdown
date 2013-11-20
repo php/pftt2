@@ -112,13 +112,14 @@ When testing with Apache, this will run the Debugger on Apache to help trace Apa
 For tests that crash occasionally
 
 run tests 100 times each, 32 threads, no thread safety = so multiple instances of a test may be run at the same time (depending on size of list/speed of test)
+
 	> cl –run_test_times_all 100 –no_thread_safety –thread_count 32 –c apache,opcache php-5.5 php-5.5.0beta4-nts-Win32-VC11-x64 php-test-pack-5.5.0beta4 list_of_crashing_tests.txt
 
 Stress, running listed tests 1000 times and all other tests once each
 
 	> ca -run_test_times_list 1000 wincache_crash.txt -ignore_output -randomize_order -no_thread_safety -thread_count 192 -c wincacheu_file_and_user,opcache,cli -debug_pack php-debug-pack-5.5-nts-windows-vc11-x86-rdb61685 php-5.5-nts-windows-vc11-x86-rdb61685 php-test-pack-5.5-ts-windows-vc11-x86-rdb61685
 	
-On Windows, with the Debuggint Tools installed, you can use Time-Travel-Tracing (TTT) to trace bugs
+On Windows, with the Debugging Tools installed, you can use Time-Travel-Tracing (TTT) to trace bugs
 
 	> ca -debugger ttt -run_test_times_list 1000 wincache_crash.txt -ignore_output -randomize_order -no_thread_safety -thread_count 192 -c wincacheu_file_and_user,opcache,cli -debug_pack php-debug-pack-5.5-nts-windows-vc11-x86-rdb61685 php-5.5-nts-windows-vc11-x86-rdb61685 php-test-pack-5.5-ts-windows-vc11-x86-rdb61685
 
