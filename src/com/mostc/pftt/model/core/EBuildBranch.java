@@ -34,6 +34,12 @@ public enum EBuildBranch {
 		public ECPUArch getCPUArch() {
 			return null; // could be X86 or X64
 		}
+	},
+	STR_SIZE_AND_INT64 {
+		@Override
+		public ECPUArch getCPUArch() {
+			return ECPUArch.X64;
+		}
 	};
 	
 	/** flexibly matches different values, guessing which EBuildBranch it refers to
@@ -57,6 +63,8 @@ public enum EBuildBranch {
 			return PHP_5_6;
 		else if (str.equals("master")||str.equals("php_master"))
 			return PHP_Master;
+		else if (str.equals("str_size_and_int64"))
+			return STR_SIZE_AND_INT64;
 		else
 			return null;
 	}
@@ -73,6 +81,8 @@ public enum EBuildBranch {
 			return PHP_5_6;
 		else if (str.contains("master"))
 			return PHP_Master;
+		else if (str.contains("str_size")||str.contains("int64"))
+			return STR_SIZE_AND_INT64;
 		else
 			return null;
 	}
