@@ -15,6 +15,7 @@ import com.github.mattficken.io.ByLineReader;
 import com.github.mattficken.io.CharsetDeciderDecoder;
 import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.StringUtil;
+import com.mostc.pftt.results.AbstractTestResultRW;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
@@ -390,8 +391,18 @@ public abstract class AHost extends Host implements IProgramRunner {
 	public ExecOutput execElevatedOut(String cmd, int timeout_sec, String chdir) throws Exception {
 		return execElevatedOut(cmd, timeout_sec, chdir, false);
 	}
+	public interface IExecHandleCleanupNotify {
+		public void cleanupNotify(ExecHandle eh, AbstractTestResultRW rw);
+	}
 	@ThreadSafe
-	public abstract class ExecHandle {
+	public abstract class ExecHandle implements ICrashDetector {
+		public IExecHandleCleanupNotify cleanup_notify;
+		public void cleanup(AbstractTestResultRW rw) {
+			if (cleanup_notify==null)
+				return;
+			
+			cleanup_notify.cleanupNotify(this, rw);
+		}
 		public abstract InputStream getSTDOUT();
 		public abstract OutputStream getSTDIN();
 		/** KILLs process
@@ -423,6 +434,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 		 * 
 		 * @return
 		 */
+		@Override
 		public boolean isCrashed() {
 			return isCrashExitCode(AHost.this, getExitCode(), false);
 		}

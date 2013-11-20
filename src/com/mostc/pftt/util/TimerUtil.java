@@ -73,8 +73,8 @@ public final class TimerUtil {
 	 * many handles, it will wait a long time before allocating more, which delays thread creation
 	 * (which in turn can delay things like killing off timed out processes, which in turn frees up handles).
 	 * 
-	 * Instead, a bunch of threads are preallocated in a pool at startup. This gets one of
-	 * those threads and has it run the given Runnable.
+	 * Instead, some threads are preallocated in a pool at startup to help ensure that a thread
+	 * can be created when its needed.
 	 * 
 	 * Note: you may not call #start or #setDaemon on the returned Thread. you will get an IllegalThreadStateException if you do.
 	 * 

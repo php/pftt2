@@ -31,6 +31,11 @@ public abstract class AbstractUITestRW extends AbstractTestResultRW {
 		for (EUITestStatus status:EUITestStatus.values())
 			results_by_status.put(status, new LinkedList<UITestResult>());
 	}
+	
+	@Override
+	public String getPath() {
+		return dir.getAbsolutePath();
+	}
 		
 	public String getWebBrowserNameAndVersion() {
 		return web_browser_name_and_version;

@@ -40,6 +40,11 @@ public class PosixLocalHost extends LocalHost {
 			return doIsRunning(p);
 		}
 		
+		public int getProcessID() {
+			final Process p = process.get();
+			return 0; // TODO
+		}
+		
 		protected void exec_copy_lines(final StringBuilder sb, final int max_chars, final InputStream in, final Charset charset) throws IOException {
 			do_exec_copy_lines(sb, max_chars, in, charset);
 		}

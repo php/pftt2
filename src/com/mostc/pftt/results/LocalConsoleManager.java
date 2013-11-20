@@ -85,23 +85,39 @@ public class LocalConsoleManager implements ConsoleManager {
 		this.debugger_name = debugger_name;
 		
 		if (LocalHost.getInstance().isWindows()) {
-			if (debugger_name==null)
-				db_mgr = isDebugAll()||isDebugList() ? new WinDebugManager() : null;
-			else if (debugger_name.equalsIgnoreCase("windbg"))
+			if (debugger_name==null) {
+				if (isDebugAll()||isDebugList()) {
+					db_mgr = new WinDebugManager();
+					println(EPrintType.CLUE, "DebugManager", "Debug Using WinDbg (default)");
+				} else {
+					db_mgr = null;
+				}
+			} else if (debugger_name.equalsIgnoreCase("windbg")) {
 				db_mgr = new WinDebugManager();
-			else if (debugger_name.equalsIgnoreCase("ttt"))
+				println(EPrintType.CLUE, "DebugManager", "Debug Using WinDbg");
+			} else if (debugger_name.equalsIgnoreCase("ttt")) {
 				db_mgr = new TimeTravelTraceDebugManager();
-			else
+				println(EPrintType.CLUE, "DebugManager", "Debug Using Time Travel Tracing (TTT)");
+			} else {
 				db_mgr = null;
+			}
 		} else {
-			if (debugger_name==null)
-				db_mgr = isDebugAll()||isDebugList() ? new GDBDebugManager() : null;
-			else if (debugger_name.equalsIgnoreCase("gdb"))
+			if (debugger_name==null) {
+				if (isDebugAll()||isDebugList()) {
+					db_mgr = new GDBDebugManager();
+					println(EPrintType.CLUE, "DebugManager", "Debug Using GDB (default)");
+				} else {
+					db_mgr = null;
+				}
+			} else if (debugger_name.equalsIgnoreCase("gdb")) {
 				db_mgr = new GDBDebugManager();
-			else if (debugger_name.equalsIgnoreCase("valgrind"))
+				println(EPrintType.CLUE, "DebugManager", "Debug Using GDB");
+			} else if (debugger_name.equalsIgnoreCase("valgrind")) {
 				db_mgr = new ValgrindMemoryCheckManager();
-			else
+				println(EPrintType.CLUE, "DebugManager", "Debug Using Valgrind");
+			} else {
 				db_mgr = null;
+			}
 		}
 	}
 	

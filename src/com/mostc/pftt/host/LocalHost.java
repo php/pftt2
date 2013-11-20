@@ -350,9 +350,9 @@ public abstract class LocalHost extends AHost {
 				return;
 			// @see WindowsLocalHost#exec_copy_lines
 			run.set(false);
-			synchronized(run) {
+			/*synchronized(run) {
 				run.notifyAll();
-			}
+			}*/
 			
 			// sometimes it can take a while to #close a process(especially on Windows)... do it in a thread
 			// to avoid blocking for too long. however, we don't want to have too many threads
@@ -431,9 +431,13 @@ public abstract class LocalHost extends AHost {
 			// read process' output (block until #close or exit)
 			exec_copy_lines(output_sb, max_chars, stdout, charset);
 			// ignores STDERR
-			
+			for(;;) {
+				if (!doIsRunning(p))
+					break;
+				Thread.sleep(50);
+			}
 			// wait for process exit (shouldn't get here until exit or #close though)
-			for (int time = 50;wait.get();) {
+			/*for (int time = 50;wait.get();) {
 				try {
 					exit_code = p.exitValue();
 					break;
@@ -458,7 +462,7 @@ public abstract class LocalHost extends AHost {
 						break;
 					}
 				}
-			}
+			}*/
 			//
 			
 			active_proc_counter.decrementAndGet();
@@ -511,10 +515,7 @@ public abstract class LocalHost extends AHost {
 			return exit_code;
 		}
 
-		public int getProcessID() {
-			final Process p = process.get();
-			return p!=null && isLocalhostWindows() ? getWindowsProcessID(p) : 0;
-		}
+		public abstract int getProcessID();
 
 		@Override
 		public InputStream getSTDOUT() {
@@ -532,7 +533,8 @@ public abstract class LocalHost extends AHost {
 		public void run(ConsoleManager cm, StringBuilder output_sb, Charset charset, int timeout_sec, @SuppressWarnings("rawtypes") TestPackRunnerThread thread, int thread_slow_sec, int suspend_seconds, int max_chars) throws IOException, InterruptedException {
 			TimerThread a = null, b = null;
 			if (thread!=null && thread_slow_sec>NO_TIMEOUT) {
-				b = TimerUtil.waitSeconds(thread_slow_sec, new ThreadSlowTask(thread));
+				// TODO get rid of thread_slow_sec feature - just use AbstractLocalTestPackRunner
+				//b = TimerUtil.waitSeconds(thread_slow_sec, new ThreadSlowTask(thread));
 			}
 			
 			if (timeout_sec>NO_TIMEOUT) {
@@ -553,17 +555,6 @@ public abstract class LocalHost extends AHost {
 		}
 		
 	} // end public class LocalExecHandle
-	
-	// TODO temp
-	public static int getWindowsProcessID(Process process) {
-		try {
-			// clean way
-			WinProcess wproc = new WinProcess(process);
-			return wproc.getPid();
-		} catch ( Throwable wt ) {
-			return getWindowsProcessIDReflection(process);
-		}
-	}
 	
 	protected static int getWindowsProcessIDReflection(Process process) {
 		// WinProcess native code couldn't be loaded

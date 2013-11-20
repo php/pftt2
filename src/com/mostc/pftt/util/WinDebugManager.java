@@ -31,7 +31,7 @@ import com.mostc.pftt.scenario.ScenarioSet;
  *
  */
 
-public class WinDebugManager extends DebuggerManager {
+public class WinDebugManager extends WindowsDebuggerToolsManager {
 	private String win_dbg_exe;
 	private AHost win_dbg_host;
 	private boolean displayed_windbg_tips = false;
@@ -76,9 +76,10 @@ public class WinDebugManager extends DebuggerManager {
 	
 	protected void displayWindebugTips(ConsoleManager cm) {
 		cm.println(EPrintType.TIP, getClass(), "  WinDebug Command Referrence: http://www.windbg.info/doc/1-common-cmds.html");
-		cm.println(EPrintType.TIP, getClass(), "  WinDebug command: k       - show callstack");
-		cm.println(EPrintType.TIP, getClass(), "  WinDebug command: g       - go (until next exception)");
-		cm.println(EPrintType.TIP, getClass(), "  WinDebug command: <F9>    - set breakpoint");
+		cm.println(EPrintType.TIP, getClass(), "  WinDebug command: k                       - show callstack");
+		cm.println(EPrintType.TIP, getClass(), "  WinDebug command: g                       - go (until next exception)");
+		cm.println(EPrintType.TIP, getClass(), "  WinDebug command: .dump /ma <filename>    - create coredump file");
+		cm.println(EPrintType.TIP, getClass(), "  WinDebug command: <F9>                    - set breakpoint");
 	}
 
 	public static class WinDebug extends Debugger {
@@ -203,6 +204,14 @@ public class WinDebugManager extends DebuggerManager {
 			// TODO Auto-generated method stub
 			return null;
 		}
+
+		@Override
+		public ExecHandle execThread(String commandline,
+				Map<String, String> env, String chdir, byte[] stdin_data)
+				throws Exception {
+			// TODO Auto-generated method stub
+			return null;
+		}
 		
 	} // end public static class WinDebug
 	
@@ -215,24 +224,9 @@ public class WinDebugManager extends DebuggerManager {
 	 * @return
 	 */
 	public static String[] getWinDebugPaths(Host host, PhpBuild build) {
-		// use x86 windebug for x86 builds and x64 windebug edition for x64 builds!
-		// (can debug with different windebug editions, but WER popup requires that the architectures match)
-		// @see HostEnvUtil
-		if (build.isX86()) {
-			// 
-			return new String[] {
-					host.getSystemDrive()+"\\Program Files (x86)\\Debugging Tools for Windows\\WinDbg.exe",
-					host.getSystemDrive()+"\\Program Files (x86)\\Debugging Tools for Windows (x86)\\WinDbg.exe"
-				};
-		} else {
-			return new String[] {
-					host.getSystemDrive()+"\\Program Files\\Debugging Tools for Windows (x64)\\WinDbg.exe",
-					host.getSystemDrive()+"\\Program Files\\Debugging Tools for Windows\\WinDbg.exe",
-					host.getSystemDrive()+"\\Program Files\\Debugging Tools for Windows (x86)\\WinDbg.exe"
-				};
-		}
+		return getToolPaths(host, build, "windbg.exe");
 	}
-
+	
 	/** returns the path that WinDebug is installed at, or returns null if windebug is not found.
 	 * 
 	 * @see #getWinDebugPaths

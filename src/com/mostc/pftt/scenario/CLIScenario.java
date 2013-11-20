@@ -118,7 +118,7 @@ public class CliScenario extends SAPIScenario {
 			//      -for WEB SERVERS, have to set ENV vars on each web server instance
 			// @see CliPhptTestCaseRunner#prepare
 			//
-			CliSAPIInstance sapi = new CliSAPIInstance(cm, host, build, ini);
+			CliSAPIInstance sapi = new CliSAPIInstance(cm, host, scenario_set_setup.getScenarioSet(), build, ini);
 			
 			return new CliTestCaseGroupKey(sapi, ini, null);
 		} else if (group_key!=null && group_key.getPhpIni().isDefault()) {
@@ -128,7 +128,7 @@ public class CliScenario extends SAPIScenario {
 			
 			filter.prepareIni(cm, ini);
 			
-			CliSAPIInstance sapi = new CliSAPIInstance(cm, host, build, ini);
+			CliSAPIInstance sapi = new CliSAPIInstance(cm, host, scenario_set_setup.getScenarioSet(), build, ini);
 			
 			return new CliTestCaseGroupKey(sapi, ini, null);
 		}

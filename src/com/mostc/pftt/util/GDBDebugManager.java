@@ -67,6 +67,14 @@ public class GDBDebugManager extends DebuggerManager {
 			// TODO Auto-generated method stub
 			return false;
 		}
+
+		@Override
+		public ExecHandle execThread(String commandline,
+				Map<String, String> env, String chdir, byte[] stdin_data)
+				throws Exception {
+			// TODO Auto-generated method stub
+			return null;
+		}
 		
 	}
 

@@ -25,7 +25,6 @@ public abstract class AbstractPhptRW extends AbstractTestResultRW {
 	public boolean isTestStatus(String test_name, EPhptTestStatus status) {
 		return getTestNames(status).contains(test_name);
 	}
-	public abstract String getPath();
 	
 	protected void check(EPhptTestStatus status, List<String> names) {
 		/*if (status==EPhptTestStatus.FAIL) {

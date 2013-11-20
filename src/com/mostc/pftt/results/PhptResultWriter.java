@@ -316,7 +316,7 @@ public class PhptResultWriter extends AbstractPhptRW {
 				serial.text(ext_name);
 				serial.endTag(null, "name");
 			}	
-			reportGroups(ext.test_groups);
+			// TODO temp reportGroups(ext.test_groups);
 			serial.endTag(null, "extension");
 		}
 		

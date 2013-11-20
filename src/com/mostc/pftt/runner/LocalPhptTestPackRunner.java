@@ -47,6 +47,7 @@ import com.mostc.pftt.scenario.XDebugScenario;
 public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptActiveTestPack, PhptSourceTestPack, PhptTestCase> {
 	protected final IENVINIFilter filter;
 	protected final boolean xdebug;
+	protected final PhptTestPreparer preparer;
 	
 	public LocalPhptTestPackRunner(ConsoleManager cm, ITestResultReceiver twriter, ScenarioSet scenario_set, PhpBuild build, AHost storage_host, AHost runner_host, IENVINIFilter filter) {
 		super(cm, twriter, scenario_set, build, storage_host, runner_host);
@@ -54,6 +55,8 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 		
 		// check once if this is using XDebug 
 		xdebug = scenario_set.contains(XDebugScenario.class);
+		
+		preparer = new PhptTestPreparer(xdebug);
 	}
 	
 	@Override
@@ -161,6 +164,8 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 			return null;
 		}
 		
+		test_case.prep = preparer.prepare(test_case, runner_host, active_test_pack);
+		
 		return group_key;
 	} // end protected TestCaseGroupKey createGroupKey
 	
@@ -237,7 +242,7 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 	
 	protected void reportGroups() {
 		PhptResultWriter phpt = (PhptResultWriter) ((PhpResultPackWriter)twriter).getPHPT(runner_host, scenario_set_setup, src_test_pack.getNameAndVersionString());
-		phpt.reportGroups(thread_safe_groups, non_thread_safe_exts);
+		// TODO temp phpt.reportGroups(thread_safe_groups, non_thread_safe_exts);
 	} 
 	
 	@Override
@@ -256,7 +261,7 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 
 		@Override
 		protected void runTest(TestCaseGroupKey group_key, PhptTestCase test_case, boolean debugger_attached) throws IOException, Exception, Throwable {
-			r = sapi_scenario.createPhptTestCaseRunner(this, group_key, test_case, cm, twriter, runner_host, scenario_set_setup, build, src_test_pack, active_test_pack, xdebug, debugger_attached);
+			r = sapi_scenario.createPhptTestCaseRunner(this, group_key, test_case.prep, cm, twriter, runner_host, scenario_set_setup, build, src_test_pack, active_test_pack, xdebug, debugger_attached);
 			twriter.notifyStart(runner_host, scenario_set_setup, src_test_pack, test_case);
 			r.runTest(cm, this, LocalPhptTestPackRunner.this);
 		}

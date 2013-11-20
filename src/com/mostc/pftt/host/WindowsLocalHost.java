@@ -13,7 +13,6 @@ import org.jvnet.winp.WinProcess;
 
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.CommonCommandManager.Win32ProcessInfo;
-import com.mostc.pftt.main.PfttMain;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
 import com.mostc.pftt.util.TimerUtil;
 import com.mostc.pftt.util.TimerUtil.ObjectRunnable;
@@ -93,10 +92,15 @@ public class WindowsLocalHost extends LocalHost {
 				// IMPORTANT: this is how its identified in the Windows process table
 				this.image_name = "cmd.exe"; 
 			} else {
-				this.image_name = this.image_name.toLowerCase();
-				if (this.image_name.equals("cmd"))
-					this.image_name = "cmd.exe";
+				this.image_name = basename(this.image_name).toLowerCase();
+				if (image_name.indexOf('.')==-1)
+					this.image_name += ".exe";
 			}
+		}
+		
+		public int getProcessID() {
+			final Process p = process.get();
+			return p!=null ? getWindowsProcessID(p) : 0;
 		}
 
 		@Override
@@ -147,24 +151,31 @@ public class WindowsLocalHost extends LocalHost {
 						try {
 							do_exec_copy_lines(sb, max_chars, in, charset);
 							copy_thread_lock.set(false);
-							synchronized(run) {
+							run.set(false);
+							/*synchronized(run) {
 								run.notifyAll();
-							}
-						} catch (IOException e) {
-							e.printStackTrace();
+							}*/
+						} catch (Throwable e) {
+							//e.printStackTrace();
 						}
 					}
 				});
 			copy_thread.setUncaughtExceptionHandler(IGNORE_EXCEPTION_HANDLER);
 			while (wait.get()) {
-				synchronized(run) {
+				//synchronized(run) {
 					try {
-						run.wait(30000);
+						//run.wait(30000);
+						Thread.sleep(300);
 					} catch ( InterruptedException ex ) {}
-				}
+				//}
 				if (!run.get()) {
 					// try killing copy thread since its still running after it was supposed to stop
-					copy_thread.stop(new RuntimeException());
+					copy_thread.stop(new RuntimeException() {
+						@Override
+						public void printStackTrace() {
+							
+						}
+					});
 					break;
 				} else if (!copy_thread_lock.get()) {
 					// stopped normally
@@ -208,7 +219,9 @@ public class WindowsLocalHost extends LocalHost {
 			// Windows BN?: if TerminateProcess() called with a PID that doesn't exist anymore (but might again soon)
 			//              does TerminateProcess() block forever (or does it appear that way because of Windows slow process
 			//              management?(Windows is optimized to run a few processes only (because thats what users did with it in the '90s)))
-			if (image_name.equals("taskkill.exe")||image_name.equals("handle.exe")||image_name.equals("pskill.exe")) {
+			String image_name = basename(this.image_name);
+			if (image_name.equals("taskkill.exe")||image_name.equals("handle.exe")||image_name.equals("pskill.exe")
+					||image_name.equals("taskkill")||image_name.equals("handle")||image_name.equals("pskill")) {
 				// can't use taskkill, could create an infinite loop
 				//
 				// @see https://github.com/kohsuke/winp
@@ -220,12 +233,16 @@ public class WindowsLocalHost extends LocalHost {
 			int pid = getWindowsProcessIDReflection(p); // NOT WinProcess#getPID?
 			// for closing handles and other special stuff to work here, must get the actual process
 			// not just cmd.exe (it won't have problems with stray handles, etc...)
-			if (image_name.equals("cmd.exe")) {
+			//
+			// IMPORTANT: #doClose may be called multiple times, so don't change this#doClose
+			if (image_name.equals("cmd.exe")||image_name.equals("cmd")) {
 				List<Win32ProcessInfo> table = ccm.getWindowsProcessTable(WindowsLocalHost.this);
 				for ( Win32ProcessInfo info : table ) {
 					if (info.parent_pid==pid) {
 						// found child
-						image_name = info.exe_path;
+						//
+						// IMPORTANT: basename() because TaskKill doesn't take paths for image name
+						image_name = basename(info.exe_path);
 						pid = info.pid;
 					}
 				}
@@ -250,28 +267,23 @@ public class WindowsLocalHost extends LocalHost {
 					//    @see AbstractPhptTestCaseRunner2#doRunTestClean
 					ccm.winCloseAllHandles(WindowsLocalHost.this, pid);
 				}
-				// can kill off windebug if running under PUTS (windebug shouldn't be running at all, sometimes does)
-				if (!PfttMain.is_puts && ccm.ensureWinDebugIsNotRunning(WindowsLocalHost.this, pid)) {
-					
-					// do nothing, wait for windebug
-				} else {
-					// provide TASKKILL the image name of the process to try avoiding killing the wrong process
-					try {
-						// /T => terminate child processes too
-						exec("TASKKILL /FI \"IMAGENAME eq "+image_name+"\" /FI \"PID eq "+pid+"\" /F /T", 20);
-						// also, WinProcess#killRecursively only checks by process id (not image/program name)
-						// while that should be enough, experience on Windows has shown that it isn't and somehow gets PFTT killed eventually
-						//
-						// Windows Note: Windows does NOT automatically terminate child processes when the parent gets killed
-						//               the only way that happens is if you search for the child processes FIRST yourself,
-						//               (and then their children, etc...) and then kill them.
-					} catch ( Exception ex ) {
-						// fallback
-						//
-						// @see https://github.com/kohsuke/winp
-						WinProcess wprocess = new WinProcess(p);
-						wprocess.kill();
-					}
+				// provide TASKKILL the image name of the process to try avoiding killing the wrong process
+				try {
+					// /T => terminate child processes too
+					exec("TASKKILL /FI \"IMAGENAME eq "+image_name+"\" /FI \"PID eq "+pid+"\" /F /T", 20);
+					// also, WinProcess#killRecursively only checks by process id (not image/program name)
+					// while that should be enough, experience on Windows has shown that it isn't and somehow gets PFTT killed eventually
+					//
+					// Windows Note: Windows does NOT automatically terminate child processes when the parent gets killed
+					//               the only way that happens is if you search for the child processes FIRST yourself,
+					//               (and then their children, etc...) and then kill them.
+				} catch ( Exception ex ) {
+					ex.printStackTrace();
+					// fallback
+					//
+					// @see https://github.com/kohsuke/winp
+					WinProcess wprocess = new WinProcess(p);
+					wprocess.kill();
 				}
 			}
 		} // end protected void doClose
@@ -345,5 +357,15 @@ public class WindowsLocalHost extends LocalHost {
 		}
 		return true;
 	} // end public boolean mkdirs
+	
+	public static int getWindowsProcessID(Process process) {
+		try {
+			// clean way
+			WinProcess wproc = new WinProcess(process);
+			return wproc.getPid();
+		} catch ( Throwable wt ) {
+			return getWindowsProcessIDReflection(process);
+		}
+	}
 	
 } // end public class WindowsLocalHost

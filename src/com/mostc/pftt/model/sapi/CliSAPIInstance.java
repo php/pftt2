@@ -12,17 +12,21 @@ import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.DebuggerManager;
+import com.mostc.pftt.util.DebuggerManager.Debugger;
 
 public class CliSAPIInstance extends SAPIInstance {
 	protected final PhpBuild build;
 	protected String ini_dir;
 	protected DebuggerManager db_mgr;
+	protected Debugger dbg;
 	
-	public CliSAPIInstance(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini) {
+	public CliSAPIInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini) {
 		super(host, ini);
 		this.build = build;
 		
 		db_mgr = cm.getDebuggerManager();
+		if (db_mgr!=null)
+			dbg = db_mgr.newDebugger(cm, host, scenario_set, build);
 	}
 	
 	@Override
@@ -68,17 +72,17 @@ public class CliSAPIInstance extends SAPIInstance {
 	}
 
 	public ExecOutput execute(EExecutableType exe_type, String name, String php_filename, String extra_args, int timeout_sec, Map<String,String> env, String chdir, boolean debugger_attached) throws Exception {
-		return db_mgr == null ?
+		return dbg == null ?
 				host.execOut(createPhpCommand(exe_type, php_filename, extra_args, debugger_attached), timeout_sec, env, chdir, true) :
-				db_mgr.execOut(host, name, createPhpCommand(exe_type, php_filename, extra_args, debugger_attached), timeout_sec, env, chdir, true);
+				dbg.execOut(createPhpCommand(exe_type, php_filename, extra_args, debugger_attached), timeout_sec, env, null, null);
 	}
 	
 	public ExecHandle execThread(ConsoleManager cm, String name, ScenarioSet scenario_set, String cmd, String chdir, Map<String,String> env, byte[] stdin_data, boolean debugger_attached) throws Exception {
 		// TODO use this with CliPhpUnitTestCaseRunner
 		
-		ExecHandle eh = db_mgr == null ?
+		ExecHandle eh = dbg == null || !debugger_attached ?
 				host.execThread(cmd, env, chdir, stdin_data, !debugger_attached) :
-				db_mgr.execThread(host, name, cmd, env, chdir, stdin_data, !debugger_attached);
+				dbg.execThread(cmd, env, chdir, stdin_data);
 		if (debugger_attached && eh instanceof LocalExecHandle) {
 			db_mgr.newDebugger(cm, host, scenario_set, name, build, (LocalExecHandle)eh);
 		}

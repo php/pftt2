@@ -10,4 +10,5 @@ public abstract class AbstractTestResultRW {
 	public abstract PhpBuildInfo getBuildInfo();
 	public abstract void close() throws IOException;
 	public abstract float passRate();
+	public abstract String getPath();
 }

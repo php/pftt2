@@ -15,6 +15,7 @@ import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
+import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 
@@ -24,7 +25,6 @@ import com.mostc.pftt.scenario.ScenarioSet;
  *
  */
 
-// XXX support for GDB on Linux
 public abstract class DebuggerManager {
 	protected String src_path, debug_path;
 	
@@ -200,57 +200,46 @@ public abstract class DebuggerManager {
 				int timeout_sec, Map<String, String> env, byte[] stdin_post,
 				Charset charset, String current_dir)
 				throws IllegalStateException, Exception {
-			// TODO Auto-generated method stub
-			return false;
+			return execOut(cmd, timeout_sec, env, stdin_post, charset).isSuccess();
+		}
+		
+		@Override
+		public boolean exec(ConsoleManager cm, String ctx_str,
+				String commandline, int timeout, Map<String, String> env,
+				byte[] stdin, Charset charset, String chdir,
+				TestPackRunnerThread thread, int thread_slow_sec)
+				throws Exception {
+			return execOut(commandline, timeout, env, stdin, charset).isSuccess();
 		}
 		
 		@Override
 		public ExecHandle execThread(String commandline) throws Exception {
-			// TODO Auto-generated method stub
-			return null;
+			return execThread(commandline, null, null, null);
 		}
 
 		@Override
-		public ExecHandle execThread(String commandline, byte[] stdin_data)
-				throws Exception {
-			// TODO Auto-generated method stub
-			return null;
+		public ExecHandle execThread(String commandline, byte[] stdin_data) throws Exception {
+			return execThread(commandline, null, null, stdin_data);
 		}
 
 		@Override
-		public ExecHandle execThread(String commandline, String chdir)
-				throws Exception {
-			// TODO Auto-generated method stub
-			return null;
+		public ExecHandle execThread(String commandline, String chdir) throws Exception {
+			return execThread(commandline, null, chdir, null);
 		}
 
 		@Override
-		public ExecHandle execThread(String commandline, String chdir,
-				byte[] stdin_data) throws Exception {
-			// TODO Auto-generated method stub
-			return null;
+		public ExecHandle execThread(String commandline, String chdir, byte[] stdin_data) throws Exception {
+			return execThread(commandline, null, chdir, stdin_data);
 		}
 
 		@Override
-		public ExecHandle execThread(String commandline,
-				Map<String, String> env, byte[] stdin_data) throws Exception {
-			// TODO Auto-generated method stub
-			return null;
+		public ExecHandle execThread(String commandline, Map<String, String> env, byte[] stdin_data) throws Exception {
+			return execThread(commandline, env, null, stdin_data);
 		}
 
 		@Override
-		public ExecHandle execThread(String commandline,
-				Map<String, String> env, String chdir) throws Exception {
-			// TODO Auto-generated method stub
-			return null;
-		}
-
-		@Override
-		public ExecHandle execThread(String commandline,
-				Map<String, String> env, String chdir, byte[] stdin_data)
-				throws Exception {
-			// TODO Auto-generated method stub
-			return null;
+		public ExecHandle execThread(String commandline, Map<String, String> env, String chdir) throws Exception {
+			return execThread(commandline, env, chdir, null);
 		}
 		
 		@Override
@@ -268,6 +257,11 @@ public abstract class DebuggerManager {
 			return createRunRequest(cm, ctx_clazz==null?null:ctx_clazz.getSimpleName());
 		}
 		
+	} // end public static abstract class Debugger
+
+	public Debugger newDebugger(ConsoleManager cm, AHost host,
+			ScenarioSet scenario_set, PhpBuild build) {
+		return null;
 	}
 	
 } // end public abstract class DebuggerManager

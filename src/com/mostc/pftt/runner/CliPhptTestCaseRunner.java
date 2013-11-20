@@ -25,6 +25,7 @@ import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.model.sapi.CliSAPIInstance;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
+import com.mostc.pftt.results.PhpResultPack;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 import com.mostc.pftt.runner.PhptTestPreparer.PreparedPhptTestCase;
@@ -270,17 +271,16 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			is_timeout = true;
 		}
 		
+		if (running_test_handle!=null && running_test_handle.cleanup_notify!=null) {
+			running_test_handle.cleanup(((PhpResultPack)twriter).getPHPT(host, scenario_set, src_test_pack.getNameAndVersionString()));
+		}
 		if (!is_timeout && running_test_handle != null && running_test_handle.isCrashed()) {
 			not_crashed = false; // @see #runTest
-			
-			// TODO temp ((LocalExecHandle)running_test_handle).copyTTT();
 			
 			int exit_code = running_test_handle.getExitCode();
 			
 			twriter.addResult(host, scenario_set, src_test_pack, notifyNotPass(new PhptTestResult(host, EPhptTestStatus.CRASH, prep.test_case, "PFTT: exit_code="+exit_code+" status="+AHost.guessExitCodeStatus(host, exit_code)+"\n"+output_str, null, null, null, ini, env, null, stdin_post, null, null, null, null, output_str, null)));
-		} else if (running_test_handle!=null) {
-			// TODO temp ((LocalExecHandle)running_test_handle).deleteTTT();
-		}
+		} 
 		
 		running_test_handle = null;
 		

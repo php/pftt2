@@ -7,7 +7,7 @@ import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
 
-public class ExecOutput {
+public class ExecOutput implements ICrashDetector {
 	/** output of executed program */
 	public String output;
 	/** character the program used for its output */
@@ -36,6 +36,7 @@ public class ExecOutput {
 	public boolean isSuccess() {
 		return exit_code == 0;
 	}
+	@Override
 	public boolean isCrashed() {
 		return exit_code < -1;
 	}

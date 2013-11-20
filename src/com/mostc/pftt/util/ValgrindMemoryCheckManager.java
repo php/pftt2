@@ -101,6 +101,14 @@ public class ValgrindMemoryCheckManager extends DebuggerManager {
 			
 			return null; // TODO temp
 		}
+
+		@Override
+		public ExecHandle execThread(String commandline,
+				Map<String, String> env, String chdir, byte[] stdin_data)
+				throws Exception {
+			// TODO Auto-generated method stub
+			return null;
+		}
 		
 	}
 

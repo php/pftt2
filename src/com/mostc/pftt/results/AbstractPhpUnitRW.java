@@ -37,6 +37,5 @@ public abstract class AbstractPhpUnitRW extends AbstractTestResultRW {
 	public boolean isTestStatus(String test_name, EPhpUnitTestStatus status) {
 		return getTestNames(status).contains(test_name);
 	}
-	public abstract String getPath();
 	
 } // end public abstract class AbstractPhpUnitRW
