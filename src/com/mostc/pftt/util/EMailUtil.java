@@ -157,6 +157,8 @@ public final class EMailUtil {
 
 			if (use_ssl==ESMTPSSL.IMPLICIT_SSL) {
 				smtp.startTLS();
+				// send HELO after STARTTLS see RFC3207 Section 4.2
+				smtp.helo(InetAddress.getLocalHost());
 			}
 		}
 

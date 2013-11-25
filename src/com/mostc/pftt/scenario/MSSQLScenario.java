@@ -164,8 +164,8 @@ public class MSSQLScenario extends DatabaseScenario {
 
 		@Override
 		public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
-			ini.addExtension("php_sqlsrv.dll");
-			ini.addExtension("php_pdo_sqlsrv.dll");
+			ini.addExtension(host, build, "php_sqlsrv.dll");
+			ini.addExtension(host, build, "php_pdo_sqlsrv.dll");
 		}
 
 		@Override

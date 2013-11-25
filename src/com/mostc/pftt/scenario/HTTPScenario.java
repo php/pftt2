@@ -50,7 +50,7 @@ public class HTTPScenario extends StreamsScenario {
 
 		@Override
 		public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
-			ini.addExtension(PhpIni.EXT_CURL);
+			ini.addExtension(host, build, PhpIni.EXT_CURL);
 		}
 
 		@Override

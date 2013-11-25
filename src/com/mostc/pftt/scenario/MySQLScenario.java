@@ -100,9 +100,9 @@ public class MySQLScenario extends DatabaseScenario {
 
 		@Override
 		public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
-			ini.addExtension(PhpIni.EXT_MYSQLI);
-			ini.addExtension(PhpIni.EXT_MYSQL);
-			ini.addExtension(PhpIni.EXT_PDO_MYSQL);
+			ini.addExtension(host, build, PhpIni.EXT_MYSQLI);
+			ini.addExtension(host, build, PhpIni.EXT_MYSQL);
+			ini.addExtension(host, build, PhpIni.EXT_PDO_MYSQL);
 		}
 		
 		/** environment variables for running PHPT or PhpUnit tests

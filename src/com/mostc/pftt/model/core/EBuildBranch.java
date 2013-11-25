@@ -42,6 +42,10 @@ public enum EBuildBranch {
 		}
 	};
 	
+	public static EBuildBranch getNewest() {
+		return STR_SIZE_AND_INT64;
+	}
+	
 	/** flexibly matches different values, guessing which EBuildBranch it refers to
 	 * 
 	 * returns null if no match

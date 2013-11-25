@@ -211,16 +211,17 @@ public class PhpIni {
 	public void addExtension(Host host, PhpBuild build, String dll_name) {
 		if (!_hasExtension(host, build, dll_name))
 			dll_name = dllName(dll_name);
-		addExtension(dll_name);
+		if (_hasExtension(host, build, dll_name))
+			addExtension(dll_name);
 	}
 	
 	public void addExtension(String dll_name) {
 		putMulti(EXTENSION, dll_name);
 	}
 	
-	public void addExtensions(String...dll_names) {
+	public void addExtensions(Host host, PhpBuild build, String...dll_names) {
 		for (String dll_name:dll_names)
-			addExtension(dll_name);
+			addExtension(host, build, dll_name);
 	}
 	
 	/** replaces all directives in this PhpIni that match the given PhpIni with the values from 

@@ -4,6 +4,7 @@ import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.app.PhpUnitTestCase;
+import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.ESAPIType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
@@ -188,13 +189,21 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 		// default php.ini has these extensions on Windows
 		// NOTE: this is validated by RequiredExtensionsSmokeTest. similar/same info is both there and here
 		//       b/c that needs it for validation and its here because its in the default php.ini
-		if (host.isWindows()) {
+		boolean b = true;
+		try {
+			b = build.getBuildInfo(cm, (AHost)host).getBuildBranch()!=EBuildBranch.STR_SIZE_AND_INT64;
+		} catch ( Exception ex ) {
+			
+		}
+		if (host.isWindows() && b) {
 			ini.setExtensionDir(build.getDefaultExtensionDir());
 			ini.addExtensions(
+					host,
+					build,
 					PhpIni.EXT_BZ2,
 					PhpIni.EXT_COM_DOTNET,
 					PhpIni.EXT_CURL,
-					PhpIni.EXT_ENCHANT, // TODO test
+					PhpIni.EXT_ENCHANT,
 					PhpIni.EXT_FILEINFO,
 					PhpIni.EXT_GD2,
 					PhpIni.EXT_GETTEXT,

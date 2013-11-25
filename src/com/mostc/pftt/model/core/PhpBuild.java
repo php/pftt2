@@ -499,12 +499,33 @@ public class PhpBuild extends SAPIManager {
 	
 	public String getVersionRevision(ConsoleManager cm, Host host) throws Exception {
 		getVersionString(cm, host);
+		if (branch==null) {
+			// work around builds that don't provide specific version info
+			// some builds may just say `5.7.0-dev` and not give a revision number
+			//
+			// instead try to get it from the build path
+			String a = Host.basename(build_path);
+			if (a.contains("-r")) {
+				int i = a.indexOf("-r");
+				if (i!=-1) {
+					i++;
+					int j = a.indexOf("-", i+1);
+					if (j!=-1) {
+						return a.substring(i, j);
+					} else {
+						return a.substring(i);
+					}
+				}
+			}
+		}
 		return revision;
 	}
 	
 	public EBuildBranch getVersionBranch(ConsoleManager cm, Host host) throws Exception {
 		getVersionString(cm, host);
-		return branch;
+		// work around builds that don't provide specific version info
+		// some builds may just say `5.7.0-dev` and not give a revision number
+		return branch==null?EBuildBranch.getNewest():branch;
 	}
 	
 	public boolean is53(ConsoleManager cm, Host host) {
