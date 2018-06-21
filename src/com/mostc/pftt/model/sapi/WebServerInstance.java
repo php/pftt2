@@ -15,6 +15,7 @@ import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.TestCase;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.scenario.FileSystemScenario;
 
 /** an instance of a web server
  * 
@@ -35,8 +36,8 @@ public abstract class WebServerInstance extends SAPIInstance implements IWebServ
 	protected final WebServerManager ws_mgr;
 	WebServerInstance replacement; // @see WebServerManager#getWebServerInstance
 	
-	public WebServerInstance(AHost host, WebServerManager ws_mgr, String[] cmd_array, PhpIni ini, Map<String,String> env) {
-		super(host, ini);
+	public WebServerInstance(FileSystemScenario fs, AHost host, WebServerManager ws_mgr, String[] cmd_array, PhpIni ini, Map<String,String> env) {
+		super(fs, host, ini);
 		this.ws_mgr = ws_mgr;
 		this.cmd_array = cmd_array;
 		this.ini = ini;
@@ -237,12 +238,12 @@ public abstract class WebServerInstance extends SAPIInstance implements IWebServ
 	
 	protected String httpGet(String url_str, String php_code) throws IllegalStateException, IOException {
 		String temp_file = host.joinIntoOnePath(getDocroot(), url_str);
-		if (!host.saveTextFile(temp_file, php_code))
+		if (!fs.saveTextFile(temp_file, php_code))
 			return "";
 		
 		URL url = new URL("http", getHostname(), getPort(), url_str);
 		String output = IOUtil.toString(url.openStream(), IOUtil.QUARTER_MEGABYTE);
-		host.delete(temp_file);
+		fs.delete(temp_file);
 		return output;
 	}
 	

@@ -21,6 +21,8 @@ import com.mostc.pftt.model.sapi.SAPIManager;
 import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
+import com.mostc.pftt.scenario.FileSystemScenario;
+import com.mostc.pftt.scenario.LocalFileSystemScenario;
 import com.mostc.pftt.util.StringUtil2;
 
 /** Represents a single build of PHP.
@@ -73,26 +75,26 @@ public class PhpBuild extends SAPIManager {
 			if (StringUtil.endsWithIC(build_path, ".zip")) {
 				// automatically decompress build
 				String zip_file = build_path;
-				this.build_path = host.uniqueNameFromBase(Host.removeFileExt(build_path));
+				this.build_path = host.uniqueNameFromBase(FileSystemScenario.removeFileExt(build_path));
 				
-				if (!host.unzip(zip_file, build_path))
+				if (!host.unzip(cm, zip_file, build_path))
 					return false;
 			}
 			
 			php_exe = host.isWindows() ? build_path + "\\php.exe" : build_path + "/sapi/cli/php";
 			php_cgi_exe = host.isWindows() ? build_path + "\\php-cgi.exe" : build_path + "/sapi/cgi/php-cgi";
-			if (!host.exists(php_cgi_exe))
+			if (!host.mExists(php_cgi_exe))
 				php_cgi_exe = null; // mark as not found
 			
-			if (host.exists(build_path+"/php.ini")) {
+			/* TODO temp if (host.mExists(build_path+"/php.ini")) {
 				// CRITICAL: move php.ini ... it causes problems for CLI and intermittently for Apache
 				//
 				// it'll probably get overwritten by somebody using #getDefaultPhpIniPath
-				host.deleteIfExists(build_path+"/php_ini.bak");
-				host.move(build_path+"/php.ini", build_path+"/php_ini.bak");
-			}
+				host.mDeleteIfExists(build_path+"/php_ini.bak");
+				host.mMove(build_path+"/php.ini", build_path+"/php_ini.bak");
+			}*/
 			
-			if (host.exists(getPhpExe())) {
+			if (host.mExists(getPhpExe())) {
 				return true;
 			} else {
 				cm.println(EPrintType.CANT_CONTINUE, getClass(), "Unable to find: "+getPhpExe());
@@ -124,7 +126,7 @@ public class PhpBuild extends SAPIManager {
 	 * @return
 	 */
 	public ECompiler getCompiler(ConsoleManager cm, Host host) {
-		String n = Host.basename(build_path).toLowerCase();
+		String n = FileSystemScenario.basename(build_path).toLowerCase();
 		for (ECompiler c : ECompiler.values() ) {
 			if (n.contains(c.toString().toLowerCase()))
 				return c;
@@ -139,7 +141,7 @@ public class PhpBuild extends SAPIManager {
 	 * @return
 	 */
 	public ECPUArch getCPUArch(ConsoleManager cm, Host host) {
-		String n = Host.basename(build_path).toLowerCase();
+		String n = FileSystemScenario.basename(build_path).toLowerCase();
 		for (ECPUArch c : ECPUArch.values() ) {
 			if (n.contains(c.toString().toLowerCase()))
 				return c;
@@ -204,8 +206,8 @@ public class PhpBuild extends SAPIManager {
 		if (debug_path==null)
 			return null;
 		else
-			debug_path = host.joinIntoOnePath(Host.dirname(build_path), debug_path);
-		return host.exists(debug_path) ? debug_path : null;
+			debug_path = host.joinIntoOnePath(FileSystemScenario.dirname(build_path), debug_path);
+		return host.mExists(debug_path) ? debug_path : null;
 	}
 	
 	/** guesses location of source pack based on build location
@@ -243,8 +245,8 @@ public class PhpBuild extends SAPIManager {
 		if (source_path==null)
 			return null;
 		else
-			source_path = host.joinIntoOnePath(Host.dirname(build_path), source_path);
-		return host.exists(source_path) ? source_path : null;
+			source_path = host.joinIntoOnePath(FileSystemScenario.dirname(build_path), source_path);
+		return host.mExists(source_path) ? source_path : null;
 	} // end public String guessSourcePackPath
 	
 	public boolean isTS(Host host) {
@@ -274,11 +276,23 @@ public class PhpBuild extends SAPIManager {
 			return getPhpCgiExe();
 		case WIN:
 			// normally php-win.exe isn't used, so its only calculated here
-			return Host.dirname(php_exe) + "\\php-win.exe";
+			return FileSystemScenario.dirname(php_exe) + "\\php-win.exe";
 		case CLI:
 		default:
 			return getPhpExe();
 		}
+	}
+	public String getPhpExe(ESAPIType type) {
+		switch(type) {
+		case FAST_CGI:
+		case CGI:
+			return getPhpCgiExe();
+		case MOD_PHP:
+		case CLI:
+		case CLI_WWW:
+		case OTHER:
+		}
+		return getPhpExe();
 	}
 	
 	/** a php build usually has several executables. this tells what type of executable
@@ -288,9 +302,9 @@ public class PhpBuild extends SAPIManager {
 	 * @return EExecutableType of exe_file
 	 */
 	public EExecutableType getExecutableType(String exe_file) {
-		if (Host.basename(php_cgi_exe).equalsIgnoreCase(Host.basename(exe_file)))
+		if (FileSystemScenario.basename(php_cgi_exe).equalsIgnoreCase(FileSystemScenario.basename(exe_file)))
 			return EExecutableType.CGI;
-		else if (Host.basename(exe_file).equalsIgnoreCase("php-win.exe"))
+		else if (FileSystemScenario.basename(exe_file).equalsIgnoreCase("php-win.exe"))
 			return EExecutableType.WIN;
 		else
 			return EExecutableType.CLI;
@@ -321,18 +335,18 @@ public class PhpBuild extends SAPIManager {
 	 * @return
 	 * @throws IOException
 	 */
-	public PhpIni getDefaultPhpIni(ConsoleManager cm, AHost host, ESAPIType type) throws IOException {
+	public PhpIni getDefaultPhpIni(ConsoleManager cm, FileSystemScenario fs, AHost host, ESAPIType type) throws IOException {
 		PhpIni ini;
 		if (this.php_ini!=null) {
 			ini = this.php_ini.get();
 			if (ini!=null)
 				return ini;
 		}
-		String path = getDefaultPhpIniPath(host, type);
-		if (host.exists(path))
-			ini = new PhpIni(host.getContents(path), build_path);
+		String path = getDefaultPhpIniPath(fs, host, type);
+		if (host.mExists(path))
+			ini = new PhpIni(host.mGetContents(path), build_path);
 		else
-			ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, host, this);
+			ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, fs, host, this);
 		
 		this.php_ini = new SoftReference<PhpIni>(ini);
 		return ini;
@@ -344,13 +358,16 @@ public class PhpBuild extends SAPIManager {
 	 * 
 	 * On others, different SAPIs have different php.inis.
 	 * 
+	 * @param fs
 	 * @param host
 	 * @param type
 	 * @return
 	 */
-	public String getDefaultPhpIniPath(Host host, ESAPIType type) {
+	public String getDefaultPhpIniPath(FileSystemScenario fs, Host host, ESAPIType type) {
 		if (host.isWindows()) {
-			return build_path+host.dirSeparator()+"php.ini";
+			return build_path+fs.dirSeparator()+"php.ini";
+		} else if (type==null) {
+			return "/etc/cli/php.ini";
 		} else {
 			switch(type) {
 			case CGI:
@@ -375,7 +392,7 @@ public class PhpBuild extends SAPIManager {
 		if (version_str!=null) {
 			return version_str;
 		}
-		String b = Host.basename(build_path).toLowerCase();
+		String b = FileSystemScenario.basename(build_path).toLowerCase();
 		
 		// naming convention php-5.3-[optionally ts|nts]-[compiler]-[optionally rNNNNNNN]
 		if (b.contains("php-5.3")) {
@@ -504,7 +521,7 @@ public class PhpBuild extends SAPIManager {
 			// some builds may just say `5.7.0-dev` and not give a revision number
 			//
 			// instead try to get it from the build path
-			String a = Host.basename(build_path);
+			String a = FileSystemScenario.basename(build_path);
 			if (a.contains("-r")) {
 				int i = a.indexOf("-r");
 				if (i!=-1) {
@@ -531,6 +548,30 @@ public class PhpBuild extends SAPIManager {
 	public boolean is53(ConsoleManager cm, Host host) {
 		try {
 			return getVersionBranch(cm, host) == EBuildBranch.PHP_5_3;
+		} catch ( Exception ex ) {
+			return false;
+		}
+	}
+	
+	public boolean is5(ConsoleManager cm, Host host) {
+		return is53(cm, host)||is54(cm, host)||is55(cm, host)||is56(cm, host)||is70(cm, host);
+	}
+	
+	public boolean is70(ConsoleManager cm, Host host) {
+		try {
+			return getVersionBranch(cm, host) == EBuildBranch.PHP_7_0;
+		} catch ( Exception ex ) {
+			return false;
+		}
+	}
+	
+	public boolean is7(ConsoleManager cm, Host host) {
+		return is70(cm, host);
+	}
+	
+	public boolean isMaster(ConsoleManager cm, Host host) {
+		try {
+			return getVersionBranch(cm, host) == EBuildBranch.PHP_Master;
 		} catch ( Exception ex ) {
 			return false;
 		}
@@ -566,21 +607,31 @@ public class PhpBuild extends SAPIManager {
 	 *  #isExtensionEnabled checks to see if its enabled. PhpIni#hasExtension will miss builtin/static extensions.
 	 *   
 	 * @param cm
+	 * @param fs
 	 * @param host
 	 * @param type
 	 * @param ext_name
 	 * @return
 	 * @throws Exception
 	 */
-	public boolean isExtensionEnabled(ConsoleManager cm, AHost host, ESAPIType type, PhpIni ini, String ext_name) throws Exception {
+	public boolean isExtensionEnabled(ConsoleManager cm, FileSystemScenario fs, AHost host, ESAPIType type, PhpIni ini, String ext_name) throws Exception {
 		if (ext_name.equals("spl")||ext_name.equals("standard")||ext_name.equals("core"))
 			// these extensions are always there/always builtin
 			return true;
 		
+		//
+		// normalize
 		ext_name = ext_name.toLowerCase();
+		if (ext_name.startsWith("php_"))
+			ext_name = ext_name.substring(4);
+		if (ext_name.endsWith(".so"))
+			ext_name = ext_name.substring(0, ext_name.length()-3);
+		else if (ext_name.endsWith(".dll"))
+			ext_name = ext_name.substring(0, ext_name.length()-4);
+		//
 		
 		if (ini==null)
-			ini = getDefaultPhpIni(cm, host, type);
+			ini = getDefaultPhpIni(cm, fs, host, type);
 		
 		// key by only extensions, so cache will be reused even if additional directives are added
 		if (ini!=null)
@@ -613,14 +664,15 @@ public class PhpBuild extends SAPIManager {
 	/** checks to see if the extension is enabled or statically builtin to this build <b>using the default PhpIni</b>
 	 *  
 	 * @param cm
+	 * @param fs
 	 * @param host
 	 * @param type
 	 * @param ext_name
 	 * @return
 	 * @throws Exception
 	 */
-	public boolean isExtensionEnabled(ConsoleManager cm, AHost host, ESAPIType type, String ext_name) throws Exception {
-		return isExtensionEnabled(cm, host, type, null, ext_name);
+	public boolean isExtensionEnabled(ConsoleManager cm, FileSystemScenario fs, AHost host, ESAPIType type, String ext_name) throws Exception {
+		return isExtensionEnabled(cm, fs, host, type, null, ext_name);
 	}
 	
 	/** gets the PhpInfo string for this build
@@ -643,29 +695,11 @@ public class PhpBuild extends SAPIManager {
 		}
 		
 		PHPOutput eo = eval(host, ini, "phpinfo();");
-		eo.printOutputIfCrash(Host.toContext(getClass(), "getPhpInfo"), cm);
+		eo.printOutputIfCrash(FileSystemScenario.toContext(getClass(), "getPhpInfo"), cm);
 		php_info = eo.output;
 		eo.cleanup(host);
 		this.php_info = new SoftReference<String>(php_info);
 		return php_info;
-	}
-	
-	/** replaces the default php ini this build will use, unless overridden
-	 * 
-	 * @param host
-	 * @param type
-	 * @param ini
-	 * @throws IOException
-	 */
-	public void setDefaultPhpIni(Host host, ESAPIType type, PhpIni ini) throws IOException {
-		this.php_ini = new SoftReference<PhpIni>(ini);
-		
-		host.saveTextFile(getDefaultPhpIniPath(host, type), ini.toString());
-		
-		if (!host.isWindows()) {
-			host.saveTextFile("/etc/php/cli/php.ini", ini.toString());
-			host.saveTextFile("/etc/php/cgi/php.ini", ini.toString());
-		}
 	}
 	
 	public boolean checkSyntax(AHost host, String php_code) throws IllegalStateException, IOException, Exception {
@@ -673,7 +707,7 @@ public class PhpBuild extends SAPIManager {
 	}
 	
 	public boolean checkSyntax(ConsoleManager cm, Class<?> clazz, AHost host, String php_code) throws IllegalStateException, IOException, Exception {
-		return checkSyntax(cm, Host.toContext(clazz), host, php_code);
+		return checkSyntax(cm, FileSystemScenario.toContext(clazz), host, php_code);
 	}
 	
 	/** checks the syntax of the given PHP code.
@@ -692,14 +726,14 @@ public class PhpBuild extends SAPIManager {
 	 * @throws Exception
 	 */
 	public boolean checkSyntax(ConsoleManager cm, String ctx_str, AHost host, String php_code) throws IllegalStateException, IOException, Exception {
-		final String php_file = host.mktempname(getClass(), ".php");
+		final String php_file = host.mCreateTempName(getClass(), ".php");
 		
-		host.saveTextFile(php_file, php_code);
+		host.mSaveTextFile(php_file, php_code);
 		
 		ExecOutput eo = host.execOut("php -l "+php_file, Host.ONE_MINUTE);
 		final boolean ok = syntaxp.matcher(eo.output).find();
 		
-		host.delete(php_file);
+		host.mDelete(php_file);
 		
 		return ok;
 	}
@@ -741,14 +775,16 @@ public class PhpBuild extends SAPIManager {
 		
 	public PHPOutput eval(AHost host, PhpIni ini, String code, int timeout_seconds, boolean auto_cleanup) throws Exception {
 		code = StringUtil2.ensurePhpTags(code);
-				
-		String php_filename = host.mktempname("Build", ".php");
 		
-		host.saveTextFile(php_filename, code);
+		LocalFileSystemScenario fs = LocalFileSystemScenario.getInstance();
+				
+		String php_filename = fs.mktempname("Build", ".php");
+		
+		fs.saveTextFile(php_filename, code);
 		
 		// -n => CRITICAL: causes php.exe to ignore any .ini file that comes with build
 		//    (so PFTT won't be affected and/or can override that .ini file)
-		PHPOutput output = new PHPOutput(php_filename, host.execOut(php_exe+" -n "+(ini==null?"":ini.toCliArgString(host))+" "+php_filename, timeout_seconds, new HashMap<String,String>(), null, Host.dirname(php_filename)));
+		PHPOutput output = new PHPOutput(php_filename, host.execOut(php_exe+" -n "+(ini==null?"":ini.toCliArgString(host))+" "+php_filename, timeout_seconds, new HashMap<String,String>(), null, FileSystemScenario.dirname(php_filename)));
 		if (auto_cleanup && !output.hasFatalError())
 			// if fatal error, don't clean up so user can check it
 			output.cleanup(host);
@@ -800,7 +836,7 @@ public class PhpBuild extends SAPIManager {
 	} // end public static class PHPOutput
 	
 	public String[] getLoadableExtensionList(ConsoleManager cm, AHost host, ESAPIType type) throws Exception {
-		return getLoadableExtensionList(cm, host, getDefaultPhpIni(cm, host, type));
+		return getLoadableExtensionList(cm, host, getDefaultPhpIni(cm, LocalFileSystemScenario.getInstance(), host, type));
 	}
 	
 	/** gets the static builtin extensions for this build build and the dynamic extensions the
@@ -826,7 +862,7 @@ public class PhpBuild extends SAPIManager {
 		
 		String php_cmd = php_exe+(ini_settings==null?"":" "+ini_settings)+" -m";
 		ExecOutput output = host.execOut(php_cmd, Host.ONE_MINUTE);
-		output.printOutputIfCrash(Host.toContext(getClass(), "getExtensionList"), cm);
+		output.printOutputIfCrash(FileSystemScenario.toContext(getClass(), "getExtensionList"), cm);
 		
 		ArrayList<String> list = new ArrayList<String>();
 		
@@ -834,6 +870,9 @@ public class PhpBuild extends SAPIManager {
 			if (!module.startsWith("[") && !module.contains("Unknown") && !module.contains("Warning") && module.length() > 0)
 				list.add(module.toLowerCase());
 		}
+		// list might not include opcache
+		list.add("opcache");
+		list.add("wincache"); // TODO temp
 		
 		module_list = (String[]) list.toArray(new String[list.size()]);
 		ext_available_map.put(ini, module_list);
@@ -850,19 +889,19 @@ public class PhpBuild extends SAPIManager {
 
 	boolean saved_ini = false;
 	String ini_dir;
-	public String prepare(ConsoleManager cm, Host host) throws IOException {
+	public String prepare(ConsoleManager cm, FileSystemScenario fs, Host host) throws IOException {
 		if (saved_ini) {
 			return ini_dir;
 		} else {
 			// @see CliScenario#createIniForTest
 			saved_ini = true;
 			
-			ini_dir = host.mktempname(getClass());
-			host.mkdirs(ini_dir);
+			ini_dir = fs.mktempname(getClass());
+			fs.createDirs(ini_dir);
 			
 			String ini_file = ini_dir + "/php.ini";
 			
-			PhpIni def_ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, host, this);
+			PhpIni def_ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, fs, host, this);
 			
 			FileWriter fw = new FileWriter(ini_file);
 			fw.write(def_ini.toString());

@@ -151,7 +151,7 @@ public class PhptResultWriter extends AbstractPhptRW {
 			PhptTallyFile.write(tally, fw);
 			fw.close();
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(PhptResultWriter.class, ex);
 		}
 		
 		for ( StatusListEntry e : status_list_map.values() )
@@ -167,10 +167,43 @@ public class PhptResultWriter extends AbstractPhptRW {
 	}
 	
 	int count; // TODO
+	HashMap<PhptTestCase,EPhptTestStatus> test_status_map = new HashMap<PhptTestCase, EPhptTestStatus>();
+	@SuppressWarnings("incomplete-switch")
 	public void writeResult(ConsoleManager cm, AHost host, ScenarioSetSetup scenario_set, PhptTestResult result) throws IllegalStateException {
 		if (closed)
 			throw new IllegalStateException("can not write to closed PhptResultWriter. it is closed");
 		
+		if (test_status_map.containsKey(result.test_case)) {
+			// different ways tests can sometimes be run several times, rather than overwriting result of each test with each run of the test, record the WORST result
+			EPhptTestStatus ostatus = test_status_map.get(result.test_case);
+		
+			if (ostatus!=null) {
+				switch(ostatus) {
+				case FAIL:
+					if (result.status==EPhptTestStatus.PASS||result.status==EPhptTestStatus.TIMEOUT) {
+						// keep existing FAIL, don't record PASS
+						return;
+					}
+					break;
+				case TIMEOUT:
+					if (result.status==EPhptTestStatus.PASS) {
+						// keep existing TIMEOUT, don't record PASS
+					} else {
+						// record new FAIL
+					}
+					break;
+				case PASS:
+					if (result.status==ostatus) {
+						// nothing different
+						return;
+					} else {
+						// record new FAIL or new TIMEOUT
+					}
+					break;
+				}
+			}
+		}
+		test_status_map.put(result.test_case, result.status);
 		
 		status_list_map.get(result.status).write(result);
 	
@@ -203,8 +236,7 @@ public class PhptResultWriter extends AbstractPhptRW {
 				out.close();
 				
 			} catch ( Exception ex ) {
-				// TODO temp ex.printStackTrace();
-				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "handleResult", ex, "", dir, test_case_base_name);
+				ConsoleManagerUtil.printStackTrace(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), cm, "handleResult", ex, "", dir, test_case_base_name);
 			}
 		}
 		//
@@ -295,7 +327,7 @@ public class PhptResultWriter extends AbstractPhptRW {
 		try {
 			reportGroupsEx(thread_safe_groups, non_thread_safe_exts);
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(PhptResultWriter.class, ex);
 		}
 	}
 	

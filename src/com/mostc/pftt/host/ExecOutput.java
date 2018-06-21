@@ -6,6 +6,7 @@ import java.nio.charset.Charset;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
+import com.mostc.pftt.scenario.FileSystemScenario;
 
 public class ExecOutput implements ICrashDetector {
 	/** output of executed program */
@@ -44,7 +45,7 @@ public class ExecOutput implements ICrashDetector {
 		return AHost.guessExitCodeStatus(host, exit_code);
 	}
 	public ExecOutput printOutputIfCrash(Class<?> clazz, ConsoleManager cm) {
-		return printOutputIfCrash(Host.toContext(clazz), cm);
+		return printOutputIfCrash(FileSystemScenario.toContext(clazz), cm);
 	}
 	public ExecOutput printOutputIfCrash(String ctx, ConsoleManager cm) {
 		if (cm==null||cm.isResultsOnly())
@@ -52,7 +53,7 @@ public class ExecOutput implements ICrashDetector {
 		return printOutputIfCrash(ctx, System.err);
 	}
 	public ExecOutput printOutputIfCrash(Class<?> clazz, PrintStream ps) {
-		return printOutputIfCrash(Host.toContext(clazz), ps);
+		return printOutputIfCrash(FileSystemScenario.toContext(clazz), ps);
 	}
 	public ExecOutput printOutputIfCrash(String ctx, PrintStream ps) {
 		if (ps!=null && isCrashed()) {
@@ -66,7 +67,7 @@ public class ExecOutput implements ICrashDetector {
 	}
 
 	public ExecOutput printCommandAndOutput(EPrintType type, Class<?> clazz, ConsoleManager cm) {
-		return printCommandAndOutput(type, Host.toContext(clazz), cm);
+		return printCommandAndOutput(type, FileSystemScenario.toContext(clazz), cm);
 	}
 	
 	public ExecOutput printCommandAndOutput(EPrintType type, String ctx, ConsoleManager cm) {

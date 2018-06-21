@@ -18,9 +18,14 @@ import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.main.Config;
 import com.mostc.pftt.model.SourceTestPack;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhpResultPackWriter;
+import com.mostc.pftt.scenario.AzureKuduVFSScenario;
+import com.mostc.pftt.scenario.FileSystemScenario;
+import com.mostc.pftt.scenario.FileSystemScenario.IFileChooser;
+import com.mostc.pftt.scenario.SAPIScenario;
 
 /** manages a test-pack of PHPT tests
  * 
@@ -28,12 +33,13 @@ import com.mostc.pftt.results.PhpResultPackWriter;
  *
  */
 
-public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, PhptTestCase> {
+public class PhptSourceTestPack extends SourceTestPack<PhptActiveTestPack, PhptTestCase> {
 	// CRITICAL: on Windows, must use \\ not /
 	//    -some tests fail b/c the path to php will have / in it, which it can't execute via `shell_exec`
 	protected String test_pack;
 	protected File test_pack_file;
 	protected AHost host;
+	protected FileSystemScenario fs;
 	protected final LinkedList<File> non_phpt_files;
 	protected final HashMap<String,PhptTestCase> test_cases_by_name;
 	protected SoftReference<ArrayList<PhptTestCase>> _ref_test_cases;
@@ -55,21 +61,22 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		return getSourceDirectory()+"/config.pftt.groovy";
 	}
 	
-	public boolean open(ConsoleManager cm, Config config, AHost host) {
+	public boolean open(ConsoleManager cm, Config config, FileSystemScenario fs, AHost host) {
 		if (StringUtil.endsWithIC(this.test_pack, ".zip")) {
 			// automatically decompress build
 			String zip_file = test_pack;
-			this.test_pack = host.uniqueNameFromBase(AHost.removeFileExt(test_pack));
+			this.test_pack = host.uniqueNameFromBase(FileSystemScenario.removeFileExt(test_pack));
 				
 			if (!host.unzip(cm, zip_file, test_pack))
 				return false;
 		}
 		
+		this.fs = fs;
 		this.host = host;
-		this.test_pack = host.fixPath(test_pack);
-		if (host.exists(this.test_pack)) {
+		this.test_pack = fs.fixPath(test_pack);
+		if (host.mExists(this.test_pack)) {
 			String config_file = getTestPackConfigFilePath();
-			if (host.exists(config_file)) {
+			if (host.mExists(config_file)) {
 				try {
 					config.addConfigFile(cm, new File(config_file));
 				} catch ( Exception ex ) {
@@ -99,131 +106,150 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 	 */
 	@Override
 	public void cleanup(ConsoleManager cm) {
+		if (true)
+			return; // TODO temp azure
 		cm.println(EPrintType.IN_PROGRESS, getClass(), "cleaning source-test-pack from previous PFTT or run-test.php run");
 		// these are symlinks(junctions) which may cause an infinite loop
 		//
 		// normally, they are deleted, but if certain tests were interrupted, they may still be there
-		host.deleteIfExists(test_pack+"/ext/standard/tests/file/a_dir");
-		host.deleteIfExists(test_pack+"/ext/standard/tests/file/a_jdir");
-		host.deleteIfExists(test_pack+"/ext/standard/tests/file/12345");
-		host.deleteIfExists(test_pack+"/ext/standard/tests/file/clearstatcache_001.php_link1");
-		host.deleteIfExists(test_pack+"/ext/standard/tests/file/clearstatcache_001.php_link2");
-		host.deleteIfExists(test_pack+"/ext/standard/tests/file/copy_variation15");
-		host.deleteIfExists(test_pack+"/ext/standard/tests/file/is_dir_variation2_symlink");
-		host.deleteIfExists(test_pack+"/ext/standard/tests/file/mkdir");
-		host.deleteIfExists(test_pack+"/ext/standard/tests/file/mkdir_variation2");
-		host.deleteIfExists(test_pack+"/ext/standard/tests/file/realpath_basic");
-		host.deleteIfExists(test_pack+"/ext/standard/tests/file/rename_variation");
-		host.deleteIfExists(test_pack+"/ext/standard/tests/file/rename_variation.tmp");
-		host.deleteIfExists(test_pack+"/ext/standard/tests/file/rename_variation_dir");
-		host.deleteIfExists(test_pack+"/ext/standard/tests/file/rename_variation_link.tmp");
-		host.deleteIfExists(test_pack+"/ext/standard/tests/file/symlink_link_linkinfo_is_link_basic1");
-		host.deleteIfExists(test_pack+"/ext/standard/tests/file/symlink_link_linkinfo_is_link_basic2");
-		host.deleteIfExists(test_pack+"/ext/standard/tests/file/symlink_link_linkinfo_is_link_variation7");
-		host.deleteIfExists(test_pack+"/ext/standard/tests/file/symlink_link_linkinfo_is_link_variation9");
-		host.deleteIfExists(test_pack+"/ext/standard/tests/file/unlink_variation1");
-		host.deleteIfExists(test_pack+"/ext/standard/tests/file/windows_links/directory");
-		host.deleteIfExists(test_pack+"/ext/standard/tests/file/windows_links/mounted_volume");
-		host.deleteIfExists(test_pack+"/ext/standard/tests/file/windows_links/mnt");
-		host.deleteIfExists(test_pack+"/tests/security/globtest1");
-		host.deleteIfExists(test_pack+"/tests/security/globtest2");
-		host.deleteIfExists(test_pack+"/ext/zip/tests/51353_unpack");
+		fs.deleteIfExists(test_pack+"/ext/standard/tests/file/a_dir");
+		fs.deleteIfExists(test_pack+"/ext/standard/tests/file/a_jdir");
+		fs.deleteIfExists(test_pack+"/ext/standard/tests/file/12345");
+		fs.deleteIfExists(test_pack+"/ext/standard/tests/file/clearstatcache_001.php_link1");
+		fs.deleteIfExists(test_pack+"/ext/standard/tests/file/clearstatcache_001.php_link2");
+		fs.deleteIfExists(test_pack+"/ext/standard/tests/file/copy_variation15");
+		fs.deleteIfExists(test_pack+"/ext/standard/tests/file/is_dir_variation2_symlink");
+		fs.deleteIfExists(test_pack+"/ext/standard/tests/file/mkdir");
+		fs.deleteIfExists(test_pack+"/ext/standard/tests/file/mkdir_variation2");
+		fs.deleteIfExists(test_pack+"/ext/standard/tests/file/realpath_basic");
+		fs.deleteIfExists(test_pack+"/ext/standard/tests/file/rename_variation");
+		fs.deleteIfExists(test_pack+"/ext/standard/tests/file/rename_variation.tmp");
+		fs.deleteIfExists(test_pack+"/ext/standard/tests/file/rename_variation_dir");
+		fs.deleteIfExists(test_pack+"/ext/standard/tests/file/rename_variation_link.tmp");
+		fs.deleteIfExists(test_pack+"/ext/standard/tests/file/symlink_link_linkinfo_is_link_basic1");
+		fs.deleteIfExists(test_pack+"/ext/standard/tests/file/symlink_link_linkinfo_is_link_basic2");
+		fs.deleteIfExists(test_pack+"/ext/standard/tests/file/symlink_link_linkinfo_is_link_variation7");
+		fs.deleteIfExists(test_pack+"/ext/standard/tests/file/symlink_link_linkinfo_is_link_variation9");
+		fs.deleteIfExists(test_pack+"/ext/standard/tests/file/unlink_variation1");
+		fs.deleteIfExists(test_pack+"/ext/standard/tests/file/windows_links/directory");
+		fs.deleteIfExists(test_pack+"/ext/standard/tests/file/windows_links/mounted_volume");
+		fs.deleteIfExists(test_pack+"/ext/standard/tests/file/windows_links/mnt");
+		fs.deleteIfExists(test_pack+"/tests/security/globtest1");
+		fs.deleteIfExists(test_pack+"/tests/security/globtest2");
+		fs.deleteIfExists(test_pack+"/ext/zip/tests/51353_unpack");
 		
 		// clean out these files from the test-pack so they don't have to be stored or copied (to other hosts), etc...
 		// (when installing test-pack on another host, it should just copy all files so its identical, less variability.
 		//  also this improves performance for the installation process)
-		host.deleteFileExtension(test_pack, ".skip.php");
-		host.deleteFileExtension(test_pack, ".cmd");
-		host.deleteFileExtension(test_pack, ".sh");
+		fs.deleteFileExtension(test_pack, ".skip.php");
+		fs.deleteFileExtension(test_pack, ".cmd");
+		fs.deleteFileExtension(test_pack, ".sh");
 		// don't delete .php (specifically run-test.php) in root of test-pack (user may want it later)
-		host.deleteFileExtension(test_pack+"/ext/bcmath", ".php");
-		host.deleteFileExtension(test_pack+"/ext/bz2", ".php");
-		host.deleteFileExtension(test_pack+"/ext/calendar", ".php");
-		host.deleteFileExtension(test_pack+"/ext/com_dotnet", ".php");
-		host.deleteFileExtension(test_pack+"/ext/ctype", ".php");
-		host.deleteFileExtension(test_pack+"/ext/curl", ".php");
-		host.deleteFileExtension(test_pack+"/ext/date", ".php");
-		host.deleteFileExtension(test_pack+"/ext/dba", ".php");
-		host.deleteFileExtension(test_pack+"/ext/dom", ".php");
-		host.deleteFileExtension(test_pack+"/ext/enchant", ".php");
-		host.deleteFileExtension(test_pack+"/ext/ereg", ".php");
-		host.deleteFileExtension(test_pack+"/ext/exif", ".php");
-		host.deleteFileExtension(test_pack+"/ext/fileinfo", ".php");
-		host.deleteFileExtension(test_pack+"/ext/filter", ".php");
-		host.deleteFileExtension(test_pack+"/ext/ftp", ".php");
-		host.deleteFileExtension(test_pack+"/ext/gd", ".php");
-		host.deleteFileExtension(test_pack+"/ext/gettext", ".php");
-		host.deleteFileExtension(test_pack+"/ext/gmp", ".php");
-		host.deleteFileExtension(test_pack+"/ext/hash", ".php");
-		host.deleteFileExtension(test_pack+"/ext/iconv", ".php");
-		host.deleteFileExtension(test_pack+"/ext/imap", ".php");
-		host.deleteFileExtension(test_pack+"/ext/interbase", ".php");
-		host.deleteFileExtension(test_pack+"/ext/intl", ".php");
-		host.deleteFileExtension(test_pack+"/ext/json", ".php");
-		host.deleteFileExtension(test_pack+"/ext/ldap", ".php");
-		host.deleteFileExtension(test_pack+"/ext/libxml", ".php");
-		host.deleteFileExtension(test_pack+"/ext/mbstring", ".php");
-		host.deleteFileExtension(test_pack+"/ext/mcrypt", ".php");
-		host.deleteFileExtension(test_pack+"/ext/mysql", ".php");
-		host.deleteFileExtension(test_pack+"/ext/mysqli", ".php");
-		host.deleteFileExtension(test_pack+"/ext/oci8", ".php");
-		host.deleteFileExtension(test_pack+"/ext/odbc", ".php");
-		host.deleteFileExtension(test_pack+"/ext/opcache", ".php");
-		host.deleteFileExtension(test_pack+"/ext/openssl", ".php");
-		host.deleteFileExtension(test_pack+"/ext/pcntl", ".php");
-		host.deleteFileExtension(test_pack+"/ext/pcre", ".php");
-		host.deleteFileExtension(test_pack+"/ext/pdo", ".php");
-		host.deleteFileExtension(test_pack+"/ext/pdo_dblib", ".php");
-		host.deleteFileExtension(test_pack+"/ext/pdo_firebird", ".php");
-		host.deleteFileExtension(test_pack+"/ext/pdo_mysql", ".php");
-		host.deleteFileExtension(test_pack+"/ext/pdo_oci", ".php");
-		host.deleteFileExtension(test_pack+"/ext/pdo_odbc", ".php");
-		host.deleteFileExtension(test_pack+"/ext/pdo_pgsql", ".php");
-		host.deleteFileExtension(test_pack+"/ext/pdo_sqlite", ".php");
-		host.deleteFileExtension(test_pack+"/ext/pgsql", ".php");
+		IFileChooser PHP_CHOOSER = new IFileChooser() {
+			@Override
+			public boolean choose(String dir, String name, boolean isdir) {
+				// delete all *.php files
+				if (StringUtil.endsWithIC(name, ".php")) {
+					// that were created as copies of the FILE section of .phpt files
+					if (host.mExists(host.joinIntoOnePath(dir, name.replace(".php", ".phpt")))) {
+						// .php file has a .phpt file of the same name
+						return true;
+					}
+					// there are some .php files that need to be preserved (they are includes, etc...
+					//  not copies of the FILE section of .phpt files) -- deleting them will break the test
+				}
+				return false;
+			}
+			
+		};
+		fs.deleteChosenFiles(test_pack+"/ext/bcmath", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/bz2", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/calendar", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/com_dotnet", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/ctype", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/curl", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/date", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/dba", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/dom", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/enchant", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/ereg", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/exif", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/fileinfo", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/filter", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/ftp", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/gd", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/gettext", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/gmp", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/hash", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/iconv", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/imap", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/interbase", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/intl", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/json", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/ldap", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/libxml", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/mbstring", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/mcrypt", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/mysql", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/mysqli", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/oci8", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/odbc", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/opcache", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/openssl", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/pcntl", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/pcre", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/pdo", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/pdo_dblib", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/pdo_firebird", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/pdo_mysql", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/pdo_oci", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/pdo_odbc", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/pdo_pgsql", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/pdo_sqlite", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/pgsql", PHP_CHOOSER);
 		// CRITICAL: don't delete .php inside phar. it uses those files for tests (especially in ext/phar/tests/files/)
 		//    @see ext/phar/tests/fatal_error_web_phar
-		//host.deleteFileExtension(test_pack+"/ext/phar", ".php");
-		host.deleteFileExtension(test_pack+"/ext/posix", ".php");
-		host.deleteFileExtension(test_pack+"/ext/pspell", ".php");
-		host.deleteFileExtension(test_pack+"/ext/readline", ".php");
-		host.deleteFileExtension(test_pack+"/ext/reflection", ".php");
-		host.deleteFileExtension(test_pack+"/ext/session", ".php");
-		host.deleteFileExtension(test_pack+"/ext/shmop", ".php");
-		host.deleteFileExtension(test_pack+"/ext/simplexml", ".php");
-		host.deleteFileExtension(test_pack+"/ext/skeleton", ".php");
-		host.deleteFileExtension(test_pack+"/ext/snmp", ".php");
-		host.deleteFileExtension(test_pack+"/ext/soap", ".php");
-		host.deleteFileExtension(test_pack+"/ext/sockets", ".php");
-		host.deleteFileExtension(test_pack+"/ext/spl", ".php");
-		host.deleteFileExtension(test_pack+"/ext/sqlite3", ".php");
-		host.deleteFileExtension(test_pack+"/ext/standard", ".php");
-		host.deleteFileExtension(test_pack+"/ext/sybase_ct", ".php");
-		host.deleteFileExtension(test_pack+"/ext/sysvmsg", ".php");
-		host.deleteFileExtension(test_pack+"/ext/sysvsem", ".php");
-		host.deleteFileExtension(test_pack+"/ext/sysvshm", ".php");
-		host.deleteFileExtension(test_pack+"/ext/tidy", ".php");
-		host.deleteFileExtension(test_pack+"/ext/tokenizer", ".php");
-		host.deleteFileExtension(test_pack+"/ext/wddx", ".php");
-		host.deleteFileExtension(test_pack+"/ext/xml", ".php");
-		host.deleteFileExtension(test_pack+"/ext/xmlreader", ".php");
-		host.deleteFileExtension(test_pack+"/ext/xmlrpc", ".php");
-		host.deleteFileExtension(test_pack+"/ext/xmlwriter", ".php");
-		host.deleteFileExtension(test_pack+"/ext/xsl", ".php");
-		host.deleteFileExtension(test_pack+"/ext/zip", ".php");
-		host.deleteFileExtension(test_pack+"/ext/zlib", ".php");
-		host.deleteFileExtension(test_pack+"/tests", ".php");
-		host.deleteFileExtension(test_pack+"/zend", ".php");
-		host.deleteFileExtension(test_pack+"/sapi", ".php");
+		//host.deleteChosenFiles(test_pack+"/ext/phar", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/posix", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/pspell", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/readline", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/reflection", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/session", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/shmop", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/simplexml", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/skeleton", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/snmp", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/soap", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/sockets", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/spl", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/sqlite3", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/standard", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/sybase_ct", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/sysvmsg", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/sysvsem", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/sysvshm", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/tidy", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/tokenizer", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/wddx", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/xml", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/xmlreader", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/xmlrpc", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/xmlwriter", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/xsl", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/zip", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/ext/zlib", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/tests", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/zend", PHP_CHOOSER);
+		fs.deleteChosenFiles(test_pack+"/sapi", PHP_CHOOSER);
 	}
 	
 	@Override
-	public void read(Config config, List<PhptTestCase> test_cases, List<String> names, ConsoleManager cm, PhpResultPackWriter twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {
-		read(config, test_cases, names, cm, twriter, build, false);
+	public void read(Config config, List<PhptTestCase> test_cases, List<String> names, ConsoleManager cm, PhpResultPackWriter twriter, PhpBuild build, SAPIScenario sapi_scenario) throws FileNotFoundException, IOException, Exception {
+		read(config, test_cases, names, cm, twriter, build, false, sapi_scenario);
 	}
 	
 	@Override
-	public void read(Config config, List<PhptTestCase> test_cases, List<String> names, ConsoleManager cm, PhpResultPackWriter twriter, PhpBuild build, boolean ignore_missing) throws FileNotFoundException, IOException, Exception {
+	public void read(Config config, List<PhptTestCase> test_cases, List<String> names, ConsoleManager cm, PhpResultPackWriter twriter, PhpBuild build, boolean ignore_missing, SAPIScenario sapi_scenario) throws FileNotFoundException, IOException, Exception {
 		//
 		ArrayList<PhptTestCase> _test_cases;
 		if (_ref_test_cases!=null) {
@@ -243,7 +269,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 			names = normal_names;
 		}
 		
-		// TODO should only return test cases matching names, but load and cache all of them
+		// TODO should only return test cases matching names, but load and cache all of them (Faster Enumeration)
 		//     (if no names, return all test cases)
 		LinkedList<PhptTestCase> redirect_targets = new LinkedList<PhptTestCase>();
 		
@@ -256,7 +282,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 			name = name_it.next();
 			
 			if (name.endsWith(PhptTestCase.PHPT_FILE_EXTENSION)) {
-				file = new File(test_pack_file, host.fixPath(name));
+				file = new File(test_pack_file, fs.fixPath(name));
 				if (file.exists()) {
 					// String is exact name of test
 					
@@ -298,7 +324,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 	} // end public void read
 
 	@Override
-	public void read(Config config, List<PhptTestCase> test_cases, ConsoleManager cm, ITestResultReceiver twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {
+	public void read(Config config, List<PhptTestCase> test_cases, ConsoleManager cm, ITestResultReceiver twriter, PhpBuild build, SAPIScenario sapi_scenario) throws FileNotFoundException, IOException, Exception {
 		//
 		ArrayList<PhptTestCase> _test_cases;
 		if (_ref_test_cases!=null) {
@@ -351,7 +377,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 				
 					add_test_case(config, test_case, test_files, names, cm, twriter, build, redirect_parent, redirect_targets);
 				} catch ( Exception ex ) {
-					ex.printStackTrace();
+					ConsoleManagerUtil.printStackTrace(PhptSourceTestPack.class, cm, ex);
 				}
 			} else if (f.isFile()) {
 				String n = f.getName().toLowerCase();
@@ -382,7 +408,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 				for ( String target_test_name : test_case.readRedirectTestNames(cm, host, build) ) {
 					
 					// test may actually be a directory => load all the PHPT tests from that directory
-					File dir = new File(test_pack+host.dirSeparator()+target_test_name);
+					File dir = new File(test_pack+fs.dirSeparator()+target_test_name);
 					if (dir.isDirectory()) {
 						// add all PHPTs in directory 
 						add_test_files(config, dir.listFiles(), test_cases, names, cm, twriter, build, redirect_parent, redirect_targets);
@@ -390,9 +416,9 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 					} else {
 						// test refers to a specific test, load it
 						try {
-						test_case = PhptTestCase.load(host, this, false, target_test_name, twriter, redirect_parent);
+							test_case = PhptTestCase.load(host, this, false, target_test_name, twriter, redirect_parent);
 						} catch ( Exception ex ) {
-							ex.printStackTrace();
+							ConsoleManagerUtil.printStackTrace(PhptSourceTestPack.class, cm, ex);
 							continue; // TODO
 						}
 						
@@ -432,7 +458,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 	 * @throws IOException
 	 */
 	public String getContents(AHost host, String name) throws IOException {
-		return host.getContentsDetectCharset(new File(test_pack_file, name).getAbsolutePath(), PhptTestCase.newCharsetDeciderDecoder());
+		return host.mGetContentsDetectCharset(new File(test_pack_file, name).getAbsolutePath(), PhptTestCase.newCharsetDeciderDecoder());
 	}
 	
 	/** installs the test-pack in its source location (so its not copied or uploaded or downloaded anywhere)
@@ -451,30 +477,37 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 	 * @see #read - must have already been called
 	 * @param cm
 	 * @param host
-	 * @param test_pack_dir
 	 * @param remote_test_pack_dir 
+	 * @param test_pack_dir
 	 * @return
 	 * @throws IllegalStateException
 	 * @throws IOException
 	 * @throws Exception
 	 */
 	@Override
-	public PhptActiveTestPack install(ConsoleManager cm, AHost host, String local_test_pack_dir, String remote_test_pack_dir) throws IllegalStateException, IOException, Exception {
-		cm.println(EPrintType.IN_PROGRESS, getClass(), "install test-pack local="+local_test_pack_dir+" remote="+remote_test_pack_dir+" "+this.host.getClass()+" "+host.getClass());
-		if (!this.host.isRemote() || this.host.equals(host)) {
+	public PhptActiveTestPack install(ConsoleManager cm, AHost host, String local_test_pack_dir, String remote_test_pack_dir, SAPIScenario sapi_scenario) throws IllegalStateException, IOException, Exception {
+		cm.println(EPrintType.IN_PROGRESS, getClass(), "install test-pack local="+local_test_pack_dir+" remote="+remote_test_pack_dir+" "+this.host.getClass()+" "+host.getClass()+" fs="+fs.getClass());
+		
+		if (fs instanceof AzureKuduVFSScenario) {
+			System.out.println("uploading ZIP file to "+remote_test_pack_dir);
+			
+			// TODO temp
+			((AzureKuduVFSScenario)fs).putZip(remote_test_pack_dir, new File("c:\\php-sdk\\php-test-pack-5.4.38.zip")); 
+			
+		} else if (!this.host.isRemote() || this.host.equals(host)) {
 			// installing from local host to remote host OR from remote|local host to itself
 			host.uploadCompressWith7Zip(cm, getClass(), test_pack, this.host, remote_test_pack_dir);
 		} else if (!host.isRemote()) {
 			// installing from remote host to local host
 			host.download7ZipFileAndDecompress(cm, getClass(), test_pack, this.host, remote_test_pack_dir);
-		} else {
+		} else {			
 			// installing from 1 remote host(src) to a different remote host (dst)
 			LocalHost local_host = LocalHost.getInstance();
 			
 			// decide file names
-			String local_7zip_file = local_host.mktempname(getClass(), ".7z");
-			String src_7zip_file = this.host.mktempname(getClass(), ".7z");
-			String dst_7zip_file = host.mktempname(getClass(), ".7z");
+			String local_7zip_file = local_host.mCreateTempName(getClass(), ".7z");
+			String src_7zip_file = this.host.mCreateTempName(getClass(), ".7z");
+			String dst_7zip_file = host.mCreateTempName(getClass(), ".7z");
 			
 			// compress and download/upload and decompress
 			this.host.compress(cm, host, test_pack, src_7zip_file);
@@ -483,9 +516,9 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 			host.decompress(cm, this.host, dst_7zip_file, remote_test_pack_dir);
 			
 			// cleanup
-			this.host.delete(dst_7zip_file);
-			host.delete(src_7zip_file);
-			local_host.delete(local_7zip_file);
+			this.host.mDelete(dst_7zip_file);
+			host.mDelete(src_7zip_file);
+			local_host.mDelete(local_7zip_file);
 		}
 		return new PhptActiveTestPack(test_pack, local_test_pack_dir);
 	} // end public PhptActiveTestPack install
@@ -515,14 +548,14 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 		} else {
 			// installing from 1 remote host to a different remote host
 			LocalHost local_host = LocalHost.getInstance();
-			String local_dir = local_host.mktempname(getClass());
+			String local_dir = local_host.mCreateTempName(getClass());
 			downloadNonTestCaseFiles(this.host, test_pack, test_pack_dir);
 			for ( PhptTestCase test_case : test_cases )
 				this.host.download(test_pack+"/"+test_case.getName(), local_dir+"/"+test_case.getName());
 			uploadNonTestCaseFiles(host, local_dir, test_pack_dir);
 			for ( PhptTestCase test_case : test_cases )
 				host.upload(local_dir+"/"+test_case.getName(), test_pack_dir+"/"+test_case.getName());
-			local_host.delete(local_dir);
+			local_host.mDelete(local_dir);
 		}
 		return new PhptActiveTestPack(test_pack, test_pack_dir);
 	}
@@ -550,7 +583,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 	 * @return
 	 */
 	public EBuildBranch getVersionBranch() {
-		String dir = AHost.basename(test_pack);
+		String dir = FileSystemScenario.basename(test_pack);
 		if (dir.contains("5.4")||dir.contains("5-4")||dir.contains("5_4")||dir.contains("54"))
 			return EBuildBranch.PHP_5_4;
 		else if (dir.contains("5.3")||dir.contains("5-3")||dir.contains("5_3")||dir.contains("53"))
@@ -559,6 +592,8 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 			return EBuildBranch.PHP_5_5;
 		else if (dir.contains("5.6")||dir.contains("5-6")||dir.contains("5_6")||dir.contains("56"))
 			return EBuildBranch.PHP_5_6;
+		else if (dir.toLowerCase().contains("native-tls"))
+			return EBuildBranch.NATIVE_TLS;
 		else if (dir.toLowerCase().contains("master"))
 			return EBuildBranch.PHP_Master;
 		else
@@ -570,7 +605,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 	 * @return
 	 */
 	public String getVersion() {
-		String[] split = AHost.basename(test_pack).split("[\\.|\\-]");
+		String[] split = FileSystemScenario.basename(test_pack).split("[\\.|\\-]");
 		return split.length==0?null:split[split.length-1];
 	}
 
@@ -603,7 +638,7 @@ public class PhptSourceTestPack implements SourceTestPack<PhptActiveTestPack, Ph
 
 	@Override
 	public String getNameAndVersionString() {
-		return AHost.basename(getSourceDirectory());
+		return FileSystemScenario.basename(getSourceDirectory());
 	}
 	
 } // end public class PhptSourceTestPack

@@ -70,7 +70,7 @@ public class UITestWriter extends AbstractUITestRW {
 				fout.write(screenshot_png);
 				fout.close();
 			} catch ( Throwable t ) {
-				t.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(UITestWriter.class, t);
 			}
 		}
 		
@@ -98,7 +98,7 @@ public class UITestWriter extends AbstractUITestRW {
 					fout.write(verified_html.getBytes());
 					fout.close();
 				} catch ( IOException ex ) {
-					ex.printStackTrace();
+					ConsoleManagerUtil.printStackTrace(UITestWriter.class, ex);
 				}
 			}
 			break;
@@ -131,7 +131,7 @@ public class UITestWriter extends AbstractUITestRW {
 			}
 			serial.endTag(null, "test");
 		} catch ( IOException ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(UITestWriter.class, ex);
 		}
 	} // end public void addResult
 	
@@ -173,7 +173,7 @@ public class UITestWriter extends AbstractUITestRW {
 			serial.text(notes);
 			serial.endTag(null, "notes");
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(UITestWriter.class, ex);
 		}
 	}
 

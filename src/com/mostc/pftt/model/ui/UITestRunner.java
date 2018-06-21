@@ -39,11 +39,11 @@ import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.main.PfttMain;
 import com.mostc.pftt.model.sapi.WebServerInstance;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.PhpResultPackWriter;
 import com.mostc.pftt.scenario.EnchantScenario;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
-import com.mostc.pftt.util.ErrorUtil;
 import com.mostc.pftt.util.StringUtil2;
 import com.mostc.pftt.util.TimerUtil;
 
@@ -136,7 +136,7 @@ public class UITestRunner implements IUITestBranch {
 			try {
 				PfttMain.readStringListFromFile(rand_words, EnchantScenario.getDictionaryFile(this_host));
 			} catch ( Exception ex ) {
-				ex.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(UITestRunner.class, cm, ex);
 			}
 		} else if (rand_words.isEmpty()) {
 			return StringUtil.randomLettersStr(min_word_count, max_char_len);
@@ -289,7 +289,7 @@ public class UITestRunner implements IUITestBranch {
 				try {
 					return (UITestCase) clazz.newInstance();
 				} catch ( Exception ex ) {
-					final String err_msg = "A UITest class must have a constructor that accepts 0 arguments\n" + ErrorUtil.toString(ex);
+					final String err_msg = "A UITest class must have a constructor that accepts 0 arguments\n" + ConsoleManagerUtil.toString(ex);
 					if (runner.do_devel)
 						System.err.println(err_msg);
 					runner.tmgr.addResult(
@@ -313,7 +313,7 @@ public class UITestRunner implements IUITestBranch {
 			try {
 				con = clazz.getDeclaredConstructor(new Class[]{clazz.getDeclaringClass()});
 			} catch ( Exception ex ) {
-				final String err_msg = "A UITest may not be contained in a class other than the test-pack class: "+clazz.getDeclaringClass().getSimpleName()+"\n" + ErrorUtil.toString(ex);
+				final String err_msg = "A UITest may not be contained in a class other than the test-pack class: "+clazz.getDeclaringClass().getSimpleName()+"\n" + ConsoleManagerUtil.toString(ex);
 				if (runner.do_devel)
 					System.err.println(err_msg);
 				runner.tmgr.addResult(
@@ -332,7 +332,7 @@ public class UITestRunner implements IUITestBranch {
 			try {
 				return (UITestCase) con.newInstance(new Object[]{runner.test_pack});
 			} catch ( Exception ex ) {
-				final String err_msg = "A UITest class must have a constructor that accepts 0 arguments\n" + ErrorUtil.toString(ex);
+				final String err_msg = "A UITest class must have a constructor that accepts 0 arguments\n" + ConsoleManagerUtil.toString(ex);
 				if (runner.do_devel)
 					System.err.println(err_msg);
 				runner.tmgr.addResult(
@@ -452,7 +452,7 @@ public class UITestRunner implements IUITestBranch {
 						System.out.print("PFTT: [n]ext-test [r]edo test [s]kip branch e[x]it all: [enter=next] ");
 						line = br.readLine();
 					} catch ( Exception ex ) {
-						ex.printStackTrace();
+						ConsoleManagerUtil.printStackTrace(UITestRunner.class, ex);
 					}
 					if (StringUtil.isEmpty(line)||StringUtil.startsWithIC(line, "n")) {
 						// continue
@@ -497,7 +497,7 @@ public class UITestRunner implements IUITestBranch {
 							screenshot_png = test.getScaledScreenshotPNG(screenshot_png, runner.sdriver.getLastElementLocationOnPage(), runner.screen_size);
 						}
 					} catch ( Throwable t ) {
-						t.printStackTrace();
+						ConsoleManagerUtil.printStackTrace(UITestRunner.class, t);
 					}
 				}
 				//
@@ -553,13 +553,13 @@ public class UITestRunner implements IUITestBranch {
 				}
 			} catch ( org.openqa.selenium.TimeoutException ex ) {
 				if (runner.do_devel)
-					ex.printStackTrace();
+					ConsoleManagerUtil.printStackTrace(UITestRunner.class, ex);
 				status = EUITestStatus.FAIL;
 			} catch ( Throwable ex ) {
 				if (runner.do_devel)
-					ex.printStackTrace();
+					ConsoleManagerUtil.printStackTrace(UITestRunner.class, ex);
 				status = EUITestStatus.TEST_EXCEPTION;
-				runner.tmgr.addResult(runner.this_host, runner.this_scenario_set, test_name, ErrorUtil.toString(ex), EUITestStatus.TEST_EXCEPTION, null, null, runner.test_pack, runner.sdriver.getWebBrowserNameAndVersion(), runner.web_server==null?null:runner.web_server.getSAPIOutput(), runner.web_server==null?null:runner.web_server.getSAPIConfig());
+				runner.tmgr.addResult(runner.this_host, runner.this_scenario_set, test_name, ConsoleManagerUtil.toString(ex), EUITestStatus.TEST_EXCEPTION, null, null, runner.test_pack, runner.sdriver.getWebBrowserNameAndVersion(), runner.web_server==null?null:runner.web_server.getSAPIOutput(), runner.web_server==null?null:runner.web_server.getSAPIConfig());
 			}
 			// xfail and not implemented support
 			if (status==null)
@@ -1297,7 +1297,7 @@ public class UITestRunner implements IUITestBranch {
 				fos.write(content);
 				fos.close();
 			} catch ( Exception ex ) {
-				ex.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(UITestRunner.class, ex);
 				return false;
 			}
 			
@@ -1464,8 +1464,7 @@ public class UITestRunner implements IUITestBranch {
 				jse.executeScript("document.evaluate(\"//a[@href='"+href+"']\", document, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null).singleNodeValue.mouseOver();");
 				return true;
 			} catch ( Throwable t ) {
-				// TODO log
-				t.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(UITestRunner.class, cm, t);
 				return false;
 			}
 		}
@@ -1477,8 +1476,7 @@ public class UITestRunner implements IUITestBranch {
 				jse.executeScript("document.getElementById('"+id+"').mouseOver();");
 				return true;
 			} catch ( Throwable t ) {
-				// TODO log
-				t.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(UITestRunner.class, cm, t);
 				return false;
 			}
 		}
@@ -1512,7 +1510,7 @@ public class UITestRunner implements IUITestBranch {
 				we.click();
 				return true;
 			} catch ( Exception ex ) {
-				ex.printStackTrace(); // TODO log
+				ConsoleManagerUtil.printStackTrace(UITestRunner.class, cm, ex);
 				return false;
 			}
 		}
@@ -1849,8 +1847,7 @@ public class UITestRunner implements IUITestBranch {
 				jse.executeScript("document.getElementById('"+id+"').focus();");
 				return true;
 			} catch ( Throwable t ) {
-				// TODO log
-				t.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(UITestRunner.class, cm, t);
 				return false;
 			}
 		}
@@ -1862,8 +1859,7 @@ public class UITestRunner implements IUITestBranch {
 				jse.executeScript("document.evaluate(\"//a[@href='"+href+"']\", document, null, XPathResult.ANY_UNORDERED_NODE_TYPE, null).singleNodeValue.focus();");
 				return true;
 			} catch ( Throwable t ) {
-				// TODO log
-				t.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(UITestRunner.class, cm, t);
 				return false;
 			}
 		}

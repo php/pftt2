@@ -9,9 +9,14 @@ import java.util.regex.Pattern;
 
 import javax.annotation.Nullable;
 
+import com.github.mattficken.io.ArrayUtil;
 import com.github.mattficken.io.StringUtil;
+import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.LocalHost;
+import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.EPrintType;
+import com.mostc.pftt.scenario.FileSystemScenario;
 
 /** A PHP INI is the configuration for PHP.
  * 
@@ -168,7 +173,7 @@ public class PhpIni {
 		String c;
 		if (ini_map.containsKey(INCLUDE_PATH)) {
 			c = get(INCLUDE_PATH);
-			c += host.pathsSeparator() + path;
+			c += host.mPathsSeparator() + path;
 		} else {
 			c = path;
 		}
@@ -197,7 +202,7 @@ public class PhpIni {
 	}
 	
 	protected boolean _hasExtension(Host host, PhpBuild build, String dll_name) {
-		return host.exists(getExtensionDir(build) + "/"+dll_name);
+		return host.mExists(getExtensionDir(build) + "/"+dll_name);
 	}
 	
 	/** adds the extension to this PhpIni.
@@ -207,12 +212,44 @@ public class PhpIni {
 	 * @param host
 	 * @param build
 	 * @param dll_name
+	 * @return TRUE if extension is added to the INI, false if DLL not found
 	 */
-	public void addExtension(Host host, PhpBuild build, String dll_name) {
+	public boolean addExtension(Host host, PhpBuild build, String dll_name) {
 		if (!_hasExtension(host, build, dll_name))
 			dll_name = dllName(dll_name);
-		if (_hasExtension(host, build, dll_name))
+		if (_hasExtension(host, build, dll_name)) {
 			addExtension(dll_name);
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
+	/** adds extension to INI for this build and returns true if the build was able to load it
+	 * 
+	 * @param cm
+	 * @param fs
+	 * @param host
+	 * @param type
+	 * @param build
+	 * @param dll_name
+	 * @return
+	 */
+	public boolean addExtensionAndCheck(ConsoleManager cm, FileSystemScenario fs, AHost host, ESAPIType type, PhpBuild build, String dll_name) {
+		if (addExtension(host, build, dll_name)) {
+			try {
+				if (build.isExtensionEnabled(cm, fs, host, type, this, dll_name))
+					return true;
+				else if (cm!=null)
+					cm.println(EPrintType.CLUE, getClass(), "Extension DLL/SO could not be loaded: "+dll_name);
+			} catch ( Exception ex ) {
+				if (cm!=null)
+					cm.println(EPrintType.CLUE, getClass(), "Unable to tell if DLL/SO was loaded: "+dll_name);
+			}
+		} else if (cm!=null) {
+			cm.println(EPrintType.CLUE, getClass(), "Extension DLL/SO not found: "+dll_name);
+		}
+		return false;
 	}
 	
 	public void addExtension(String dll_name) {
@@ -231,9 +268,23 @@ public class PhpIni {
 	 * @see #appendAll
 	 */
 	public void replaceAll(PhpIni ini) {
-		this.ini_map.putAll(ini.ini_map);
-		if (ini.countDirectives() > 0)
-			this.cli_arg = this.ini_str = null;
+		// TODO temp this.ini_map.putAll(ini.ini_map);
+		System.out.println("270 "+this);
+		for ( String dir : ini.getDirectives() ) {
+			System.out.println("272 "+dir);
+			this.setMulti(dir, ini.getMulti(dir));
+		}
+		System.out.println("275 "+this);
+		/*for ( String dir : ini.getDirectives() ) {
+			if (dir.equals("date.timezone")) {
+				System.exit(0);
+			}
+		}
+		if (ini.ini_str!=null) {
+			String a = ini.ini_str.get();
+			if (a.contains("date.timezone"))
+				System.exit(0);
+		}*/
 		is_default = false;
 	}
 	
@@ -321,6 +372,22 @@ public class PhpIni {
 			return;
 		} else if (!values.contains(value)) {
 			values.add(value);
+		}
+		is_default = false;
+	}
+	
+	/** replaces directive with given values
+	 * 
+	 * @param directive
+	 * @param values
+	 */
+	public void setMulti(String directive, String[] values) {
+		if (values==null) {
+			remove(directive);
+		} else {
+			ArrayList<String> new_value = ArrayUtil.toList(values);
+			ini_map.put(directive, new_value);
+			this.cli_arg = this.ini_str = null;
 		}
 		is_default = false;
 	}
@@ -609,6 +676,25 @@ public class PhpIni {
 				return true;
 		}
 		return false;
+	}
+
+	/** returns TRUE if this PhpIni includes all the same directives and values from o_ini. Unlike #equals, will still return
+	 * TRUE if this PhpIni has additional directives. 
+	 * 
+	 * For multi-value directives, the values do not have to be in the same position or order.
+	 * 
+	 * @param o_ini
+	 * @return
+	 */
+	public boolean includes(PhpIni o_ini) {
+		for (String o_directive : o_ini.getDirectives()) {
+			for (String o_value : o_ini.getMulti(o_directive)) {
+				if (!containsExact(o_directive, o_value)) {
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 	
 } // end public class PhpIni

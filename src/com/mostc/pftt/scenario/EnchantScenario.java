@@ -16,7 +16,7 @@ import com.mostc.pftt.results.EPrintType;
 public class EnchantScenario extends INIScenario {
 
 	@Override
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
+	public IScenarioSetup setup(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build, PhpIni ini) {
 		// copy dictionary to where the build expects it
 		// enchant will be able to find it there, so PHPTs will work
 		
@@ -27,12 +27,12 @@ public class EnchantScenario extends INIScenario {
 		try {
 			// LATER php on non-windows may need a dictionary too ??
 			String dst = build.getBuildPath()+"/share/";
-			if (!host.exists(dst)) {
-				host.copyElevated(host.getPfttCacheDir()+"/util/enchant/share", dst);
+			if (!host.mExists(dst)) {
+				fs.copyElevated(host.getPfttCacheDir()+"/util/enchant/share", dst);
 			
 				
 				// make sure libraries are where they need to be also
-				host.copy(build.getBuildPath()+"/libenchant*", build.getBuildPath()+"/lib/enchant/");
+				fs.copy(build.getBuildPath()+"/libenchant*", build.getBuildPath()+"/lib/enchant/");
 			}
 			
 			return SETUP_SUCCESS;

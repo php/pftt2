@@ -7,6 +7,11 @@ import com.mostc.pftt.host.AHost;
 
 public class PhpBuildInfo {
 	protected EBuildBranch build_branch;
+	// could be in the forms:
+	// rXXXXXX
+	// major.minor.release
+	// major.minor.releaseRCn
+	// major.minor.release-pre
 	protected String version_revision;
 	protected EBuildSourceType build_source_type;
 	protected EBuildType build_type;

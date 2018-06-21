@@ -107,7 +107,7 @@ public class CodeCoverageSummary implements ISerializer {
 			serial(serial);
 			serial.endDocument();
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(CodeCoverageSummary.class, ex);
 		}
 	}
 	

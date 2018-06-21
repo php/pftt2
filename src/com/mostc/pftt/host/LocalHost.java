@@ -46,8 +46,11 @@ import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.main.PfttMain;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
+import com.mostc.pftt.scenario.FileSystemScenario;
+import com.mostc.pftt.scenario.FileSystemScenario.IFileChooser;
 import com.mostc.pftt.util.TimerUtil;
 import com.mostc.pftt.util.TimerUtil.ObjectRunnable;
 import com.mostc.pftt.util.TimerUtil.TimerThread;
@@ -86,6 +89,11 @@ public abstract class LocalHost extends AHost {
 		} else {
 			localhost_instance = new PosixLocalHost();
 		}
+		
+		// ensure TEMP dir exists
+		try {
+			localhost_instance.mCreateDirs(localhost_instance.getTempDir());
+		} catch ( Exception ex ) {}
 	}
 	
 	public static LocalHost getInstance() {
@@ -151,61 +159,98 @@ public abstract class LocalHost extends AHost {
 	}
 	
 	@Override
-	public String pathsSeparator() {
+	public String mPathsSeparator() {
 		return File.pathSeparator;
 	}
 	
 	@Override
-	public String dirSeparator() {
+	public String mDirSeparator() {
 		return File.separator;
 	}
 	
 	@Override
-	public ByLineReader readFile(String file) throws FileNotFoundException, IOException {
+	public ByLineReader mReadFile(String file) throws FileNotFoundException, IOException {
 		return new NoCharsetByLineReader(new FileInputStream(file));
 	}
 	
 	@Override
-	public ByLineReader readFile(String file, Charset cs) throws IllegalStateException, FileNotFoundException, IOException {
+	public ByLineReader mReadFile(String file, Charset cs) throws IllegalStateException, FileNotFoundException, IOException {
 		return new CharsetByLineReader(new FileInputStream(file), cs);
 	}
 	
 	@Override
-	public ByLineReader readFileDetectCharset(String file, CharsetDeciderDecoder cdd) throws FileNotFoundException, IOException {
+	public ByLineReader mReadFileDetectCharset(String file, CharsetDeciderDecoder cdd) throws FileNotFoundException, IOException {
 		return new MultiCharsetByLineReader(new FileInputStream(file), cdd);
 	}
 	
 	@Override
-	public boolean delete(String path) {
+	public boolean mDelete(String path) {
 		return ccm.delete(this, path, false);
 	}
 	
 	@Override
-	public boolean deleteElevated(String path) {
+	public boolean mDeleteElevated(String path) {
 		return ccm.delete(this, path, true);
 	}
 	
 	@Override
-	public boolean exists(String path) {
+	public boolean mDeleteFileExtension(String dir_str, String ext) {
+		if (!isSafePath(dir_str))
+			return false;
+		
+		_deleteFileExtension(new File(dir_str), ext);
+		return true;
+	}
+	
+	protected void _deleteFileExtension(File dir, String ext) {
+		File[] files = dir.listFiles();
+		if (files==null)
+			return;
+		for ( File file : files ) {
+			if ( file.isDirectory() )
+				_deleteFileExtension(file, ext);
+			else if ( file.getName().endsWith(ext) )
+				file.delete();
+		}
+		
+	}
+	
+	@Override
+	public boolean mExists(String path) {
 		return new File(path).exists();
 	}
 	
 	@Override
-	public boolean isDirectory(String path) {
+	public boolean mIsDirectory(String path) {
 		return new File(path).isDirectory();
 	}
 
 	@Override
-	public boolean saveTextFile(String filename, String text) throws IOException {
-		return saveTextFile(filename, text, null);
+	public boolean mSaveTextFile(String filename, String text) throws IOException {
+		return mSaveTextFile(filename, text, null);
+	}
+	
+	@Override
+	public boolean mSaveFile(String filename, byte[] stdin_post) throws IllegalStateException, IOException {
+		if (!isSafePath(filename)) {
+			return false;
+		} else if (stdin_post==null) {
+			return false;
+		}		
+		mCreateDirs(FileSystemScenario.dirname(filename));// TODO temp
+		FileOutputStream fos = new FileOutputStream(filename);
+		fos.write(stdin_post);
+		fos.close();
+		return true;
 	}
 
 	@Override
-	public boolean saveTextFile(String filename, String text, CharsetEncoder ce) throws IOException {
+	public boolean mSaveTextFile(String filename, String text, CharsetEncoder ce) throws IOException {
 		if (!isSafePath(filename))
 			return false;
 		if (text==null)
 			text = "";
+		mCreateDirs(FileSystemScenario.dirname(filename));// TODO temp
 		FileOutputStream fos = new FileOutputStream(filename);
 		try {
 			if (ce==null) {
@@ -213,7 +258,7 @@ public abstract class LocalHost extends AHost {
 			} else {
 				ByteBuffer bbuf = ByteBuffer.allocate(50+(text.length()*2));
 				ce.encode(CharBuffer.wrap(text.toCharArray()), bbuf, true);
-				fos.write(bbuf.array(), 0, bbuf.limit());
+				fos.write(bbuf.array(), 0, bbuf.position());
 			}
 		} finally {
 			fos.close();
@@ -265,7 +310,7 @@ public abstract class LocalHost extends AHost {
 	}
 	
 	@Override
-	public String getContents(String file) throws IOException {
+	public String mGetContents(String file) throws IOException {
 		NoCharsetByLineReader reader = new NoCharsetByLineReader(new FileInputStream(file));
 		String str = IOUtil.toString(reader, IOUtil.HALF_MEGABYTE);
 		reader.close();
@@ -273,7 +318,7 @@ public abstract class LocalHost extends AHost {
 	}
 	
 	@Override
-	public String getContentsDetectCharset(String file, CharsetDeciderDecoder cdd) throws IOException {
+	public String mGetContentsDetectCharset(String file, CharsetDeciderDecoder cdd) throws IOException {
 		MultiCharsetByLineReader reader = new MultiCharsetByLineReader(new FileInputStream(file), cdd);
 		String str = IOUtil.toString(reader, IOUtil.HALF_MEGABYTE);
 		reader.close();
@@ -281,22 +326,22 @@ public abstract class LocalHost extends AHost {
 	}
 	
 	@Override
-	public boolean copy(String src, String dst) throws Exception {
+	public boolean mCopy(String src, String dst) throws Exception {
 		return ccm.copy(this, src, dst, false);
 	}
 	
 	@Override
-	public boolean copyElevated(String src, String dst) throws Exception {
+	public boolean mCopyElevated(String src, String dst) throws Exception {
 		return ccm.copy(this, src, dst, true);
 	}
 	
 	@Override
-	public boolean move(String src, String dst) throws Exception {
+	public boolean mMove(String src, String dst) throws Exception {
 		return ccm.move(this, src, dst, false);
 	}
 	
 	@Override
-	public boolean moveElevated(String src, String dst) throws Exception {
+	public boolean mMoveElevated(String src, String dst) throws Exception {
 		return ccm.move(this, src, dst, true);
 	}
 	
@@ -325,7 +370,7 @@ public abstract class LocalHost extends AHost {
 			this.stdin = stdin;
 			this.stdout = stdout;
 			this.stderr = stderr;
-			this.image_name = cmd_array==null||cmd_array.length==0?"":StringUtil.unquote(basename(cmd_array[0]));
+			this.image_name = cmd_array==null||cmd_array.length==0?"":StringUtil.unquote(FileSystemScenario.basename(cmd_array[0]));
 		}
 		
 		protected boolean doIsRunning(Process p) {
@@ -496,7 +541,7 @@ public abstract class LocalHost extends AHost {
 					sb.append('\n');
 				}
 			} catch ( IOException ex ) {
-				//ex.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(LocalHost.class, ex);
 			}
 			
 			in.close();
@@ -579,7 +624,7 @@ public abstract class LocalHost extends AHost {
 				}
 			} // end for
 		} catch ( Throwable t2 ) {
-			t2.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(LocalHost.class, t2);
 		} // end try
 		return 0;
 	} // end protected static int getWindowsProcessIDReflection
@@ -638,7 +683,7 @@ public abstract class LocalHost extends AHost {
 					String b = env.get(PATH);
 					
 					if (StringUtil.isNotEmpty(a) && StringUtil.isNotEmpty(b)) {
-						b = a + pathsSeparator() + b;
+						b = a + mPathsSeparator() + b;
 						
 						env.put(PATH, b);
 					}
@@ -658,7 +703,7 @@ public abstract class LocalHost extends AHost {
 			} catch ( IOException ex ) {
 				process = handleExecImplException(ex, builder);
 				if (process==null)
-					throw ex;
+					throw new Exception(ex);
 			}
 		}
 		if (process==null)
@@ -735,7 +780,7 @@ public abstract class LocalHost extends AHost {
 
 	@Override
 	public boolean download(String src, String dst) throws IllegalStateException, IOException, Exception {
-		return copy(src, dst);
+		return mCopy(src, dst);
 	}
 
 	@Override
@@ -750,7 +795,7 @@ public abstract class LocalHost extends AHost {
 		if (!isSafePath(dst))
 			return false;
 		
-		return copy(src, dst);
+		return mCopy(src, dst);
 	}
 
 	@Override
@@ -807,7 +852,7 @@ public abstract class LocalHost extends AHost {
 				}
 			}
 		} catch (SocketException ex) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(LocalHost.class, ex);
 		}
 		// no network interfaces!
 		return null;
@@ -824,7 +869,7 @@ public abstract class LocalHost extends AHost {
 	}
 
 	@Override
-	public boolean dirContainsExact(String path, String name) {
+	public boolean mDirContainsExact(String path, String name) {
 		for ( File file : new File(path).listFiles() ) {
 			if (file.getName().equalsIgnoreCase(name))
 				return true;
@@ -833,7 +878,7 @@ public abstract class LocalHost extends AHost {
 	}
 
 	@Override
-	public boolean dirContainsFragment(String path, String name_fragment) {
+	public boolean mDirContainsFragment(String path, String name_fragment) {
 		name_fragment = name_fragment.toLowerCase();
 		for ( File file : new File(path).listFiles() ) {
 			if (file.getName().toLowerCase().contains(name_fragment))
@@ -843,7 +888,7 @@ public abstract class LocalHost extends AHost {
 	}
 
 	@Override
-	public String[] list(String path) {
+	public String[] mList(String path) {
 		return new File(path).list();
 	}
 	
@@ -868,33 +913,37 @@ public abstract class LocalHost extends AHost {
 	}
 
 	@Override
-	public long getSize(String file) {
+	public long mSize(String file) {
 		return new File(file).length();
 	}
 	
 	@Override
-	public long getMTime(String file) {
+	public long mMTime(String file) {
 		return new File(file).lastModified();
 	}
 
 	@Override
-	public boolean deleteFileExtension(String dir_str, String ext) {
-		if (!isSafePath(dir_str))
+	public boolean mDeleteChosenFiles(String dir, IFileChooser chr) {
+		if (!isSafePath(dir))
 			return false;
 		
-		_deleteFileExtension(new File(dir_str), ext);
+		_deleteChosenFiles(new File(dir), chr);
+		
 		return true;
 	}
 	
-	protected void _deleteFileExtension(File dir, String ext) {
+	protected void _deleteChosenFiles(File dir, IFileChooser chr) {
 		File[] files = dir.listFiles();
 		if (files==null)
 			return;
 		for ( File file : files ) {
-			if ( file.isDirectory() )
-				_deleteFileExtension(file, ext);
-			else if ( file.getName().endsWith(ext) )
+			if ( file.isDirectory() ) {
+				_deleteChosenFiles(file, chr);
+				if ( chr.choose(dir.getAbsolutePath(), file.getName(), true) )
+					file.delete();
+			} else if ( chr.choose(dir.getAbsolutePath(), file.getName(), false) ) {
 				file.delete();
+			}
 		}
 		
 	}

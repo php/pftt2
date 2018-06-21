@@ -19,19 +19,20 @@ public abstract class INIScenario extends AbstractSerialScenario {
 	 * directly by AbstractPhptTestCaseRunner#createIniForTest for PHPT tests.
 	 * 
 	 * @param cm
+	 * @param fs
 	 * @param host
 	 * @param build
 	 * @param ini
 	 * @return
 	 */
-	public abstract IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini);
+	public abstract IScenarioSetup setup(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build, PhpIni ini);
 		
-	public static boolean setupScenarios(ConsoleManager cm, Host host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini) {
+	public static boolean setupScenarios(ConsoleManager cm, FileSystemScenario fs, Host host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini) {
 		for (Scenario scenario : scenario_set ) {
 			if (!(scenario instanceof INIScenario))
 				continue;
 		
-			((INIScenario)scenario).setup(cm, host, build, ini);
+			((INIScenario)scenario).setup(cm, fs, host, build, ini);
 		}
 		return true;
 	}

@@ -13,7 +13,6 @@ import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
-import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
 import com.mostc.pftt.results.AbstractPhpUnitRW;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
@@ -21,31 +20,28 @@ import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhpResultPackWriter;
 import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.scenario.CodeCacheScenario;
-import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
 import com.mostc.pftt.scenario.FileSystemScenario.ITestPackStorageDir;
-import com.mostc.pftt.scenario.IScenarioSetup;
 import com.mostc.pftt.scenario.SMBScenario.SMBStorageDir;
+import com.mostc.pftt.scenario.AzureWebsitesScenario;
+import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
+import com.mostc.pftt.scenario.IScenarioSetup;
+import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.scenario.WebServerScenario;
 import com.mostc.pftt.scenario.PhpUnitReflectionOnlyScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 
-public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpUnitActiveTestPack, PhpUnitSourceTestPack, PhpUnitTestCase> {
+public class LocalPhpUnitTestPackRunner extends AbstractLocalApplicationTestPackRunner<PhpUnitActiveTestPack, PhpUnitSourceTestPack, PhpUnitTestCase> {
 	protected final Map<String,String> globals = new HashMap<String,String>();
 	protected final Map<String, String> env = new HashMap<String,String>();
 	protected final Map<String, String> constants = new HashMap<String,String>();
-	protected String[][] nts_file_names;
+	protected boolean reflection_only;
 	
 	public LocalPhpUnitTestPackRunner(ConsoleManager cm, ITestResultReceiver twriter, ScenarioSet scenario_set, PhpBuild build, AHost storage_host, AHost runner_host) {
 		super(cm, twriter, scenario_set, build, storage_host, runner_host);
 	}
 	
-	protected String temp_base_dir;
-	protected boolean reflection_only;
 	@Override
 	protected void setupStorageAndTestPack(ITestPackStorageDir storage_dir, List<PhpUnitTestCase> test_cases) throws Exception {
-		// important: TODO comment
-		nts_file_names = src_test_pack.getNonThreadSafeTestFileNames();
-		
 		// Code Caches (ex: opcache) may cause problems with reflection when used on web server (or any other process that runs
 		//     multiple tests during its lifetime)
 		reflection_only =
@@ -54,56 +50,14 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 				!(scenario_set.contains(WebServerScenario.class) &&
 				scenario_set.contains(CodeCacheScenario.class) &&
 				!scenario_set.contains(PhpUnitReflectionOnlyScenario.class));
+				
+		super.setupStorageAndTestPack(storage_dir, test_cases);
+	}
 		
-		if (!(storage_dir instanceof SMBStorageDir)) { // TODO generalize
-			temp_base_dir = runner_host.getPhpSdkDir()+"/temp/";
-			
-			active_test_pack = src_test_pack.installInPlace(cm, runner_host);
-			
-			return;
-		}
-		
-		// generate name of directory on that storage to store the copy of the test-pack
-		String local_test_pack_dir = null, remote_test_pack_dir = null;
-		{
-			String local_path = storage_dir.getLocalPath(storage_host);
-			String remote_path = storage_dir.getRemotePath(storage_host);
-			long millis = System.currentTimeMillis();
-			for ( int i=0 ; i < 131070 ; i++ ) {
-				// try to include version, branch info etc... from name of test-pack
-				//
-				// don't want long directory paths or lots of nesting, just put in /php-sdk
-				local_test_pack_dir = local_path + "/TEMP-" + src_test_pack.getName() + (i==0?"":"-" + millis) + "/";
-				remote_test_pack_dir = remote_path + "/TEMP-" + src_test_pack.getName() + (i==0?"":"-" + millis) + "/";
-				if (!storage_host.exists(remote_test_pack_dir) || !runner_host.exists(local_test_pack_dir))
-					break;
-				millis++;
-				if (i%100==0)
-					millis = System.currentTimeMillis();
-			}
-		}
-		//
-		
-		
-		cm.println(EPrintType.IN_PROGRESS, getClass(), "installing... test-pack onto storage: remote="+remote_test_pack_dir+" local="+local_test_pack_dir);
-		
-		try {
-			active_test_pack = src_test_pack.install(cm, storage_host, local_test_pack_dir, remote_test_pack_dir);
-		} catch ( Exception ex ) {
-			cm.addGlobalException(EPrintType.CANT_CONTINUE, "setupStorageAndTestPack", ex, "can't install test-pack");
-			close();
-			return;
-		}
-		
-		// notify storage
-		if (!storage_dir.notifyTestPackInstalled(cm, runner_host)) {
-			cm.println(EPrintType.CANT_CONTINUE, getClass(), "unable to prepare storage for test-pack, giving up!(2)");
-			close();
-			return;
-		}
-		
-		temp_base_dir = local_test_pack_dir + "/temp/";
-	} // end protected void setupStorageAndTestPack
+	@Override
+	protected boolean tryPrepare(PhpIni ini) {
+		return src_test_pack.prepareINI(cm, runner_host, scenario_set, build, ini);
+	}
 	
 	@Override
 	protected void decideThreadCount() {
@@ -118,39 +72,12 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 	}
 	
 	@Override
-	protected TestCaseGroupKey createGroupKey(PhpUnitTestCase test_case, TestCaseGroupKey group_key) throws Exception {
-		if (group_key!=null)
-			return group_key;
-		// CRITICAL: provide the INI to run all PhpUnitTestCases
-		//           unlike PhptTestCases all PhpUnitTestCases share the same INI and environment variables
-		PhpIni ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, runner_host, build);
-		scenario_set_setup.prepareINI(cm, runner_host, build, ini);
-		src_test_pack.prepareINI(cm, runner_host, scenario_set, build, ini);
-				
-		return new TestCaseGroupKey(ini, null);
-	}
-
-	@Override
-	protected boolean handleNTS(TestCaseGroupKey group_key, PhpUnitTestCase test_case) {
-		if (nts_file_names==null)
-			return false;
-		for ( String[] ext_names : nts_file_names ) {
-			if (test_case.fileNameStartsWithAny(ext_names)) {
-				addNTSTestCase(ext_names, group_key, test_case);
-				
-				return true;
-			}
-		}
-		return false;
-	}
-	
-	@Override
 	protected void executeTestCases(boolean parallel) throws InterruptedException, IllegalStateException, IOException {
 		// get database configuration, etc...
 		scenario_set_setup.setGlobals(globals);
 		src_test_pack.prepareGlobals(cm, runner_host, scenario_set, build, globals);
 		
-		if (src_test_pack.startRun(cm, runner_host, scenario_set, build)) {
+		if (src_test_pack.startRun(cm, runner_fs, runner_host, scenario_set, build)) {
 			super.executeTestCases(parallel);
 		}
 		src_test_pack.stopRun(cm, runner_host, scenario_set, build);
@@ -165,10 +92,19 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 		protected final String my_temp_dir;
 		protected AbstractPhpUnitTestCaseRunner r;
 
+		ScenarioSetSetup ss; // TODO temp azure 
+		
 		protected PhpUnitThread(boolean parallel) throws IllegalStateException, IOException {
 			super(parallel);
-			my_temp_dir = runner_host.fixPath(runner_host.mktempname(temp_base_dir, getClass()) + "/");
-			runner_host.mkdirs(my_temp_dir);
+			
+			ss = ScenarioSetSetup.setupScenarioSet(cm, runner_fs, runner_host, build, scenario_set, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_APPLICATION);
+			
+			if (AzureWebsitesScenario.check(sapi_scenario)) {
+				my_temp_dir = "D:\\LOCAL\\TEMP";
+			} else {
+				my_temp_dir = runner_fs.fixPath(runner_fs.mktempname(temp_base_dir, getClass()) + "/");
+				runner_fs.createDirs(my_temp_dir);
+			}
 		}
 		
 		@Override
@@ -182,7 +118,9 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 			super.run();
 			
 			// be sure to cleanup
-			runner_host.deleteIfExists(my_temp_dir);
+			if (!AzureWebsitesScenario.check(sapi_scenario)) {
+				runner_fs.deleteIfExists(my_temp_dir);
+			}
 		}
 
 		@Override
@@ -194,16 +132,16 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 					twriter,
 					globals,
 					env,
+					runner_fs,
 					runner_host,
-					scenario_set_setup,
+					ss, // TODO temp azure scenario_set_setup,
 					build,
 					test_case,
 					my_temp_dir,
 					constants,
-					test_case.getPhpUnitDist().getIncludePath(runner_host),
-					test_case.getPhpUnitDist().getIncludeFiles(),
-					group_key.getPhpIni(),
-					reflection_only
+					active_test_pack.norm(sapi_scenario, test_case.getPhpUnitDist().getIncludePath(runner_host)),
+					active_test_pack.norm(sapi_scenario, test_case.getPhpUnitDist().getIncludeFiles()),
+					group_key.getPhpIni(), reflection_only
 				);
 			twriter.notifyStart(runner_host, scenario_set_setup, src_test_pack, test_case);
 			r.runTest(cm, this, LocalPhpUnitTestPackRunner.this);
@@ -246,11 +184,6 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalTestPackRunner<PhpU
 			cm.println(EPrintType.CLUE, getClass(),  status+" "+phpunit.count(status)+" tests");
 		}
 		cm.println(EPrintType.CLUE, getClass(), "Pass Rate(%): "+phpunit.passRate());
-	}
-
-	@Override
-	public EScenarioSetPermutationLayer getScenarioSetPermutationLayer() {
-		return EScenarioSetPermutationLayer.FUNCTIONAL_TEST_APPLICATION;
 	}
 
 } // end public class LocalPhpUnitTestPackRunner

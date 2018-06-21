@@ -11,6 +11,7 @@ import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.PhpResultPackWriter;
+import com.mostc.pftt.scenario.FileSystemScenario;
 
 /** Smoke test that verifies a PHP Build has all the required extensions.
  * 
@@ -26,7 +27,7 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 	//
 	// some extensions are only dynamically loaded depending on PhpIni configuration
 	// some are statically builtin (will always load)
-	static String[] windows_required_extensions = new String[] {
+	static String[] windows_required_extensions_pre7 = new String[] {
 		"bcmath", // static|builtin extension
 		"bz2", 
 		"calendar",
@@ -84,8 +85,66 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 		"zip",
 		"zlib"
 	};
+	static String[] windows_required_extensions_post7 = new String[] {
+		"bcmath", // static|builtin extension
+		"bz2", 
+		"calendar",
+		"com_dotnet",
+		"ctype", 
+		"curl", 
+		"date",
+		"dom",
+		//"ereg",
+		"exif",
+		"fileinfo",
+		"filter",
+		//"ftp",
+		"gd",
+		"gettext",
+		"gmp",
+		"hash",
+		"iconv",
+		"imap",
+		"intl",
+		"json",
+		"ldap",
+		"libxml",
+		"mbstring",
+		"mcrypt",
+		//"mhash",
+		//"mysql",
+		"mysqli",
+		"mysqlnd",
+		//"odbc",
+		"openssl",
+		"pcre",
+		"PDO",
+		"pdo_mysql",
+		"PDO_ODBC",
+		"pdo_pgsql",
+		"pgsql",
+		"phar",
+		"reflection",
+		"session",
+		"shmop",
+		"simplexml",
+		"soap",
+		"sockets",
+		"spl",
+		"sqlite3",
+		"tidy",
+		"tokenizer",
+		"wddx",
+		"xml",
+		"xmlreader",
+		"xmlrpc",
+		"xmlwriter",
+		"xsl",
+		"zip",
+		"zlib"
+	};
 	
-	public ESmokeTestStatus test(PhpBuild build, ConsoleManager cm, AHost host, ESAPIType type, PhpResultPackWriter tmgr) {
+	public ESmokeTestStatus test(PhpBuild build, ConsoleManager cm, FileSystemScenario fs, AHost host, ESAPIType type, PhpResultPackWriter tmgr) {
 		if (!host.isWindows())
 			// non-Windows PHP builds can have whatever extensions they want
 			return ESmokeTestStatus.XSKIP;
@@ -93,9 +152,10 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 			// Windows PHP builds must have these extensions to pass this test
 			ESmokeTestStatus status = ESmokeTestStatus.PASS;
 			StringBuilder out = new StringBuilder();
-			for ( String ext_name : windows_required_extensions ) {
+			String[] ext = build.is7(cm, host) ? windows_required_extensions_post7 : windows_required_extensions_pre7;
+			for ( String ext_name : ext ) {
 				// this will timeout in .DLL is missing on Windows - must fail test in that case
-				if (!build.isExtensionEnabled(cm, host, type, ext_name)) {
+				if (!build.isExtensionEnabled(cm, fs, host, type, ext_name)) {
 					out.append("Missing Required Extension: "+ext_name);
 					out.append('\n');
 					cm.println(EPrintType.COMPLETED_OPERATION, getName(), "Missing Required Extension: "+ext_name);
@@ -123,11 +183,12 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 	 * A PhpBuild using this PhpIni should pass this test.
 	 * 
 	 * @param cm
+	 * @param fs
 	 * @param host
 	 * @param build
 	 * @return
 	 */
-	public static PhpIni createDefaultIniCopy(ConsoleManager cm, Host host, PhpBuild build) {
+	public static PhpIni createDefaultIniCopy(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build) {
 		// these settings make a (big) difference in certain scenarios or for certain tests
 		// before committing changes to any of them, you MUST do a full run of all tests on
 		// all scenarios before and after the change to ensure that your change here does not
@@ -154,17 +215,29 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 		// testing 5.3 is especially important
 		//
 		// NOTE: 5.3 php builds do not include E_STRICT with E_ALL. you must explicitly include both here!
-		ini.putMulti(PhpIni.ERROR_REPORTING, "-1"); // TODO build.is53(cm, host)?PhpIni.E_ALL_STRICT_DEPRECATED:PhpIni.E_ALL_NOTICE_WARNING);
+		ini.putMulti(PhpIni.ERROR_REPORTING, "E_ALL ^ E_WARNING");//NONE");//build.is53(cm, host)?PhpIni.E_ALL_STRICT_DEPRECATED:PhpIni.E_ALL_NOTICE_WARNING);
 		// CRITICAL
 		ini.putMulti(PhpIni.DISPLAY_ERRORS, PhpIni.ON);
+		// TODO temp ?
+		ini.putSingle("date.timezone", "UTC");
 		// CRITICAL
 		ini.putMulti(PhpIni.DISPLAY_STARTUP_ERRORS, PhpIni.OFF);
 		// CRITICAL
-		ini.putMulti(PhpIni.LOG_ERRORS, PhpIni.ON);
+		ini.putMulti(PhpIni.LOG_ERRORS, PhpIni.ON); // TODO temp
 		// CRITICAL
 		ini.putMulti(PhpIni.HTML_ERRORS, PhpIni.OFF);
 		// CRITICAL
-		ini.putMulti(PhpIni.TRACK_ERRORS, PhpIni.ON);
+		/*try {
+			final int major = build.getVersionMajor(cm, host);
+			final int minor = build.getVersionMinor(cm, host);
+			if (major<7||(major==7&&minor<1)) {
+				ini.putMulti(PhpIni.TRACK_ERRORS, PhpIni.ON);
+			} else {
+				ini.putMulti(PhpIni.TRACK_ERRORS, PhpIni.OFF);
+			}
+		} catch (Exception ex) {*/
+			ini.putMulti(PhpIni.TRACK_ERRORS, PhpIni.OFF);
+		//}
 		//
 		ini.putMulti(PhpIni.REPORT_MEMLEAKS, PhpIni.ON);
 		ini.putMulti(PhpIni.REPORT_ZEND_DEBUG, PhpIni.OFF);
@@ -184,7 +257,7 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 		ini.putMulti(PhpIni.SESSION_AUTO_START, PhpIni.OFF);
 		// added sys_temp_dir for PHAR PHPTs - otherwise they'll use CWD for their temp dir
 		// even if its on a remote file system (slow & buggy)
-		ini.putSingle(PhpIni.SYS_TEMP_DIR, host.getTempDir());
+		ini.putSingle(PhpIni.SYS_TEMP_DIR, fs.getTempDir());
 		
 		// default php.ini has these extensions on Windows
 		// NOTE: this is validated by RequiredExtensionsSmokeTest. similar/same info is both there and here
@@ -229,13 +302,6 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 					PhpIni.EXT_XMLRPC,
 					PhpIni.EXT_XSL
 				);
-			/*try {
-				if (build.getVersionBranch(cm, host)==EBuildBranch.PHP_5_5) {
-					ini.addExtension(PhpIni.EXT_ENCHANT);
-				}
-			} catch ( Exception ex ) {
-				ex.printStackTrace();//
-			}*/
 		}
 		
 		// TIMING: do this after all calls to #putMulti, etc... b/c that sets is_default = false

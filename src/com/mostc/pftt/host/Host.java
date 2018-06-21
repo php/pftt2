@@ -1,17 +1,17 @@
 package com.mostc.pftt.host;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.regex.Pattern;
 
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
+import com.mostc.pftt.scenario.FileSystemScenario;
+import com.mostc.pftt.scenario.FileSystemScenario.IFileChooser;
 
 public abstract class Host {
 	/** for development, set DEV > 0 (ex: DEV=1) and it will use PFTT/Dev-N/ instead of PFTT/Current/
@@ -76,11 +76,11 @@ public abstract class Host {
 	 * @return
 	 */
 	public String uniqueNameFromBase(String base) {
-		if (exists(base)) {
+		if (mExists(base)) {
 			String name;
 			for ( int i=2 ; ; i++ ) {
 				name = base + "-" + i;
-				if (!exists(name))
+				if (!mExists(name))
 					return name;
 			} 
 		}
@@ -152,10 +152,10 @@ public abstract class Host {
 		return exec(cm, ctx_str, commandline, timeout, env, null, charset, chdir);
 	}
 	public boolean exec(ConsoleManager cm, Class<?> clazz, String commandline, int timeout, String chdir) throws Exception {
-		return exec(cm, toContext(clazz), commandline, timeout, null, null, null, chdir);
+		return exec(cm, FileSystemScenario.toContext(clazz), commandline, timeout, null, null, null, chdir);
 	}	
 	public boolean exec(ConsoleManager cm, Class<?> clazz, String commandline, int timeout, Map<String,String> env, Charset charset, String chdir) throws Exception {
-		return exec(cm, toContext(clazz), commandline, timeout, env, null, charset, chdir);
+		return exec(cm, FileSystemScenario.toContext(clazz), commandline, timeout, env, null, charset, chdir);
 	}
 	public boolean exec(String commandline, int timeout, String chdir) throws Exception {
 		return exec(null, (String)null, commandline, timeout, null, null, null, chdir);
@@ -170,10 +170,10 @@ public abstract class Host {
 		return exec(cm, ctx_str, cmd, timeout, (String)null);
 	}
 	public boolean exec(ConsoleManager cm, Class<?> clazz, String cmd, int timeout_sec, Map<String, String> env, Charset charset) throws IllegalStateException, Exception {
-		return exec(cm, toContext(clazz), cmd, timeout_sec, env, charset, null);
+		return exec(cm, FileSystemScenario.toContext(clazz), cmd, timeout_sec, env, charset, null);
 	}
 	public boolean exec(ConsoleManager cm, Class<?> clazz, String cmd, int timeout) throws Exception {
-		return exec(cm, toContext(clazz), cmd, timeout, (String)null);
+		return exec(cm, FileSystemScenario.toContext(clazz), cmd, timeout, (String)null);
 	}
 	public boolean exec(String cmd, int timeout_sec, Map<String, String> env, Charset charset) throws IllegalStateException, Exception {
 		return exec(null, (String)null, cmd, timeout_sec, env, charset, null);
@@ -198,13 +198,13 @@ public abstract class Host {
 		return execElevated(cm, ctx_str, cmd, timeout_sec, env, stdin_data, charset, chdir, null, FOUR_HOURS);
 	}	
 	public boolean execElevated(ConsoleManager cm, Class<?> clazz, String cmd, int timeout_sec) throws Exception {
-		return execElevated(cm, toContext(clazz), cmd, timeout_sec, null, null, null, null, null, FOUR_HOURS);
+		return execElevated(cm, FileSystemScenario.toContext(clazz), cmd, timeout_sec, null, null, null, null, null, FOUR_HOURS);
 	}
 	public boolean execElevated(ConsoleManager cm, Class<?> clazz, String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset) throws Exception {
-		return execElevated(cm, toContext(clazz), cmd, timeout_sec, env, stdin_data, charset, null, null, FOUR_HOURS);
+		return execElevated(cm, FileSystemScenario.toContext(clazz), cmd, timeout_sec, env, stdin_data, charset, null, null, FOUR_HOURS);
 	}
 	public boolean execElevated(ConsoleManager cm, Class<?> clazz, String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String chdir) throws Exception {
-		return execElevated(cm, toContext(clazz), cmd, timeout_sec, env, stdin_data, charset, chdir, null, FOUR_HOURS);
+		return execElevated(cm, FileSystemScenario.toContext(clazz), cmd, timeout_sec, env, stdin_data, charset, chdir, null, FOUR_HOURS);
 	}
 	public boolean execElevated(String cmd, int timeout_sec) throws Exception {
 		return execElevated(null, (String)null, cmd, timeout_sec, null, null, null, null, null, FOUR_HOURS);
@@ -229,16 +229,16 @@ public abstract class Host {
 		return exec(cm, ctx_str, cmd, timeout_sec, object, stdin_post, charset, (String)null);
 	}
 	public boolean execElevated(ConsoleManager cm, Class<?> clazz, String cmd, int timeout_sec, Map<String, String> env, Charset charset) throws Exception {
-		return execElevated(cm, toContext(clazz), cmd, timeout_sec, env, null, charset, null, null, FOUR_HOURS);
+		return execElevated(cm, FileSystemScenario.toContext(clazz), cmd, timeout_sec, env, null, charset, null, null, FOUR_HOURS);
 	}
 	public boolean execElevated(ConsoleManager cm, Class<?> clazz, String cmd, int timeout_sec, Map<String, String> env, Charset charset, String chdir) throws Exception {
-		return execElevated(cm, toContext(clazz), cmd, timeout_sec, env, null, charset, chdir, null, FOUR_HOURS);
+		return execElevated(cm, FileSystemScenario.toContext(clazz), cmd, timeout_sec, env, null, charset, chdir, null, FOUR_HOURS);
 	}
 	public boolean execElevated(ConsoleManager cm, Class<?> clazz, String cmd, int timeout_sec, String chdir) throws Exception {
-		return execElevated(cm, toContext(clazz), cmd, timeout_sec, null, null, null, chdir, null, FOUR_HOURS);
+		return execElevated(cm, FileSystemScenario.toContext(clazz), cmd, timeout_sec, null, null, null, chdir, null, FOUR_HOURS);
 	}
 	public boolean exec(ConsoleManager cm, Class<?> clazz, String cmd, int timeout_sec, Map<String,String> object, byte[] stdin_post, Charset charset) throws IllegalStateException, Exception {
-		return exec(cm, toContext(clazz), cmd, timeout_sec, object, stdin_post, charset, (String)null);
+		return exec(cm, FileSystemScenario.toContext(clazz), cmd, timeout_sec, object, stdin_post, charset, (String)null);
 	}
 	public boolean execElevated(String cmd, int timeout_sec, Map<String, String> env, Charset charset) throws Exception {
 		return execElevated(null, (String)null, cmd, timeout_sec, env, null, charset, null, null, FOUR_HOURS);
@@ -251,12 +251,6 @@ public abstract class Host {
 	}
 	public boolean exec(String cmd, int timeout_sec, Map<String,String> object, byte[] stdin_post, Charset charset) throws IllegalStateException, Exception {
 		return exec(null, (String)null, cmd, timeout_sec, object, stdin_post, charset, (String)null);
-	}
-	public static String toContext(Class<?> clazz) {
-		return clazz == null ? null : clazz.getSimpleName();
-	}
-	public static String toContext(Class<?> clazz, String method_name) {
-		return clazz == null ? method_name : clazz.getSimpleName()+"#"+method_name;
 	}
 	public boolean cmd(String cmd, int timeout_sec) throws Exception {
 		return cmd(cmd, timeout_sec, null, (byte[])null, (Charset)null);
@@ -291,65 +285,6 @@ public abstract class Host {
 		return cmdElevated(cmd, timeout_sec, null, null, current_dir);
 	}
 	
-	/** removes the file extension from file.
-	 * 
-	 * for filenames like A.B returns A
-	 * for all others (if . not found), path
-	 * 
-	 * if path is a relative or absolute path (if path has directory|ies), the
-	 * directories are not removed just .BBB
-	 * 
-	 * @param path
-	 * @return
-	 */
-	public static String removeFileExt(String path) {
-		int i = path.lastIndexOf('.');
-		return i == -1 ? path : path.substring(0, i);
-	}
-	
-	/** returns the directory portion of a file path
-	 * 
-	 * @param path
-	 * @return
-	 */
-	public static String dirname(String path) {
-		int i = path.lastIndexOf('/');
-		int j = path.lastIndexOf('\\');
-		if (i==-1) {
-			if (j==-1)
-				return path;
-			else
-				return path.substring(0, j);
-		} else if (j==-1) {
-			if (i==-1)
-				return path;
-			else
-				return path.substring(0, i);
-		} else if (i>j) {
-			return path.substring(j, i);
-		} else {
-			// j>i
-			return path.substring(i, j);
-		}		
-	}
-	
-	/** returns the filename from a directory path
-	 * 
-	 * @param path
-	 * @return
-	 */
-	public static String basename(String path) {
-		return new File(path).getName();
-	}
-	
-	/** splits path using either Windows or Unix path separator
-	 * 
-	 * @param path
-	 * @return
-	 */
-	public static String[] splitPath(String path) {
-		return path.split("[/|\\\\]");
-	} 
 	
 	/** takes string in form C:\\ and returns `C`. anything else, and null is returned
 	 * 
@@ -370,161 +305,8 @@ public abstract class Host {
 		return StringUtil.isNotEmpty(drive(path));
 	}
 
-	public String mktempname(String ctx_str) {
-		return mktempname(ctx_str, (String) null);
-	}
-	/** returns Host's preferred directory for storing temporary files
-	 * 
-	 * @return
-	 */
-	public abstract String getTempDir();
-	static final Random rand = new Random();
-	/** generates the name of a temporary file that is not in use
-	 * 
-	 * @param ctx_str - part of PFTT that needs this temporary filename
-	 * @param suffix - string that is appended to end of file name (ex: .php file extension)
-	 * @return
-	 */
-	public String mktempname(String ctx_str, String suffix) {
-		return mktempname(getTempDir(), ctx_str, suffix);
-	}
-	/** generates the name of a temporary file in a custom directory
-	 * 
-	 * @param temp_dir
-	 * @param ctx_str
-	 * @param suffix
-	 * @return
-	 */
-	public String mktempname(String temp_dir, String ctx_str, String suffix) {
-		StringBuilder sb = new StringBuilder(50);
-		String str = null;
-		
-		// generate random filename until one found that isn't in use
-		int j;
-		for ( int i=0 ; i < 65535 ; i++ ) {
-			sb.append(temp_dir);
-			//sb.append(dirSeparator()); // getTempDir() returns path ending with / or \
-			sb.append("PFTT-");
-			if (StringUtil.isNotEmpty(ctx_str)) {
-				sb.append(ctx_str);
-				sb.append('-');
-			}
-			for (j=0 ; j < 10 ; j++ )
-				sb.append((char)( rand.nextInt(26) + 65 ));
-			if (StringUtil.isNotEmpty(suffix))
-				sb.append(suffix);
-			str = sb.toString();
-			
-			//
-			if (exists(str)) {
-				sb.setLength(0); // important
-				continue;
-			} else {
-				break;
-			}
-		}
-		
-		return str;
-	} // end public String mktempname
-	public String mktempname(Class<?> clazz, String suffix) {
-		return mktempname(toContext(clazz), suffix);
-	}
-	public String mktempname(Class<?> clazz) {
-		return mktempname(toContext(clazz));
-	}
-	public String mktempname(String temp_dir, Class<?> clazz, String suffix) {
-		return mktempname(temp_dir, toContext(clazz), suffix);
-	}
-	public String mktempname(String temp_dir, Class<?> clazz) {
-		return mktempname(temp_dir, toContext(clazz), null);
-	}
 	
-	/** saves text in given file
-	 * 
-	 * @param filename
-	 * @param text
-	 * @throws IllegalStateException
-	 * @throws IOException
-	 */
-	public abstract boolean saveTextFile(String path, String string) throws IllegalStateException, IOException;
 	
-	public abstract boolean saveTextFile(String filename, String text, CharsetEncoder ce) throws IllegalStateException, IOException;
-
-	public abstract boolean delete(String file) throws IllegalStateException, IOException;
-	public abstract boolean deleteElevated(String file) throws IllegalStateException, IOException;
-	
-	public boolean deleteIfExists(String path) {
-		try {
-			return delete(path);
-		} catch ( Exception ex ) {
-			
-		}
-		return false;
-	}
-	public boolean deleteIfExistsElevated(String path) {
-		try {
-			return deleteElevated(path);
-		} catch ( Exception ex ) {
-			
-		}
-		return false;
-	}
-	/** copies file/directory from source to destination on host
-	 * 
-	 * @see #download - to copy file from remote host to local
-	 * @param src
-	 * @param dst
-	 * @throws IllegalStateException
-	 * @throws Exception
-	 */
-	public abstract boolean copy(String src, String dst) throws IllegalStateException, Exception ;
-	public abstract boolean copyElevated(String src, String dst) throws IllegalStateException, Exception ;
-	
-	/** moves file/directory
-	 * 
-	 * @param src
-	 * @param dst
-	 * @return
-	 * @throws IllegalStateException
-	 * @throws Exception
-	 */
-	public abstract boolean move(String src, String dst) throws IllegalStateException, Exception;
-	public abstract boolean moveElevated(String src, String dst) throws IllegalStateException, Exception ;
-
-	/** returns the character to separate directories within one path
-	 * 
-	 * On Windows this is \\
-	 * On Linux this is /
-	 * Note: on Windows, if #exec or #cmd not being used, then / can still be used
-	 * 
-	 * @return
-	 */
-	public abstract String dirSeparator();
-
-	static final Pattern PAT_fs = Pattern.compile("[/]+");
-	static final Pattern PAT_bs = Pattern.compile("[\\\\]+");
-	/** fixes path so it uses the appropriate / or \\ for the Host
-	 * 
-	 * @param test_dir
-	 * @return
-	 */
-	public String fixPath(String path) {
-		return isWindows() ? toWindowsPath(path) : toUnixPath(path);
-	}
-	
-	public static String toWindowsPath(String path) {
-		return StringUtil.replaceAll(PAT_bs, "\\\\", StringUtil.replaceAll(PAT_fs, "\\\\", path));
-	} 
-	
-	/** converts file path to Unix format (using / instead of Windows \)
-	 * 
-	 * @param name
-	 * @return
-	 */
-	public static String toUnixPath(String name) {
-		// \ is a legal file char on unix so it must get removed or it'll be part of file/dir name
-		return StringUtil.replaceAll(PAT_fs, "/", StringUtil.replaceAll(PAT_bs, "/", name));
-	}
 
 	/** returns TRUE if host is Windows
 	 * 
@@ -551,10 +333,6 @@ public abstract class Host {
 	 */
 	public abstract String getSystemDrive();
 	
-	public abstract boolean isDirectory(String string);
-
-	public abstract boolean exists(String string);
-	public abstract boolean mkdirs(String path) throws IllegalStateException, IOException;
 
 	/** returns the character to separate several different paths on Host
 	 * 
@@ -563,7 +341,7 @@ public abstract class Host {
 	 * 
 	 * @return
 	 */
-	public abstract String pathsSeparator();
+	public abstract String mPathsSeparator();
 
 	/** returns true if this Host refers to a remote host (ex: ssh).
 	 * 	 returns false for localhost
@@ -597,9 +375,9 @@ public abstract class Host {
 	 * @return
 	 */
 	public abstract String getSystemRoot();
-	public abstract boolean dirContainsExact(String path, String name);
-	public abstract String[] list(String path);
-	public abstract boolean dirContainsFragment(String string, String string2);
+	public abstract boolean mDirContainsExact(String path, String name);
+	public abstract String[] mList(String path);
+	public abstract boolean mDirContainsFragment(String string, String string2);
 	
 	public abstract String getUsername();
 
@@ -626,7 +404,7 @@ public abstract class Host {
 		for ( int i=1 ; i < parts.length ; i++ ) {
 			if (parts[i]==null)
 				continue;
-			sb.append(dirSeparator());
+			sb.append(mDirSeparator());
 			sb.append(fixPath(parts[i]));
 		}
 		return sb.toString();
@@ -639,7 +417,7 @@ public abstract class Host {
 		StringBuilder sb = new StringBuilder(Math.max(1024, parts.get(0).length()*2));
 		sb.append(fixPath(parts.get(0)));
 		for ( int i=1 ; i < parts.size() ; i++ ) {
-			sb.append(dirSeparator());
+			sb.append(mDirSeparator());
 			sb.append(fixPath(parts.get(i)));
 		}
 		return sb.toString();
@@ -652,15 +430,38 @@ public abstract class Host {
 		StringBuilder sb = new StringBuilder(Math.max(1024, parts.get(0).length()*2));
 		sb.append(fixPath(parts.get(0)));
 		for ( int i=1 ; i < parts.size() ; i++ ) {
-			sb.append(pathsSeparator());
+			sb.append(mPathsSeparator());
 			sb.append(fixPath(parts.get(i)));
+		}
+		return sb.toString();
+	}
+	
+	public String joinIntoMultiplePath(String... paths) {
+		return joinIntoMultiplePath(null, paths);
+	}
+
+	public String joinIntoMultiplePath(List<String> paths, String... paths2) {
+		StringBuilder sb = new StringBuilder();
+		if (paths!=null&&paths.size()>0) {
+			sb.append(fixPath(paths.get(0)));
+			for ( int i=1 ; i < paths.size() ; i++ ) {
+				sb.append(mPathsSeparator());
+				sb.append(fixPath(paths.get(i)));
+			}
+		}
+		if (paths2!=null&&paths2.length>0) {
+			sb.append(fixPath(paths2[0]));
+			for ( int i=1 ; i < paths2.length ; i++ ) {
+				sb.append(mPathsSeparator());
+				sb.append(fixPath(paths2[i]));
+			}
 		}
 		return sb.toString();
 	}
 	
 	public String anyExist(String...files) {
 		for (String file:files) {
-			if (exists(file))
+			if (mExists(file))
 				return file;
 		}
 		return null;
@@ -682,8 +483,8 @@ public abstract class Host {
 	public abstract boolean isWin8OrLater();
 	public abstract long getTotalPhysicalMemoryK();
 	
-	public abstract long getSize(String file);
-	public abstract long getMTime(String file);
+	public abstract long mSize(String file);
+	public abstract long mMTime(String file);
 	public abstract String joinMultiplePaths(String ...paths);
 	public abstract String joinMultiplePaths(List<String> paths, String ...paths2);
 
@@ -712,8 +513,8 @@ public abstract class Host {
 	 * @return
 	 */
 	public static int countUp(String from, String to) {
-		from = toUnixPath(from);
-		to = toUnixPath(to);
+		from = FileSystemScenario.toUnixPath(from);
+		to = FileSystemScenario.toUnixPath(to);
 		if (from.equals(to))
 			return 0;
 		else if (from.startsWith(to))
@@ -739,5 +540,96 @@ public abstract class Host {
 			return to;
 		}
 	}
+	
+	public String mCreateTempName(String ctx_str) {
+		return mCreateTempName(ctx_str, (String) null);
+	}
+	static final Random rand = new Random();
+	/** generates the name of a temporary file that is not in use
+	 * 
+	 * @param ctx_str - part of PFTT that needs this temporary filename
+	 * @param suffix - string that is appended to end of file name (ex: .php file extension)
+	 * @return
+	 */
+	public String mCreateTempName(String ctx_str, String suffix) {
+		return mCreateTempName(getTempDir(), ctx_str, suffix);
+	}
+	/** generates the name of a temporary file in a custom directory
+	 * 
+	 * @param temp_dir
+	 * @param ctx_str
+	 * @param suffix
+	 * @return
+	 */
+	public String mCreateTempName(String temp_dir, String ctx_str, String suffix) {
+		StringBuilder sb = new StringBuilder(50);
+		String str = null;
+		
+		// generate random filename until one found that isn't in use
+		int j;
+		for ( int i=0 ; i < 65535 ; i++ ) {
+			sb.append(temp_dir);
+			//sb.append(dirSeparator()); // getTempDir() returns path ending with / or \
+			sb.append("PFTT-");
+			if (StringUtil.isNotEmpty(ctx_str)) {
+				sb.append(ctx_str);
+				sb.append('-');
+			}
+			for (j=0 ; j < 10 ; j++ )
+				sb.append((char)( rand.nextInt(26) + 65 ));
+			if (StringUtil.isNotEmpty(suffix))
+				sb.append(suffix);
+			str = sb.toString();
+			
+			//
+			if (mExists(str)) {
+				sb.setLength(0); // important
+				continue;
+			} else {
+				break;
+			}
+		}
+		
+		return str;
+	} // end public String mCreateTempName
+	public String mCreateTempName(Class<?> clazz, String suffix) {
+		return mCreateTempName(FileSystemScenario.toContext(clazz), suffix);
+	}
+	public String mCreateTempName(Class<?> clazz) {
+		return mCreateTempName(FileSystemScenario.toContext(clazz));
+	}
+	public String mCreateTempName(String temp_dir, Class<?> clazz, String suffix) {
+		return mCreateTempName(temp_dir, FileSystemScenario.toContext(clazz), suffix);
+	}
+	public String mCreateTempName(String temp_dir, Class<?> clazz) {
+		return mCreateTempName(temp_dir, FileSystemScenario.toContext(clazz), null);
+	}
+	
+	public abstract boolean mExists(String phpExe);
+	public abstract boolean mDeleteIfExists(String string);
+	public abstract boolean mMove(String string, String string2) throws IllegalStateException, Exception;
+	
+	public abstract boolean mCreateDirs(String path2) throws IllegalStateException, IOException;
+	
+	public abstract boolean mDelete(String php_file) throws IllegalStateException, IOException;
+	public abstract boolean mSaveTextFile(String php_file, String php_code) throws IOException;
+
+	public abstract boolean mDeleteIfExistsElevated(String string);
+
+	public abstract String fixPath(String src_path);
+	
+	public abstract boolean mCopyElevated(String string, String dirname) throws IllegalStateException, Exception;
+
+	public abstract boolean mDeleteElevated(String string) throws IllegalStateException, IOException;
+	public abstract String mDirSeparator();
+	
+	public abstract boolean mCopy(String string, String datadir) throws IllegalStateException, Exception;
+	
+	public abstract boolean mIsDirectory(String path);
+	public abstract boolean mSaveTextFile(String filename, String text, CharsetEncoder ce) throws IllegalStateException, IOException;
+	public abstract boolean mMoveElevated(String src, String dst) throws IllegalStateException, Exception;
+	public abstract String getTempDir();
+	public abstract boolean mDeleteFileExtension(String dir, String ext);
+	public abstract boolean mDeleteChosenFiles(String dir, IFileChooser chr);
 
 } // end public abstract class Host

@@ -83,6 +83,7 @@ public class TextBuilder extends BuilderSupport {
 		@Override
 		public void append(StringWriter sw, int max_len) {
 			LinkedList<Integer> max_lengths = calcMaxLengths();
+			System.out.println("86 "+hashCode()+" "+max_lengths);
 			for ( Tr tr : trs ) {
 				tr.append(sw, max_lengths);
 				if (toplevel)
@@ -212,7 +213,16 @@ public class TextBuilder extends BuilderSupport {
 		} else if (name_str.equals("td")) {
 			final int colspan = attributes!=null && attributes.containsKey("colspan") ? Integer.parseInt(attributes.get("colspan").toString()) : 1;
 			
-			cur_td = new Td(colspan, value==null?"":StringUtil.toString(value));
+			// TODO temp cur_td = new Td(colspan, value==null?"":StringUtil.toString(value));
+			cur_td = new Td(1, value==null?"":StringUtil.toString(value));
+			if (colspan>1) {
+				cur_tr.add(cur_td);
+				for ( int i=1 ; i < colspan ; i++ ) {
+					cur_td = new Td(1, "");
+					if (i+1<colspan)
+						cur_tr.add(cur_td);
+				}
+			}
 		} else if (name_str.equals("tr")) {
 			cur_tr = new Tr();
 		} else if (name_str.equals("table")) {

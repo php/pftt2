@@ -3,6 +3,7 @@ package com.mostc.pftt.scenario;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Random;
@@ -14,6 +15,7 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.runner.AbstractPhpUnitTestCaseRunner;
 import com.mostc.pftt.util.TimerUtil;
@@ -134,13 +136,13 @@ public abstract class DatabaseScenario extends NetworkedServiceScenario {
 			Class.forName(getDriverClassName());
 			return true;
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(DatabaseScenario.class, ex);
 		}
 		return false;
 	}
 	
 	@Override
-	public DatabaseScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
+	public DatabaseScenarioSetup setup(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
 		final boolean is_production_database_server = layer==EScenarioSetPermutationLayer.PRODUCTION_OR_ALL_UP_TEST;
 		if (is_production_database_server) {
 			synchronized(production_setup_lock) {
@@ -216,8 +218,8 @@ public abstract class DatabaseScenario extends NetworkedServiceScenario {
 			return false; // doesn't get called
 		}
 		@Override
-		public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
-			r.prepareINI(cm, host, build, scenario_set, ini);
+		public boolean prepareINI(ConsoleManager cm, FileSystemScenario fs, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
+			return r.prepareINI(cm, fs, host, build, scenario_set, ini);
 		}
 		@Override
 		public String getPdoDbType() {
@@ -284,10 +286,15 @@ public abstract class DatabaseScenario extends NetworkedServiceScenario {
 		
 	} // end protected class ProxyDatabaseScenarioSetup
 	
+	public boolean isManaged() {
+		// TODO temp for azure
+		return true;//false;
+	}
+	
 	protected DatabaseScenarioSetup doSetup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer, boolean is_production_database_server) {
 		DatabaseScenarioSetup setup = createScenarioSetup(is_production_database_server);
 			
-		if (setup==null||!ensureDriverLoaded()||!setup.ensureServerStarted(cm, host, build, scenario_set, layer, is_production_database_server)||!setup.connect(cm))
+		if (setup==null||!ensureDriverLoaded()||(isManaged() && !setup.ensureServerStarted(cm, host, build, scenario_set, layer, is_production_database_server))||!setup.connect(cm))
 			return null;
 		
 		for ( int i=0 ; i < 30 ; i++ ) {
@@ -352,7 +359,7 @@ public abstract class DatabaseScenario extends NetworkedServiceScenario {
 				try {
 					return !connection.isClosed();
 				} catch ( SQLException ex ) {
-					ex.printStackTrace();
+					ConsoleManagerUtil.printStackTrace(DatabaseScenario.class, ex);
 				}
 			}
 			return false;
@@ -368,12 +375,12 @@ public abstract class DatabaseScenario extends NetworkedServiceScenario {
 						return true;
 					Thread.sleep(5000*(i+1)); // 5 10 15
 				} catch ( Exception ex ) {
-					ex.printStackTrace();
+					ConsoleManagerUtil.printStackTrace(DatabaseScenario.class, cm, ex);
 					ex_out = ex;
 				}
 			}
 			if (ex_out!=null && cm!=null)
-				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "connect", ex_out, "can't connect to Database server after several tries");
+				ConsoleManagerUtil.printStackTrace(EPrintType.CANT_CONTINUE, getClass(), cm, "connect", ex_out, "can't connect to Database server after several tries");
 			return false;
 		}
 		
@@ -386,7 +393,7 @@ public abstract class DatabaseScenario extends NetworkedServiceScenario {
 				connection = null;
 				return true;
 			} catch (SQLException ex) {
-				ex.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(DatabaseScenario.class, ex);
 			}
 			return false;
 		}
@@ -419,10 +426,15 @@ public abstract class DatabaseScenario extends NetworkedServiceScenario {
 		@Override
 		public boolean execute(String sql) {
 			try {
-				connection.createStatement().execute(sql);
-				return true;
+				Statement stmt = connection.createStatement();
+				System.out.println("sql "+stmt+" "+sql);
+				if (stmt!=null) {
+					stmt.execute(sql);
+					return true;
+				}
 			} catch (SQLException ex) {
-				ex.printStackTrace();
+				// TODO temp azure 
+				ConsoleManagerUtil.printStackTrace(DatabaseScenario.class, ex);
 			}
 			return false;
 		}
@@ -432,7 +444,7 @@ public abstract class DatabaseScenario extends NetworkedServiceScenario {
 			try {
 				return connection.createStatement().executeQuery(sql);
 			} catch (SQLException ex) {
-				ex.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(DatabaseScenario.class, ex);
 			}
 			return null;
 		}
@@ -548,12 +560,20 @@ public abstract class DatabaseScenario extends NetworkedServiceScenario {
 				//      (sometimes tests really mess up the db server)
 				disconnect();
 			} catch ( Throwable t ) {
-				t.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(DatabaseScenario.class, cm, t);
 			}
 		}
 
+		/** adds extensions and directives for this Scenario.
+		 * 
+		 * Typically, you should call PhpIni#addExtensionAndCheck to add extensions to
+		 * ensure the extension could be loaded (maybe the DLL/SO is missing or incompatible with this build)
+		 * @return 
+		 * @throws Exception 
+		 * 
+		 */
 		@Override
-		public abstract void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini);
+		public abstract boolean prepareINI(ConsoleManager cm, FileSystemScenario fs, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini);
 		
 		@Override
 		public boolean hasENV() {
@@ -595,6 +615,10 @@ public abstract class DatabaseScenario extends NetworkedServiceScenario {
 			return execute("DROP DATABASE "+db_name);
 		}
 		public boolean createDatabase(String db_name) {
+			//try {
+			//Thread.sleep(10000);
+			//} catch ( Exception ex ) {}
+			execute("DROP DATABASE IF EXISTS "+db_name); // TODO temp azure
 			return execute("CREATE DATABASE "+db_name);
 		}
 		public abstract boolean createDatabaseWithUser(String db_name, String user, String password);

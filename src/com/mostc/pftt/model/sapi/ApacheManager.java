@@ -19,9 +19,11 @@ import com.mostc.pftt.model.core.PhptSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.model.sapi.EApacheVersion.ApacheHttpdAndVersion;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
+import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.VisualStudioUtil;
@@ -63,7 +65,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			if (!host.isWindows())
 				return true;
 			final String openssl_exe = apache_dir + "\\bin\\openssl.exe";
-			if (!host.exists(openssl_exe)) {
+			if (!host.mExists(openssl_exe)) {
 				// can't check
 				cm.println(EPrintType.SKIP_OPTIONAL, ApacheManager.class, "Can't find OpenSSL.exe (can't check OpenSSL version, assuming its ok)");
 				return true;
@@ -93,10 +95,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		try {
 			return apache_version.getApacheVersion(cm, host, build);
 		} catch ( Exception ex ) {
-			if (cm==null)
-				ex.printStackTrace();
-			else
-				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, ApacheManager.class, "decideApacheVersion", ex, "");
+			ConsoleManagerUtil.printStackTrace(EPrintType.OPERATION_FAILED_CONTINUING, ApacheManager.class, cm, "decideApacheVersion", ex, "");
 			return EApacheVersion.FALLBACK;
 		}
 	}
@@ -118,17 +117,21 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 				cm.println(EPrintType.SKIP_OPERATION, getName(), "Error Apache requires TS PHP Build. NTS PHP Builds aren't supported with Apache mod_php.");
 				return null;
 			}
-			if (apache_version==EApacheVersion.APACHE_2_4)
-				dll = build.getBuildPath() + "/php5apache2_4.dll";
-			else
-				dll = build.getBuildPath() + "/php5apache2_2.dll";
-			if (!host.exists(dll)) {
+			if (build.is5(cm, host)) {
+				if (apache_version==EApacheVersion.APACHE_2_4)
+					dll = build.getBuildPath() + "/php5apache2_4.dll";
+				else
+					dll = build.getBuildPath() + "/php5apache2_2.dll";
+			} else {
+				dll = build.getBuildPath() + "/php7apache2_4.dll";
+			}
+			/* TODO temp if (!host.mExists(dll)) {
 				if (apache_version==EApacheVersion.APACHE_2_4)
 					cm.println(EPrintType.SKIP_OPERATION, getName(), "Error Apache 2.4 DLL not found with PHP Build");
 				else
 					cm.println(EPrintType.SKIP_OPERATION, getName(), "Error Apache 2.2 DLL not found with PHP Build");
 				return null;
-			}
+			}*/
 			
 			
 			// IMPORTANT: increase stack size or a few PCRE PHPTs will fail (default stack is large enough
@@ -150,19 +153,19 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 					// do it this way too -- it has been observed that method 1 does not work
 					// (YES, I verified the PATH env var was set correct/passed to Apache)
 					try {
-						host.deleteElevated(Host.dirname(prep.httpd)+"/icu*.dll");
+						host.mDeleteElevated(FileSystemScenario.dirname(prep.httpd)+"/icu*.dll");
 						
-						host.copyElevated(build.getBuildPath()+"/icu*.dll", Host.dirname(prep.httpd));
+						host.mCopyElevated(build.getBuildPath()+"/icu*.dll", FileSystemScenario.dirname(prep.httpd));
 					} catch ( Exception ex ) {
 						cm.addGlobalException(EPrintType.CLUE, getClass(), "prepareApache", ex, "couldn't copy ICU DLLs to Apache - php INTL extension may not be usable with Apache :(");
 					}
 					
 					// check OpenSSL version
 					if (!cm.isSkipSmokeTests()) {
-						if (!checkOpenSSLVersion(cm, host, build, apache_version, Host.dirname(Host.dirname(prep.httpd)))) {
+						/* TODO temp not for 5.6.15+ 5.5.27+ 7+ if (!checkOpenSSLVersion(cm, host, build, apache_version, FileSystemScenario.dirname(FileSystemScenario.dirname(prep.httpd)))) {
 							cm.println(EPrintType.SKIP_OPERATION, getClass(), "Apache built with different version of OpenSSL than the version PHP is built with. Can't use this Apache build!");
 							return null;
-						} 
+						} */
 					}
 					
 					this.cache_host = host;
@@ -178,9 +181,9 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		//    -httpd.conf
 		//    -php.ini
 		//    -error.log
-		prep.conf_dir = host.mktempname(temp_file_ctx);
+		prep.conf_dir = host.mCreateTempName(temp_file_ctx);
 		try {
-			host.mkdirs(prep.conf_dir);
+			host.mCreateDirs(prep.conf_dir);
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "prepareApache", ex, "Can't create temporary dir to run Apache", host, prep.conf_dir);
 			return null;
@@ -190,10 +193,10 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		if (prep.ini==null)
 			prep.ini = new PhpIni();
 		else if (StringUtil.isEmpty(prep.ini.getExtensionDir()))
-			prep.ini.setExtensionDir(host.fixPath(build.getDefaultExtensionDir())+host.dirSeparator());
-		else if (!prep.ini.getExtensionDir().endsWith(host.dirSeparator()))
+			prep.ini.setExtensionDir(host.fixPath(build.getDefaultExtensionDir())+host.mDirSeparator());
+		else if (!prep.ini.getExtensionDir().endsWith(host.mDirSeparator()))
 			// extension dir already set, but doesn't end with / or \
-			prep.ini.setExtensionDir(host.fixPath(prep.ini.getExtensionDir()+host.dirSeparator()));
+			prep.ini.setExtensionDir(host.fixPath(prep.ini.getExtensionDir()+host.mDirSeparator()));
 		//
 		
 		prep.php_conf_file = host.joinIntoOnePath(prep.conf_dir, "php.ini");
@@ -201,27 +204,30 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		prep.error_log = host.joinIntoOnePath(prep.conf_dir, "error.log");
 		
 		// apache configuration (also tells where to find php.ini. see PHPIniDir directive)
-		prep.conf_str = writeConfigurationFile(apache_version, host, dll, prep.conf_dir, prep.error_log, listen_address, port, docroot);
+		prep.conf_str = writeConfigurationFile(cm, apache_version, host, build, dll, prep.conf_dir, prep.error_log, listen_address, port, docroot);
+		System.out.println("conf_file "+prep.apache_conf_file+" "+prep.conf_dir); // TODO temp
 		
 		try {
-			host.saveTextFile(prep.php_conf_file, prep.ini.toString());
+			host.mSaveTextFile(prep.php_conf_file, prep.ini.toString());
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "prepareApache", ex, "Unable to save PhpIni: "+prep.php_conf_file, host, prep.php_conf_file);
 			return null;
 		}
+		//System.out.println(prep.conf_str);
 		try {
-			host.saveTextFile(prep.apache_conf_file, prep.conf_str);
+			host.mSaveTextFile(prep.apache_conf_file, prep.conf_str);
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "prepareApache", ex, "Unable to save Apache configuration: "+prep.apache_conf_file, host, prep.apache_conf_file);
 			return null;
 		}
+		//System.exit(0); // TODO temp
 		return prep;
 	} // end protected PreparedApache prepareApache
 	
 	private Host cache_host;
 	private String cache_httpd;
 	@Override
-	protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String, String> env, final String docroot, String listen_address, int port) {
+	protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, FileSystemScenario fs, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String, String> env, final String docroot, String listen_address, int port) {
 		EApacheVersion apache_version = decideApacheVersion(cm, host, build, this._apache_version);
 		ApacheHttpdAndVersion apache = apache_version.getHttpd(cm, host, build);
 		
@@ -240,9 +246,9 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		//
 		
 		final String cmdline = prep.httpd+" -X -f "+host.fixPath(prep.apache_conf_file);
-		
+		System.out.println("cmdline "+cmdline); // TODO temp
 		// @see #createWebServerInstance for where command is executed to create httpd.exe process
-		return new ApacheWebServerInstance(apache_version, build, this, docroot, cmdline, ini, env, listen_address, port, host, prep.conf_dir, prep.apache_conf_file, prep.error_log, prep.conf_str, prep.apache_version_str);
+		return new ApacheWebServerInstance(apache_version, build, this, docroot, cmdline, ini, env, listen_address, port, fs, host, prep.conf_dir, prep.apache_conf_file, prep.error_log, prep.conf_str, prep.apache_version_str);
 	} // end protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance
 	
 	public class ApacheWebServerInstance extends ManagedProcessWebServerInstance {
@@ -251,8 +257,8 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		protected final EApacheVersion apache_version;
 		protected SoftReference<String> log_ref;
 		
-		public ApacheWebServerInstance(EApacheVersion apache_version, PhpBuild build, ApacheManager ws_mgr, String docroot, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port, AHost host, String conf_dir, String apache_conf_file, String error_log, String conf_str, String apache_version_str) {
-			super(host, ws_mgr, docroot, cmd, ini, env, hostname, port);
+		public ApacheWebServerInstance(EApacheVersion apache_version, PhpBuild build, ApacheManager ws_mgr, String docroot, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port, FileSystemScenario fs, AHost host, String conf_dir, String apache_conf_file, String error_log, String conf_str, String apache_version_str) {
+			super(fs, host, ws_mgr, docroot, cmd, ini, env, hostname, port);
 			this.build = build;
 			this.apache_version = apache_version;
 			this.conf_dir = conf_dir;
@@ -282,7 +288,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			if (log_ref!=null)
 				log = log_ref.get();
 			if (log==null) {
-				log = host.getContents(error_log);
+				log = ""; // TODO temp host.mGetContents(error_log);
 				if (StringUtil.isNotEmpty(log)) {
 					log_ref = new SoftReference<String>(log);
 				}
@@ -305,7 +311,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 							readLogCache();
 						}
 						
-						host.delete(conf_dir);
+						host.mDelete(conf_dir);
 					} catch ( Exception ex ) {
 					}
 				}
@@ -344,7 +350,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		super.close(cm);
 		
 		LocalHost host = LocalHost.getInstance();
-		host.delete(host.getTempDir()+"/PFTT-ApacheManager-*");
+		host.mDelete(host.getTempDir()+"/PFTT-ApacheManager-*");
 	}
 
 	@Override
@@ -362,18 +368,24 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		return "Apache";
 	}
 	
-	public static String writeConfigurationFile(EApacheVersion apache_version, Host host, String php_dll_path, String conf_dir, String error_log, String listen_address, int port, String docroot) {
+	public static String writeConfigurationFile(ConsoleManager cm, EApacheVersion apache_version, Host host, PhpBuild build, String php_dll_path, String conf_dir, String error_log, String listen_address, int port, String docroot) {
 		// critical: path MUST NOT end with / or \
 		if (docroot.endsWith("/")||docroot.endsWith("\\"))
 			docroot = docroot.substring(0, docroot.length()-1);
 		// conf dir must use / not \
-		conf_dir = Host.toUnixPath(conf_dir);
+		conf_dir = FileSystemScenario.toUnixPath(conf_dir);
 		// and conf_dir must end with /
 		if (!conf_dir.endsWith("/"))
-			conf_dir += host.dirSeparator();
+			conf_dir += host.mDirSeparator();
 		
 		StringBuilder sb = new StringBuilder(400);
-		sb.append("LoadModule php5_module \""+AHost.toUnixPath(php_dll_path)+"\"\n"); 
+		/* TODO temp if (build.is5(cm, host)) {
+			sb.append("LoadModule php5_module \""+FileSystemScenario.toUnixPath(php_dll_path)+"\"\n");
+		} else {
+			sb.append("LoadModule php7_module \""+FileSystemScenario.toUnixPath(php_dll_path)+"\"\n");	
+		}*/
+		sb.append("LoadModule php7_module \""+build.fix_later()+"\" \n");
+		 
 		sb.append("PHPIniDir \""+conf_dir+"\"\n");
 		if (apache_version==EApacheVersion.APACHE_2_4)
 			sb.append("LoadModule authz_core_module modules/mod_authz_core.so\n");
@@ -435,10 +447,10 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		EApacheVersion apache_version = decideApacheVersion(cm, host, build, this._apache_version);
 		
 		EApacheVersion.ApacheHttpdAndVersion httpd = apache_version.getHttpd(cm, host, build);
-		if (!host.exists(httpd.httpd))
+		/* TODO temp if (!host.mExists(httpd.httpd))
 			return null;
 		else if (!host.isWindows())
-			return null; // don't need to do `-k install` on Linux
+			return null; // don't need to do `-k install` on Linux */
 		
 		try {
 			// install Windows service
@@ -478,10 +490,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 			try {
 				host.exec(httpd+" -k stop", Host.ONE_MINUTE);
 			} catch ( Exception ex ) {
-				if (cm==null)
-					ex.printStackTrace();
-				else
-					cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "close", ex, "Exception stopping Apache");
+				ConsoleManagerUtil.printStackTrace(EPrintType.CANT_CONTINUE, getClass(), cm, "close", ex, "Exception stopping Apache");
 			}
 		}
 

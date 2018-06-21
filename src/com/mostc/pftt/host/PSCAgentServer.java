@@ -26,14 +26,15 @@ import com.mostc.pftt.model.core.PhptSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.model.ui.UITestPack;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.results.PhptTestResult;
+import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.DebuggerManager;
-import com.mostc.pftt.util.ErrorUtil;
 
 /**
  * @see RemotePhptTestPackRunner - client side
@@ -44,6 +45,7 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 	protected final KXmlParser parser;
 	protected final KXmlSerializer serial;
 	protected final LocalHost host;
+	protected final FileSystemScenario fs;
 	protected InputStream parser_in;
 	protected OutputStream serial_out;
 	protected boolean no_result_file_for_pass_xskip_skip, randomize_order, thread_safety;
@@ -52,6 +54,7 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 	
 	public PSCAgentServer() {
 		host = LocalHost.getInstance();
+		fs = Scenario.LOCALFILESYSTEM_SCENARIO;
 		
 		run_test_times_list = new LinkedList<String>();
 		run_group_times_list = new LinkedList<String>();
@@ -267,8 +270,8 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 	}
 	
 	@Override
-	public void addGlobalException(EPrintType type, String ctx_str, Exception ex, String msg, Object a, Object b, Object c) {
-		String err_str = ErrorUtil.toString(ex)+"\nmsg="+msg+"\na="+a+" b="+b+" c="+c;
+	public void addGlobalException(EPrintType type, String ctx_str, Throwable ex, String msg, Object a, Object b, Object c) {
+		String err_str = ConsoleManagerUtil.toString(ex)+"\nmsg="+msg+"\na="+a+" b="+b+" c="+c;
 		
 		sendMessage("<globalException type=\""+type+"\" ctx=\""+ctx_str+"\">"+err_str+"</globalException>");
 	}
@@ -408,41 +411,41 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 
 	@Override
 	public void println(EPrintType type, Class<?> clazz, String string) {
-		println(type, Host.toContext(clazz), string);
+		println(type, FileSystemScenario.toContext(clazz), string);
 	}
 
 	@Override
-	public void addGlobalException(EPrintType type, Class<?> clazz, String method_name, Exception ex, String msg) {
+	public void addGlobalException(EPrintType type, Class<?> clazz, String method_name, Throwable ex, String msg) {
 		addGlobalException(type, clazz, method_name, ex, msg, null);
 	}
 
 	@Override
-	public void addGlobalException(EPrintType type, Class<?> clazz, String method_name, Exception ex, String msg, Object a) {
+	public void addGlobalException(EPrintType type, Class<?> clazz, String method_name, Throwable ex, String msg, Object a) {
 		addGlobalException(type, clazz, method_name, ex, msg, a, null);
 	}
 
 	@Override
-	public void addGlobalException(EPrintType type, Class<?> clazz, String method_name, Exception ex, String msg, Object a, Object b) {
+	public void addGlobalException(EPrintType type, Class<?> clazz, String method_name, Throwable ex, String msg, Object a, Object b) {
 		addGlobalException(type, clazz, method_name, ex, msg, a, b, null);
 	}
 
 	@Override
-	public void addGlobalException(EPrintType type, Class<?> clazz, String method_name, Exception ex, String msg, Object a, Object b, Object c) {
-		addGlobalException(type, Host.toContext(clazz, method_name), ex, msg, a, b, c);
+	public void addGlobalException(EPrintType type, Class<?> clazz, String method_name, Throwable ex, String msg, Object a, Object b, Object c) {
+		addGlobalException(type, FileSystemScenario.toContext(clazz, method_name), ex, msg, a, b, c);
 	}
 
 	@Override
-	public void addGlobalException(EPrintType type, String ctx_str, Exception ex, String msg) {
+	public void addGlobalException(EPrintType type, String ctx_str, Throwable ex, String msg) {
 		addGlobalException(type, ctx_str, ex, msg, null);
 	}
 
 	@Override
-	public void addGlobalException(EPrintType type, String ctx_str, Exception ex, String msg, Object a) {
+	public void addGlobalException(EPrintType type, String ctx_str, Throwable ex, String msg, Object a) {
 		addGlobalException(type, ctx_str, ex, msg, a, null);
 	}
 
 	@Override
-	public void addGlobalException(EPrintType type, String ctx_str, Exception ex, String msg, Object a, Object b) {
+	public void addGlobalException(EPrintType type, String ctx_str, Throwable ex, String msg, Object a, Object b) {
 		addGlobalException(type, ctx_str, ex, msg, a, b, null);
 	}
 
@@ -483,7 +486,7 @@ public abstract class PSCAgentServer implements ConsoleManager, ITestResultRecei
 	}
 	@Override
 	public void addTestException(AHost this_host, ScenarioSetSetup this_scenario_set, TestCase test_case, Throwable ex, Object a, Object b) {
-		String ex_str = ErrorUtil.toString(ex);
+		String ex_str = ConsoleManagerUtil.toString(ex);
 		if (a!=null)
 			ex_str += " a="+a;
 		if (b!=null)

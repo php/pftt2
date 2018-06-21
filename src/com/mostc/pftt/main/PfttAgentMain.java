@@ -30,7 +30,7 @@ public class PfttAgentMain extends PSCAgentServer {
 		
 		try {
 			// important: don't want to get WER popups on Windows (user isn't there to close them)
-			HostEnvUtil.prepareHostEnv(host, this, build, false);
+			HostEnvUtil.prepareHostEnv(fs, host, this, build, false);
 			
 			if (test_names.isEmpty()) {
 				// run all test cases in test-pack

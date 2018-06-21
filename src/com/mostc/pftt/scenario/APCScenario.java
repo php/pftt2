@@ -26,7 +26,7 @@ public class APCScenario extends CodeCacheScenario {
 	}
 
 	@Override
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
+	public IScenarioSetup setup(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build, PhpIni ini) {
 		// TODO download and install APC.dll
 		
 		ini.putSingle("apc.enable", 1);
@@ -43,7 +43,7 @@ public class APCScenario extends CodeCacheScenario {
 	}
 
 	@Override
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
+	public IScenarioSetup setup(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
 		return SETUP_FAILED;
 	}
 	

@@ -2,8 +2,6 @@ package com.mostc.pftt.runner;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -30,6 +28,7 @@ import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 import com.mostc.pftt.runner.PhptTestPreparer.PreparedPhptTestCase;
 import com.mostc.pftt.scenario.CliScenario;
+import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 
 /** one of the core classes. runs a PhptTestCase.
@@ -40,15 +39,15 @@ import com.mostc.pftt.scenario.ScenarioSetSetup;
  * 
  */
 
-public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
+public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner {
 	protected final CliSAPIInstance sapi;
 	protected boolean debugger_attached;
 	protected EExecutableType exe_type = EExecutableType.CLI;
 	protected ExecOutput output;
 	protected String query_string, shell_script, test_cmd, shell_file;
 	
-	public CliPhptTestCaseRunner(boolean xdebug, CliScenario sapi_scenario, CliSAPIInstance sapi, PhpIni ini, PhptThread thread, PreparedPhptTestCase prep, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack, boolean debugger_attached) {
-		super(xdebug, sapi_scenario, ini, thread, prep, cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack);
+	public CliPhptTestCaseRunner(boolean xdebug, FileSystemScenario fs, CliScenario sapi_scenario, CliSAPIInstance sapi, PhpIni ini, PhptThread thread, PreparedPhptTestCase prep, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack, boolean debugger_attached) {
+		super(xdebug, fs, sapi_scenario, ini, thread, prep, cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack);
 		this.sapi = sapi;
 		this.debugger_attached = debugger_attached;
 	}
@@ -123,9 +122,9 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			env.put(ENV_QUERY_STRING, query_string);
 		
 		// these 2 env vars are critical for some tests (ex: ext/phar)
-		env.put(ENV_PATH_TRANSLATED, host.fixPath(prep.test_file));
+		env.put(ENV_PATH_TRANSLATED, fs.fixPath(prep.test_file));
 		// critical: this is actually how php-cgi gets the script filename (not with -f switch. not sure why run-test uses -f too)
-		env.put(ENV_SCRIPT_FILENAME, host.fixPath(prep.test_file));
+		env.put(ENV_SCRIPT_FILENAME, fs.fixPath(prep.test_file));
 	
 		if (prep.test_case.containsSection(EPhptSection.COOKIE)) {
 			env.put(ENV_HTTP_COOKIE, prep.test_case.getTrim(EPhptSection.COOKIE));
@@ -157,7 +156,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		test_cmd = sapi.createPhpCommand(exe_type, prep.test_file, query_string, debugger_attached);
 		
 		prepareSTDIN();
-		// TODO temp createShellScript();
+		createShellScript();
 	} // end protected void prepareTest
 	
 	@Override
@@ -195,6 +194,12 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			env.put(ENV_PATH_TRANSLATED, prep.skipif_file);
 		if (!env.containsKey(ENV_SCRIPT_FILENAME))
 			env.put(ENV_SCRIPT_FILENAME, prep.skipif_file);
+		env.put(ENV_TEST_PHP_EXECUTABLE, build.getPhpExe());
+		env.put(ENV_PHP_PATH, build.getPhpExe());
+		env.put(ENV_PFTT_SCENARIO_SET, scenario_set.getNameWithVersionInfo());
+		env.put(ENV_PFTT_IS, "1");
+		
+		
 		
 		// execute SKIPIF (5 second timeout since its a little bit of PHP code that doesn't do much)
 		output = sapi.execute(exe_type, prep.base_file_name, prep.skipif_file, null, 5, env, active_test_pack.getStorageDirectory(), debugger_attached);
@@ -323,7 +328,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		} else {
 			fw.println("#!/bin/sh");
 		}
-		fw.println("cd "+host.fixPath(prep.test_dir));
+		fw.println("cd "+fs.fixPath(prep.test_dir));
 		for ( String name : env.keySet()) {
 			String value = env.get(name);
 			if (value==null)
@@ -344,12 +349,8 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		fw.println(test_cmd);
 		fw.close();
 		shell_script = sw.toString();
-		FileWriter w = new FileWriter(shell_file);
-		fw = new PrintWriter(w);
-		fw.print(shell_script);
-		fw.flush();
-		fw.close();
-		w.close();		
+		fs.saveTextFile(shell_file, shell_script);
+			
 		
 		if (!host.isWindows()) {
 			// make shell script executable on linux
@@ -367,9 +368,7 @@ public class CliPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		}
 		new File(stdin_file).getParentFile().mkdirs();
 		if (stdin_post!=null) {
-			FileOutputStream fw = new FileOutputStream(stdin_file);
-			fw.write(stdin_post);
-			fw.close();
+			fs.saveFile(stdin_file, stdin_post);
 		}
 	} // end protected void prepareSTDIN
 

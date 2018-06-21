@@ -18,12 +18,13 @@ import com.mostc.pftt.host.AHost.ExecHandle;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
+import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.DebuggerManager;
 import com.mostc.pftt.util.DebuggerManager.Debugger;
 import com.mostc.pftt.util.TimerUtil.RepeatingThread;
-import com.mostc.pftt.util.ErrorUtil;
 import com.mostc.pftt.util.TimerUtil;
 import com.mostc.pftt.util.WinDebugManager;
 
@@ -129,7 +130,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 	
 	static final int MAX_TOTAL_ATTEMPTS = 3;
 	@Override
-	protected WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String,String> env, final String docroot, final boolean debugger_attached, final Object server_name, boolean is_replacement) {
+	protected WebServerInstance createWebServerInstance(ConsoleManager cm, FileSystemScenario fs, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String,String> env, final String docroot, final boolean debugger_attached, final Object server_name, boolean is_replacement) {
 		String sapi_output = "";
 		int port_attempts;
 		boolean found_port;
@@ -168,7 +169,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 			AHost.ExecHandle handle = null;
 			try {
 				// provide a ManagedProcessWebServerInstance to handle the running web server instance
-				final ManagedProcessWebServerInstance web = createManagedProcessWebServerInstance(cm, host, scenario_set, build, ini, env, docroot, listen_address, port);
+				final ManagedProcessWebServerInstance web = createManagedProcessWebServerInstance(cm, fs, host, scenario_set, build, ini, env, docroot, listen_address, port);
 				if (web==null)
 					break; // fall through to returning CrashedWebServerInstance
 				
@@ -219,7 +220,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 										try {
 											output_str = handlef.getOutput();
 										} catch ( Exception ex ) {
-											output_str = ErrorUtil.toString(ex);
+											output_str = ConsoleManagerUtil.toString(ex);
 										}
 										// notify of web server crash
 										//
@@ -241,7 +242,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 					// make sure process is killed in this case (don't kill crashed process)
 					handle.close(cm);
 				
-				sapi_output += ErrorUtil.toString(ex) + "\n";
+				sapi_output += ConsoleManagerUtil.toString(ex) + "\n";
 			}
 		} // end for
 		
@@ -249,7 +250,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 		sapi_output = "PFTT: could not start web server instance (after "+total_attempts+" attempts)... giving up.\n" + sapi_output;
 		
 		// return this failure message to client code
-		return new CrashedWebServerInstance(host, this, ini, env, sapi_output);
+		return new CrashedWebServerInstance(fs, host, this, ini, env, sapi_output);
 	} // end protected WebServerInstance createWebServerInstance
 	
 	@Overridable
@@ -257,7 +258,7 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 		return canConnect(listen_address, port, is_replacement);
 	}
 
-	protected abstract ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String, String> env, String docroot, String listen_address, int port);
+	protected abstract ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, FileSystemScenario fs, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String, String> env, String docroot, String listen_address, int port);
 	
 	public abstract class ManagedProcessWebServerInstance extends WebServerInstance {
 		protected Debugger debug_handle;
@@ -266,8 +267,8 @@ public abstract class AbstractManagedProcessesWebServerManager extends WebServer
 		protected final String docroot;
 		protected ExecHandle process;
 		
-		public ManagedProcessWebServerInstance(AHost host, AbstractManagedProcessesWebServerManager ws_mgr, String docroot, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port) {
-			super(host, ws_mgr, LocalHost.splitCmdString(cmd), ini, env);
+		public ManagedProcessWebServerInstance(FileSystemScenario fs, AHost host, AbstractManagedProcessesWebServerManager ws_mgr, String docroot, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port) {
+			super(fs, host, ws_mgr, LocalHost.splitCmdString(cmd), ini, env);
 			this.docroot = docroot;
 			this.cmd = cmd;
 			this.hostname = hostname;

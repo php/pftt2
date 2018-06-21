@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +15,7 @@ import javax.annotation.Nullable;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.main.Config;
 import com.mostc.pftt.main.IENVINIFilter;
+import com.mostc.pftt.model.core.EPhptSection;
 import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.ESAPIType;
 import com.mostc.pftt.model.core.PhpBuild;
@@ -24,13 +26,16 @@ import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.model.sapi.TestCaseGroupKey;
 import com.mostc.pftt.results.AbstractPhptRW;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhpResultPackWriter;
 import com.mostc.pftt.results.PhptResultWriter;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
+import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.IScenarioSetup;
+import com.mostc.pftt.scenario.SAPIScenario;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.FileSystemScenario.ITestPackStorageDir;
@@ -79,9 +84,9 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 				//
 				// CRITICAL: that directory paths end with / (@see {PWD} in PhpIni)
 				// don't want long directory paths or lots of nesting, just put in /php-sdk (breaks some PHPTs)
-				local_test_pack_dir = local_path + "/TEMP-" + AHost.basename(src_test_pack.getSourceDirectory()) + (i==0?"":"-" + millis) + "/";
-				remote_test_pack_dir = remote_path + "/TEMP-" + AHost.basename(src_test_pack.getSourceDirectory()) + (i==0?"":"-" + millis) + "/";
-				if (!storage_host.exists(remote_test_pack_dir) || !runner_host.exists(local_test_pack_dir))
+				local_test_pack_dir = local_path + "/TEMP-" + FileSystemScenario.basename(src_test_pack.getSourceDirectory()) + (i==0?"":"-" + millis) + "/";
+				remote_test_pack_dir = remote_path + "/TEMP-" + FileSystemScenario.basename(src_test_pack.getSourceDirectory()) + (i==0?"":"-" + millis) + "/";
+				if (!storage_host.mExists(remote_test_pack_dir) || !runner_host.mExists(local_test_pack_dir))
 					break;
 				millis++;
 				if (i%100==0)
@@ -97,13 +102,13 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 		if (active_test_pack==null) {
 			try {
 				// if -auto or -phpt-not-in-place console option, copy test-pack and run phpts from that copy
-				if (!cm.isPhptNotInPlace() && file_scenario.allowPhptInPlace())
+				if (!cm.isPhptNotInPlace() && runner_fs.allowPhptInPlace())
 					active_test_pack = src_test_pack.installInPlace(cm, runner_host);
 				else
 					// copy test-pack onto (remote) file system
-					active_test_pack = src_test_pack.install(cm, storage_host, local_test_pack_dir, remote_test_pack_dir);
+					active_test_pack = src_test_pack.install(cm, storage_host, local_test_pack_dir, remote_test_pack_dir, sapi_scenario);
 			} catch (Exception ex ) {
-				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "runTestList", ex, "", storage_host, file_scenario, active_test_pack);
+				cm.addGlobalException(EPrintType.OPERATION_FAILED_CONTINUING, getClass(), "runTestList", ex, "", storage_host, runner_fs, active_test_pack);
 			}
 			if (active_test_pack==null) {
 				cm.println(EPrintType.CANT_CONTINUE, getClass(), "unable to install test-pack, giving up!");
@@ -132,17 +137,21 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 	}
 	
 	@Override
-	protected TestCaseGroupKey createGroupKey(PhptTestCase test_case, TestCaseGroupKey group_key) throws Exception {
+	protected TestCaseGroupKey createGroupKey(ConsoleManager cm,
+				PhptTestCase test_case, AHost storage_host,
+				TestCaseGroupKey group_key, PhpBuild build, FileSystemScenario fs,
+				AHost runner_host) throws Exception {
 		String name = test_case.getName();
 		if (name.contains("mysql")||name.contains("phar")||name.contains("svsvmsg")||name.contains("sysvshm")||name.contains("posix")||name.contains("ftp")||name.contains("dba")||name.contains("sybase")||name.contains("interbase")||name.contains("ldap")||name.contains("imap")||name.contains("oci")||name.contains("soap")||name.contains("xmlrpc")||name.contains("pcntl")||name.contains("odbc")||name.contains("snmp")) {
 			// TODO temp 5/29
-			twriter.addResult(runner_host, scenario_set_setup, src_test_pack, new PhptTestResult(runner_host, EPhptTestStatus.SKIP, test_case, "Skip", null, null, null, null, null, null, null, null, null, null, null));
-			return null;
+			//twriter.addResult(runner_host, scenario_set_setup, src_test_pack, new PhptTestResult(runner_host, EPhptTestStatus.SKIP, test_case, "Skip", null, null, null, null, null, null, null, null, null, null, null));
+			//return null;
 		}
 		
 		final ESAPIType sapi_type = sapi_scenario.getSAPIType();
 		for ( Scenario scenario : scenario_set ) {
 			// usually just asking sapi_scenario, sometimes file system scenario
+			// TODO impl -no_early_skip option
 			if (scenario.willSkip(cm, twriter, runner_host, scenario_set_setup, sapi_type, build, src_test_pack, test_case)) {
 				// #willSkip will record the PhptTestResult explaining why it was skipped
 				//
@@ -154,17 +163,20 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 		
 		
 		//
-		group_key = sapi_scenario.createTestGroupKey(cm, runner_host, build, scenario_set_setup, active_test_pack, test_case, filter, group_key);
+		group_key = sapi_scenario.createTestGroupKey(cm, fs, runner_host, build, scenario_set_setup, active_test_pack, test_case, filter, group_key);
+		if (group_key==null)
+			return null;
 		
 		//
 		// now that PhpIni is generated, we know which extensions will be loaded
 		//  so we can now skip tests of extensions that aren't loaded (faster than running every test's SKIPIF section)
-		if (sapi_scenario.willSkip(cm, twriter, runner_host, scenario_set_setup, sapi_scenario.getSAPIType(), group_key.getPhpIni(), build, src_test_pack, test_case)) {
+		///* TODO temp azure
+		 if (sapi_scenario.willSkip(cm, twriter, runner_host, scenario_set_setup, sapi_scenario.getSAPIType(), build, src_test_pack, test_case)) {
 			// #willSkip will record the PhptTestResult explaining why it was skipped
 			return null;
 		}
 		
-		test_case.prep = preparer.prepare(test_case, runner_host, active_test_pack);
+		test_case.prep = preparer.prepare(test_case, fs, runner_host, active_test_pack);
 		
 		return group_key;
 	} // end protected TestCaseGroupKey createGroupKey
@@ -240,9 +252,10 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 		non_thread_safe_exts.addAll(b);
 	} // end protected void postGroup
 	
+	@Override
 	protected void reportGroups() {
 		PhptResultWriter phpt = (PhptResultWriter) ((PhpResultPackWriter)twriter).getPHPT(runner_host, scenario_set_setup, src_test_pack.getNameAndVersionString());
-		// TODO temp phpt.reportGroups(thread_safe_groups, non_thread_safe_exts);
+		phpt.reportGroups(thread_safe_groups, non_thread_safe_exts);
 	} 
 	
 	@Override
@@ -253,28 +266,126 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 	}
 	
 	public class PhptThread extends TestPackThread<PhptTestCase> {
-		protected AbstractPhptTestCaseRunner r;
+		protected final LinkedList<AbstractPhptTestCaseRunner> runners;
 		
 		protected PhptThread(boolean parallel) {
 			super(parallel);
+			runners = new LinkedList<AbstractPhptTestCaseRunner>();
 		}
 
 		@Override
 		protected void runTest(TestCaseGroupKey group_key, PhptTestCase test_case, boolean debugger_attached) throws IOException, Exception, Throwable {
-			r = sapi_scenario.createPhptTestCaseRunner(this, group_key, test_case.prep, cm, twriter, runner_host, scenario_set_setup, build, src_test_pack, active_test_pack, xdebug, debugger_attached);
-			twriter.notifyStart(runner_host, scenario_set_setup, src_test_pack, test_case);
-			r.runTest(cm, this, LocalPhptTestPackRunner.this);
+			
+			
+			if (test_case.containsSection(EPhptSection.PFTT_RUN_PARALLEL)) {
+				
+				PhptTestCase.RunParallelSettings set;
+				
+				try {
+					set = test_case.getRunParallelSettings();
+				} catch ( Exception ex ) {
+					twriter.addResult(runner_host, scenario_set_setup, src_test_pack, new PhptTestResult(runner_host, EPhptTestStatus.BORK, test_case, ConsoleManagerUtil.toString(ex), null, null, null, null, null, null, null, null, null, null, null));
+					return;
+				}
+				set.parallel = Math.min(Math.max(1, set.parallel), max_thread_count);
+				set.run_times = Math.max(set.parallel, set.run_times);
+				cm.println(EPrintType.CLUE, PhptThread.class, "Run Parallel: running parallel copies of test: "+test_case.getName()+" parallel="+set.parallel+" run_times="+set.run_times);
+				
+				// PFTT_RUN_PARALLEL implementation
+				
+				for (int i=0;i<set.run_times;i++) {
+					runners.add( sapi_scenario.createPhptTestCaseRunner(this, group_key, test_case.prep, cm, twriter, runner_fs, runner_host, scenario_set_setup, build, src_test_pack, active_test_pack, xdebug, debugger_attached) );
+				}
+				
+				twriter.notifyStart(runner_host, scenario_set_setup, src_test_pack, test_case);
+				
+				for (int i=0;i<set.run_times;i+=set.parallel) {
+					
+					cm.println(EPrintType.CLUE, PhptThread.class, "Run Parallel: STARTING batch of tests: "+test_case.getName()+" parallel="+set.parallel+" run_times="+set.run_times+" total="+i);
+					
+					LinkedList<Thread> threads = new LinkedList<Thread>();
+					// run all tests and wait for all tests to finish BEFORE starting next batch of tests
+					for (int j=0;j<set.parallel;j++) {
+						final AbstractPhptTestCaseRunner r = runners.removeFirst();
+						
+						// Note: does not record the result status of each test, instead records the WORST result
+						//       @see com.mostc.pftt.results.PhptResultWriter.writeResult(ConsoleManager, AHost, ScenarioSetSetup, PhptTestResult)
+						//
+						//       so, if 1 of the test runs is a FAIL the test is marked FAIL (even if the others PASS) ... or TIMEOUT
+						Thread t = new Thread("RunParallel-"+i+"-j") {
+							public void run() {
+								try {
+									r.runTest(cm, PhptThread.this, LocalPhptTestPackRunner.this);
+								} catch ( Throwable t) {
+									ConsoleManagerUtil.printStackTraceDebug(AbstractLocalTestPackRunner.class, cm, t);
+								}
+							}
+						};
+						threads.add(t);
+						t.start();
+					}
+					Iterator<Thread> it = threads.iterator();
+					while (it.hasNext()) {
+						Thread t = it.next();
+						
+						// block until thread finished or max test time exceeded
+						t.join(PhptTestCase.MAX_TEST_TIME_SECONDS*1000);
+						it.remove();
+					}
+					if (!threads.isEmpty()) {
+						// Test Result: TIMEOUT (one or more tests timed out => they all TIMEOUT)
+
+						twriter.addResult(runner_host, scenario_set_setup, src_test_pack, new PhptTestResult(runner_host, EPhptTestStatus.TIMEOUT, test_case, "test timed out", null, null, null, null, null, null, null, null, null, null, null));
+						
+						cm.println(EPrintType.CLUE, PhptThread.class, "Run Parallel: One instance of test timed out, all tests timed out, stopping test: "+test_case.getName()+" run_times="+set.run_times+" total="+(i+set.parallel));
+						
+						break;
+					} else {
+						cm.println(EPrintType.CLUE, PhptThread.class, "Run Parallel: FINISHED batch of tests: "+test_case.getName()+" parallel="+set.parallel+" run_times="+set.run_times+" total="+(i+set.parallel));
+					}
+				}
+				
+				
+				// ensure stopped and empty
+				for (AbstractPhptTestCaseRunner r:runners) {
+					r.stop(true);
+				}
+				runners.clear();				
+				//
+				
+				
+			} else {
+			
+			
+				AbstractPhptTestCaseRunner r = sapi_scenario.createPhptTestCaseRunner(this, group_key, test_case.prep, cm, twriter, runner_fs, runner_host, scenario_set_setup, build, src_test_pack, active_test_pack, xdebug, debugger_attached);
+				
+				if (runners.isEmpty()) {
+					runners.add(r);
+				} else {
+					// do NOT add() set() to overwrite existing
+					runners.set(0, r);
+				}
+				
+				twriter.notifyStart(runner_host, scenario_set_setup, src_test_pack, test_case);
+				
+				r.runTest(cm, this, LocalPhptTestPackRunner.this);
+			
+			}
 		}
 
 		@Override
 		protected void stopRunningCurrentTest() {
-			if (r!=null)
+			for (AbstractPhptTestCaseRunner r:runners) {
 				r.stop(true);
+			}
 		}
 		
 		@Override
 		protected int getMaxTestRuntimeSeconds() {
-			return r == null ? 60 : r.getMaxTestRuntimeSeconds();
+			for (AbstractPhptTestCaseRunner r:runners) {
+				return r.getMaxTestRuntimeSeconds();
+			}
+			return 60;
 		}
 
 		@Override
@@ -295,7 +406,7 @@ public class LocalPhptTestPackRunner extends AbstractLocalTestPackRunner<PhptAct
 		}
 		
 	} // end public class PhptThread
-
+	
 	@Override
 	protected void showTally() {
 		AbstractPhptRW phpt = ((PhpResultPackWriter)twriter).getPHPT(runner_host, scenario_set_setup, src_test_pack.getNameAndVersionString());

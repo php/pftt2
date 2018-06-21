@@ -77,7 +77,7 @@ public class TestCaseCodeCoverage implements ISerializer {
 	public void setLineState(String filename, int line_num, ELineState stat) {
 		FileInfo file_info = file_map.get(filename);
 		if (file_info==null) {
-			file_info = new FileInfo(host == null ? null : host.readFileAsStringEx(filename));
+			file_info = new FileInfo(host == null ? null : host.mReadFileAsStringEx(filename));
 			
 			file_map.put(file_root == null ? filename : AHost.pathFrom(file_root, filename), file_info);
 		} else {

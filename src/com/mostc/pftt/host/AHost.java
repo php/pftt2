@@ -17,8 +17,10 @@ import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.results.AbstractTestResultRW;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
+import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.util.NTStatus;
 
 /** Abstracts host management so client code doesn't need to care if host is local or remote(ssh).
@@ -106,7 +108,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 	 * @throws IllegalStateException
 	 * @throws IOException
 	 */
-	public abstract String getContents(String file) throws IllegalStateException, IOException;
+	public abstract String mGetContents(String file) throws IllegalStateException, IOException;
 	/** gets the contents of the file as single unicode string, automatically detecting the character set and converting
 	 * the bytes to a string (supports exotic charsets like EUC-CN or SHIFT_JS).
 	 * 
@@ -118,7 +120,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 	 * @throws IllegalStateException
 	 * @throws IOException
 	 */
-	public abstract String getContentsDetectCharset(String file, CharsetDeciderDecoder cdd) throws IllegalStateException, IOException;
+	public abstract String mGetContentsDetectCharset(String file, CharsetDeciderDecoder cdd) throws IllegalStateException, IOException;
 	/** opens a file to be read line by line
 	 * 
 	 * @param file
@@ -127,8 +129,8 @@ public abstract class AHost extends Host implements IProgramRunner {
 	 * @throws FileNotFoundException
 	 * @throws IOException
 	 */
-	public abstract ByLineReader readFile(String file) throws IllegalStateException, FileNotFoundException, IOException;
-	public abstract ByLineReader readFile(String file, Charset cs) throws IllegalStateException, FileNotFoundException, IOException;
+	public abstract ByLineReader mReadFile(String file) throws IllegalStateException, FileNotFoundException, IOException;
+	public abstract ByLineReader mReadFile(String file, Charset cs) throws IllegalStateException, FileNotFoundException, IOException;
 	/** opens a file to be read line by line, automatically detecting charset
 	 * 
 	 * @param file
@@ -138,7 +140,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 	 * @throws FileNotFoundException
 	 * @throws IOException
 	 */
-	public abstract ByLineReader readFileDetectCharset(String file, CharsetDeciderDecoder cdd) throws IllegalStateException, FileNotFoundException, IOException;
+	public abstract ByLineReader mReadFileDetectCharset(String file, CharsetDeciderDecoder cdd) throws IllegalStateException, FileNotFoundException, IOException;
 	/** executes the given program
 	 * 
 	 * @see #FOUR_HOURS
@@ -237,7 +239,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 	public abstract void downloadCompressWith7Zip(ConsoleManager cm, String ctx_str, String src, AHost dst_host, String dst) throws IllegalStateException, IOException, Exception;
 	
 	public void downloadCompressWith7Zip(ConsoleManager cm, Class<?> clazz, AHost src_host, String src, String dst) throws IllegalStateException, IOException, Exception {
-		downloadCompressWith7Zip(cm, toContext(clazz), src, src_host, dst);
+		downloadCompressWith7Zip(cm, FileSystemScenario.toContext(clazz), src, src_host, dst);
 	}
 	
 	/** downloads file from remote source to local destination
@@ -265,12 +267,20 @@ public abstract class AHost extends Host implements IProgramRunner {
 	public abstract void uploadCompressWith7Zip(ConsoleManager cm, String ctx_str, AHost src_host, String src, String dst) throws IllegalStateException, IOException, Exception;
 	
 	public void uploadCompressWith7Zip(ConsoleManager cm, Class<?> clazz, String src, AHost src_host, String dst) throws IllegalStateException, IOException, Exception {
-		uploadCompressWith7Zip(cm, toContext(clazz), src_host, src, dst);
+		uploadCompressWith7Zip(cm, FileSystemScenario.toContext(clazz), src_host, src, dst);
 	}
 	
 	@Override
 	public String getTempDir() {
-		if (tmp_dir!=null)
+		// store everything in one `temp` dir
+		// this directory has to be used for phpunit
+		// use it for everything else too, (instead of %TEMP% or $TEMP)
+		// to avoid having to clean two directories
+		if (tmp_dir==null)
+			// be sure to terminate with directory sep
+			tmp_dir = joinIntoOnePath(getPhpSdkDir(), "temp") + mDirSeparator();
+		return tmp_dir;
+		/*if (tmp_dir!=null)
 			return tmp_dir;
 		if (isWindows()) {
 			tmp_dir = getEnvValue("TEMP");
@@ -286,7 +296,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 			return tmp_dir;			
 		} else {
 			return tmp_dir = "/tmp/";
-		}
+		}*/
 	}
 	@Override
 	public String getSystemDrive() {
@@ -538,7 +548,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 			try {
 				return NTStatus.getStatusCodeName(exit_code);
 			} catch ( Exception ex ) {
-				ex.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(AHost.class, ex);
 			}
 		}
 		return null;
@@ -659,11 +669,11 @@ public abstract class AHost extends Host implements IProgramRunner {
 	}
 		
 	public void upload7ZipFileAndDecompress(ConsoleManager cm, Class<?> clazz, AHost src_host, String src, String dst) throws IllegalStateException, IOException, Exception {
-		upload7ZipFileAndDecompress(cm, toContext(clazz), src_host, src, dst);
+		upload7ZipFileAndDecompress(cm, FileSystemScenario.toContext(clazz), src_host, src, dst);
 	}
 	
 	public void download7ZipFileAndDecompress(ConsoleManager cm, Class<?> clazz, String src, AHost dst_host, String dst) throws IllegalStateException, IOException, Exception {
-		download7ZipFileAndDecompress(cm, toContext(clazz), src, dst_host, dst);
+		download7ZipFileAndDecompress(cm, FileSystemScenario.toContext(clazz), src, dst_host, dst);
 	}
 	
 	/** uploads a 7zip file from local source to remote destination and decompresses it.
@@ -682,13 +692,13 @@ public abstract class AHost extends Host implements IProgramRunner {
 	public void upload7ZipFileAndDecompress(ConsoleManager cm, String ctx_str, AHost src_host, String src, String dst) throws IllegalStateException, IOException, Exception {
 		ensure7Zip(cm, src_host);
 		
-		String dst_7zip_file = mktempname(ctx_str, ".7z");
+		String dst_7zip_file = mCreateTempName(ctx_str, ".7z");
 		
 		upload(src, dst_7zip_file);
 		
 		decompress(cm, src_host, dst_7zip_file, dst);
 		
-		delete(dst_7zip_file);
+		mDelete(dst_7zip_file);
 	}
 	
 	/** Downloads remote 7Zip file to local destination and decompresses it.
@@ -707,13 +717,13 @@ public abstract class AHost extends Host implements IProgramRunner {
 	public void download7ZipFileAndDecompress(ConsoleManager cm, String ctx_str, String src, AHost dst_host, String dst) throws IllegalStateException, IOException, Exception {
 		ensure7Zip(cm, dst_host);
 		
-		String dst_7zip_file = dst_host.mktempname(ctx_str, ".7z");
+		String dst_7zip_file = dst_host.mCreateTempName(ctx_str, ".7z");
 		
 		download(src, dst_7zip_file);
 		
 		dst_host.decompress(cm, this, dst_7zip_file, dst);
 		
-		dst_host.delete(dst_7zip_file);
+		dst_host.mDelete(dst_7zip_file);
 	}
 	
 	private boolean install_7zip_attempt;
@@ -734,7 +744,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 	private boolean reported_7zip_already_installed = false;
 	private static void install7Zip(ConsoleManager cm, AHost src_host, AHost dst_host) throws Exception {
 		final String src_7z_path = src_host.getPfttBinDir()+"\\7za.exe";
-		if (!src_host.exists(src_7z_path)) {
+		if (!src_host.mExists(src_7z_path)) {
 			if (cm!=null)
 				cm.println(EPrintType.WARNING, "install7Zip", "7za.exe not found on source: "+src_host);
 			return;
@@ -742,7 +752,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 		
 		final String dst_7z_path = dst_host.getPfttBinDir()+"\\7za.exe";
 		
-		if (dst_host.exists(dst_7z_path) && src_host.getSize(src_7z_path)==dst_host.getSize(dst_7z_path)) {
+		if (dst_host.mExists(dst_7z_path) && src_host.mSize(src_7z_path)==dst_host.mSize(dst_7z_path)) {
 			if (dst_host.reported_7zip_already_installed)
 				return;
 			if (cm!=null)
@@ -756,10 +766,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 			
 			cm.println(EPrintType.CLUE, "install7Zip", "7z.exe installed on: "+dst_host+" (src="+src_host+")");
 		} catch ( Exception ex ) {
-			if (cm!=null)
-				cm.addGlobalException(EPrintType.CLUE, "install7Zip", ex, "Unable to install 7z.exe on dst="+dst_host+" from src="+src_host);
-			else
-				ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(EPrintType.CLUE, AHost.class, cm, "install7Zip", ex, "Unable to install 7z.exe on dst="+dst_host+" from src="+src_host);
 			throw ex;
 		}
 	} // end private static void install7Zip
@@ -781,7 +788,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 		dst = fixPath(dst);
 		
 		String output_dir = dst;
-		mkdirs(output_dir);
+		mCreateDirs(output_dir);
 
 		if (cm!=null)
 			cm.println(EPrintType.IN_PROGRESS, getClass(), "decompress output_dir="+output_dir+" zip7_file="+zip7_file);
@@ -803,7 +810,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 	public boolean compress(ConsoleManager cm, AHost ohost, String src, String zip7_file) throws IllegalStateException, IOException, Exception {
 		ensure7Zip(cm, ohost);
 		
-		if (isDirectory(src)) {
+		if (mIsDirectory(src)) {
 			// IMPORTANT: make path point to contents of directory otherwise,
 			//            it'll create a directory in the archive
 			src += isWindows() ? "\\**" : "/**";
@@ -853,7 +860,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 		} else {
 			is_x64 = Boolean.FALSE;
 			try {
-				ByLineReader reader = readFile("/proc/cpuinfo");
+				ByLineReader reader = mReadFile("/proc/cpuinfo");
 				String line;
 				
 				while ( reader.hasMoreLines() && ( line = reader.readLine() ) != null ) {
@@ -865,7 +872,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 				
 				reader.close();
 			} catch ( Exception ex ) {
-				ex.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(AHost.class, ex);
 			}
 			return is_x64;
 		}
@@ -948,7 +955,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 				return cpu_count = Integer.parseInt(getEnvValue("NUMBER_OF_PROCESSORS"));
 		
 			int proc = 0;
-			ByLineReader r = readFile("/proc/cpuinfo");
+			ByLineReader r = mReadFile("/proc/cpuinfo");
 			String line;
 			while (r.hasMoreLines()) {
 				line = r.readLine();
@@ -960,7 +967,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 			}
 			return cpu_count = Math.max(1, proc);
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(AHost.class, ex);
 			
 			return cpu_count = 1;
 		}
@@ -1040,7 +1047,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 				}
 			}
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(AHost.class, ex);
 		}
 		return 0L;
 	} // end public long getTotalPhysicalMemoryK
@@ -1063,14 +1070,14 @@ public abstract class AHost extends Host implements IProgramRunner {
 		if (paths1!=null) {
 			for ( String p : paths1 ) {
 				if (sb.length() > 0)
-					sb.append(pathsSeparator());
+					sb.append(mPathsSeparator());
 				sb.append(p);
 			}
 		}
 		if (paths2!=null) {
 			for ( String p : paths2 ) {
 				if (sb.length() > 0)
-					sb.append(pathsSeparator());
+					sb.append(mPathsSeparator());
 				sb.append(p);
 			}
 		}
@@ -1087,7 +1094,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 		for ( int i=1 ; i < paths.length ; i++ ) {
 			if (paths[i]==null)
 				continue;
-			sb.append(pathsSeparator());
+			sb.append(mPathsSeparator());
 			sb.append(paths[i]);
 		}
 		return sb.toString();
@@ -1098,10 +1105,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 		try {
 			return decompress(cm, this, zip_file, base_dir);
 		} catch ( Exception ex ) {
-			if (cm==null)
-				ex.printStackTrace();
-			else
-				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "unzip", ex, "unable to unzip");
+			ConsoleManagerUtil.printStackTrace(EPrintType.CANT_CONTINUE, getClass(), cm, "unzip", ex, "unable to unzip");
 		}
 		return false;
 	}
@@ -1118,7 +1122,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 	 * @throws Exception
 	 */
 	public TempFileExecOutput powershell(Class<?> clazz, ConsoleManager cm, CharSequence ps_code, int timeout) throws Exception {
-		return powershell(toContext(clazz), cm, ps_code, timeout);
+		return powershell(FileSystemScenario.toContext(clazz), cm, ps_code, timeout);
 	}
 	
 	private boolean set_unrestricted;
@@ -1133,9 +1137,9 @@ public abstract class AHost extends Host implements IProgramRunner {
 			set_unrestricted = true;
 		}
 		
-		String temp_file = mktempname(ctx_str, ".ps1");
+		String temp_file = mCreateTempName(ctx_str, ".ps1");
 		
-		saveTextFile(temp_file, ps_code.toString());
+		mSaveTextFile(temp_file, ps_code.toString());
 		
 		return new TempFileExecOutput(temp_file, execElevatedOut("Powershell -File "+temp_file, timeout));
 	} // end public TempFileExecOutput powershell
@@ -1155,31 +1159,22 @@ public abstract class AHost extends Host implements IProgramRunner {
 		return execElevatedOut(cmd, timeout_sec, env, stdin_data, charset, chdir, test_thread, slow_timeout_sec).printOutputIfCrash(ctx_str, cm).isSuccess();
 	}
 
-	/** deletes all files in directory with extension
-	 * 
-	 * deleteFileExtension(".", ".tmp"); => deletes all .tmp files
-	 * 
-	 * @param dir
-	 * @param ext
-	 */
-	public abstract boolean deleteFileExtension(String dir, String ext);
-	
 	/** returns TRUE if host is a Windows Server (2008, 2008r2, 2012) or FALSE
 	 * if its not (Windows Vista, 7, 8, Linux, BSD, etc...)
 	 * 
 	 * @return
 	 */
 	public boolean isWindowsServer() {
-		return getOSNameLong().contains("Server");
+		return isWindows() && getOSNameLong().contains("Server");
 	}
 	
-	public String readFileAsString(String path) throws IllegalStateException, FileNotFoundException, IOException {
-		return IOUtil.toString(readFile(path), IOUtil.ONE_MEGABYTE);
+	public String mReadFileAsString(String path) throws IllegalStateException, FileNotFoundException, IOException {
+		return IOUtil.toString(mReadFile(path), IOUtil.ONE_MEGABYTE);
 	}
 	
-	public String readFileAsStringEx(String path) {
+	public String mReadFileAsStringEx(String path) {
 		try {
-			return readFileAsString(path);
+			return mReadFileAsString(path);
 		} catch ( Exception ex ) {
 			return null;
 		}
@@ -1199,8 +1194,31 @@ public abstract class AHost extends Host implements IProgramRunner {
 	public RunRequest createRunRequest(ConsoleManager cm, Class<?> ctx_clazz) {
 		return createRunRequest(cm, ctx_clazz == null ? null : ctx_clazz.getSimpleName());
 	}
+	
+	@Override
+	public boolean mDeleteIfExists(String path) {
+		try {
+			return mDelete(path);
+		} catch ( Exception ex ) {
+			
+		}
+		return false;
+	}
+
+	@Override
+	public boolean mDeleteIfExistsElevated(String path) {
+		try {
+			return mDeleteElevated(path);
+		} catch ( Exception ex ) {
+			
+		}
+		return false;
+	}
 
 	protected abstract boolean deleteSingleFile(String path);
 	public abstract boolean isBusy();
-	
+
+	public abstract boolean mSaveFile(String stdin_file, byte[] stdin_post) throws IllegalStateException, IOException;
+
+
 } // end public abstract class AHost

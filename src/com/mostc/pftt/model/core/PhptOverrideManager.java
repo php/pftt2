@@ -2,7 +2,8 @@ package com.mostc.pftt.model.core;
 
 import com.mostc.pftt.host.Host;
 
-/** 
+/** when a PHPT needs a different EXPECTed output for an OS/Version
+ * does that by overriding/replacing the EXPECTed output if on that OS/Version
  *
  */
 

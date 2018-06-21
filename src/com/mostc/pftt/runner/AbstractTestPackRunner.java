@@ -9,19 +9,32 @@ import com.mostc.pftt.main.Config;
 import com.mostc.pftt.model.SourceTestPack;
 import com.mostc.pftt.model.TestCase;
 import com.mostc.pftt.model.core.PhpBuild;
+import com.mostc.pftt.scenario.FileSystemScenario;
+import com.mostc.pftt.scenario.MountedRemoteFileSystemScenario;
+import com.mostc.pftt.scenario.SAPIScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 public abstract class AbstractTestPackRunner<S extends SourceTestPack<?, T>, T extends TestCase> {
 	protected final PhpBuild build;
 	protected AHost storage_host;
 	protected final AHost runner_host;
+	protected final FileSystemScenario runner_fs;
 	protected final ScenarioSet scenario_set;
+	protected final SAPIScenario sapi_scenario;
 	
 	public AbstractTestPackRunner(ScenarioSet scenario_set, PhpBuild build, AHost storage_host, AHost runner_host) {
 		this.scenario_set = scenario_set;
 		this.build = build;
 		this.storage_host = storage_host;
 		this.runner_host = runner_host;
+		
+		//
+		runner_fs = FileSystemScenario.getFileSystemScenario(scenario_set);
+		if (runner_fs instanceof MountedRemoteFileSystemScenario) {
+			storage_host = ((MountedRemoteFileSystemScenario)runner_fs).getRemoteHost();
+		}
+		
+		sapi_scenario = SAPIScenario.getSAPIScenario(scenario_set);
 	}
 	
 	public AHost getRunnerHost() {

@@ -5,6 +5,7 @@ import java.io.File;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.DebugPack;
+import com.mostc.pftt.scenario.FileSystemScenario;
 
 public class PhpDebugPack extends DebugPack {
 	protected final String path;
@@ -22,7 +23,7 @@ public class PhpDebugPack extends DebugPack {
 		if (StringUtil.endsWithIC(path, ".zip")) {
 			// automatically decompress
 			String zip_file = path;
-			path = host.uniqueNameFromBase(AHost.removeFileExt(path));
+			path = host.uniqueNameFromBase(FileSystemScenario.removeFileExt(path));
 				
 			if (!host.unzip(zip_file, path))
 				return null;

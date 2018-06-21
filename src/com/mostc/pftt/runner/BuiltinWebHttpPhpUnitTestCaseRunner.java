@@ -17,12 +17,12 @@ import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
 import com.mostc.pftt.scenario.BuiltinWebServerScenario;
-import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 
 public class BuiltinWebHttpPhpUnitTestCaseRunner extends HttpPhpUnitTestCaseRunner {
 
-	public BuiltinWebHttpPhpUnitTestCaseRunner(BuiltinWebServerScenario sapi_scenario, PhpUnitThread thread, ITestResultReceiver tmgr,
+	public BuiltinWebHttpPhpUnitTestCaseRunner(FileSystemScenario fs, BuiltinWebServerScenario sapi_scenario, PhpUnitThread thread, ITestResultReceiver tmgr,
 			HttpParams params, HttpProcessor httpproc,
 			HttpRequestExecutor httpexecutor, WebServerManager smgr,
 			WebServerInstance web, Map<String, String> globals,
@@ -31,7 +31,7 @@ public class BuiltinWebHttpPhpUnitTestCaseRunner extends HttpPhpUnitTestCaseRunn
 			PhpUnitTestCase test_case, String my_temp_dir,
 			Map<String, String> constants, String include_path,
 			String[] include_files, PhpIni ini, boolean reflection_only) {
-		super(sapi_scenario, thread, tmgr, params, httpproc, httpexecutor, smgr, web, globals, env, cm, host,
+		super(fs, sapi_scenario, thread, tmgr, params, httpproc, httpexecutor, smgr, web, globals, env, cm, host,
 				scenario_set_setup, build, test_case, my_temp_dir, constants, include_path,
 				include_files, ini, reflection_only);
 	}

@@ -25,12 +25,12 @@ import com.github.mattficken.io.StringUtil;
 import com.github.mattficken.io.Trie;
 import com.ibm.icu.charset.CharsetICU;
 import com.mostc.pftt.host.AHost;
-import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.TestCase;
 import com.mostc.pftt.model.core.PhpBuild.PHPOutput;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.runner.PhptTestPreparer.PreparedPhptTestCase;
+import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.apache.regexp.RE;
 import com.mostc.pftt.util.apache.regexp.RECompiler;
@@ -95,7 +95,7 @@ public class PhptTestCase extends TestCase {
 			// several 61367 tests that aren't thread-safe (temp files)
 			new String[]{"ext/libxml/tests/bug61367"},
 			new String[]{"sapi/cli/tests/php_cli_server_"},
-			new String[]{"ext/standard/tests/strings/vprintf_"},
+			new String[]{"ext/standard/tests/strings/vfprintf_"},
 			new String[]{"ext/firebird/", "ext/pdo_firebird/"},
 			new String[]{"ext/sybase/"},
 			new String[]{"ext/interbase/", "ext/pdo_interbase/"},
@@ -111,6 +111,9 @@ public class PhptTestCase extends TestCase {
 			new String[]{"ext/spl/tests/splfileobject_fgetcsv_"},
 			new String[]{"ext/pdo_sqlsrv/tests/"},
 			new String[]{"ext/sqlsrv/tests/"},
+			new String[]{"ext/phar/tests/phar_convert_"},
+			new String[]{"ext/phar/tests/tar/phar_convert_"},
+			new String[]{"ext/phar/tests/zip/phar_convert_"},
 		};
 	// PHPT test files end with .phpt
 	public static final String PHPT_FILE_EXTENSION = ".phpt";
@@ -164,13 +167,13 @@ public class PhptTestCase extends TestCase {
 		
 	static final Pattern PATTERN_AZ = Pattern.compile("^--([_A-Z]+)--");
 	public static PhptTestCase load(AHost host, PhptSourceTestPack test_pack, boolean keep_all, String test_name, ITestResultReceiver twriter, PhptTestCase parent) throws FileNotFoundException, IOException {
-		String file = host.fixPath(test_pack.getSourceDirectory()+host.dirSeparator()+test_name); 
+		String file = host.fixPath(test_pack.getSourceDirectory()+host.mDirSeparator()+test_name); 
 		
 		PhptTestCase test_case = new PhptTestCase(test_pack, test_name);
 		test_case.parent = parent;
 		
 		DefaultCharsetDeciderDecoder cdd = newCharsetDeciderDecoder();
-		ByLineReader reader = PhptTestCase.isNon8BitCharset(test_case.name) ? host.readFileDetectCharset(file, cdd) : host.readFile(file);
+		ByLineReader reader = PhptTestCase.isNon8BitCharset(test_case.name) ? host.mReadFileDetectCharset(file, cdd) : host.mReadFile(file);
 			
 		
 		String line = reader.readLine();
@@ -200,24 +203,28 @@ public class PhptTestCase extends TestCase {
 					continue;
 				}
 				
-				section = EPhptSection.valueOf(section_str);
+				section = EPhptSection.valueOfEx(section_str);
 				if (section==null) {
 					test_case.unsupported_info = section_str;
 					continue;
 				}
 				
 				test_case.section_text.put(section, "");
-				secfile = section.equals(EPhptSection.FILE) || section_str.equals(EPhptSection.FILEEOF) || section_str.equals(EPhptSection.FILE_EXTERNAL);
+				secfile = section.equals(EPhptSection.FILE) || section_str.equals(EPhptSection.FILEEOF) || section_str.equals(EPhptSection.FILE_EXTERNAL) || section_str.equals(EPhptSection.EXPECTREGEX_EXTERNAL);
 				secdone = false;
 				continue;
 			}
 			
 			// Add to the section text.
 			if (!secdone) {
-				String a = test_case.get(section_str);
-				if (a==null)
-					a = "";
-				test_case.section_text.put(section, a+line+"\n");
+				try {
+					String a = test_case.get(section_str);
+					if (a==null)
+						a = "";
+					test_case.section_text.put(section, a+line+"\n");
+				} catch ( IllegalArgumentException ex ) {
+					
+				}
 			}
 	
 			// End of actual test?
@@ -228,9 +235,85 @@ public class PhptTestCase extends TestCase {
 		
 		// validate all sections
 		for ( EPhptSection v : test_case.getSections() ) {
+			// EXPECTREGEX_EXTERNAL and EXPECT_EXTERNAL will create a EXPECTREGEX or EXPECT
+			// section BUT leave the EXPECTREGEX_EXTERNAL or EXPECT_EXTERNAL section
+			// 
+			// at which point #validate will fail
+			// see below
 			if (!v.validate(test_case))
 				test_case.bork_info = "Invalid section: "+v;
 		}
+		//
+		// EXPECTREGEX_EXTERNAL support (all here)
+		if (test_case.containsSection(EPhptSection.EXPECTREGEX_EXTERNAL)) {
+			String filename = host.joinIntoOnePath(
+					test_pack.getSourceDirectory(),
+					// important: trim
+					test_case.getTrim(EPhptSection.EXPECTREGEX_EXTERNAL)
+				);
+			if (!host.mExists(filename)) {
+				filename = host.joinIntoOnePath(
+						test_pack.getSourceDirectory(),
+						FileSystemScenario.dirname(test_name),
+						test_case.getTrim(EPhptSection.EXPECTREGEX_EXTERNAL)
+					);
+			}
+			// load external file contents into a virtual EXPECTREGEX section
+			if (host.mExists(filename)) {
+				String expectregex = host.mReadFileAsString(filename);
+				if (expectregex!=null) {
+					test_case.put(EPhptSection.EXPECTREGEX, expectregex);
+				}
+			} else {
+				test_case.bork_info = "EXPECTREGEX_EXTERNAL not found "+filename;
+			}
+			// leave EXPECTREGEX_EXTERNAL section so user can tell it was used
+		} else if (test_case.containsSection(EPhptSection.EXPECT_EXTERNAL)) {
+			String filename = host.joinIntoOnePath(
+					test_pack.getSourceDirectory(),
+					// important: trim
+					test_case.getTrim(EPhptSection.EXPECT_EXTERNAL)
+				);
+			if (!host.mExists(filename)) {
+				filename = host.joinIntoOnePath(
+						test_pack.getSourceDirectory(),
+						FileSystemScenario.dirname(test_name),
+						test_case.getTrim(EPhptSection.EXPECT_EXTERNAL)
+					);
+			}
+			// load external file contents into a virtual EXPECT section
+			if (host.mExists(filename)) {
+				String expectregex = host.mReadFileAsString(filename);
+				if (expectregex!=null) {
+					test_case.put(EPhptSection.EXPECT, expectregex);
+				}
+			} else {
+				test_case.bork_info = "EXPECT_EXTERNAL not found "+filename;
+			}
+		} else if (test_case.containsSection(EPhptSection.EXPECTF_EXTERNAL)) {
+			String filename = host.joinIntoOnePath(
+					test_pack.getSourceDirectory(),
+					// important: trim
+					test_case.getTrim(EPhptSection.EXPECTF_EXTERNAL)
+				);
+			if (!host.mExists(filename)) {
+				filename = host.joinIntoOnePath(
+						test_pack.getSourceDirectory(),
+						FileSystemScenario.dirname(test_name),
+						test_case.getTrim(EPhptSection.EXPECTF_EXTERNAL)
+					);
+			}
+			// load external file contents into a virtual EXPECT section
+			if (host.mExists(filename)) {
+				String expectregex = host.mReadFileAsString(filename);
+				if (expectregex!=null) {
+					test_case.put(EPhptSection.EXPECTF, expectregex);
+				}
+			} else {
+				test_case.bork_info = "EXPECTF_EXTERNAL not found "+filename;
+			}
+		}
+		//
 		
 		// the redirect section allows a set of tests to be reused outside of a given test dir
 		if (test_case.bork_info == null) {
@@ -275,7 +358,7 @@ public class PhptTestCase extends TestCase {
 	 * @return
 	 */
 	public static String normalizeTestCaseName(String name) {
-		return AHost.toUnixPath(name).toLowerCase();
+		return FileSystemScenario.toUnixPath(name).toLowerCase();
 	}
 	
 	public PhptSourceTestPack getTestPack() {
@@ -311,7 +394,7 @@ public class PhptTestCase extends TestCase {
 	public PhpIni getINI(PhptActiveTestPack active_test_pack, AHost host) {
 		PhpIni this_ini;
 		String this_ini_pwd;
-		String ini_pwd = active_test_pack.getStorageDirectory()+"/"+AHost.dirname(name);
+		String ini_pwd = active_test_pack.getStorageDirectory()+"/"+FileSystemScenario.dirname(name);
 		if (this.ini_pwd!=null) {
 			this_ini_pwd = this.ini_pwd.get();
 			if (this_ini_pwd != null && this_ini_pwd.equals(ini_pwd)) {
@@ -379,7 +462,7 @@ public class PhptTestCase extends TestCase {
 	}
 	
 	public static boolean hasWarningOrFatalError(String input) {
-		return input.contains("Warning") || input.contains("Notice") || input.contains("Fatal Error") || input.contains("Deprecated") || input.contains("Strict Standards:");
+		return input.contains("PHP Warning") ||input.contains("PHP Error") || input.contains("PHP Notice") || input.contains("Warning") || input.contains("Notice") || input.contains("Fatal Error") || input.contains("Deprecated") || input.contains("Strict Standards:");
 	}
 	
 	public boolean expectsWarningOrFatalError() {
@@ -399,7 +482,7 @@ public class PhptTestCase extends TestCase {
 	public static String removeWarningAndFatalError(String input) {
 		StringBuilder sb = new StringBuilder(input.length());
 		for ( String line : StringUtil.splitLines(input)) {
-			if (!(line.startsWith("Warning")||line.startsWith("Notice")||line.startsWith("Fatal Error")||line.startsWith("Deprecated")||line.startsWith("Strict Standards:"))) {
+			if (!(line.startsWith("Warning")||line.startsWith("PHP Warning")||line.startsWith("PHP Error")||line.startsWith("PHP Notice")||line.startsWith("Notice")||line.startsWith("Deprecated")||line.startsWith("Strict Standards:"))) {
 				sb.append(line);
 				sb.append("\n");
 			}
@@ -597,7 +680,7 @@ public class PhptTestCase extends TestCase {
 	}
 	
 	public boolean containsSection(String string) {
-		return section_text.containsKey(EPhptSection.valueOf(string));
+		return section_text.containsKey(EPhptSection.valueOfEx(string));
 	}
 	
 	/** checks if test contains any 1 or more of the given sections
@@ -747,7 +830,7 @@ public class PhptTestCase extends TestCase {
 	 * @return
 	 */
 	public String getShortName() {
-		return AHost.basename(getBaseName());
+		return FileSystemScenario.basename(getBaseName());
 	}
 	
 	/** returns the folder the test is in
@@ -755,7 +838,7 @@ public class PhptTestCase extends TestCase {
 	 * @return
 	 */
 	public String getFolder() {
-		return AHost.dirname(getBaseName());
+		return FileSystemScenario.dirname(getBaseName());
 	}
 	
 	public boolean isWin32Test() {
@@ -800,12 +883,12 @@ public class PhptTestCase extends TestCase {
 		
 		code = "<?php function a() {\n"+code+" \n}\n $a = a();\n $a=$a['TESTS'];\n if (is_array($a)) { foreach ($a as $b) { echo $b.\"\\n\";}} elseif (is_string($a)) {echo $a.\"\\n\";} ?>";
 		
-		PHPOutput output = build.eval(host, code).printHasFatalError(Host.toContext(getClass(), "readRedirectTestNames"), cm);
+		PHPOutput output = build.eval(host, code).printHasFatalError(FileSystemScenario.toContext(getClass(), "readRedirectTestNames"), cm);
 		
 		ArrayList<String> test_names = new ArrayList<String>(2);
 		if (!output.hasFatalError()) {
-			String wbase_dir = AHost.toUnixPath(AHost.dirname(output.temp_file));
-			String ubase_dir = AHost.toWindowsPath(AHost.dirname(output.temp_file));
+			String wbase_dir = FileSystemScenario.toUnixPath(FileSystemScenario.dirname(output.temp_file));
+			String ubase_dir = FileSystemScenario.toWindowsPath(FileSystemScenario.dirname(output.temp_file));
 			for (String line : output.getLines()) {
 				// code may use __DIR__ to get its current directory => strip off current directory(/tmp, etc...)
 				if (line.startsWith(wbase_dir)||line.startsWith(ubase_dir)) {
@@ -851,7 +934,7 @@ public class PhptTestCase extends TestCase {
 				
 				String code = "<?php function a() {\n"+env_str+" \n}\n $a=a(); echo $a.\"\\n\"; ?>";
 				
-				PHPOutput output = build.eval(host, code).printHasFatalError(Host.toContext(getClass(), "getENV"), cm);
+				PHPOutput output = build.eval(host, code).printHasFatalError(FileSystemScenario.toContext(getClass(), "getENV"), cm);
 				
 				lines = output.hasFatalError() ? null : output.getLines();
 				
@@ -898,7 +981,7 @@ public class PhptTestCase extends TestCase {
 		if (StringUtil.isNotEmpty(rt_str)) {
 			String code = "<?php function a() {\n"+rt_str+" \n}\n $a = a();\n $a=$a['ENV'];\n foreach ($a as $b=>$c) { echo $b.\"\\n\"; echo $c.\"\\n\"; } ?>";
 			
-			PHPOutput output = build.eval(host, code).printHasFatalError(Host.toContext(getClass(), "readRedirectTestEnvironment"), cm);
+			PHPOutput output = build.eval(host, code).printHasFatalError(FileSystemScenario.toContext(getClass(), "readRedirectTestEnvironment"), cm);
 			if (!output.hasFatalError()) {
 				String[] lines = output.getLines();
 				for ( int i=0 ; i < lines.length ; i+=2) {
@@ -946,6 +1029,49 @@ public class PhptTestCase extends TestCase {
 	 */
 	public boolean isNon8BitCharset() {
 		return isNon8BitCharset(getName());
+	}
+	
+	
+	public static final class RunParallelSettings {
+		public int run_times, parallel;
+		
+		public RunParallelSettings() {
+			
+		}
+		
+		public RunParallelSettings(int run_times, int parallel) {
+			this.run_times = run_times;
+			this.parallel = parallel;
+		}
+	}
+	
+	/** parses PFTT_RUN_PARALLEL section
+	 * 
+	 * @return
+	 * @throws NumberFormatException - if settings are not integers
+	 * @throws IllegalArgumentException - any invalid data in the section
+	 */
+	public RunParallelSettings getRunParallelSettings() throws NumberFormatException, IllegalArgumentException {
+		RunParallelSettings set = new RunParallelSettings(1, 1);
+		String str = get(EPhptSection.PFTT_RUN_PARALLEL);
+		if (StringUtil.isEmpty(str))
+			return set;
+				
+		String[] lines = StringUtil.splitLines(str);
+		for (String line:lines) {
+			line = line.replaceAll(" ", "");
+			
+			if (line.startsWith("#") || line.startsWith("//")) {
+				// skip comment
+				continue;
+			} else if (StringUtil.startsWithIC(line, "parallel=")) {
+				set.parallel = Integer.parseInt(line.substring("parallel=".length()));
+			} else if (StringUtil.startsWithIC(line, "run_times=")) {
+				set.run_times = Integer.parseInt(line.substring("run_times=".length()));
+			}
+		}
+		
+		return set;
 	}
 	
 	// SOMEDAY put this in a test-pack configuration or default configuration
@@ -1129,13 +1255,14 @@ public class PhptTestCase extends TestCase {
 	public static int hashCode(PhpIni ini) {
 		if (ini==null)
 			return 1;
-		int hc = 1;
+		return ini.hashCode();
+		/* TODO temp int hc = 1;
 		for ( String d : DECISIVE_DIRECTIVES ) {
 			String v = ini.get(d);
 			if (v!=null)
 				hc += v.hashCode();
 		}
-		return hc;
+		return hc;*/
 	}
 	public static final String[] DECISIVE_DIRECTIVES = new String[]{
 			//"filter.default",

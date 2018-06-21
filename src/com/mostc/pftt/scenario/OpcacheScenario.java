@@ -13,6 +13,7 @@ import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.core.PhptActiveTestPack;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.util.DllVersion;
 
@@ -61,15 +62,26 @@ public class OpcacheScenario extends CodeCacheScenario {
 					break;
 				}
 			} catch ( Exception ex ) {
-				ex.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(MySQLScenario.class, cm, ex);
 			}
 		}
 	}
 	
 	@Overridable 
-	public void prepareINI(PhpIni ini, String dll_path) {
+	public boolean prepareINI(ConsoleManager cm, FileSystemScenario fs, AHost host, PhpIni ini, PhpBuild build, String dll_path) {
 		// must be absolute path to opcache.so
 		ini.putMulti("zend_extension", dll_path);
+		try {
+			if (!build.isExtensionEnabled(cm, fs, host, null, ini, FileSystemScenario.basename(dll_path))) {
+				if (cm!=null)
+					cm.println(EPrintType.CLUE, getClass(), "Opcache DLL not loadable: "+dll_path);
+				return false;
+			}
+		} catch ( Exception ex ) {
+			if (cm!=null)
+				cm.println(EPrintType.CLUE, getClass(), "Could not tell if Opcache DLL was loadable: "+dll_path);
+			return false;
+		}
 		
 		ini.putSingle("opcache.enable", 1);
 		// CRITICAL: for CliScenario
@@ -86,6 +98,10 @@ public class OpcacheScenario extends CodeCacheScenario {
 		ini.putSingle("opcache.fast_shutdown", 1);
 		ini.putSingle("opcache.enable_file_override", 1);
 		
+		// 0-5 0=> silent (default) 4=debug 5=>extra debug
+		// @see http://php.net/manual/en/opcache.configuration.php
+		ini.putSingle("opcache.log_verbosity_level", 0);
+		
 		// by default all passes are run, turn off some
 		/*ini.putSingle("opcache.optimization_level",
 				ZEND_OPTIMIZER_PASS_3
@@ -100,29 +116,30 @@ public class OpcacheScenario extends CodeCacheScenario {
 				//|ZEND_OPTIMIZER_PASS_5
 				//|ZEND_OPTIMIZER_PASS_9
 			);*/
+		return true;
 	}
 	
 	@Overridable
-	protected DllVersion getSoPath55Plus(ConsoleManager cm, Host host, PhpBuild build, boolean rename) throws IllegalStateException, Exception {
+	protected DllVersion getSoPath55Plus(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build, boolean rename) throws IllegalStateException, Exception {
 		String ext_dir = build.getDefaultExtensionDir();
 		
 		// @see NoCodeCacheScenario for .dont_load
-		if (rename && host.exists(ext_dir + "/php_opcache.dont_load"))
-			host.move(ext_dir + "/php_opcache.dont_load", ext_dir + "/php_opcache.so");
-		if (host.exists(ext_dir + "/php_opcache.so"))
+		if (rename && host.mExists(ext_dir + "/php_opcache.dont_load"))
+			fs.move(ext_dir + "/php_opcache.dont_load", ext_dir + "/php_opcache.so");
+		if (host.mExists(ext_dir + "/php_opcache.so"))
 			return new DllVersion(ext_dir, "php_opcache.so", "php_opcache.pdb", build.getVersionRevision(cm, host));
 		else
 			return null;
 	}
 	
 	@Overridable
-	protected DllVersion getDllPath55Plus(ConsoleManager cm, Host host, PhpBuild build, boolean rename) throws IllegalStateException, Exception {
+	protected DllVersion getDllPath55Plus(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build, boolean rename) throws IllegalStateException, Exception {
 		String ext_dir = build.getDefaultExtensionDir();
 		
 		// @see NoCodeCacheScenario for .dont_load
-		if (rename && host.exists(ext_dir + "/php_opcache.dont_load"))
-			host.move(ext_dir + "/php_opcache.dont_load", ext_dir + "/php_opcache.dll");
-		if (host.exists(ext_dir + "/php_opcache.dll"))
+		if (rename && host.mExists(ext_dir + "/php_opcache.dont_load"))
+			fs.move(ext_dir + "/php_opcache.dont_load", ext_dir + "/php_opcache.dll");
+		if (host.mExists(ext_dir + "/php_opcache.dll"))
 			return new DllVersion(ext_dir, "php_opcache.dll", "php_opcache.pdb", build.getVersionRevision(cm, host));
 		else
 			return null;
@@ -148,11 +165,11 @@ public class OpcacheScenario extends CodeCacheScenario {
 		return new DllVersion(host.getPfttCacheDir()+"/dep/opcache/php_opcache-7.0.2-5.4-nts-vc9-x86", "php_opcache.dll", "7.0.2");
 	}
 	
-	public DllVersion getDllPath(ConsoleManager cm, Host host, PhpBuild build) {
-		return getDllPath(cm, host, build, false);
+	public DllVersion getDllPath(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build) {
+		return getDllPath(cm, fs, host, build, false);
 	}
 	
-	protected DllVersion getDllPath(ConsoleManager cm, Host host, PhpBuild build, boolean rename) {
+	protected DllVersion getDllPath(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build, boolean rename) {
 		if (this.set_dll!=null)
 			return this.set_dll;
 		
@@ -177,19 +194,16 @@ public class OpcacheScenario extends CodeCacheScenario {
 				break;
 			default:
 				if (host.isWindows())
-					version = getDllPath55Plus(cm, host, build, rename);
+					version = getDllPath55Plus(cm, fs, host, build, rename);
 				else
-					version = getSoPath55Plus(cm, host, build, rename);
+					version = getSoPath55Plus(cm, fs, host, build, rename);
 			} // end switch
 		} catch ( Exception ex ) {
-			if (cm==null)
-				ex.printStackTrace();
-			else
-				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "getDllPath", ex, "Unable to find OpCache");
+			ConsoleManagerUtil.printStackTrace(EPrintType.CANT_CONTINUE, getClass(), cm, "getDllPath", ex, "Unable to find OpCache");
 		}
 		
 		if (version!=null) {
-			if (host.exists(version.getPath())) {
+			if (host.mExists(version.getPath())) {
 				if (cm!=null)
 					cm.println(EPrintType.CLUE, getClass(), "Found Opcache in: "+version.getPath());		
 			} else {
@@ -207,7 +221,7 @@ public class OpcacheScenario extends CodeCacheScenario {
 	
 	@Override
 	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
-		if (getDllPath(cm, host, build) == null) {
+		if (getDllPath(cm, FileSystemScenario.getFS(scenario_set, host), host, build) == null) {
 			if (cm!=null) {
 				cm.println(EPrintType.CLUE, getClass(), "Unable to find Opcache DLL or SO. Can NOT run this Scenario.");
 			}
@@ -250,15 +264,15 @@ public class OpcacheScenario extends CodeCacheScenario {
 			if (startup_handle!=null) {
 				startup_handle.close(cm, true);
 				
-				host.deleteIfExistsElevated(temp_dir);
+				host.mDeleteIfExistsElevated(temp_dir);
 				
 				startup_handle = null;
 			}
 		}
 		
 		@Override
-		public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
-			OpcacheScenario.this.prepareINI(ini, dll.getPath());
+		public boolean prepareINI(ConsoleManager cm, FileSystemScenario fs, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
+			return OpcacheScenario.this.prepareINI(cm, fs, host, ini, build, dll.getPath());
 		}
 
 		@Override
@@ -282,14 +296,14 @@ public class OpcacheScenario extends CodeCacheScenario {
 	}
 	
 	@Override
-	public OpcacheSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
+	public OpcacheSetup setup(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
 		if (host.isWindows()) {
 			// TODO shouldn't be casting to AHost
 			cleanupBaseAddressFile((AHost)host, build, null);
 		}
 		
 		// find dll and rename from .dont_load to .so or .dll if needed (=> true)
-		final DllVersion dll = getDllPath(cm, host, build, true);
+		final DllVersion dll = getDllPath(cm, fs, host, build, true);
 		if (dll==null)
 			return null;
 		
@@ -297,10 +311,7 @@ public class OpcacheScenario extends CodeCacheScenario {
 		try {
 			setup = createOpcacheSetup(dll, host, cm, build);
 		} catch ( Exception ex ) {
-			if (cm==null)
-				ex.printStackTrace();
-			else
-				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "setup", ex, "Can't setup Opcache");
+			ConsoleManagerUtil.printStackTrace(EPrintType.CANT_CONTINUE, getClass(), cm, "setup", ex, "Can't setup Opcache");
 		}
 		
 		//
@@ -314,21 +325,21 @@ public class OpcacheScenario extends CodeCacheScenario {
 			//  the SharedMemoryArea will be closed if all handles to it are closed.
 			//  this causes the 'Fatal Error: Unable to reattach to base address' msg)
 			try {
-				setup.temp_dir = host.mktempname("Opcache_Startup_Process");
-				host.mkdirs(setup.temp_dir);
+				setup.temp_dir = fs.mktempname("Opcache_Startup_Process");
+				fs.createDirs(setup.temp_dir);
 				
 				String php_script = setup.temp_dir+"/startup.php";
 				
 				PhpIni ini = new PhpIni();
-				setup.prepareINI(cm, (AHost)host, build, scenario_set, ini);
-				host.saveTextFile(setup.temp_dir+"/php.ini", ini.toString());
+				setup.prepareINI(cm, fs, (AHost)host, build, scenario_set, ini);
+				fs.saveTextFile(setup.temp_dir+"/php.ini", ini.toString());
 				
 				// start thread to startup opcache
-				host.saveTextFile(php_script, "<?php while(true){sleep(60000);} ?>");
+				fs.saveTextFile(php_script, "<?php while(true){sleep(60000);} ?>");
 				
 				setup.startup_handle = ((AHost)host).execThread(build.getPhpExe(EExecutableType.CLI)+" -c "+setup.temp_dir+" -f "+php_script);
 			} catch ( Exception ex ) {
-				ex.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(OpcacheScenario.class, cm, ex);
 			}
 		}
 		//
@@ -366,16 +377,16 @@ public class OpcacheScenario extends CodeCacheScenario {
 		// for regular users, TEMP_DIR is often
 		// for Apache (as service) TEMP_DIR is often C:\Users\NT_Authority? (different than IIS service)
 		// for IIS (service) TEMP_DIR is often C:\Windows\Temp
-		host.deleteIfExistsElevated(host.getTempDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+		host.mDeleteIfExistsElevated(host.getTempDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
 		if (test_pack!=null) {
-			host.deleteIfExistsElevated(test_pack.getRunningDirectory()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());	
-			host.deleteIfExistsElevated(test_pack.getStorageDirectory()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+			host.mDeleteIfExistsElevated(test_pack.getRunningDirectory()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());	
+			host.mDeleteIfExistsElevated(test_pack.getStorageDirectory()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
 		}
-		host.deleteIfExistsElevated(build.getBuildPath()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());	
-		host.deleteIfExistsElevated(host.getPhpSdkDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
-		host.deleteIfExistsElevated(host.getPfttDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
-		host.deleteIfExistsElevated(host.getSystemRoot()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
-		host.deleteIfExistsElevated(host.getSystemDrive()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+		host.mDeleteIfExistsElevated(build.getBuildPath()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());	
+		host.mDeleteIfExistsElevated(host.getPhpSdkDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+		host.mDeleteIfExistsElevated(host.getPfttDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+		host.mDeleteIfExistsElevated(host.getSystemRoot()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+		host.mDeleteIfExistsElevated(host.getSystemDrive()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
 	}
 	
 	@Override
@@ -397,19 +408,19 @@ public class OpcacheScenario extends CodeCacheScenario {
 	 * for that, see the other #setup method
 	 * 
 	 * @param cm
+	 * @param fs
 	 * @param host
 	 * @param build
 	 * @param ini
 	 */
 	@Override
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
-		final DllVersion dll = this.getDllPath(cm, host, build);
-		if (dll==null) {
-			return SETUP_FAILED;
-		} else {
-			prepareINI(ini, dll.getPath());
-			return SETUP_SUCCESS;
+	public IScenarioSetup setup(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build, PhpIni ini) {
+		final DllVersion dll = this.getDllPath(cm, fs, host, build);
+		if (dll!=null) {
+			if (prepareINI(cm, fs, (AHost) host, ini, build, dll.getPath()))
+				return SETUP_SUCCESS;
 		}
+		return SETUP_FAILED;
 	}
 	
 } // end public class OpcacheScenario

@@ -15,6 +15,7 @@ import com.mostc.pftt.model.core.PhptSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.LocalConsoleManager;
 import com.mostc.pftt.results.PhpResultPackWriter;
+import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 /**
@@ -61,12 +62,15 @@ public class RemotePhptTestPackRunner extends AbstractRemoteTestPackRunner<PhptA
 		build.open(cm, host);
 		
 		PhptSourceTestPack test_pack = new PhptSourceTestPack("C:\\php-sdk\\php-test-pack-5.5-ts-windows-vc11-x86-r0704e4b");
-		test_pack.open(cm, config, host);
+		
+
+		// TODO
+		ScenarioSet scenario_set = ScenarioSet.getDefaultScenarioSets().get(0);
+		
+		test_pack.open(cm, config, FileSystemScenario.getFS(scenario_set, host), host);
 		
 		PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, new File(host.getPhpSdkDir()), build, test_pack, null);
 		
-		// TODO
-		ScenarioSet scenario_set = ScenarioSet.getDefaultScenarioSets().get(0);
 		
 		RemotePhptTestPackRunner runner = new RemotePhptTestPackRunner(tmgr, scenario_set, build, host, host);
 		if (args.length>0) {

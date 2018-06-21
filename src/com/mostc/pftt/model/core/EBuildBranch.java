@@ -13,6 +13,16 @@ public enum EBuildBranch {
 			return ECPUArch.X86;
 		}
 	},
+	NATIVE_TLS {
+		@Override
+		public String toString() {
+			return "NATIVE_TLS";
+		}
+		@Override
+		public ECPUArch getCPUArch() {
+			return null; // could be X86 or X64
+		}
+	},
 	PHP_Master {
 		@Override
 		public String toString() {
@@ -35,6 +45,24 @@ public enum EBuildBranch {
 			return null; // could be X86 or X64
 		}
 	},
+	PHP_7_0 {
+		@Override
+		public ECPUArch getCPUArch() {
+			return null; // could be X86 or X64
+		}
+	},
+	PHP_7_1 {
+		@Override
+		public ECPUArch getCPUArch() {
+			return null; // could be X86 or X64
+		}
+	},
+	PHP_7_2 {
+		@Override
+		public ECPUArch getCPUArch() {
+			return null; // could be X86 or X64
+		}
+	},
 	STR_SIZE_AND_INT64 {
 		@Override
 		public ECPUArch getCPUArch() {
@@ -43,7 +71,7 @@ public enum EBuildBranch {
 	};
 	
 	public static EBuildBranch getNewest() {
-		return STR_SIZE_AND_INT64;
+		return PHP_7_1;
 	}
 	
 	/** flexibly matches different values, guessing which EBuildBranch it refers to
@@ -65,6 +93,12 @@ public enum EBuildBranch {
 			return PHP_5_5;
 		else if (str.equals("php_5_6")||str.equals("5_6")||str.equals("5.6")||str.equals("56")||str.equals("php5_6")||str.equals("php56")||str.equals("php5.6")||str.equals("php_5.6"))
 			return PHP_5_6;
+		else if (str.equals("php_7_0")||str.equals("7_0")||str.equals("7.0")||str.equals("70")||str.equals("php7_0")||str.equals("php70")||str.equals("php7.0")||str.equals("php_7.0"))
+			return PHP_7_0;
+		else if (str.equals("php_7_1")||str.equals("7_1")||str.equals("7.1")||str.equals("71")||str.equals("php7_1")||str.equals("php71")||str.equals("php7.1")||str.equals("php_7.1"))
+			return PHP_7_1;
+		else if (str.equals("php_7_2")||str.equals("7_2")||str.equals("7.2")||str.equals("72")||str.equals("php7_2")||str.equals("php72")||str.equals("php7.2")||str.equals("php_7.2"))
+			return PHP_7_2;
 		else if (str.equals("master")||str.equals("php_master"))
 			return PHP_Master;
 		else if (str.equals("str_size_and_int64"))
@@ -83,6 +117,12 @@ public enum EBuildBranch {
 			return PHP_5_5;
 		else if (str.contains("php_5_6")||str.contains("php5_6")||str.contains("php56")||str.contains("php5.6")||str.contains("php_5.6"))
 			return PHP_5_6;
+		else if (str.contains("php_7_0")||str.contains("php7_0")||str.contains("php70")||str.contains("php7.0")||str.contains("php_7.0"))
+			return PHP_7_0;
+		else if (str.contains("php_7_1")||str.contains("php7_1")||str.contains("php71")||str.contains("php7.1")||str.contains("php_7.1"))
+			return PHP_7_1;
+		else if (str.contains("php_7_2")||str.contains("php7_2")||str.contains("php72")||str.contains("php7.2")||str.contains("php_7.2"))
+			return PHP_7_2;
 		else if (str.contains("master"))
 			return PHP_Master;
 		else if (str.contains("str_size")||str.contains("int64"))

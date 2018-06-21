@@ -57,7 +57,7 @@ public class BuiltinWebServerScenario extends WebServerScenario {
 			}
 			return false;
 		}
-		return true;
+		return super.isSupported(cm, host, build, scenario_set, layer);
 	}
 
 	@Override
@@ -278,14 +278,14 @@ public class BuiltinWebServerScenario extends WebServerScenario {
 	}
 	
 	@Override
-	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PreparedPhptTestCase prep, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack, boolean xdebug, boolean debugger_attached) {
-		return new BuiltinWebHttpPhptTestCaseRunner(xdebug, this, group_key.getPhpIni(), group_key.getEnv(), params, httpproc, httpexecutor, smgr, thread.getThreadWebServerInstance(), thread, prep, cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack);
+	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PreparedPhptTestCase prep, ConsoleManager cm, ITestResultReceiver twriter, FileSystemScenario fs, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack, boolean xdebug, boolean debugger_attached) {
+		return new BuiltinWebHttpPhptTestCaseRunner(xdebug, fs, this, group_key.getPhpIni(), group_key.getEnv(), params, httpproc, httpexecutor, smgr, thread.getThreadWebServerInstance(), thread, prep, cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack);
 	}
 	
 	
 	@Override
-	public AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(PhpUnitThread thread, TestCaseGroupKey group_key, ConsoleManager cm, ITestResultReceiver twriter, Map<String,String> globals, Map<String,String> env, AHost runner_host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
-		return new BuiltinWebHttpPhpUnitTestCaseRunner(this, thread, twriter, params, httpproc, httpexecutor, smgr, thread.getThreadWebServerInstance(), globals, env, cm, runner_host, scenario_set_setup, build, test_case, my_temp_dir, constants, include_path, include_files, ini, reflection_only);
+	public AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(PhpUnitThread thread, TestCaseGroupKey group_key, ConsoleManager cm, ITestResultReceiver twriter, Map<String,String> globals, Map<String,String> env, FileSystemScenario fs, AHost runner_host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
+		return new BuiltinWebHttpPhpUnitTestCaseRunner(fs, this, thread, twriter, params, httpproc, httpexecutor, smgr, thread.getThreadWebServerInstance(), globals, env, cm, runner_host, scenario_set_setup, build, test_case, my_temp_dir, constants, include_path, include_files, ini, reflection_only);
 	}
 	
 	@Override

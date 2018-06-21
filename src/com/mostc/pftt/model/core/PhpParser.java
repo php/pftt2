@@ -41,6 +41,7 @@ import com.caucho.vfs.ReadStream;
 import com.caucho.vfs.StringStream;
 import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.StringUtil;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.ISerializer;
 import com.mostc.pftt.results.TestCaseCodeCoverage;
 
@@ -84,7 +85,7 @@ public class PhpParser {
 			String php_code_str = IOUtil.toString(new BufferedInputStream(new FileInputStream(file)), IOUtil.ONE_MEGABYTE);
 			return new PhpScript(file, php_code_str, new Env(qctx), p.parse());
 		} catch ( Exception ex ) {
-			//ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(PhpParser.class, ex);
 		}
 		return new PhpScript(file, "", null, null);
 	} // end public static PhpScript parseScript
@@ -105,7 +106,7 @@ public class PhpParser {
 				);
 			return new PhpScript(php_code_str, php_code_str, new Env(qctx), p.parse());
 		} catch ( Exception ex ) {
-			//ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(PhpParser.class, ex);
 		}
 		return new PhpScript(php_code_str, php_code_str, null, null);
 	}

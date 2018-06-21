@@ -7,6 +7,7 @@ import java.net.Socket;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.http.Header;
@@ -35,13 +36,14 @@ import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.model.sapi.WebServerInstance;
 import com.mostc.pftt.model.sapi.WebServerManager;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 import com.mostc.pftt.runner.PhptTestPreparer.PreparedPhptTestCase;
+import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.WebServerScenario;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
-import com.mostc.pftt.util.ErrorUtil;
 import com.mostc.pftt.util.TimerUtil;
 import com.mostc.pftt.util.TimerUtil.TimerThread;
 
@@ -51,7 +53,7 @@ import com.mostc.pftt.util.TimerUtil.TimerThread;
  *
  */
 
-public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
+public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner {
 	protected final WebServerManager smgr;
 	protected final ByteArrayOutputStream request_bytes, response_bytes;
 	protected WebServerInstance web = null;
@@ -63,8 +65,8 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	protected final HttpRequestExecutor httpexecutor;
 	protected Socket test_socket;
 
-	public HttpPhptTestCaseRunner(boolean xdebug, WebServerScenario sapi_scenario, PhpIni ini, Map<String,String> env, HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web, PhptThread thread, PreparedPhptTestCase prep, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
-		super(xdebug, sapi_scenario, ini, thread, prep, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
+	public HttpPhptTestCaseRunner(boolean xdebug, FileSystemScenario fs, WebServerScenario sapi_scenario, PhpIni ini, Map<String,String> env, HttpParams params, HttpProcessor httpproc, HttpRequestExecutor httpexecutor, WebServerManager smgr, WebServerInstance web, PhptThread thread, PreparedPhptTestCase prep, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+		super(xdebug, fs, sapi_scenario, ini, thread, prep, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 		this.params = params;
 		this.httpproc = httpproc;
 		this.httpexecutor = httpexecutor;
@@ -76,8 +78,8 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			this.env = new HashMap<String,String>(7);
 			this.env.putAll(env);
 			
-			this.env.put("TEMP", active_test_pack.getStorageDirectory()+"/"+AHost.dirname(prep.test_case.getName()));
-			this.env.put("TMP", active_test_pack.getStorageDirectory()+"/"+AHost.dirname(prep.test_case.getName()));
+			this.env.put("TEMP", active_test_pack.getStorageDirectory()+"/"+FileSystemScenario.dirname(prep.test_case.getName()));
+			this.env.put("TMP", active_test_pack.getStorageDirectory()+"/"+FileSystemScenario.dirname(prep.test_case.getName()));
 		} else {
 			this.env = env;
 		}
@@ -121,13 +123,16 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				this.is_replacement = false;
 				return do_http_execute(path, section);
 			} catch ( IOException ex1 ) { // SocketTimeoutException or ConnectException
-				if (cm.isPfttDebug()) {
-					ex1.printStackTrace();
-				}
+				ConsoleManagerUtil.printStackTraceDebug(HttpPhptTestCaseRunner.class, cm, ex1);
 				
 				// notify of crash so it gets reported everywhere
 				//web.notifyCrash("PFTT: timeout during test("+section+" SECTION): "+test_case.getName()+"\n"+ErrorUtil.toString(ex1), 0);
 				this.is_timeout = true;
+				// TODO temp on azure, report this as a failure
+				if (true) {
+					twriter.addResult(host, scenario_set, src_test_pack, notifyNotPass(new PhptTestResult(host, EPhptTestStatus.FAIL, prep.test_case, null, null, null, null, ini, env, null, stdin_post, null, null, null, null, web==null?null:web.getSAPIOutput(), web==null?null:web.getSAPIConfig())));
+					return "";
+				}
 				
 				if (cm.isNoRestartAll()) {
 					// don't close or replace web server
@@ -155,12 +160,15 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				return do_http_execute(path, section);
 			}
 		} catch ( IOException ioe ) {
-			String ex_str = ErrorUtil.toString(ioe);
-			
 			// notify web server that it crashed. it will record this, which will be accessible
 			// with WebServerInstance#getSAPIOutput (will be recorded by PhpResultPackWriter)
 			//web.notifyCrash("PFTT: IOException during test("+section+" SECTION): "+test_case.getName()+"\n"+ex_str, 0);
 			this.is_timeout = true;
+			
+			if (true) { // TODO temp
+			twriter.addResult(host, scenario_set, src_test_pack, notifyNotPass(new PhptTestResult(host, EPhptTestStatus.FAIL, prep.test_case, null, null, null, null, ini, env, null, stdin_post, null, null, null, null, web==null?null:web.getSAPIOutput(), web==null?null:web.getSAPIConfig())));
+			return "";
+			}
 			
 			// test will be marked as FAIL or CRASH depending on whether web server process crashed
 			
@@ -192,11 +200,11 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 	} // end protected String generateWebServerTimeoutMessage
 
 	protected String do_http_execute(String path, EPhptSection section) throws Exception {
-		path = AHost.toUnixPath(path);
-		if (path.startsWith(AHost.toUnixPath(active_test_pack.getRunningDirectory())))
+		path = FileSystemScenario.toUnixPath(path);
+		if (path.startsWith(FileSystemScenario.toUnixPath(active_test_pack.getRunningDirectory())))
 			// important: convert to path web server is serving up
 			path = path.substring(active_test_pack.getRunningDirectory().length());
-		if (path.startsWith(AHost.toUnixPath(active_test_pack.getStorageDirectory())))
+		if (path.startsWith(FileSystemScenario.toUnixPath(active_test_pack.getStorageDirectory())))
 			// important: convert to path web server is serving up
 			path = path.substring(active_test_pack.getStorageDirectory().length());
 		if (path.startsWith("xt/"))
@@ -229,7 +237,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		try {
 			if (web!=null) {
 				synchronized(web) {
-					WebServerInstance _web = smgr.getWebServerInstance(cm, host, scenario_set.getScenarioSet(), build, ini, env, active_test_pack.getStorageDirectory(), web, false, prep);
+					WebServerInstance _web = smgr.getWebServerInstance(cm, fs, host, scenario_set.getScenarioSet(), build, ini, env, active_test_pack.getStorageDirectory(), web, false, prep);
 					if (_web!=this.web) {
 						this.web.close(cm);
 						this.web = _web;
@@ -249,7 +257,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			if (web==null) {
 				// test should be a FAIL or CRASH
 				// its certainly the fault of a test (not PFTT) if not this test
-				this.web = smgr.getWebServerInstance(cm, host, scenario_set.getScenarioSet(), build, ini, env, active_test_pack.getStorageDirectory(), web, false, prep);
+				this.web = smgr.getWebServerInstance(cm, fs, host, scenario_set.getScenarioSet(), build, ini, env, active_test_pack.getStorageDirectory(), web, false, prep);
 				
 				if (web==null||web.isCrashedOrDebuggedAndClosed()) {
 					markTestAsCrash();
@@ -315,7 +323,13 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		test_socket = null;
 	}
 	
+	static Random random = new Random();
+	// TODO temp static int count;
 	protected String do_http_get(String path, int i) throws Exception {
+		//System.out.println("GET "+web.getHostname()+":"+web.getPort()+" "+path);
+		//if (count++<30)
+			//System.exit(0);
+		//Thread.sleep(1000*(10+random.nextInt(40))); // TODO temp
 		HttpContext context = new BasicHttpContext(null);
 		HttpHost http_host = new HttpHost(web.getHostname(), web.getPort());
 		
@@ -341,6 +355,12 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 						public void run() {
 							is_timeout = true;
 							
+							if (true) {
+								// TODO temp
+								twriter.addResult(host, scenario_set, src_test_pack, notifyNotPass(new PhptTestResult(host, EPhptTestStatus.FAIL, prep.test_case, null, null, null, null, ini, env, null, stdin_post, null, null, null, null, web==null?null:web.getSAPIOutput(), web==null?null:web.getSAPIConfig())));
+								return;
+							}
+							
 							DebuggingHttpClientConnection conn = HttpPhptTestCaseRunner.this.conn.get();
 							if (conn!=null) {
 								try {
@@ -357,18 +377,19 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 						}
 					}
 			);
+		HttpGet request = null;
 		try {
 			context.setAttribute(ExecutionContext.HTTP_CONNECTION, conn);
 			context.setAttribute(ExecutionContext.HTTP_TARGET_HOST, http_host);
 			
 			test_socket = new Socket();
 			test_socket.setSoTimeout(60*1000);
-			test_socket.connect(new InetSocketAddress(http_host.getHostName(), http_host.getPort()));
+			test_socket.connect(new InetSocketAddress(http_host.getHostName(), web.getPort()));// TODO temp http_host.getPort()));
 			
 			conn.bind(test_socket, params);
 			conn.setSocketTimeout(60*1000);
 			
-			HttpGet request = new HttpGet(path);
+			request = new HttpGet("/php-test-pack-5.4.38/"+path); // TODO temp 
 			if (cookie_str!=null)
 				request.setHeader("Cookie", cookie_str);
 			// CRITICAL: tell web server to return plain-text (not HTMl) 
@@ -403,7 +424,38 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			}
 			//
 			
-			switch (response.getStatusLine().getStatusCode()) {
+			{
+				// TODO temp azure
+				int s = response.getStatusLine().getStatusCode();
+				// 502 => Azure Request Routing malfunction
+				// 403 => Web Site Stopped (Azure PHP Pool malfunction)
+				// 503 => Service Unavailable (Azure PHP Pool too small??)
+				if (s>=500||s==403) {
+					// internal server error
+					final String output = IOUtil.toString(response.getEntity().getContent(), IOUtil.HALF_MEGABYTE);
+					twriter.addResult(host, scenario_set, src_test_pack, new PhptTestResult(host, EPhptTestStatus.FAIL, prep.test_case, output, null, null, null, ini, null, null, null, null, null, null, null));
+					
+					// NOTE: just to bypass normal behavior of AbstractPhptTestCaseRunner#runTest
+					not_crashed = false;
+					return output;
+				/*} else if (s==404&&i==0) {
+					// TODO temp azure
+					Thread.sleep(1000*(500+random.nextInt(600)));
+					return do_http_get(path, i+100);*/
+				} else if (s>=400&&s<=499) {
+					// file not found, access denied, etc...
+					final String output = IOUtil.toString(response.getEntity().getContent(), IOUtil.HALF_MEGABYTE);
+					twriter.addResult(host, scenario_set, src_test_pack, new PhptTestResult(host, EPhptTestStatus.BORK, prep.test_case, output, null, null, null, ini, null, null, null, null, null, null, null));
+					
+					// NOTE: just to bypass normal behavior of AbstractPhptTestCaseRunner#runTest
+					not_crashed = false;
+					return output;
+				} else {
+					
+				}
+			}
+			
+			/* TODO temp azure switch (response.getStatusLine().getStatusCode()) {
 			case 500:
 				not_crashed = false;
 				web.notifyCrash("HTTP 500", 500);
@@ -412,13 +464,15 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				is_timeout = true;
 				break;
 			default:
-			}
+			}*/
 			if (cm.isIgnoreOutput()) {
 				return "";
 			} else {
 				return IOUtil.toString(response.getEntity().getContent(), IOUtil.HALF_MEGABYTE);
 			}
 		} finally {
+			if (request!=null)
+				request.releaseConnection();			
 			try {
 			if (test_socket!=null)
 				test_socket.close();
@@ -462,6 +516,11 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 					public void run() {
 						is_timeout = true;
 						
+						if (true) { // TODO temp
+							twriter.addResult(host, scenario_set, src_test_pack, notifyNotPass(new PhptTestResult(host, EPhptTestStatus.FAIL, prep.test_case, null, null, null, null, ini, env, null, stdin_post, null, null, null, null, web==null?null:web.getSAPIOutput(), web==null?null:web.getSAPIConfig())));
+							return;
+						}
+						
 						DebuggingHttpClientConnection conn = HttpPhptTestCaseRunner.this.conn.get();
 						if (conn!=null) {
 							try {
@@ -478,6 +537,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 					}
 				}
 			);
+		HttpPost request = null;
 		try {
 			context.setAttribute(ExecutionContext.HTTP_CONNECTION, conn);
 			context.setAttribute(ExecutionContext.HTTP_TARGET_HOST, http_host);
@@ -489,7 +549,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 			conn.bind(test_socket, params);
 			conn.setSocketTimeout(60*1000);
 			
-			HttpPost request = new HttpPost(path);
+			request = new HttpPost(path);
 			if (content_type!=null)
 				request.setHeader("Content-Type", content_type);
 			if (cookie_str!=null)
@@ -532,6 +592,8 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 				return IOUtil.toString(response.getEntity().getContent(), IOUtil.HALF_MEGABYTE);
 			}
 		} finally {
+			if (request!=null)
+				request.releaseConnection();
 			try {
 			if (test_socket!=null)
 				test_socket.close();
@@ -568,7 +630,7 @@ public class HttpPhptTestCaseRunner extends AbstractPhptTestCaseRunner2 {
 		
 		if (env!=null&&env.containsKey("REQUEST_URI")) {
 			// ex: ext/phar/tests/frontcontroller17.phpt
-			request_uri = AHost.dirname(request_uri)+"/"+env.get("REQUEST_URI");
+			request_uri = FileSystemScenario.dirname(request_uri)+"/"+env.get("REQUEST_URI");
 		}
 		
 		if (prep.test_case.containsSection(EPhptSection.GET)) {

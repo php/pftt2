@@ -1198,6 +1198,8 @@ public class RequiredFeaturesSmokeTest extends SmokeTest {
 	public ESmokeTestStatus test(PhpBuild build, ConsoleManager cm, AHost host, PhpResultPackWriter tmgr) {
 		if (!host.isWindows())
 			return ESmokeTestStatus.XSKIP;
+		if (build.is7(cm, host))
+			return ESmokeTestStatus.PASS; // TODO temp 
 		
 		try {
 			String[] parts;

@@ -16,6 +16,7 @@ import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
+import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.IScenarioSetup;
 import com.mostc.pftt.scenario.ScenarioSet;
 
@@ -116,6 +117,7 @@ public abstract class WebServerManager extends SAPIManager {
 	 * uses the first replacement (to not have crashed).  
 	 * 
 	 * @param cm
+	 * @param fs
 	 * @param host
 	 * @param scenario_set
 	 * @param build
@@ -129,7 +131,7 @@ public abstract class WebServerManager extends SAPIManager {
 	 * @see WebServerInstance#isDebuggerAttached
 	 * @return
 	 */
-	public WebServerInstance getWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String,String> env, final String docroot, WebServerInstance assigned, boolean debugger_attached, Object server_name) {
+	public WebServerInstance getWebServerInstance(ConsoleManager cm, FileSystemScenario fs, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String,String> env, final String docroot, WebServerInstance assigned, boolean debugger_attached, Object server_name) {
 		WebServerInstance sapi;
 		if (assigned!=null) {
 			if (eq(assigned, debugger_attached, ini, env))
@@ -146,12 +148,12 @@ public abstract class WebServerManager extends SAPIManager {
 				}
 			}
 			
-			assigned.replacement = sapi = createWebServerInstance(cm, host, scenario_set, build, ini, env, docroot, debugger_attached, server_name, true);
+			assigned.replacement = sapi = createWebServerInstance(cm, fs, host, scenario_set, build, ini, env, docroot, debugger_attached, server_name, true);
 			synchronized(assigned.active_test_cases) {
 				sapi.active_test_cases.addAll(assigned.active_test_cases);
 			}
 		} else {
-			sapi = createWebServerInstance(cm, host, scenario_set, build, ini, env, docroot, debugger_attached, server_name, false);
+			sapi = createWebServerInstance(cm, fs, host, scenario_set, build, ini, env, docroot, debugger_attached, server_name, false);
 		}
 		if (sapi.isRunning()) {
 			synchronized(instances) {
@@ -175,10 +177,12 @@ public abstract class WebServerManager extends SAPIManager {
 		env.put(AbstractPhptTestCaseRunner.ENV_PFTT_SCENARIO_SET, scenario_set.getName());
 		env.put(AbstractPhptTestCaseRunner.ENV_PFTT_IS, "1");
 		
+		// TODO easy way for user to do: env.put("USE_ZEND_ALLOC", "0");
+		
 		return env;
 	}
 	
-	protected abstract WebServerInstance createWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, boolean debugger_attached, Object server_name, boolean is_replacement);
+	protected abstract WebServerInstance createWebServerInstance(ConsoleManager cm, FileSystemScenario fs, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String,String> env, String docroot, boolean debugger_attached, Object server_name, boolean is_replacement);
 	
 	/** some web servers can only have one active instance at any one time
 	 * 

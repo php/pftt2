@@ -26,7 +26,7 @@ public class UITestReader extends AbstractUITestRW {
 		try {
 			readTally(new File(dir+"/tally.xml"));
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(UITestReader.class, ex);
 		}
 	}
 	

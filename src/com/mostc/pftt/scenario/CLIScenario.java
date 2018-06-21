@@ -9,6 +9,7 @@ import com.github.mattficken.io.Trie;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.main.IENVINIFilter;
 import com.mostc.pftt.model.app.PhpUnitTestCase;
+import com.mostc.pftt.model.app.SimpleTestCase;
 import com.mostc.pftt.model.core.EPhptSection;
 import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.ESAPIType;
@@ -25,10 +26,13 @@ import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.AbstractPhpUnitTestCaseRunner;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
+import com.mostc.pftt.runner.AbstractSimpleTestCaseRunner;
 import com.mostc.pftt.runner.CliPhpUnitTestCaseRunner;
 import com.mostc.pftt.runner.CliPhptTestCaseRunner;
+import com.mostc.pftt.runner.CliSimpleTestCaseRunner;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
+import com.mostc.pftt.runner.LocalSimpleTestPackRunner.SimpleTestThread;
 import com.mostc.pftt.runner.PhptTestPreparer.PreparedPhptTestCase;
 
 /** Tests the Command Line Interface(CLI) for running PHP.
@@ -52,9 +56,9 @@ public class CliScenario extends SAPIScenario {
 	@Override
 	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(
 			PhptThread thread, TestCaseGroupKey group_key, PreparedPhptTestCase prep,
-			ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup,
-			PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack, boolean xdebug, boolean debugger_attached) {
-		return new CliPhptTestCaseRunner(xdebug, this, ((CliTestCaseGroupKey)group_key).getCliSAPIInstance(), group_key.getPhpIni(), thread, prep, cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack, debugger_attached);
+			ConsoleManager cm, ITestResultReceiver twriter, FileSystemScenario fs, AHost host,
+			ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack, boolean xdebug, boolean debugger_attached) {
+		return new CliPhptTestCaseRunner(xdebug, fs, this, ((CliTestCaseGroupKey)group_key).getCliSAPIInstance(), group_key.getPhpIni(), thread, prep, cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack, debugger_attached);
 	}
 	
 	@Override
@@ -94,22 +98,34 @@ public class CliScenario extends SAPIScenario {
 	}
 	
 	@Override
-	public PhpIni createIniForTest(ConsoleManager cm, AHost host, PhpBuild build, PhptActiveTestPack active_test_pack, ScenarioSetSetup scenario_set_setup) {
+	public PhpIni createIniForTest(ConsoleManager cm, FileSystemScenario fs, AHost host, PhpBuild build, PhptActiveTestPack active_test_pack, ScenarioSetSetup scenario_set_setup) {
 		// default PhpIni will be given to php.exe using a file... @see CliPhptTestCaseRunner#prepare
 		//
 		// this is needed only to collect any custom directives that a test case provides
-		PhpIni ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, host, build);
-		scenario_set_setup.prepareINI(cm, host, build, ini);
+		PhpIni ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, fs, host, build);
+		if (!scenario_set_setup.prepareINI(cm, fs, host, build, ini)) {
+			return null;
+		}
 		ini.is_default = true;
 		return ini;
 	}
 
 	@Override
-	public TestCaseGroupKey createTestGroupKey(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSetSetup scenario_set_setup, PhptActiveTestPack active_test_pack, PhptTestCase test_case, IENVINIFilter filter, TestCaseGroupKey group_key) {
+	public TestCaseGroupKey createTestGroupKey(ConsoleManager cm, FileSystemScenario fs, AHost host, PhpBuild build, ScenarioSetSetup scenario_set_setup, PhptActiveTestPack active_test_pack, PhptTestCase test_case, IENVINIFilter filter, TestCaseGroupKey group_key) {
 		if (test_case.containsSection(EPhptSection.INI)) {
-			PhpIni ini = createIniForTest(cm, host, build, active_test_pack, scenario_set_setup);
-			ini.replaceAll(test_case.getINI(active_test_pack, host));
+			PhpIni ini = createIniForTest(cm, fs, host, build, active_test_pack, scenario_set_setup);
+			if (ini==null)
+				return null;
+			//ini.replaceAll(
+					PhpIni ini2 = test_case.getINI(active_test_pack, host);
+					//ini.replaceAll(ini2);
+							// TODO temp );
 			filter.prepareIni(cm, ini);
+			//ini.putSingle("display_errors", "false");
+			//ini.putSingle("error_reporting", "2047");
+			for ( String dir : ini2.getDirectives() ) {
+				ini.putSingle(dir, ini2.get(dir));
+			}
 			
 			// note: don't bother comparing test case's INI with existing group_key's INI, LocalPhptTestPackRunner
 			//       already does comparison of this new group_key and discards any duplicates
@@ -118,17 +134,19 @@ public class CliScenario extends SAPIScenario {
 			//      -for WEB SERVERS, have to set ENV vars on each web server instance
 			// @see CliPhptTestCaseRunner#prepare
 			//
-			CliSAPIInstance sapi = new CliSAPIInstance(cm, host, scenario_set_setup.getScenarioSet(), build, ini);
+			CliSAPIInstance sapi = new CliSAPIInstance(cm, fs, host, scenario_set_setup.getScenarioSet(), build, ini);
 			
 			return new CliTestCaseGroupKey(sapi, ini, null);
 		} else if (group_key!=null && group_key.getPhpIni().isDefault()) {
 			return group_key;
 		} else {
-			PhpIni ini = createIniForTest(cm, host, build, active_test_pack, scenario_set_setup);
+			PhpIni ini = createIniForTest(cm, fs, host, build, active_test_pack, scenario_set_setup);
+			if (ini==null)
+				return null;
 			
 			filter.prepareIni(cm, ini);
 			
-			CliSAPIInstance sapi = new CliSAPIInstance(cm, host, scenario_set_setup.getScenarioSet(), build, ini);
+			CliSAPIInstance sapi = new CliSAPIInstance(cm, fs, host, scenario_set_setup.getScenarioSet(), build, ini);
 			
 			return new CliTestCaseGroupKey(sapi, ini, null);
 		}
@@ -147,15 +165,32 @@ public class CliScenario extends SAPIScenario {
 		}
 		
 		@Override
-		public void prepare() throws Exception {
-			sapi.prepare();
+		public void prepare(ConsoleManager cm) throws Exception {
+			sapi.prepare(cm);
 		}
 		
 	}
 	
 	@Override
-	public AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(PhpUnitThread thread, TestCaseGroupKey group_key, ConsoleManager cm, ITestResultReceiver twriter, Map<String, String> globals, Map<String, String> env, AHost runner_host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String, String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
+	public AbstractSimpleTestCaseRunner createSimpleTestCaseRunner(SimpleTestThread thread, ITestResultReceiver tmgr, ConsoleManager cm, FileSystemScenario fs, AHost host, ScenarioSetSetup scenario_set, PhpBuild build, PhpIni ini, SimpleTestCase test_case) {
+		return new CliSimpleTestCaseRunner(
+				fs,
+				this, 
+				thread, 
+				tmgr,
+				cm,
+				host,
+				scenario_set,
+				build,
+				ini,
+				test_case
+			);
+	}
+	
+	@Override
+	public AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(PhpUnitThread thread, TestCaseGroupKey group_key, ConsoleManager cm, ITestResultReceiver twriter, Map<String, String> globals, Map<String, String> env, FileSystemScenario fs, AHost runner_host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String, String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
 		return new CliPhpUnitTestCaseRunner(
+				fs,
 				this,
 				thread,
 				twriter,
@@ -177,7 +212,7 @@ public class CliScenario extends SAPIScenario {
 	
 	public static Trie DISABLE_DEBUG_PROMPT = PhptTestCase.createNamed(
 			// these ext/session tests, on CLI sapi, cause a blocking winpopup msg about some mystery 'Syntax Error'
-			//  (ignore these for automated testing, but still show them for manual testing)
+			//  (ignore these for unattended testing, but still show them for manual testing)
 			"sapi/cgi/tests/apache_request_headers.phpt",
 			"ext/xmlrpc/tests/bug45226.phpt",
 			"ext/xmlrpc/tests/bug18916.phpt",

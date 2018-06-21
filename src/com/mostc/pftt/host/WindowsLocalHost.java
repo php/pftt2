@@ -13,7 +13,9 @@ import org.jvnet.winp.WinProcess;
 
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.CommonCommandManager.Win32ProcessInfo;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
+import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.util.TimerUtil;
 import com.mostc.pftt.util.TimerUtil.ObjectRunnable;
 
@@ -33,7 +35,7 @@ public class WindowsLocalHost extends LocalHost {
 			//
 			//
 			if (!checked_elevate) {
-				found_elevate = exists(getPfttBinDir()+"\\elevate.exe");
+				found_elevate = mExists(getPfttBinDir()+"\\elevate.exe");
 				
 				checked_elevate = true;
 			}
@@ -92,7 +94,7 @@ public class WindowsLocalHost extends LocalHost {
 				// IMPORTANT: this is how its identified in the Windows process table
 				this.image_name = "cmd.exe"; 
 			} else {
-				this.image_name = basename(this.image_name).toLowerCase();
+				this.image_name = FileSystemScenario.basename(this.image_name).toLowerCase();
 				if (image_name.indexOf('.')==-1)
 					this.image_name += ".exe";
 			}
@@ -155,8 +157,10 @@ public class WindowsLocalHost extends LocalHost {
 							/*synchronized(run) {
 								run.notifyAll();
 							}*/
+						} catch (RuntimeException ex) {
+							// ignore ... see below copy_thread.stop(new RuntimeException()...
 						} catch (Throwable e) {
-							//e.printStackTrace();
+							ConsoleManagerUtil.printStackTrace(WindowsLocalHost.class, e);
 						}
 					}
 				});
@@ -219,7 +223,7 @@ public class WindowsLocalHost extends LocalHost {
 			// Windows BN?: if TerminateProcess() called with a PID that doesn't exist anymore (but might again soon)
 			//              does TerminateProcess() block forever (or does it appear that way because of Windows slow process
 			//              management?(Windows is optimized to run a few processes only (because thats what users did with it in the '90s)))
-			String image_name = basename(this.image_name);
+			String image_name = FileSystemScenario.basename(this.image_name);
 			if (image_name.equals("taskkill.exe")||image_name.equals("handle.exe")||image_name.equals("pskill.exe")
 					||image_name.equals("taskkill")||image_name.equals("handle")||image_name.equals("pskill")) {
 				// can't use taskkill, could create an infinite loop
@@ -242,7 +246,7 @@ public class WindowsLocalHost extends LocalHost {
 						// found child
 						//
 						// IMPORTANT: basename() because TaskKill doesn't take paths for image name
-						image_name = basename(info.exe_path);
+						image_name = FileSystemScenario.basename(info.exe_path);
 						pid = info.pid;
 					}
 				}
@@ -278,7 +282,7 @@ public class WindowsLocalHost extends LocalHost {
 					//               the only way that happens is if you search for the child processes FIRST yourself,
 					//               (and then their children, etc...) and then kill them.
 				} catch ( Exception ex ) {
-					ex.printStackTrace();
+					ConsoleManagerUtil.printStackTrace(WindowsLocalHost.class, ex);
 					// fallback
 					//
 					// @see https://github.com/kohsuke/winp
@@ -299,7 +303,7 @@ public class WindowsLocalHost extends LocalHost {
 						}
 					});
 			} catch ( Throwable t ) {
-				t.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(WindowsLocalHost.class, t);
 			}
 		}
 		
@@ -322,7 +326,7 @@ public class WindowsLocalHost extends LocalHost {
 					if (ex2.getMessage().contains("Not enough storage")) {
 						// wait longer and try again
 					} else {
-						throw ex2;
+						throw new Exception(ex2);
 					}
 				}
 			} // end for
@@ -339,24 +343,32 @@ public class WindowsLocalHost extends LocalHost {
 	}
 	
 	@Override
-	public boolean mkdirs(String path) throws IllegalStateException, IOException {
-		if (!isSafePath(path))
-			return false;
+	public boolean mCreateDirs(String path) throws IllegalStateException, IOException {
+		// TODO temp if (!isSafePath(path))
+			//return false;
 		File f = new File(path);
 		if (f.isDirectory())
 			return true;
 		for ( int i=0 ; i < 3 ; i++ ) {
 			f.mkdirs();
-			if (f.exists())
-				break;
+			
 			// Windows BN: sometimes it takes a while for the directory to be created (most often a problem with remote file systems).
 			//             make sure it gets created before returning.
 			try {
 				Thread.sleep(50);
 			} catch ( InterruptedException ex ) {}
+			
+			if (f.exists())
+				break;
 		}
+		System.out.println("mCreateDirs "+path);
 		return true;
 	} // end public boolean mkdirs
+	
+	@Override
+	public String fixPath(String src_path) {
+		return FileSystemScenario.toWindowsPath(src_path);
+	}
 	
 	public static int getWindowsProcessID(Process process) {
 		try {

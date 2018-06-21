@@ -19,7 +19,7 @@ public class NoUserCacheScenario extends UserCacheScenario {
 	}
 
 	@Override
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
+	public IScenarioSetup setup(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build, PhpIni ini) {
 		return SETUP_SUCCESS;
 	}
 

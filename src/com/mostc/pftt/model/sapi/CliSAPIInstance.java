@@ -10,6 +10,8 @@ import com.mostc.pftt.model.core.EExecutableType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
+import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.util.DebuggerManager;
 import com.mostc.pftt.util.DebuggerManager.Debugger;
@@ -20,8 +22,8 @@ public class CliSAPIInstance extends SAPIInstance {
 	protected DebuggerManager db_mgr;
 	protected Debugger dbg;
 	
-	public CliSAPIInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini) {
-		super(host, ini);
+	public CliSAPIInstance(ConsoleManager cm, FileSystemScenario fs, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini) {
+		super(fs, host, ini);
 		this.build = build;
 		
 		db_mgr = cm.getDebuggerManager();
@@ -37,15 +39,15 @@ public class CliSAPIInstance extends SAPIInstance {
 			.output;
 	}
 	
-	public void prepare() throws Exception {
+	public void prepare(ConsoleManager cm) throws Exception {
 		if (ini_dir!=null)
 			return;
 		
-		ini_dir = host.mktempname(getClass());
-		host.mkdirs(ini_dir);
+		ini_dir = fs.mktempname(getClass());
+		fs.createDirs(ini_dir);
 		
 		// now store the entire INI php should be using
-		host.saveTextFile(host.joinIntoOnePath(ini_dir, "php.ini"), ini.toString());
+		fs.saveTextFile(host.joinIntoOnePath(ini_dir, "php.ini"), ini.toString());
 	}
 	
 	public ExecOutput execute(EExecutableType exe_type, String name, String php_filename, String extra_args, Map<String,String> env, int timeout_sec, boolean debugger_attached) throws Exception {
@@ -64,7 +66,7 @@ public class CliSAPIInstance extends SAPIInstance {
 		sb.append(" -c ");
 		sb.append(ini_dir);
 		sb.append(" -f ");
-		sb.append(host.fixPath(php_filename));
+		sb.append(fs.fixPath(php_filename));
 		if (extra_args!=null)
 			sb.append(extra_args);
 		
@@ -92,9 +94,9 @@ public class CliSAPIInstance extends SAPIInstance {
 	@Override
 	public void close(ConsoleManager cm) {
 		try {
-			host.delete(ini_dir);
+			fs.delete(ini_dir);
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(CliSAPIInstance.class, cm, ex);
 		}
 	}
 	

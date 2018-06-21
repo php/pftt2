@@ -38,11 +38,13 @@ public class TestCaseGroupKey implements IClosable {
 		} else {
 			return false;
 		}
-	}
+	} 
 	
+	static long start = System.currentTimeMillis();
 	@Override
 	public int hashCode() {
-		return (env==null?1:env.hashCode()) | PhptTestCase.hashCode(ini);
+		return //(int)( System.currentTimeMillis() - start );// TODO temp 
+		(env==null?1:env.hashCode()) | PhptTestCase.hashCode(ini);
 	}
 	
 	@Nullable
@@ -55,7 +57,7 @@ public class TestCaseGroupKey implements IClosable {
 		return ini;
 	}
 
-	public void prepare() throws Exception {
+	public void prepare(ConsoleManager cm) throws Exception {
 	}
 
 	@Override

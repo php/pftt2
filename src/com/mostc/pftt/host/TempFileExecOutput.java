@@ -32,7 +32,7 @@ public class TempFileExecOutput extends ExecOutput {
 	
 	public void cleanup(AHost host) {
 		try {
-			host.delete(temp_file);
+			host.mDelete(temp_file);
 		} catch ( Exception ex ) {}
 	}
 }

@@ -30,10 +30,8 @@ public abstract class ApacheScenario extends ProductionWebServerScenario {
 	
 	@Override
 	public boolean willSkip(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup setup, ESAPIType type, PhpBuild build, PhptSourceTestPack src_test_pack, PhptTestCase test_case) throws Exception {
-		if (!ApacheManager.isSupported(cm, twriter, host, setup, build, src_test_pack, test_case)) {
-			return false;
-		}
-		return super.willSkip(cm, twriter, host, setup, type, build, src_test_pack, test_case);
+		return !ApacheManager.isSupported(cm, twriter, host, setup, build, src_test_pack, test_case)
+			|| super.willSkip(cm, twriter, host, setup, type, build, src_test_pack, test_case);
 	}
 	
 }

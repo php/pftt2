@@ -5,6 +5,8 @@ import java.io.IOException;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
+import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.SimpleScenarioSetup;
 
 /** Running instance of a SAPI like a web server
@@ -15,10 +17,12 @@ import com.mostc.pftt.scenario.SimpleScenarioSetup;
 
 public abstract class SAPIInstance extends SimpleScenarioSetup {
 	protected final AHost host;
+	protected final FileSystemScenario fs;
 	protected final PhpIni ini;
 	protected String ini_actual;
 	
-	public SAPIInstance(AHost host, PhpIni ini) {
+	public SAPIInstance(FileSystemScenario fs, AHost host, PhpIni ini) {
+		this.fs = fs;
 		this.host = host;
 		this.ini = ini;
 	}
@@ -39,7 +43,7 @@ public abstract class SAPIInstance extends SimpleScenarioSetup {
 		try {
 			ini_actual = doGetIniActual("<?php var_dump($argv);\nvar_dump(ini_get_all()); ?>");
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(SAPIInstance.class, ex);
 		}
 		if (ini_actual==null)
 			ini_actual = "";

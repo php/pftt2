@@ -8,6 +8,7 @@ import java.nio.charset.Charset;
 import java.util.Map;
 
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
+import com.mostc.pftt.scenario.FileSystemScenario;
 
 public class PosixLocalHost extends LocalHost {
 	
@@ -94,11 +95,16 @@ public class PosixLocalHost extends LocalHost {
 	}
 	
 	@Override
-	public boolean mkdirs(String path) throws IllegalStateException, IOException {
+	public boolean mCreateDirs(String path) throws IllegalStateException, IOException {
 		if (!isSafePath(path))
 			return false;
 		new File(path).mkdirs();
 		return true;
 	} // end public boolean mkdirs
+
+	@Override
+	public String fixPath(String src_path) {
+		return FileSystemScenario.toUnixPath(src_path);
+	}
 	
 } // end public class PosixLocalHost

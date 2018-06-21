@@ -8,6 +8,7 @@ import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.scenario.DatabaseScenario;
 import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
 import com.mostc.pftt.scenario.DatabaseScenario.DatabaseScenarioSetup;
+import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 public abstract class DatabasePhpUnitSourceTestPack extends PhpUnitSourceTestPack {
@@ -25,13 +26,13 @@ public abstract class DatabasePhpUnitSourceTestPack extends PhpUnitSourceTestPac
 	protected abstract boolean handleNoDatabaseScenario(ConsoleManager cm);
 	
 	@Override
-	public boolean startRun(ConsoleManager cm, AHost runner_host, ScenarioSet scenario_set, PhpBuild build) {
+	public boolean startRun(ConsoleManager cm, FileSystemScenario fs, AHost runner_host, ScenarioSet scenario_set, PhpBuild build) {
 		DatabaseScenario ds = getDatabaseScenario(runner_host, scenario_set, build);
 		if (ds==null) {
 			return handleNoDatabaseScenario(cm);
 		}
 		
-		database = ds.setup(cm, runner_host, build, scenario_set, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_APPLICATION);
+		database = ds.setup(cm, fs, runner_host, build, scenario_set, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_APPLICATION);
 		if (database==null) {
 			cm.println(EPrintType.CANT_CONTINUE, getClass(), "Could not setup database scenario");
 			return handleNoDatabaseScenario(cm);

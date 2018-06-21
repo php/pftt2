@@ -24,22 +24,29 @@ import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
+import com.mostc.pftt.main.CmpReport.IRecvr;
 import com.mostc.pftt.model.app.PhpUnitSourceTestPack;
 import com.mostc.pftt.model.app.PhpUnitTestCase;
+import com.mostc.pftt.model.app.SimpleTestCase;
+import com.mostc.pftt.model.app.SimpleTestSourceTestPack;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.core.PhptSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.model.ui.UITestPack;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.ISerializer;
 import com.mostc.pftt.results.ITestResultReceiver;
+import com.mostc.pftt.results.LocalConsoleManager;
 import com.mostc.pftt.results.PhpResultPackWriter;
 import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.results.PhptTestResult;
+import com.mostc.pftt.results.SimpleTestResult;
 import com.mostc.pftt.runner.AbstractLocalTestPackRunner.TestPackThread;
 import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
+import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
@@ -56,11 +63,16 @@ import groovy.lang.MetaMethod;
  * @see Config#getHosts
  * @see Config#loadConfigFromFile
  * 
+ * TIP: An easy way to check your config file will compile (syntax errors or class not found errors, etc...)
+ * is to run the `lc` command and look at any error messages.
+ * 
  * An example configuration file:
  * def scenarios() {
  * 	// provide the scenarios to run... these are automatically permuted into the ScenarioSets which are actually run
  *  //
  *  // you can create your own scenarios here that override existing Scenarios to change their behavior, settings, etc...
+ * }
+ * def reporters() {
  * }
  * def hosts() {
  * 		[
@@ -73,6 +85,9 @@ import groovy.lang.MetaMethod;
  * def getPhpUnitSourceTestPack() {
  *	// PhpUnit test-pack
  * }
+ * def getSimpleTestSourceTestPack() {
+ * 	//
+ * }
  * def getUITestPack() {
  *  // UI test-pack
  * }
@@ -81,12 +96,6 @@ import groovy.lang.MetaMethod;
  * 			// provide address of a MySQL server
  * 			new MySQLScenario()
  * 		]
- * }
- * def configure_smtp(def smtp_client) {
- * 		// specify smtp server and credentials 
- * }
- * def configure_ftp_client(def ftp_client) {
- * 		// specify ftp server and credentials
  * }
  * def describe() {
  * 		// return description String of this config file
@@ -111,6 +120,9 @@ import groovy.lang.MetaMethod;
  * def processPhpUnitTestPack
  * def processPhptTestResult
  * def processPhpUnitTestResult
+ * def processSimpleTestResult
+ * def processSimpleTestPack
+ * def processSimpleTest
  * 
  * @author Matt Ficken
  * 
@@ -120,10 +132,10 @@ public final class Config implements IENVINIFilter {
 	public static final String HOSTS_METHOD = "hosts";
 	public static final String SCENARIO_SETS_METHOD = "scenario_sets";
 	public static final String SCENARIOS_METHOD = "scenarios";
+	public static final String GET_REPORTERS_METHOD = "reporters";
 	public static final String GET_PHP_UNIT_SOURCE_TEST_PACK_METHOD = "getPhpUnitSourceTestPack";
+	public static final String GET_SIMPLE_TEST_SOURCE_TEST_PACK_METHOD = "getSimpleTestSourceTestPack";
 	public static final String GET_UI_TEST_PACK_METHOD = "getUITestPack";
-	public static final String CONFIGURE_SMTP_METHOD = "configure_smtp";
-	public static final String CONFIGURE_FTP_CLIENT_METHOD = "configure_ftp_client";
 	public static final String DESCRIBE_METHOD_NAME = "describe";
 	public static final String PROCESS_CONSOLE_OPTIONS_METHOD_NAME = "processConsoleOptions";
 	public static final String NOT_SCENARIOS_METHOD_NAME = "notScenarios";
@@ -136,6 +148,9 @@ public final class Config implements IENVINIFilter {
 	public static final String PROCESS_PHPT_TEST_RESULT_METHOD_NAME = "processPhptTestResult";
 	public static final String PROCESS_PHP_UNIT_TEST_RESULT_METHOD_NAME = "processPhpUnitTestResult";
 	public static final String PREPARE_TEST_PACK_PER_THREAD_METHOD_NAME = "prepareTestPackPerThread";
+	public static final String PROCESS_SIMPLE_TEST_RESULT_METHOD_NAME = "processSimpleTestResult";
+	public static final String PROCESS_SIMPLE_TEST_PACK_METHOD_NAME = "processSimpleTestPack";
+	public static final String PROCESS_SIMPLE_TEST_METHOD_NAME = "processSimpleTest";
 	public static final String PREPARE_TEST_PACK_METHOD_NAME = "prepareTestPack";
 	//
 	protected final LinkedList<AHost> hosts;
@@ -221,6 +236,15 @@ public final class Config implements IENVINIFilter {
 		}
 	}
 	
+	public void processSimpleTestResult(ConsoleManager cm, SimpleTestResult result) {
+		ArrayList<MethodImpl> methods = by_method_name.get(PROCESS_SIMPLE_TEST_RESULT_METHOD_NAME);
+		if (methods==null)
+			return;
+		for ( MethodImpl m : methods ) {
+			invokeMethod(null, null, m.go, PROCESS_SIMPLE_TEST_RESULT_METHOD_NAME, new Object[]{cm, result}, null);
+		}
+	}
+	
 	public void processPHPT(PhptTestCase test_case) {
 		ArrayList<MethodImpl> methods = by_method_name.get(PROCESS_PHPT_METHOD_NAME);
 		if (methods==null)
@@ -239,12 +263,30 @@ public final class Config implements IENVINIFilter {
 		}
 	}
 	
+	public void processSimpleTestPack(SimpleTestSourceTestPack test_pack, ITestResultReceiver twriter, PhpBuild build) {
+		ArrayList<MethodImpl> methods = by_method_name.get(PROCESS_SIMPLE_TEST_PACK_METHOD_NAME);
+		if (methods==null)
+			return;
+		for ( MethodImpl m : methods ) {
+			invokeMethod(null, null, m.go, PROCESS_SIMPLE_TEST_PACK_METHOD_NAME, new Object[]{test_pack, twriter, build}, null);
+		}
+	}
+	
 	public void processPhpUnit(PhpUnitTestCase test_case) {
 		ArrayList<MethodImpl> methods = by_method_name.get(PROCESS_PHPUNIT_METHOD_NAME);
 		if (methods==null)
 			return;
 		for ( MethodImpl m : methods ) {
 			invokeMethod(null, null, m.go, PROCESS_PHPUNIT_METHOD_NAME, test_case, null);
+		}
+	}
+	
+	public void processSimpleTest(SimpleTestCase test_case) {
+		ArrayList<MethodImpl> methods = by_method_name.get(PROCESS_SIMPLE_TEST_METHOD_NAME);
+		if (methods==null)
+			return;
+		for ( MethodImpl m : methods ) {
+			invokeMethod(null, null, m.go, PROCESS_SIMPLE_TEST_METHOD_NAME, test_case, null);
 		}
 	}
 	
@@ -391,30 +433,6 @@ public final class Config implements IENVINIFilter {
 		return this_scenario_sets;
 	} // end protected List<ScenarioSet> permuateScenarioSets
 	
-	public boolean configureSMTP(SMTPProtocol smtp) {
-		return configureSMTP(null, smtp);
-	}
-	
-	public boolean configureSMTP(ConsoleManager cm, SMTPProtocol smtp) {
-		ArrayList<MethodImpl> methods = by_method_name.get(CONFIGURE_SMTP_METHOD);
-		if (methods==null)
-			return false;
-		MethodImpl m = methods.get(0);
-		return null != invokeMethod(null, cm, m.go, CONFIGURE_SMTP_METHOD, smtp, m.filename);
-	}
-	
-	public boolean configureFTPClient(FTPClient ftp) {
-		return configureFTPClient(null, ftp);
-	}
-	
-	public boolean configureFTPClient(ConsoleManager cm, FTPClient ftp) {
-		ArrayList<MethodImpl> methods = by_method_name.get(CONFIGURE_FTP_CLIENT_METHOD);
-		if (methods==null)
-			return false;
-		MethodImpl m = methods.get(0);
-		return null != invokeMethod(null, cm, m.go, CONFIGURE_FTP_CLIENT_METHOD, ftp, m.filename);
-	}
-	
 	public List<UITestPack> getUITestPacks(ConsoleManager cm) {
 		ArrayList<MethodImpl> methods = by_method_name.get(GET_UI_TEST_PACK_METHOD);
 		if (methods==null)
@@ -451,15 +469,12 @@ public final class Config implements IENVINIFilter {
 			else if (ret_clazz.isAssignableFrom(obj.getClass()))
 				return obj;
 		} catch ( Exception ex ) {
-			if (cm==null)
-				ex.printStackTrace(System.err);
-			else
-				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), method_name, ex, "", a);
+			ConsoleManagerUtil.printStackTrace(EPrintType.CANT_CONTINUE, getClass(), cm, method_name, ex, "", a);
 		}
 		return null;
 	}
 	
-	public static Config loadConfigFromStreams(ConsoleManager cm, InputStream... ins) throws CompilationFailedException, InstantiationException, IllegalAccessException, IOException {
+	public static Config loadConfigFromStreams(ConsoleManager cm, String param_str, InputStream... ins) throws CompilationFailedException, InstantiationException, IllegalAccessException, IOException {
 		GroovyClassLoader loader = new GroovyClassLoader(Config.class.getClassLoader());
 		
 		Config config = new Config();
@@ -477,7 +492,7 @@ public final class Config implements IENVINIFilter {
 			go = (GroovyObject) clazz.newInstance();
 			
 			// call methods in file to get configuration (hosts, etc...)
-			loadObjectToConfig(cm, config, go, scenarios, "InputStream #"+(i++)+" ("+in+")");
+			loadObjectToConfig(cm, config, go, scenarios, "InputStream #"+(i++)+" ("+in+")", param_str);
 		}
 		
 		return loadConfigCommon(cm, scenarios, config);
@@ -510,8 +525,16 @@ public final class Config implements IENVINIFilter {
 	private static final String[] DIR_IN_ORDER = new String[]{"", "ini", "env", "internal", "internal_example", "not", "app", "web_browser", "task"};
 	public static Config loadConfigFromFiles(ConsoleManager cm, String... file_names) throws CompilationFailedException, InstantiationException, IllegalAccessException, IOException {
 		ArrayList<File> config_files = new ArrayList<File>(file_names.length);
+		ArrayList<String> param_strs = new ArrayList<String>(file_names.length);
 		File config_file;
+		String param_str;
 		for ( String file_name : file_names ) {
+			if (file_name.contains("=")) {
+				param_str = file_name.substring(file_name.indexOf('=')+1);
+				file_name = file_name.substring(0, file_name.indexOf('='));
+			} else {
+				param_str = "";
+			}
 			config_file = new File(file_name);
 			
 			if (config_file.exists()) {
@@ -520,20 +543,26 @@ public final class Config implements IENVINIFilter {
 			} else {
 				config_file = new File(file_name+".groovy");
 				if (config_file.exists()) {
-					if (!config_files.contains(config_file))
+					if (!config_files.contains(config_file)) {
 						config_files.add(config_file);
+						param_strs.add(param_str);
+					}
 				} else {
 					boolean match = false;
 					for ( String dir : DIR_IN_ORDER ) {
 						config_file = new File(LocalHost.getLocalPfttDir()+"/conf/"+dir+"/"+file_name);
 						if (config_file.exists()) {
-							if (!config_files.contains(config_file))
+							if (!config_files.contains(config_file)) {
 								config_files.add(config_file);
+								param_strs.add(param_str);
+							}
 						} else {
 							config_file = new File(LocalHost.getLocalPfttDir()+"/conf/"+dir+"/"+file_name+".groovy");
 							if (config_file.exists()) {
-								if (!config_files.contains(config_file))
+								if (!config_files.contains(config_file)) {
 									config_files.add(config_file);
+									param_strs.add(param_str);
+								}
 								match = true;
 								break;
 							} else {
@@ -545,13 +574,17 @@ public final class Config implements IENVINIFilter {
 						for ( String dir : DIR_IN_ORDER ) {
 							config_file = new File(LocalHost.getLocalPfttDir()+"/conf/dev/"+dir+"/"+file_name);
 							if (config_file.exists()) {
-								if (!config_files.contains(config_file))
+								if (!config_files.contains(config_file)) {
 									config_files.add(config_file);
+									param_strs.add(param_str);
+								}
 							} else {
 								config_file = new File(LocalHost.getLocalPfttDir()+"/conf/dev/"+dir+"/"+file_name+".groovy");
 								if (config_file.exists()) {
-									if (!config_files.contains(config_file))
+									if (!config_files.contains(config_file)) {
 										config_files.add(config_file);
+										param_strs.add(param_str);
+									}
 									break;
 								} else {
 									cm.println(EPrintType.WARNING, Config.class, "Unable to find config file: "+file_name);
@@ -564,7 +597,9 @@ public final class Config implements IENVINIFilter {
 				}
 			}
 		} // end for
-		return loadConfigFromFiles(cm, (File[])config_files.toArray(new File[config_files.size()]));
+		Config config = new Config();
+		config.doLoadConfigFromFiles(cm, (String[])param_strs.toArray(new String[]{}), (File[])config_files.toArray(new File[]{}));
+		return config;
 	} // end public static Config loadConfigFromFiles
 	
 	/**
@@ -599,11 +634,11 @@ public final class Config implements IENVINIFilter {
 	 */
 	public static Config loadConfigFromFiles(ConsoleManager cm, File... files) throws CompilationFailedException, InstantiationException, IllegalAccessException, IOException {
 		Config config = new Config();
-		config.doLoadConfigFromFiles(cm, files);
+		config.doLoadConfigFromFiles(cm, null, files);
 		return config;
 	}
 	
-	protected void doLoadConfigFromFiles(ConsoleManager cm, File... files) throws InstantiationException, IllegalAccessException, CompilationFailedException, FileNotFoundException, IOException {
+	protected void doLoadConfigFromFiles(ConsoleManager cm, String[] param_str, File... files) throws InstantiationException, IllegalAccessException, CompilationFailedException, FileNotFoundException, IOException {
 		GroovyClassLoader loader = new GroovyClassLoader(Config.class.getClassLoader());
 		
 		/*ImportCustomizer ic = new ImportCustomizer();
@@ -619,13 +654,14 @@ public final class Config implements IENVINIFilter {
 		// load each configuration file
 		GroovyObject go;
 		Class<?> clazz;
-		for (File file : files) {
+		for (int i=0;i<files.length;i++) {
+			File file = files[i];
 			clazz = loader.parseClass(importString(file.getAbsolutePath(), IOUtil.toString(new FileInputStream(file), IOUtil.QUARTER_MEGABYTE)), file.getAbsolutePath());
 			
 			go = (GroovyObject) clazz.newInstance();
 			
 			// call methods in file to get configuration (hosts, etc...)
-			loadObjectToConfig(cm, this, go, scenarios, file.getAbsolutePath());
+			loadObjectToConfig(cm, this, go, scenarios, file.getAbsolutePath(), param_str==null?null:param_str[i]);
 		}
 		
 		loadConfigCommon(cm, scenarios, this);
@@ -651,11 +687,12 @@ public final class Config implements IENVINIFilter {
 		sb.append("import ");sb.append(XmlSerializer.class.getName());sb.append(";\n");
 		sb.append("import ");sb.append(ConsoleManager.class.getPackage().getName());sb.append(".*;\n");
 		sb.append("import ");sb.append(EPrintType.class.getName());sb.append(";\n");
+		sb.append("import ");sb.append(com.mostc.pftt.main.CmpReport.class.getName());sb.append(".*;\n");
 		
 		sb.append("import groovy.transform.Field;\n");
 		if (filename!=null) {
-			sb.append("@Field String __FILE__=\""+AHost.toUnixPath(filename)+"\";");
-			sb.append("@Field String __DIR__=\""+AHost.toUnixPath(AHost.dirname(filename))+"\";");
+			sb.append("@Field String __FILE__=\""+FileSystemScenario.toUnixPath(filename)+"\";");
+			sb.append("@Field String __DIR__=\""+FileSystemScenario.toUnixPath(FileSystemScenario.dirname(filename))+"\";");
 		}
 		sb.append(code);
 		return sb.toString();
@@ -679,7 +716,7 @@ public final class Config implements IENVINIFilter {
 		return config;
 	} // end protected static Config loadConfigCommon
 	
-	protected static void loadObjectToConfig(ConsoleManager cm, Config config, GroovyObject go, List<Scenario> scenarios, String file_name) {
+	protected static void loadObjectToConfig(ConsoleManager cm, Config config, GroovyObject go, List<Scenario> scenarios, String file_name, String param_str) {
 		Object ret;
 		try {
 			ret = go.invokeMethod(HOSTS_METHOD, null);
@@ -701,12 +738,7 @@ public final class Config implements IENVINIFilter {
 		} catch ( MissingPropertyExceptionNoStack ex ) {
 		} catch ( MissingMethodExceptionNoStack ex ) {
 		} catch ( Exception ex ) {
-			if (cm==null) {
-				System.err.println("file_name="+file_name);
-			 	ex.printStackTrace(System.err);
-			} else {
-				cm.addGlobalException(EPrintType.CANT_CONTINUE, Config.class, "loadObjectToConfig", ex, HOSTS_METHOD, file_name);
-			}
+			ConsoleManagerUtil.printStackTrace(EPrintType.CANT_CONTINUE, Config.class, cm, "loadObjectToConfig", ex, HOSTS_METHOD, file_name);
 		}
 		try {
 			ret = go.invokeMethod(SCENARIO_SETS_METHOD, null);
@@ -727,6 +759,7 @@ public final class Config implements IENVINIFilter {
 		} catch ( MissingPropertyExceptionNoStack ex ) {
 		} catch ( MissingMethodExceptionNoStack ex ) {
 		} catch ( Exception ex ) {
+			ConsoleManagerUtil.printStackTrace(Config.class, cm, ex);
 			if (cm==null) {
 				System.err.println("file_name="+file_name);
 			 	ex.printStackTrace(System.err);
@@ -735,7 +768,11 @@ public final class Config implements IENVINIFilter {
 			}
 		}
 		try {
-			ret = go.invokeMethod(SCENARIOS_METHOD, null);
+			try {
+				ret = go.invokeMethod(SCENARIOS_METHOD, param_str);
+			} catch ( MissingMethodExceptionNoStack ex ) {
+				ret = go.invokeMethod(SCENARIOS_METHOD, null);
+			}
 			if (ret instanceof Scenario) {
 				checkImplemented(cm, (Scenario)ret);
 				scenarios.add((Scenario)ret);
@@ -756,6 +793,7 @@ public final class Config implements IENVINIFilter {
 		} catch ( MissingPropertyExceptionNoStack ex ) {
 		} catch ( MissingMethodExceptionNoStack ex ) {
 		} catch ( Exception ex ) {
+			ConsoleManagerUtil.printStackTrace(Config.class, cm, ex);
 			if (cm==null) {
 				System.err.println("file_name="+file_name);
 			 	ex.printStackTrace(System.err);
@@ -764,8 +802,7 @@ public final class Config implements IENVINIFilter {
 			}
 		}
 		
-		registerSingleMethod(cm, config, go, CONFIGURE_SMTP_METHOD, file_name);
-		registerSingleMethod(cm, config, go, CONFIGURE_FTP_CLIENT_METHOD, file_name);
+		registerMethod(cm, config, go, GET_REPORTERS_METHOD, file_name);
 		registerMethod(cm, config, go, GET_PHP_UNIT_SOURCE_TEST_PACK_METHOD, file_name);
 		registerMethod(cm, config, go, GET_UI_TEST_PACK_METHOD, file_name);
 		registerMethod(cm, config, go, PROCESS_CONSOLE_OPTIONS_METHOD_NAME, file_name);
@@ -780,6 +817,10 @@ public final class Config implements IENVINIFilter {
 		registerMethod(cm, config, go, PROCESS_PHP_UNIT_TEST_RESULT_METHOD_NAME, file_name);
 		registerMethod(cm, config, go, PREPARE_TEST_PACK_PER_THREAD_METHOD_NAME, file_name);
 		registerMethod(cm, config, go, PREPARE_TEST_PACK_METHOD_NAME, file_name);
+		registerMethod(cm, config, go, GET_SIMPLE_TEST_SOURCE_TEST_PACK_METHOD, file_name);
+		registerMethod(cm, config, go, PROCESS_SIMPLE_TEST_RESULT_METHOD_NAME, file_name);
+		registerMethod(cm, config, go, PROCESS_SIMPLE_TEST_PACK_METHOD_NAME, file_name);
+		registerMethod(cm, config, go, PROCESS_SIMPLE_TEST_METHOD_NAME, file_name);
 	} // end protected static void loadObjectToConfig
 	
 	private static void checkImplemented(ConsoleManager cm, Scenario o) {
@@ -812,12 +853,7 @@ public final class Config implements IENVINIFilter {
 		} catch ( MissingPropertyExceptionNoStack ex ) {
 		} catch ( MissingMethodExceptionNoStack ex ) {
 		} catch ( Exception ex ) {
-			if (cm==null) {
-				System.err.println("file_name="+file_name);
-			 	ex.printStackTrace(System.err);
-			} else {
-				cm.addGlobalException(EPrintType.CANT_CONTINUE, Config.class, "loadObjectToConfig", ex, method_name, file_name);
-			}
+			ConsoleManagerUtil.printStackTrace(EPrintType.CANT_CONTINUE, Config.class, cm, "loadObjectToConfig", ex, method_name, file_name);
 		}
 	}
 	
@@ -828,12 +864,7 @@ public final class Config implements IENVINIFilter {
 		} catch ( MissingPropertyExceptionNoStack ex ) {
 		} catch ( MissingMethodExceptionNoStack ex ) {
 		} catch ( Exception ex ) {
-			if (cm==null) {
-				System.err.println("file_name="+file_name);
-			 	ex.printStackTrace(System.err);
-			} else {
-				cm.addGlobalException(EPrintType.CANT_CONTINUE, Config.class, "loadObjectToConfig", ex, method_name, file_name);
-			}
+			ConsoleManagerUtil.printStackTrace(EPrintType.CANT_CONTINUE, Config.class, cm, "loadObjectToConfig", ex, method_name, file_name);			
 		}
 	}
 	
@@ -846,7 +877,29 @@ public final class Config implements IENVINIFilter {
 	}
 
 	public void addConfigFile(ConsoleManager cm, File file) throws CompilationFailedException, FileNotFoundException, InstantiationException, IllegalAccessException, IOException {
-		doLoadConfigFromFiles(cm, file);
+		doLoadConfigFromFiles(cm, null, file);
+	}
+
+	public List<SimpleTestSourceTestPack> getSimpleTestSourceTestPacks(LocalConsoleManager cm) {
+		ArrayList<MethodImpl> methods = by_method_name.get(GET_SIMPLE_TEST_SOURCE_TEST_PACK_METHOD);
+		if (methods==null)
+			return new ArrayList<SimpleTestSourceTestPack>(0);
+		ArrayList<SimpleTestSourceTestPack> out = new ArrayList<SimpleTestSourceTestPack>(methods.size());
+		for ( MethodImpl m : methods ) {
+			out.add((SimpleTestSourceTestPack) invokeMethod(SimpleTestSourceTestPack.class, cm, m.go, GET_SIMPLE_TEST_SOURCE_TEST_PACK_METHOD, null, m.filename));
+		}
+		return out;
+	}
+
+	public List<IRecvr> getReporters(LocalConsoleManager cm) {
+		ArrayList<MethodImpl> methods = by_method_name.get(GET_REPORTERS_METHOD);
+		if (methods==null)
+			return new ArrayList<IRecvr>(0);
+		ArrayList<IRecvr> out = new ArrayList<IRecvr>(methods.size());
+		for ( MethodImpl m : methods ) {
+			out.add((IRecvr) invokeMethod(IRecvr.class, cm, m.go, GET_REPORTERS_METHOD, null, m.filename));
+		}
+		return out;
 	}
 	
 } // end public final class ConfigUtil

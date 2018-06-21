@@ -13,6 +13,7 @@ import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
 import com.mostc.pftt.scenario.CliScenario;
+import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.NTStatus;
 
@@ -20,8 +21,8 @@ public class CliPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	protected ExecHandle running_test_handle;
 	protected String output_str;
 
-	public CliPhpUnitTestCaseRunner(CliScenario sapi_scenario, PhpUnitThread thread, ITestResultReceiver tmgr, Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String, String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
-		super(sapi_scenario, thread, tmgr, globals, env, cm, host, scenario_set_setup, build, test_case, my_temp_dir, constants, include_path, include_files, ini, reflection_only);
+	public CliPhpUnitTestCaseRunner(FileSystemScenario fs, CliScenario sapi_scenario, PhpUnitThread thread, ITestResultReceiver tmgr, Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String, String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
+		super(fs, sapi_scenario, thread, tmgr, globals, env, cm, host, scenario_set_setup, build, test_case, my_temp_dir, constants, include_path, include_files, ini, reflection_only);
 	}
 	
 	@Override
@@ -32,6 +33,7 @@ public class CliPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	}
 	
 	private void doExecute(String template_file, String ini_dir) throws Exception {
+		ini_dir = "C:\\php-sdk\\php-7.0.4-nts-Win32-VC14-x86\\php.ini"; // TODO temp
 		running_test_handle = host.execThread(
 				build.getPhpExe()+" -c "+ini_dir+" "+template_file,
 				env,
@@ -58,7 +60,7 @@ public class CliPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	
 	@Override
 	protected String execute(String template_file) throws IOException, Exception {
-		final String ini_dir = build.prepare(cm, host); // XXX store PhpIni in my_temp_dir ?
+		final String ini_dir = build.prepare(cm, fs, host); // XXX store PhpIni in my_temp_dir ?
 		
 		doExecute(template_file, ini_dir);
 		if (is_crashed && running_test_handle.getExitCode() != -2

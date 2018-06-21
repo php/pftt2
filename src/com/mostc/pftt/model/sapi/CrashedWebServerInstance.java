@@ -6,6 +6,7 @@ import java.util.Map;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.scenario.FileSystemScenario;
 
 /** special marker for WebServerInstances that crashed on startup/couldn't be started.
  * 
@@ -20,12 +21,12 @@ public class CrashedWebServerInstance extends WebServerInstance {
 	protected final String sapi_output;
 	protected final String instance_info;
 	
-	public CrashedWebServerInstance(AHost host, WebServerManager ws_mgr, PhpIni ini, Map<String,String> env, String sapi_output) {
-		this(host, ws_mgr, ini, env, sapi_output, null);
+	public CrashedWebServerInstance(FileSystemScenario fs, AHost host, WebServerManager ws_mgr, PhpIni ini, Map<String,String> env, String sapi_output) {
+		this(fs, host, ws_mgr, ini, env, sapi_output, null);
 	}
 	
-	public CrashedWebServerInstance(AHost host, WebServerManager ws_mgr, PhpIni ini, Map<String,String> env, String sapi_output, String instance_info) {
-		super(host, ws_mgr, null, ini, env);
+	public CrashedWebServerInstance(FileSystemScenario fs, AHost host, WebServerManager ws_mgr, PhpIni ini, Map<String,String> env, String sapi_output, String instance_info) {
+		super(fs, host, ws_mgr, null, ini, env);
 		this.sapi_output = sapi_output;
 		this.instance_info = instance_info;
 	}

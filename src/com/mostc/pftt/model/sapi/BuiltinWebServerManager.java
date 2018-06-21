@@ -12,7 +12,9 @@ import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.EPrintType;
+import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 /** manages local instances of PHP's builtin web server
@@ -49,11 +51,11 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 	}
 	
 	@Override
-	protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String, String> env, String docroot, String listen_address, int port) {
+	protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, FileSystemScenario fs, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String, String> env, String docroot, String listen_address, int port) {
 		// run `php.exe -S listen_address:NNNN` in docroot
 		String ini_dir;
 		try {
-			ini_dir = build.prepare(cm, host);
+			ini_dir = build.prepare(cm, FileSystemScenario.getFS(scenario_set, host), host);
 		} catch ( IOException ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, "createManagedProcessWebServerInstance", ex, "can't create PhpIni directory");
 			
@@ -63,14 +65,14 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 		env = prepareENV(env, ini_dir+"/php.ini", build, scenario_set, build.getPhpExe());
 		
 		// critical: -n -c => only use php.ini in ini_dir
-		return new BuiltinWebServerInstance(this, host, build, docroot, build.getPhpExe()+" -S "+listen_address+":"+port+" -n -c "+ini_dir, ini, env, listen_address, port);
+		return new BuiltinWebServerInstance(this, fs, host, build, docroot, build.getPhpExe()+" -S "+listen_address+":"+port+" -n -c "+ini_dir, ini, env, listen_address, port);
 	}
 	
 	public class BuiltinWebServerInstance extends ManagedProcessWebServerInstance {
 		protected final PhpBuild build;
 		
-		public BuiltinWebServerInstance(BuiltinWebServerManager ws_mgr, AHost host, PhpBuild build, String docroot, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port) {
-			super(host, ws_mgr, docroot, cmd, ini, env, hostname, port);
+		public BuiltinWebServerInstance(BuiltinWebServerManager ws_mgr, FileSystemScenario fs, AHost host, PhpBuild build, String docroot, String cmd, PhpIni ini, Map<String,String> env, String hostname, int port) {
+			super(fs, host, ws_mgr, docroot, cmd, ini, env, hostname, port);
 			this.build = build;
 		}
 		
@@ -119,10 +121,7 @@ public class BuiltinWebServerManager extends AbstractManagedProcessesWebServerMa
 		try {
 			return new BuiltinWebSetup((AHost)host, build);
 		} catch ( Exception ex ) {
-			if (cm==null)
-				ex.printStackTrace();
-			else
-				cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "close", ex, "Exception starting Builtin Web Server");
+			ConsoleManagerUtil.printStackTrace(EPrintType.CANT_CONTINUE, getClass(), cm, "close", ex, "Exception starting Builtin Web Server");
 		}
 		return null;
 	}

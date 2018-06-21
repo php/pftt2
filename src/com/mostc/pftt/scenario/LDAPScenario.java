@@ -21,7 +21,7 @@ public class LDAPScenario extends NetworkedServiceScenario {
 	}
 	
 	@Override
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
+	public IScenarioSetup setup(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
 		return SETUP_FAILED;
 	}
 

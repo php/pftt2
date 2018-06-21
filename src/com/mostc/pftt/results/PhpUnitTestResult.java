@@ -1,6 +1,7 @@
 package com.mostc.pftt.results;
 
 import java.io.IOException;
+import java.util.Random;
 
 import javax.annotation.Nullable;
 
@@ -32,6 +33,7 @@ public class PhpUnitTestResult implements ISerializer {
 	public TestCaseCodeCoverage code_coverage;
 	@Nullable public ISerializer extra;
 	
+	static Random random = new Random();
 	public PhpUnitTestResult(PhpUnitTestCase test_case, EPhpUnitTestStatus status, ScenarioSetSetup scenario_set, Host host, String output, float run_time_micros, TestCaseCodeCoverage code_coverage) {
 		this.test_case = test_case;
 		this.status = status;

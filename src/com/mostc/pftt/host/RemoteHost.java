@@ -5,6 +5,7 @@ import java.nio.charset.Charset;
 import java.util.Map;
 
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
 
@@ -22,7 +23,7 @@ public abstract class RemoteHost extends AHost {
 	public ExecOutput execElevatedOut(String cmd, int timeout_sec, Map<String, String> env, byte[] stdin_data, Charset charset, String chdir, TestPackRunnerThread test_thread, int slow_timeout_sec) throws Exception {
 		if (isWindows()) {
 			if (!checked_elevate) {
-				found_elevate = exists(getPfttBinDir()+"\\elevate.exe");
+				found_elevate = mExists(getPfttBinDir()+"\\elevate.exe");
 				
 				checked_elevate = true;
 			}
@@ -45,7 +46,7 @@ public abstract class RemoteHost extends AHost {
 				}
 			}
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(RemoteHost.class, ex);
 		}
 		return null;
 	}
@@ -69,9 +70,9 @@ public abstract class RemoteHost extends AHost {
 		ensure7Zip(cm, dst_host);
 		dst_host.ensure7Zip(cm, this);
 		
-		String src_zip7_file = mktempname(ctx_str, ".7z");
+		String src_zip7_file = mCreateTempName(ctx_str, ".7z");
 		
-		String dst_zip7_file = dst_host.mktempname(ctx_str, ".7z");
+		String dst_zip7_file = dst_host.mCreateTempName(ctx_str, ".7z");
 		
 		compress(cm, dst_host, src, src_zip7_file);
 		
@@ -79,8 +80,8 @@ public abstract class RemoteHost extends AHost {
 		
 		dst_host.decompress(cm, this, dst_zip7_file, dst);
 		
-		dst_host.delete(src_zip7_file);
-		delete(dst_zip7_file);
+		dst_host.mDelete(src_zip7_file);
+		mDelete(dst_zip7_file);
 	}
 	
 	@Override
@@ -90,9 +91,9 @@ public abstract class RemoteHost extends AHost {
 		ensure7Zip(cm, src_host);
 		src_host.ensure7Zip(cm, this);
 		
-		String src_zip7_file = src_host.mktempname(ctx_str, ".7z");
+		String src_zip7_file = src_host.mCreateTempName(ctx_str, ".7z");
 		
-		String dst_zip7_file = mktempname(ctx_str, ".7z");
+		String dst_zip7_file = mCreateTempName(ctx_str, ".7z");
 		
 		src_host.compress(cm, this, src, src_zip7_file);
 		
@@ -100,8 +101,8 @@ public abstract class RemoteHost extends AHost {
 		
 		decompress(cm, src_host, dst_zip7_file, dst);
 		
-		src_host.delete(src_zip7_file);
-		delete(dst_zip7_file);
+		src_host.mDelete(src_zip7_file);
+		mDelete(dst_zip7_file);
 	}
 	
 } // end public abstract class RemoteHost

@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 import com.github.mattficken.Overridable;
 import com.github.mattficken.io.ArrayUtil;
@@ -14,6 +13,7 @@ import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.app.EPhpUnitTestStatus;
+import com.mostc.pftt.model.app.PhpUnitActiveTestPack;
 import com.mostc.pftt.model.app.PhpUnitTemplate;
 import com.mostc.pftt.model.app.PhpUnitTestCase;
 import com.mostc.pftt.model.core.PhpBuild;
@@ -24,7 +24,13 @@ import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.TestCaseCodeCoverage;
 import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
+import com.mostc.pftt.scenario.AzureWebsitesScenario;
+import com.mostc.pftt.scenario.DatabaseScenario;
+import com.mostc.pftt.scenario.DatabaseScenario.DatabaseScenarioSetup;
+import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
+import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.SAPIScenario;
+import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 
 /** runs a single PhpUnitTestCase
@@ -50,52 +56,29 @@ having PFTT directly run PhpUnit test cases itself, instead of just wrapping `ph
  *
  */
 
-public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunner<LocalPhpUnitTestPackRunner.PhpUnitThread,LocalPhpUnitTestPackRunner> {
-	protected final SAPIScenario sapi_scenario;
-	protected final PhpUnitThread thread;
-	protected final ITestResultReceiver tmgr;
+public abstract class AbstractPhpUnitTestCaseRunner extends AbstractApplicationUnitTestCaseRunner<LocalPhpUnitTestPackRunner.PhpUnitThread,LocalPhpUnitTestPackRunner> {
 	protected final Map<String, String> globals;
 	protected final Map<String, String> env;
 	protected final Map<String,String> constants;
 	protected final String include_path;
 	protected final String[] include_files;
-	protected final ConsoleManager cm;
-	protected final AHost host;
-	protected final ScenarioSetSetup scenario_set;
-	protected final PhpBuild build;
 	protected final PhpUnitTestCase test_case;
 	protected final String my_temp_dir;
-	protected final PhpIni ini;
-	protected boolean is_crashed, is_timeout;
 	protected final boolean reflection_only;
 
-	public AbstractPhpUnitTestCaseRunner(SAPIScenario sapi_scenario, PhpUnitThread thread, ITestResultReceiver tmgr, Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSetSetup scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
-		this.sapi_scenario = sapi_scenario;
-		this.thread = thread;
-		this.tmgr = tmgr;
+	public AbstractPhpUnitTestCaseRunner(FileSystemScenario fs, SAPIScenario sapi_scenario, PhpUnitThread thread, ITestResultReceiver twriter, Map<String, String> globals, Map<String, String> env, ConsoleManager cm, AHost host, ScenarioSetSetup scenario_set, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
+		super(fs, sapi_scenario, thread, twriter, cm, host, scenario_set, build, ini);
 		this.globals = globals;
 		this.env = env;
-		this.cm = cm;
-		this.host = host;
-		this.scenario_set = scenario_set;
-		this.build = build;
 		this.test_case = test_case;
 		this.my_temp_dir = my_temp_dir;
 		this.constants = constants;
 		this.include_path = include_path;
 		this.include_files = include_files;
-		this.ini = ini;
 		this.reflection_only = reflection_only;
 	}
 	
-	protected static Pattern PAT_CLASS_NOT_FOUND, PAT_REQUIRE_ONCE_FAIL, PAT_SYNTAX_ERROR, PAT_FATAL_ERROR;
-	static {
-		PAT_CLASS_NOT_FOUND = Pattern.compile(".*Fatal error.*Class '.*' not found.*");
-		PAT_REQUIRE_ONCE_FAIL = Pattern.compile(".*Fatal error.*require_once.*Failed opening required.*");
-		PAT_FATAL_ERROR = Pattern.compile(".*Fatal error.*");
-		PAT_SYNTAX_ERROR = Pattern.compile(".*No syntax errors detected.*");
-	}
-	
+	@Override
 	protected String generatePhpScript() {
 		HashMap<String,String> env = new HashMap<String,String>();
 		
@@ -121,26 +104,53 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 				scenario_set.getScenarioSet(), 
 				test_case, 
 				test_case.getPhpUnitDist().getSourceTestPack().getPreBootstrapCode(cm, host, scenario_set.getScenarioSet(), build),
-				test_case.getPhpUnitDist().getBootstrapFile() == null ? 
+				PhpUnitActiveTestPack.norm(sapi_scenario, test_case.getPhpUnitDist().getBootstrapFile() == null ? 
 						null : 
-						test_case.getPhpUnitDist().getBootstrapFile().getAbsolutePath(),
+						test_case.getPhpUnitDist().getBootstrapFile().getAbsolutePath()),
 				test_case.getPhpUnitDist().getSourceTestPack().getPostBootstrapCode(cm, host, scenario_set.getScenarioSet(), build),
-				test_case.getPhpUnitDist().getPath().getAbsolutePath(),
+				PhpUnitActiveTestPack.norm(sapi_scenario, test_case.getPhpUnitDist().getPath().getAbsolutePath()),
 				include_path,
 				include_files,
 				globals,
 				constants,
 				env,
 				my_temp_dir,
-				reflection_only
+				reflection_only,
+				use_cgi()
 			);
+	}
+	
+	protected boolean use_cgi() {
+		return false;
 	}
 	
 	protected abstract String execute(String template_file) throws IOException, Exception;
 	
+	protected void prepareTemplate(String template_file) throws IllegalStateException, IOException {
+		final String php_script = generatePhpScript();
+		
+		fs.saveTextFile(template_file, php_script);
+		System.out.println("php_script "+template_file);
+		// show output from all on console for debugging
+		if (cm.isPfttDebug()) {
+			synchronized(System.err) {
+				System.err.println(test_case.getName()+":");
+				System.err.println(php_script);
+			}
+		}
+	}
+	
 	@Override
 	public void runTest(ConsoleManager cm, LocalPhpUnitTestPackRunner.PhpUnitThread t, LocalPhpUnitTestPackRunner r) throws Exception {
-		host.mkdirs(my_temp_dir);
+		if (!AzureWebsitesScenario.check(sapi_scenario)) {
+		fs.createDirs(my_temp_dir); // TODO only do this once per thread
+		}
+		
+		/*		
+		DatabaseScenarioSetup d = (DatabaseScenarioSetup) scenario_set.getScenarioSetup(DatabaseScenario.class);
+		d.createDatabaseWithUserReplaceOk(Thread.currentThread().toString(), d.getUsername(), d.getPassword());
+		*/
+		
 		
 		//
 		try {
@@ -151,42 +161,49 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 		}
 		//
 		
-		final String template_file = my_temp_dir+"/test.php";
+		String output, template_file;
+		if (AzureWebsitesScenario.check(fs)) {
+			output = execute("template_file");
+			
+			template_file = null;
+		} else {
+			template_file = my_temp_dir+"/test.php";
+			
+			prepareTemplate(template_file);
+			
+			output = execute(template_file);
+		}
 		
-		final String php_script = generatePhpScript();
 		
-		host.saveTextFile(template_file, php_script);
-		
-		final String output = execute(template_file);
 		
 		// show output from all on console for debugging
 		if (cm.isPfttDebug()) {
 			synchronized(System.err) {
 				System.err.println(test_case.getName()+":");
-				System.err.println(php_script);
-				System.err.println(test_case.getName()+":");
 				System.err.println(output);
 			}
 		}
 		//
-
+System.out.println("187");
 		EPhpUnitTestStatus status = null;
 		float run_time_micros = 0;
 		if (checkRequireOnceError(output)) {
+			System.out.println("191");
 			status = EPhpUnitTestStatus.TEST_EXCEPTION;
 			
-			tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, run_time_micros, null, getSAPIOutput(), getSAPIConfig()));
-		} else if (is_crashed&&!is_timeout) {
+			twriter.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, run_time_micros, null, getSAPIOutput(), getSAPIConfig()));
+		} else if (false) { // TODO temp is_crashed&&!is_timeout) {
+			System.out.println("196");
 			if (PAT_CLASS_NOT_FOUND.matcher(output).find()) {
 				status = EPhpUnitTestStatus.UNSUPPORTED;
 				
-				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, run_time_micros, null, getSAPIOutput(), getSAPIConfig()));
+				twriter.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, run_time_micros, null, getSAPIOutput(), getSAPIConfig()));
 			} else if (PAT_FATAL_ERROR.matcher(output).find()) {
 				status = EPhpUnitTestStatus.ERROR;
 				
 				// (will not have been able to print out the code coverage data in this case)
-				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, run_time_micros, null, getSAPIOutput(), getSAPIConfig()));
-			} else {
+				twriter.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, run_time_micros, null, getSAPIOutput(), getSAPIConfig()));
+			} else if (!AzureWebsitesScenario.check(fs)){
 				// CRASH may really be a syntax error (BORK), check to make sure
 				final ExecOutput syntax_eo = host.execOut(
 						build.getPhpExe()+" -l "+template_file,
@@ -197,14 +214,15 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 					// its a syntax error - BORK, as test case can't run
 					status = EPhpUnitTestStatus.BORK;
 					
-					tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, syntax_eo.output, ini, run_time_micros, null, getSAPIOutput(), getSAPIConfig()));
+					twriter.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, syntax_eo.output, ini, run_time_micros, null, getSAPIOutput(), getSAPIConfig()));
 				} else {
 					status = EPhpUnitTestStatus.CRASH;
 					
-					tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, run_time_micros, null, getSAPIOutput(), getSAPIConfig()));
+					twriter.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, run_time_micros, null, getSAPIOutput(), getSAPIConfig()));
 				}
 			}
 		} else {
+			System.out.println("225");
 			// SPEC: the php script will print
 			// status=<status>
 			// run_time=<time in microseconds>
@@ -224,6 +242,7 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 				String line, file = null;
 				while (line_it.hasNext()) {
 					line = line_it.next();
+					System.out.println("["+line+"]");
 					if (line.startsWith("file=")) {
 						file = line.substring("file=".length());
 						
@@ -247,8 +266,8 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 						
 						line_it.remove(); // remove this line from output_str
 					} else if (line.startsWith("status=")) {
-						status = EPhpUnitTestStatus.fromString(line.substring("status=".length()));
-						
+						status = EPhpUnitTestStatus.fromString(line.substring("status=".length()).trim());
+						System.out.println("status "+status);
 						if (status==null) {
 							if (output.contains("Fatal Error"))
 								status = EPhpUnitTestStatus.ERROR;
@@ -274,7 +293,9 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 			}
 			//
 			
-			if (is_timeout&&status!=EPhpUnitTestStatus.PASS) {
+			if (test_case.isExceptionExpected() && status != null && status.isNotPass()) {
+				status = EPhpUnitTestStatus.PASS;
+			} else if (is_timeout&&status!=EPhpUnitTestStatus.PASS) {
 				status = EPhpUnitTestStatus.TIMEOUT;
 			} else if (status==null) {
 				// if test had a 'Fatal Error', it might not have been able to print the status code at all
@@ -291,13 +312,15 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 			}
 			
 			if (status.isNotPass()) {
-				tmgr.addResult(host, scenario_set, notifyNotPass(new PhpUnitTestResult(test_case, status, scenario_set, host, output_str, ini, run_time_micros, code_coverage, getSAPIOutput(), getSAPIConfig())));
+				twriter.addResult(host, scenario_set, notifyNotPass(new PhpUnitTestResult(test_case, status, scenario_set, host, output_str, ini, run_time_micros, code_coverage, getSAPIOutput(), getSAPIConfig())));
 			} else {
-				tmgr.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output_str, ini, run_time_micros, code_coverage, getSAPIOutput(), getSAPIConfig()));
+				twriter.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output_str, ini, run_time_micros, code_coverage, getSAPIOutput(), getSAPIConfig()));
 			}
 		}
 		
-		host.delete(my_temp_dir);
+		if (!AzureWebsitesScenario.check(sapi_scenario)) {
+			fs.delete(my_temp_dir);
+		}
 	} // end public void runTest
 	
 	protected PhpUnitTestResult notifyNotPass(PhpUnitTestResult result) {
@@ -330,28 +353,34 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractTestCaseRunn
 	 * @param port
 	 * @param username
 	 * @param password
-	 * @param database
+	 * @param database_name
 	 * @param pdo_db_type
 	 * @param globals
 	 */
-	public static void addDatabaseConnection(String dsn, String hostname, int port, String username, String password, String database, String pdo_db_type, Map<String, String> globals) {
+	public static void addDatabaseConnection(String dsn, String hostname, int port, String username, String password, String database_name, String pdo_db_type, Map<String, String> globals) {
 		String port_str = Integer.toString(port);
 		
 		globals.put("DB_DSN", dsn);
 		globals.put("DB_USER", username);
 		globals.put("DB_PASSWD", password);
-		globals.put("DB_DBNAME", database);
+		globals.put("DB_PASSWORD", password);
+		globals.put("DB_DBNAME", database_name);
+		globals.put("DB_NAME", database_name);
 		globals.put("db_dsn", dsn);
 		globals.put("db_user", username);
 		globals.put("db_passwd", password);
-		globals.put("db_dbname", database);
+		//globals.put("db_dbname", database_name);
 		// @see vendor/symfony/symfony/vendor/doctrine/dbal/tests/Doctrine/Tests/TestUtil.php
 		globals.put("db_type", pdo_db_type);
+		globals.put("db_name", database_name);
 		globals.put("db_username", username);
 		globals.put("db_password", password);
 		globals.put("db_host", hostname);
+		globals.put("DB_HOST", hostname);
 		globals.put("db_port", port_str);
+		globals.put("DB_PORT", port_str);
 		globals.put("tmpdb_type", pdo_db_type);
+		globals.put("tmpdb_name", database_name);
 		globals.put("tmpdb_username", username);
 		globals.put("tmpdb_password", password);
 		globals.put("tmpdb_host", hostname);

@@ -175,9 +175,9 @@ public class NTFSACL {
 		// parent is the rootpath. Generate a new folder in the rootPath that blocks.
 			parentPath = host.joinIntoOnePath(
 				this.parent.path,
-				host.mktempname(getClass(), "parentPath")
+				host.mCreateTempName(getClass(), "parentPath")
 			);
-			host.mkdirs(parentPath);
+			host.mCreateDirs(parentPath);
 			this.path = parentPath;
 			doGrant(host, parentPath, ENTFSACEType.FULL, null, true);
 			doBlock(host, parentPath);
@@ -185,15 +185,15 @@ public class NTFSACL {
 		}
 		
 		this.path = host.joinIntoOnePath(
-				parentPath,
-				host.mktempname(getClass(), "path")
+				parentPath, 
+				host.mCreateTempName(getClass(), "path")
 			);
 		
 		// if we're at a depth of zero, target is a file. else, it's a folder,
 		if( depth > 0 ) {
-			host.mkdirs(this.path);
+			host.mCreateDirs(this.path);
 		} else {
-			host.saveTextFile(this.path, Long.toString(System.currentTimeMillis()));
+			host.mSaveTextFile(this.path, Long.toString(System.currentTimeMillis()));
 		}
 		
 		
@@ -247,7 +247,7 @@ public class NTFSACL {
 		} else if ( this.path != null ) {
 			doClear(host, this.path, true);
 			doGrant(host, this.path, ENTFSACEType.FULL, null, true);
-			host.deleteIfExists(this.path);
+			host.mDeleteIfExists(this.path);
 		} else {
 			// nothing to see here.
 		}

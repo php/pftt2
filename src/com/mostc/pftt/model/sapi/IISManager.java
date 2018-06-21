@@ -15,9 +15,11 @@ import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.core.PhptSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
+import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 
@@ -57,9 +59,9 @@ public class IISManager extends AbstractManagedProcessesWebServerManager {
 		//    -IIS HWC config
 		//    -php.ini
 		//    -error.log
-		prep.conf_dir = host.mktempname(temp_file_ctx);
+		prep.conf_dir = host.mCreateTempName(temp_file_ctx);
 		try {
-			host.mkdirs(prep.conf_dir);
+			host.mCreateDirs(prep.conf_dir);
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "prepareIIS", ex, "Can't create temporary dir to run IIS", host, prep.conf_dir);
 			return null;
@@ -69,10 +71,10 @@ public class IISManager extends AbstractManagedProcessesWebServerManager {
 		if (prep.ini==null)
 			prep.ini = new PhpIni();
 		else if (StringUtil.isEmpty(prep.ini.getExtensionDir()))
-			prep.ini.setExtensionDir(host.fixPath(build.getDefaultExtensionDir())+host.dirSeparator());
-		else if (!prep.ini.getExtensionDir().endsWith(host.dirSeparator()))
+			prep.ini.setExtensionDir(host.fixPath(build.getDefaultExtensionDir())+host.mDirSeparator());
+		else if (!prep.ini.getExtensionDir().endsWith(host.mDirSeparator()))
 			// extension dir already set, but doesn't end with / or \
-			prep.ini.setExtensionDir(host.fixPath(prep.ini.getExtensionDir()+host.dirSeparator()));
+			prep.ini.setExtensionDir(host.fixPath(prep.ini.getExtensionDir()+host.mDirSeparator()));
 		//
 		
 		prep.php_conf_file = host.joinIntoOnePath(prep.conf_dir, "php.ini");
@@ -82,13 +84,13 @@ public class IISManager extends AbstractManagedProcessesWebServerManager {
 		prep.conf_str = writeConfigurationFile(host, build.getPhpCgiExe(), prep.conf_dir, prep.error_log, listen_address, port, docroot);
 		
 		try {
-			host.saveTextFile(prep.php_conf_file, prep.ini.toString());
+			host.mSaveTextFile(prep.php_conf_file, prep.ini.toString());
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "prepareIIS", ex, "Unable to save PhpIni: "+prep.php_conf_file, host, prep.php_conf_file);
 			return null;
 		}
 		try {
-			host.saveTextFile(prep.iis_conf_file, prep.conf_str);
+			host.mSaveTextFile(prep.iis_conf_file, prep.conf_str);
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "prepareIIS", ex, "Unable to save IIS configuration: "+prep.iis_conf_file, host, prep.iis_conf_file);
 			return null;
@@ -97,7 +99,7 @@ public class IISManager extends AbstractManagedProcessesWebServerManager {
 	} // end protected PreparedIIS prepareIIS
 	
 	@Override
-	protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String, String> env, final String docroot, String listen_address, int port) {
+	protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance(ConsoleManager cm, FileSystemScenario fs, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini, Map<String, String> env, final String docroot, String listen_address, int port) {
 		if (!host.isWindows())
 			// IIS is only supported on Windows
 			return null;
@@ -107,10 +109,10 @@ public class IISManager extends AbstractManagedProcessesWebServerManager {
 		env = prepareENV(env, prep.php_conf_file, build, scenario_set, build.getPhpCgiExe());
 		
 		
-		final String cmdline = host.getPfttCacheDir()+"/dep/IIS/IISRunner "+host.fixPath(prep.iis_conf_file);
+		final String cmdline = host.getPfttCacheDir()+"/dep/IIS/IISRunner.exe "+host.fixPath(prep.iis_conf_file);
 		
 		// @see #createWebServerInstance for where command is executed to create httpd.exe process
-		return new IISWebServerInstance(this, docroot, cmdline, env, ini, listen_address, port, prep, host, build);
+		return new IISWebServerInstance(this, docroot, cmdline, env, ini, listen_address, port, prep, fs, host, build);
 	} // end protected ManagedProcessWebServerInstance createManagedProcessWebServerInstance
 	
 	public class IISWebServerInstance extends ManagedProcessWebServerInstance {
@@ -118,8 +120,8 @@ public class IISManager extends AbstractManagedProcessesWebServerManager {
 		protected final PhpBuild build;
 		protected SoftReference<String> log_ref;
 		
-		public IISWebServerInstance(IISManager ws_mgr, String docroot, String cmd, Map<String,String> env, PhpIni ini, String hostname, int port, PreparedIIS prep, AHost host, PhpBuild build) {
-			super(host, ws_mgr, docroot, cmd, ini, env, hostname, port);
+		public IISWebServerInstance(IISManager ws_mgr, String docroot, String cmd, Map<String,String> env, PhpIni ini, String hostname, int port, PreparedIIS prep, FileSystemScenario fs, AHost host, PhpBuild build) {
+			super(fs, host, ws_mgr, docroot, cmd, ini, env, hostname, port);
 			this.build = build;
 			this.prep = prep;
 		}
@@ -144,7 +146,7 @@ public class IISManager extends AbstractManagedProcessesWebServerManager {
 			if (log_ref!=null)
 				log = log_ref.get();
 			if (log==null) {
-				log = host.getContents(prep.error_log);
+				log = host.mGetContents(prep.error_log);
 				if (StringUtil.isNotEmpty(log)) {
 					log_ref = new SoftReference<String>(log);
 				}
@@ -167,7 +169,7 @@ public class IISManager extends AbstractManagedProcessesWebServerManager {
 							readLogCache();
 						}
 						
-						host.delete(prep.conf_dir);
+						host.mDelete(prep.conf_dir);
 					} catch ( Exception ex ) {
 					}
 				}
@@ -252,10 +254,7 @@ public class IISManager extends AbstractManagedProcessesWebServerManager {
 			try {
 				host.exec("net stop w3svc", Host.ONE_MINUTE);
 			} catch ( Exception ex ) {
-				if (cm==null)
-					ex.printStackTrace();
-				else
-					cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "close", ex, "Exception stopping IIS");
+				ConsoleManagerUtil.printStackTrace(EPrintType.CANT_CONTINUE, getClass(), cm, "close", ex, "Exception stopping IIS");
 			}
 		}
 

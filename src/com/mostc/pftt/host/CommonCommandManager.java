@@ -6,6 +6,9 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.mostc.pftt.results.ConsoleManagerUtil;
+import com.mostc.pftt.scenario.FileSystemScenario;
+
 public class CommonCommandManager {
 	protected SoftReference<List<Win32ProcessInfo>> process_table_query;
 	protected final ReentrantLock process_table_query_lock, win_close_all_handles_lock, win_kill_process_lock;
@@ -51,7 +54,7 @@ public class CommonCommandManager {
 				}
 			}
 		} catch ( Throwable t ) {
-			t.printStackTrace(); // TODO
+			ConsoleManagerUtil.printStackTrace(CommonCommandManager.class, t);
 		}
 	}
 	
@@ -93,7 +96,7 @@ public class CommonCommandManager {
 				}
 			}
 		} catch (Throwable t3) {
-			t3.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(CommonCommandManager.class, t3);
 		}
 	}
 	
@@ -141,7 +144,7 @@ public class CommonCommandManager {
 					table.add(new Win32ProcessInfo(parts[0], Integer.parseInt(parts[2]), Integer.parseInt(parts[1])));
 				}
 			} catch ( Exception ex ) {
-				ex.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(CommonCommandManager.class, ex);
 			}
 			
 			process_table_query = new SoftReference<List<Win32ProcessInfo>>(table);
@@ -216,16 +219,16 @@ public class CommonCommandManager {
 		if (!host.isSafePath(dst))
 			return false;
 		if (host.isWindows()) {
-			src = AHost.toWindowsPath(src);
-			dst = AHost.toWindowsPath(dst);
+			src = FileSystemScenario.toWindowsPath(src);
+			dst = FileSystemScenario.toWindowsPath(dst);
 			
 			if (elevated)
 				host.cmdElevated("move /Y \""+src+"\" \""+dst+"\"", AHost.NO_TIMEOUT);
 			else
 				host.cmd("move /Y \""+src+"\" \""+dst+"\"", AHost.NO_TIMEOUT);
 		} else {
-			src = AHost.toUnixPath(src);
-			dst = AHost.toUnixPath(dst);
+			src = FileSystemScenario.toUnixPath(src);
+			dst = FileSystemScenario.toUnixPath(dst);
 			host.exec("mv \""+src+"\" \""+dst+"\"", AHost.NO_TIMEOUT);
 		}
 		return true;
@@ -235,11 +238,11 @@ public class CommonCommandManager {
 		if (!host.isSafePath(dst))
 			return false;
 		if (host.isWindows()) {
-			src = AHost.toWindowsPath(src);
-			dst = AHost.toWindowsPath(dst);
+			src = FileSystemScenario.toWindowsPath(src);
+			dst = FileSystemScenario.toWindowsPath(dst);
 			
 			String cmd = null;
-			if (host.isDirectory(src)) {
+			if (host.mIsDirectory(src)) {
 				// ensure xcopy sees destination is supposed to be a directory, or xcopy will ask/block forever
 				if (!dst.endsWith("\\"))
 					dst += "\\";
@@ -248,9 +251,9 @@ public class CommonCommandManager {
 				// TODO try /J => performance improvement?
 				cmd = "xcopy /Q /Y /C /I /E /G /R /H \""+src+"\" \""+dst+"\"";
 			} else {
-				host.mkdirs(AHost.dirname(dst));
-				if (AHost.basename(src).equals(AHost.basename(dst))) {
-					dst = AHost.dirname(dst);
+				host.mCreateDirs(FileSystemScenario.dirname(dst));
+				if (FileSystemScenario.basename(src).equals(FileSystemScenario.basename(dst))) {
+					dst = FileSystemScenario.dirname(dst);
 					
 					cmd = "xcopy /Q /Y /E /G /R /H /C \""+src+"\" \""+dst+"\"";
 				}
@@ -264,8 +267,8 @@ public class CommonCommandManager {
 			else
 				host.exec(cmd, AHost.NO_TIMEOUT);
 		} else {
-			src = AHost.toUnixPath(src);
-			dst = AHost.toUnixPath(dst);
+			src = FileSystemScenario.toUnixPath(src);
+			dst = FileSystemScenario.toUnixPath(dst);
 			host.exec("cp \""+src+"\" \""+dst+"\"", AHost.NO_TIMEOUT);
 		}
 		return true;
@@ -274,21 +277,21 @@ public class CommonCommandManager {
 	public boolean delete(AHost host, String path, boolean elevated) {
 		if (!host.isSafePath(path)) {
 			return false;
-		} else if (host.isDirectory(path)) {
+		} else if (host.mIsDirectory(path)) {
 			// ensure empty
 			try {
 				if (host.isWindows()) {
-					path = AHost.toWindowsPath(path);
+					path = FileSystemScenario.toWindowsPath(path);
 					if (elevated)
 						host.cmdElevated("RMDIR /Q /S \""+path+"\"", AHost.NO_TIMEOUT);
 					else
 						host.cmd("RMDIR /Q /S \""+path+"\"", AHost.NO_TIMEOUT);
 				} else {
-					path = AHost.toUnixPath(path);
+					path = FileSystemScenario.toUnixPath(path);
 					host.exec("rm -rf \""+path+"\"", AHost.NO_TIMEOUT);
 				}
 			} catch ( Exception ex ) {
-				ex.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(CommonCommandManager.class, ex);
 			}
 		} else if (host.isWindows() && path.contains("*")) {
 			// XXX wildcard support on linux
@@ -303,7 +306,7 @@ public class CommonCommandManager {
 				else
 					host.exec("CMD /C CMD /C FOR /D %f IN ("+path+") DO RMDIR /S /Q %f", AHost.NO_TIMEOUT);
 			} catch ( Exception ex ) {
-				ex.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(CommonCommandManager.class, ex);
 				return host.deleteSingleFile(path);
 			}
 		}

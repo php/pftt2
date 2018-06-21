@@ -1,9 +1,5 @@
 package com.mostc.pftt.model.app;
 
-import com.github.mattficken.io.StringUtil;
-import com.mostc.pftt.host.Host;
-import com.mostc.pftt.model.TestCase;
-
 /** a PhpUnitTestCase
  * 
  * @see EPhpUnitTestStatus
@@ -11,18 +7,16 @@ import com.mostc.pftt.model.TestCase;
  *
  */
 
-public class PhpUnitTestCase extends TestCase {
+public class PhpUnitTestCase extends AppUnitTestCase {
 	public static final int MAX_TEST_TIME_SECONDS = 60;
 	protected final PhpUnitDist php_unit_dist;
-	protected final String abs_filename, rel_filename, className, methodName, dependsMethodName, dataProviderMethodName;
+	protected final String className, methodName, dependsMethodName, dataProviderMethodName;
 	protected final int arg_count;
+	protected final boolean exception_expected;
 	
-	protected PhpUnitTestCase(PhpUnitDist php_unit_dist, String abs_filename, String rel_filename, String className, String methodName, int arg_count, String dataProviderMethodName, String dependsMethodName) {
+	protected PhpUnitTestCase(PhpUnitDist php_unit_dist, String abs_filename, String rel_filename, String className, String methodName, int arg_count, String dataProviderMethodName, String dependsMethodName, boolean exception_expected) {
+		super(rel_filename, abs_filename);
 		this.php_unit_dist = php_unit_dist;
-		// don't need to call #normalizeFilename here usually. it's called in PhpUnitSourcetestPack#readDir...
-		// calling it (again )here would be a performance hit
-		this.abs_filename = abs_filename;
-		this.rel_filename = rel_filename;
 		// don't need to normalize classname:
 		// if it has \ thats ok b/c its legal PHP (namespaces) whereas it won't be / b/c that's illegal in PHP
 		this.className = className;
@@ -30,6 +24,11 @@ public class PhpUnitTestCase extends TestCase {
 		this.arg_count = arg_count;
 		this.dataProviderMethodName = dataProviderMethodName;
 		this.dependsMethodName = dependsMethodName;
+		this.exception_expected = exception_expected;
+	}
+	
+	public boolean isExceptionExpected() {
+		return exception_expected;
 	}
 	
 	public String getDataProviderMethodName() {
@@ -48,32 +47,6 @@ public class PhpUnitTestCase extends TestCase {
 		return php_unit_dist;
 	}
 	
-	/** name of file.
-	 * 
-	 * file is case preserved to avoid breaking posix.
-	 * 
-	 * windows slashes \\ are standardized to / posix.
-	 * 
-	 * for case-insensitive matching @see #isFileName or @see #fileNameStartsWithAny
-	 * 
-	 * @return
-	 */
-	public String getFileName() {
-		return rel_filename;
-	}
-	
-	public String getAbsoluteFileName() {
-		return abs_filename;
-	}
-	
-	public boolean fileNameStartsWithAny(String[] ext_names) {
-		return StringUtil.startsWithAnyIC(getFileName(), ext_names);
-	}
-	
-	public boolean fileNameStartsWithAny(String ext_name) {
-		return StringUtil.startsWithIC(getFileName(), ext_name);
-	}
-	
 	/** search file for classes that extend PhpUnit_Framework_TestCase
 	 * 
 	 * @return
@@ -90,10 +63,7 @@ public class PhpUnitTestCase extends TestCase {
 		return methodName;
 	}
 	
-	public boolean isFileName(String file_name) {
-		return this.rel_filename.toLowerCase().equals(file_name.toLowerCase()) 
-				|| this.abs_filename.toLowerCase().equals(file_name.toLowerCase());
-	}
+	
 	
 	public boolean isFileName(String... file_names) {
 		for (String file_name : file_names) {
@@ -116,37 +86,4 @@ public class PhpUnitTestCase extends TestCase {
 		return className + "::" + methodName + "(" + rel_filename + ")";
 	}
 	
-	@Override
-	public String toString() {
-		return getName();
-	}
-	
-	@Override
-	public boolean equals(Object o) {
-		if (o==this)
-			return true;
-		else if (o instanceof PhpUnitTestCase) 
-			return o.toString().equals(this.toString());
-		else
-			return false;
-	}
-	
-	@Override
-	public int hashCode() {
-		return getName().hashCode();
-	}
-	
-	/** fixes slashes to Posix forward slash /.
-	 * 
-	 * this is case-preserving (to avoid breaking on posix). case is not changed.
-	 * 
-	 * to do case-insenstive matching @see #isFileName
-	 * 
-	 * @param test_name
-	 * @return
-	 */
-	public static String normalizeFileName(String test_name) {
-		return Host.toUnixPath(test_name);
-	}
-
 } // end public class PhpUnitTestCase

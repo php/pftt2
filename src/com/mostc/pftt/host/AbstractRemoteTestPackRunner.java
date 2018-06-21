@@ -154,7 +154,7 @@ public abstract class AbstractRemoteTestPackRunner<A extends ActiveTestPack, S e
 	@Override
 	public void runAllTests(Config config, S test_pack) throws FileNotFoundException, IOException, Exception {
 		// TODO
-		A active_test_pack = test_pack.install(tmgr.getConsoleManager(), this.storage_host, remote_host.getPhpSdkDir()+"/Remote", "");
+		A active_test_pack = test_pack.install(tmgr.getConsoleManager(), this.storage_host, remote_host.getPhpSdkDir()+"/Remote", "", sapi_scenario);
 		
 		commonRunStart();
 		sendTestPack(active_test_pack);

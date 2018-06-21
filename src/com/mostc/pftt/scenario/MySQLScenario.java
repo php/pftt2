@@ -12,6 +12,7 @@ import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.sapi.WebServerManager;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.EPrintType;
 
 /** Sets up a MySQL database and tests the mysql, mysqli and pdo_mysql extensions against it.
@@ -23,7 +24,7 @@ import com.mostc.pftt.results.EPrintType;
 public class MySQLScenario extends DatabaseScenario {
 	public static final int DEFAULT_MYSQL_PORT = 3306;
 	public static final String DEFAULT_USERNAME = "root";
-	public static final String DEFAULT_PASSWORD = "password01!";
+	public static final String DEFAULT_PASSWORD = "password01!";//root";// TODO temp azure password01!";
 	
 	public MySQLScenario(EMySQLVersion version, AHost host, String default_username, String default_password) {
 		super(version, host, default_username, default_password);
@@ -67,6 +68,12 @@ public class MySQLScenario extends DatabaseScenario {
 		protected ExecHandle mysqld_handle;
 		protected String datadir, hostname;
 		
+		
+		public MySQLScenarioSetup() {
+			hostname = host.getHostname();
+			port = DEFAULT_MYSQL_PORT;
+		}
+		
 		@Override
 		public boolean databaseExists(String db_name) {
 			return empty(executeQuery("SHOW DATABASES LIKE '"+db_name+"'"));
@@ -76,6 +83,7 @@ public class MySQLScenario extends DatabaseScenario {
 		public boolean createDatabaseWithUser(String db_name, String user, String password) {
 			return createDatabase(db_name) &&
 					execute("GRANT ALL ON "+db_name+".* TO `"+user+"`@`localhost` IDENTIFIED BY '"+password+"'") &&
+					execute("GRANT ALL ON "+db_name+".* TO `"+user+"`@'%' IDENTIFIED BY '"+password+"'") &&
 					execute("GRANT ALL ON "+db_name+".* TO `"+user+"` IDENTIFIED BY '"+password+"'");
 		}
 		
@@ -87,22 +95,41 @@ public class MySQLScenario extends DatabaseScenario {
 		
 		@Override
 		public boolean createDatabaseWithUserReplaceOk(String db_name, String user, String password) {
+			// GRANT ALL PRIVILEGES ON *.* TO 'root' IDENTIFIED BY 'password';
+			// GRANT ALL PRIVILEGES ON *.* TO 'user'.'%' IDENTIFIED BY 'password';
 			return createDatabaseReplaceOk(db_name) &&
-					execute("GRANT ALL ON "+db_name+".* TO `"+user+"`@`localhost` IDENTIFIED BY '"+password+"'") &&
-					execute("GRANT ALL ON "+db_name+".* TO `"+user+"` IDENTIFIED BY '"+password+"'");
+					
+					// TODO temp
+					execute("GRANT ALL ON "+db_name+".* TO `root`@`%` IDENTIFIED BY '"+password+"'") &&
+					execute("GRANT ALL ON "+db_name+".* TO `root`@ IDENTIFIED BY '"+password+"'") &&
+					execute("GRANT ALL ON "+db_name+".* TO `root`@`localhost` IDENTIFIED BY '"+password+"'") &&
+					
+					execute("GRANT ALL ON "+db_name+".* TO `wp_test`@`%` IDENTIFIED BY '"+password+"'") &&
+					execute("GRANT ALL ON "+db_name+".* TO `wp_test`@ IDENTIFIED BY '"+password+"'") &&
+					execute("GRANT ALL ON "+db_name+".* TO `wp_test`@`localhost` IDENTIFIED BY '"+password+"'")
+					
+					;
+					//execute("GRANT ALL ON "+db_name+".* TO `"+user+"`@`localhost` IDENTIFIED BY '"+password+"'") &&
+					//execute("GRANT ALL ON "+db_name+".* TO `"+user+"`@`%` IDENTIFIED BY '"+password+"'") &&
+					//execute("GRANT ALL ON "+db_name+".* TO `"+user+"`@ IDENTIFIED BY '"+password+"'");
+					//execute("GRANT ALL ON "+db_name+".* TO `"+user+"`@`%` IDENTIFIED BY '"+password+"'") &&
+					//execute("GRANT ALL ON "+db_name+".* TO `"+user+"` IDENTIFIED BY '"+password+"'");
 		}
 		
 		@Override
-		protected Connection createConnection() throws SQLException {
+		protected Connection createConnection() throws SQLException { 
+			// TODO temp azure 
 			String url = "jdbc:mysql://"+getHostname()+":"+getPort()+"/?user="+getUsername()+"&password="+getPassword();
+			//String url = "jdbc:mysql://localhost/?user="+getUsername()+"&password="+getPassword();
+
 			return DriverManager.getConnection(url);
 		}
 
 		@Override
-		public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
-			ini.addExtension(host, build, PhpIni.EXT_MYSQLI);
-			ini.addExtension(host, build, PhpIni.EXT_MYSQL);
-			ini.addExtension(host, build, PhpIni.EXT_PDO_MYSQL);
+		public boolean prepareINI(ConsoleManager cm, FileSystemScenario fs, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
+			return ini.addExtensionAndCheck(cm, fs, host, null, build, PhpIni.EXT_MYSQLI)
+				// TODO temp 1/14 && ini.addExtensionAndCheck(cm, fs, host, null, build, PhpIni.EXT_MYSQL)
+				&& ini.addExtensionAndCheck(cm, fs, host, null, build, PhpIni.EXT_PDO_MYSQL);
 		}
 		
 		/** environment variables for running PHPT or PhpUnit tests
@@ -180,11 +207,11 @@ public class MySQLScenario extends DatabaseScenario {
 					cm.println(EPrintType.IN_PROGRESS, getClass(), "Using MySQL install: "+mysql_dir);
 					cm.println(EPrintType.IN_PROGRESS, getClass(), "Creating temporary MySQL datadir");
 					
-					datadir = host.mktempname(getClass());
-					host.mkdirs(datadir);
+					datadir = host.mCreateTempName(getClass());
+					host.mCreateDirs(datadir);
 					
 					cm.println(EPrintType.IN_PROGRESS, getClass(), "Copying template datadir to temporary MySQL datadir "+datadir);
-					host.copy(mysql_dir+"\\data", datadir);
+					host.mCopy(mysql_dir+"\\data", datadir);
 					
 					hostname = "127.0.0.1";
 					boolean chose = false;
@@ -235,8 +262,8 @@ public class MySQLScenario extends DatabaseScenario {
 				}
 				cm.println(EPrintType.CLUE, getClass(), "MySQL server is not connectable");
 			} catch (Exception ex) {
-				ex.printStackTrace();
-				// TODO comment
+				ConsoleManagerUtil.printStackTrace(MySQLScenario.class, cm, ex);
+				
 				if (mysqld_handle!=null)
 					mysqld_handle.close(cm, true);
 			}
@@ -249,7 +276,7 @@ public class MySQLScenario extends DatabaseScenario {
 				stopServerEx(cm, is_production_server);
 				return true;
 			} catch ( Exception ex ) {
-				ex.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(MySQLScenario.class, cm, ex);
 			}
 			return false;
 		}
@@ -260,7 +287,8 @@ public class MySQLScenario extends DatabaseScenario {
 				host.execElevated(cm, getClass(), "net stop MySQL56", AHost.ONE_MINUTE);
 			} else {
 				cm.println(EPrintType.IN_PROGRESS, getClass(), "Stopping MySQL standalone process");
-				mysqld_handle.close(cm, true);
+				if (mysqld_handle!=null)
+					mysqld_handle.close(cm, true);
 			}
 		}
 		
@@ -274,7 +302,7 @@ public class MySQLScenario extends DatabaseScenario {
 					if (!is_production_server) {
 						if (datadir!=null && !cm.isPfttDebug() && (!cm.isDebugAll()||!cm.isDebugList())) {
 							cm.println(EPrintType.IN_PROGRESS, getClass(), "Deleting temporary MySQL datadir");
-							host.delete(datadir);
+							host.mDelete(datadir);
 							datadir = null;
 						}
 					}
@@ -282,7 +310,7 @@ public class MySQLScenario extends DatabaseScenario {
 				}
 				return true;
 			} catch (Exception ex) {
-				ex.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(MySQLScenario.class, cm, ex);
 			}
 			cm.println(EPrintType.CANT_CONTINUE, getClass(), "Unable to stop MySQL server");
 			return false;

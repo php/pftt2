@@ -11,16 +11,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.annotation.Nullable;
-
 import com.github.mattficken.Overridable;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
-import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.main.Config;
-import com.mostc.pftt.model.SourceTestPack;
-import com.mostc.pftt.model.core.EBuildBranch;
+import com.mostc.pftt.model.ApplicationSourceTestPack;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.core.PhpParser;
@@ -30,6 +26,8 @@ import com.mostc.pftt.model.core.PhpParser.PhpScript;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhpResultPackWriter;
+import com.mostc.pftt.scenario.FileSystemScenario;
+import com.mostc.pftt.scenario.SAPIScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 /** Represents a pack of PhpUnitTestCases and the configuration information needed to run them.
@@ -63,8 +61,7 @@ import com.mostc.pftt.scenario.ScenarioSet;
  *
  */
 
-public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitActiveTestPack, PhpUnitTestCase> {
-	protected String test_pack_root;
+public abstract class PhpUnitSourceTestPack extends ApplicationSourceTestPack<PhpUnitActiveTestPack, PhpUnitTestCase> {
 	protected final ArrayList<PhpUnitDist> php_unit_dists;
 	protected final ArrayList<String> blacklist_test_names, whitelist_test_names, include_dirs, include_files;
 	protected SoftReference<ArrayList<PhpUnitTestCase>> _ref_test_cases;
@@ -78,27 +75,6 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 		
 		// add default entries to include_path
 		addIncludeDirectory(".");
-	}
-	
-	/** TRUE if test-pack is 'under development'. FALSE if its stable.
-	 * 
-	 * test runner will include extra info(stack traces, etc...) for test-packs that are under development
-	 * 
-	 * @return
-	 */
-	@Overridable
-	public boolean isDevelopment() {
-		return false;
-	}
-	
-	@Override
-	public EBuildBranch getTestPackBranch() {
-		return null;
-	}
-	
-	@Override
-	public String getTestPackVersionRevision() {
-		return getNameAndVersionString();
 	}
 	
 	protected void resetDists() {
@@ -194,13 +170,13 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	}
 	
 	@Override
-	public void read(Config config, List<PhpUnitTestCase> test_cases, List<String> names, ConsoleManager cm, PhpResultPackWriter twriter, PhpBuild build) throws FileNotFoundException, IOException, Exception {
-		read(config, test_cases, names, cm, twriter, build, false);
+	public void read(Config config, List<PhpUnitTestCase> test_cases, List<String> names, ConsoleManager cm, PhpResultPackWriter twriter, PhpBuild build, SAPIScenario sapi_scenario) throws FileNotFoundException, IOException, Exception {
+		read(config, test_cases, names, cm, twriter, build, false, sapi_scenario);
 	}
 	
 	@Override
-	public void read(Config config, List<PhpUnitTestCase> test_cases, List<String> names, ConsoleManager cm, PhpResultPackWriter twriter, PhpBuild build, boolean ignore_missing) throws FileNotFoundException, IOException, Exception {
-		doRead(config, cm, test_cases, names);
+	public void read(Config config, List<PhpUnitTestCase> test_cases, List<String> names, ConsoleManager cm, PhpResultPackWriter twriter, PhpBuild build, boolean ignore_missing, SAPIScenario sapi_scenario) throws FileNotFoundException, IOException, Exception {
+		doRead(sapi_scenario, config, cm, test_cases, names);
 	}
 	
 	protected static void copyTestsNoDuplicates(List<PhpUnitTestCase> src, List<PhpUnitTestCase> dst) {
@@ -219,7 +195,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	 * @throws IOException
 	 * @throws Exception
 	 */
-	public void read(Config config, ConsoleManager cm, List<PhpUnitTestCase> test_cases) throws IOException, Exception {
+	public void read(SAPIScenario sapi_scenario, Config config, ConsoleManager cm, List<PhpUnitTestCase> test_cases) throws IOException, Exception {
 		// TODO if subdir used, only search within that
 		
 		//
@@ -235,7 +211,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 		//
 		
 		_test_cases = new ArrayList<PhpUnitTestCase>(3500);
-		doRead(config, cm, _test_cases, null);
+		doRead(sapi_scenario, config, cm, _test_cases, null);
 		
 		// cache for future use
 		copyTestsNoDuplicates(_test_cases, test_cases);
@@ -243,10 +219,10 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 		//
 	}
 	
-	protected void doRead(Config config, ConsoleManager cm, List<PhpUnitTestCase> test_cases, List<String> test_names) throws IOException {
+	protected void doRead(SAPIScenario sapi_scenario, Config config, ConsoleManager cm, List<PhpUnitTestCase> test_cases, List<String> test_names) throws IOException {
 		final int max_read_count = cm.getMaxTestReadCount();
 		for (PhpUnitDist php_unit_dist : php_unit_dists) {
-			readDir(config, max_read_count, test_cases, php_unit_dist, php_unit_dist.path, test_names);
+			readDir(sapi_scenario, config, max_read_count, test_cases, php_unit_dist, php_unit_dist.path, test_names);
 		}
 		
 		// alphabetize
@@ -292,7 +268,7 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	 * @param dir
 	 * @throws IOException
 	 */
-	protected void readDir(Config config, final int max_read_count, List<PhpUnitTestCase> test_cases, PhpUnitDist php_unit_dist, File dir, List<String> test_names) throws IOException {
+	protected void readDir(SAPIScenario sapi_scenario, Config config, final int max_read_count, List<PhpUnitTestCase> test_cases, PhpUnitDist php_unit_dist, File dir, List<String> test_names) throws IOException {
 		if (max_read_count > 0 && test_cases.size() >= max_read_count)
 			return;
 		
@@ -304,14 +280,14 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 			if (file.isDirectory()) {
 				if (max_read_count > 0 && test_cases.size() >= max_read_count)
 					return;
-				readDir(config, max_read_count, test_cases, php_unit_dist, file, test_names);
+				readDir(sapi_scenario, config, max_read_count, test_cases, php_unit_dist, file, test_names);
 				if (max_read_count > 0 && test_cases.size() >= max_read_count)
 					return;
 			} else if (isFileNameATest(file.getName())) {
-				String rel_file_name = PhpUnitTestCase.normalizeFileName(Host.pathFrom(php_unit_dist.path.getAbsolutePath(), file.getAbsolutePath()));
+				String rel_file_name = PhpUnitActiveTestPack.norm(sapi_scenario, PhpUnitTestCase.normalizeFileName(Host.pathFrom(php_unit_dist.path.getAbsolutePath(), file.getAbsolutePath())));
 				
-				String abs_file_name = PhpUnitTestCase.normalizeFileName(file.getAbsolutePath());
-				
+				String abs_file_name = PhpUnitActiveTestPack.norm(sapi_scenario, PhpUnitTestCase.normalizeFileName(file.getAbsolutePath()));
+								
 				String lc_test_file_name = rel_file_name.toLowerCase();
 				if (test_names!=null) {
 					boolean skip = true;
@@ -370,6 +346,8 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 					// @see http://phpunit.de/manual/3.7/en/appendixes.annotations.html#appendixes.annotations.depends
 					dependsMethodName = cleanFunctionName(func.getAnnotationValue("depends"));
 					
+					boolean exception_expected = StringUtil.isNotEmpty(func.getAnnotationValue("expectedException"));
+					
 					PhpUnitTestCase test_case = new PhpUnitTestCase(
 							php_unit_dist,
 							abs_test_file_name,
@@ -382,7 +360,8 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 							func.getName(),
 							func.getArgumentCount(),
 							dataProviderMethodName,
-							dependsMethodName
+							dependsMethodName,
+							exception_expected
 						);
 					config.processPhpUnit(test_case);
 					test_cases.add(test_case);
@@ -414,110 +393,40 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	}
 
 	@Override
-	public String getSourceDirectory() {
-		return getRoot();
-	}
-
-	@Override
 	public void read(Config config, List<PhpUnitTestCase> test_cases,
-			ConsoleManager cm, ITestResultReceiver twriter, PhpBuild build)
+			ConsoleManager cm, ITestResultReceiver twriter, PhpBuild build, SAPIScenario sapi_scenario)
 			throws FileNotFoundException, IOException, Exception {
 		config.processPhpUnitTestPack(this, twriter, build);
-		read(config, cm, test_cases);
+		read(sapi_scenario, config, cm, test_cases);
 	}
-
+	
 	@Override
 	public PhpUnitActiveTestPack installInPlace(ConsoleManager cm, AHost host) throws Exception {
-		final String src_root = getSourceRoot(cm, LocalHost.getInstance());
+		doInstallInPlace(cm, host);
+		final String src_root = getRoot();
 		addIncludeDirectory(src_root);
-		if (!new File(src_root).isDirectory()) {
-			throw new IOException("source-test-pack not found: "+src_root);
-		}
-		setRoot(src_root);
-		
-		openAfterInstall(cm, host);
 		
 		return new PhpUnitActiveTestPack(src_root, src_root);
 	}
-
+	
 	@Override
 	public PhpUnitActiveTestPack installNamed(ConsoleManager cm, AHost host, String string, List<PhpUnitTestCase> test_cases) throws IllegalStateException, IOException, Exception {
-		final String src_root = getSourceRoot(cm, LocalHost.getInstance());
+		doInstallNamed(cm, host);
+		final String src_root = getRoot();
 		addIncludeDirectory(src_root);
-		if (!new File(src_root).isDirectory()) {
-			throw new IOException("source-test-pack not found: "+src_root);
-		}
-		setRoot(src_root);
-		
-		openAfterInstall(cm, host);
 		
 		return new PhpUnitActiveTestPack(src_root, src_root);
 	}
-
+	
 	@Override
 	public PhpUnitActiveTestPack install(ConsoleManager cm, AHost host,
-			String local_test_pack_dir, String remote_test_pack_dir)
+			String local_test_pack_dir, String remote_test_pack_dir, SAPIScenario sapi_scenario)
 			throws IllegalStateException, IOException, Exception {
-		LocalHost local_host = LocalHost.getInstance();
-		final String src_root = getSourceRoot(cm, local_host);
+		doInstall(sapi_scenario, cm, host, local_test_pack_dir, remote_test_pack_dir);
+		final String src_root = getRoot();
 		addIncludeDirectory(src_root);
-		if (!new File(src_root).isDirectory()) {
-			throw new IOException("source-test-pack not found: "+src_root);
-		}
-		
-		// using #uploadCompressWith7Zip instead of just #upload makes a huge difference
-		// for PhpUnit test-packs because of the large number of small files that have to be uploaded
-		host.uploadCompressWith7Zip(cm, getClass(), src_root, local_host, remote_test_pack_dir);
-		
-		setRoot(local_test_pack_dir);
-		
-		openAfterInstall(cm, local_host);
 		
 		return new PhpUnitActiveTestPack(local_test_pack_dir, remote_test_pack_dir);
-	}
-	
-	private boolean decompressed = false;
-	protected void ensureAppDecompressed(ConsoleManager cm, AHost host, String zip7_file) throws IllegalStateException, IOException, Exception {
-		if (decompressed)
-			return;
-		decompressed = true;
-		if (!StringUtil.endsWithIC(zip7_file, ".7z"))
-			zip7_file += ".7z";
-		
-		host.decompress(cm, host, host.getPfttDir()+"/app/"+zip7_file, host.getPfttDir()+"/cache/working/");
-	}
-	
-	/** the base directory within the PFTT directory to find the phpunit and required php files
-	 * 
-	 * Typically, test-packs will call #ensureAppDecompressed
-	 * 
-	 * @param cm
-	 * @param host - determine the absolute path on this host
-	 * @see AHost#getPfttDir
-	 * @return
-	 */
-	protected abstract String getSourceRoot(ConsoleManager cm, AHost host);
-
-	/** installs the tests after they have been copied to storage (if needed)
-	 * 
-	 * @see #getRoot() returns the location the tests and their php files have been copied to (if they were
-	 * copied, if not copied, returns location they are stored at)
-	 * 
-	 * @param cm
-	 * @param host
-	 * @return
-	 * @throws Exception
-	 */
-	protected abstract boolean openAfterInstall(ConsoleManager cm, AHost host) throws Exception;
-
-	/** file path to test-pack */
-	public void setRoot(String test_pack_root) {
-		this.test_pack_root = test_pack_root;
-	}
-
-	/** file path to test-pack */
-	public String getRoot() {
-		return this.test_pack_root;
 	}
 	
 	/** (Optional) return PHP code to run BEFORE loading the bootstrap file
@@ -553,29 +462,6 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	
 	public abstract String getNameAndVersionString();
 	
-	public String getName() {
-		return getNameAndVersionString();
-	}
-	
-	@Override
-	public String toString() {
-		return getName();
-	}
-
-	/** Sometimes there are multiple tests that share a common resource (such as a file directory
-	 * or database) and can not be run at the same time. Such tests are non-thread-safe (known as NTS tests).
-	 * 
-	 * Return the full or partial filenames of NTS tests here. The returned array is processed in
-	 * order. If any string from the same string array matches, all tests matching that array will
-	 * be run in the same thread.
-	 * 
-	 * @return
-	 */
-	@Nullable
-	public String[][] getNonThreadSafeTestFileNames() {
-		return null;
-	}
-	
 	/** allows a test-pack to create custom edits of PhpInis
 	 * 
 	 * @param cm
@@ -583,9 +469,10 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	 * @param scenario_set
 	 * @param build
 	 * @param ini
+	 * @return TRUE if successful, FALSE if failed and test run should be aborted
 	 */
-	public void prepareINI(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini) {
-		
+	public boolean prepareINI(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build, PhpIni ini) {
+		return true;
 	}
 	
 	/** called when an individual test case is run
@@ -605,13 +492,14 @@ public abstract class PhpUnitSourceTestPack implements SourceTestPack<PhpUnitAct
 	/** called just before test-run starts
 	 * 
 	 * @param cm
+	 * @param fs TODO
 	 * @param runner_host
 	 * @param scenario_set
 	 * @param build
 	 * @return FALSE to not run
 	 */
 	@Overridable
-	public boolean startRun(ConsoleManager cm, AHost runner_host, ScenarioSet scenario_set, PhpBuild build) {
+	public boolean startRun(ConsoleManager cm, FileSystemScenario fs, AHost runner_host, ScenarioSet scenario_set, PhpBuild build) {
 		return true;
 	}
 	

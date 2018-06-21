@@ -21,12 +21,14 @@ import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
 import com.mostc.pftt.runner.PhptTestPreparer.PreparedPhptTestCase;
 import com.mostc.pftt.scenario.BuiltinWebServerScenario;
+import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
 import com.mostc.pftt.util.TimerUtil;
 
 public class BuiltinWebHttpPhptTestCaseRunner extends HttpPhptTestCaseRunner {
 	
-	public BuiltinWebHttpPhptTestCaseRunner(boolean xdebug, BuiltinWebServerScenario sapi_scenario, PhpIni ini,
+	public BuiltinWebHttpPhptTestCaseRunner(boolean xdebug, FileSystemScenario fs, 
+			BuiltinWebServerScenario sapi_scenario, PhpIni ini,
 			Map<String, String> env, HttpParams params, HttpProcessor httpproc,
 			HttpRequestExecutor httpexecutor, WebServerManager smgr,
 			WebServerInstance web, PhptThread thread, PreparedPhptTestCase prep,
@@ -34,17 +36,17 @@ public class BuiltinWebHttpPhptTestCaseRunner extends HttpPhptTestCaseRunner {
 			ScenarioSetSetup scenario_set_setup, PhpBuild build,
 			PhptSourceTestPack src_test_pack,
 			PhptActiveTestPack active_test_pack) {
-		super(xdebug, sapi_scenario, ini, env, params, httpproc, httpexecutor, smgr, web, thread, prep,
+		super(xdebug, fs, sapi_scenario, ini, env, params, httpproc, httpexecutor, smgr, web, thread, prep,
 				cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack);
 	}
 	
 	@Override
 	protected String http_execute(String path, EPhptSection section) throws Exception {
 		// ensure file exists before sending HTTP request for it
-		if (!host.exists(path)) {
+		if (!host.mExists(path)) {
 			for ( int i=0 ; i < 20 ; i++ ) {
 				Thread.sleep(200);
-				if (host.exists(path))
+				if (host.mExists(path))
 					break;
 			}
 		}

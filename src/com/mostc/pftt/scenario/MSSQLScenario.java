@@ -129,8 +129,10 @@ public class MSSQLScenario extends DatabaseScenario {
 			String dll1 = ((EMSSQLVersion)version).getPhpPdoDllName(build.getVersionBranch(cm, host), build.getBuildType(host), base_dir);
 			String dll2 = set_dll!=null?set_dll.getPath():((EMSSQLVersion)version).getPhpDllName(build.getVersionBranch(cm, host), build.getBuildType(host), base_dir);
 			
-			host.copy(host.joinIntoOnePath(base_dir, dll1), build.getDefaultExtensionDir()+"/php_pdo_sqlsrv.dll");
-			host.copy(host.joinIntoOnePath(base_dir, dll2), build.getDefaultExtensionDir()+"/php_sqlsrv.dll");
+			FileSystemScenario fs = FileSystemScenario.getFS(scenario_set, host);
+			
+			fs.copy(host.joinIntoOnePath(base_dir, dll1), build.getDefaultExtensionDir()+"/php_pdo_sqlsrv.dll");
+			fs.copy(host.joinIntoOnePath(base_dir, dll2), build.getDefaultExtensionDir()+"/php_sqlsrv.dll");
 		}
 		
 		@Override
@@ -163,9 +165,9 @@ public class MSSQLScenario extends DatabaseScenario {
 		}
 
 		@Override
-		public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
-			ini.addExtension(host, build, "php_sqlsrv.dll");
-			ini.addExtension(host, build, "php_pdo_sqlsrv.dll");
+		public boolean prepareINI(ConsoleManager cm, FileSystemScenario fs, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
+			return ini.addExtensionAndCheck(cm, fs, host, null, build, "php_sqlsrv.dll")
+					&& ini.addExtensionAndCheck(cm, fs, host, null, build, "php_pdo_sqlsrv.dll");
 		}
 
 		@Override

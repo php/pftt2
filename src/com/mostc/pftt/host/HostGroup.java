@@ -13,6 +13,7 @@ import java.util.Map;
 
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
+import com.mostc.pftt.scenario.FileSystemScenario.IFileChooser;
 
 /** Allows a group of Hosts to be used as a single host (in most cases).
  * 
@@ -172,9 +173,9 @@ public class HostGroup extends Host implements List<Host> {
 		}
 	}
 	@Override
-	public boolean saveTextFile(String path, String string) throws IllegalStateException, IOException {
+	public boolean mSaveTextFile(String path, String string) throws IllegalStateException, IOException {
 		for (Host h : this) {
-			if (!h.saveTextFile(path, string))
+			if (!h.mSaveTextFile(path, string))
 				return false;
 		}
 		return true;
@@ -182,16 +183,16 @@ public class HostGroup extends Host implements List<Host> {
 	public void saveTextFile(String path, String string, BooleanCollector c) {
 		for (Host h : this) {
 			try {
-				c.collect(h, h.saveTextFile(path, string));
+				c.collect(h, h.mSaveTextFile(path, string));
 			} catch ( Throwable t ) {
 				c.collect(h, false);
 			}
 		}
 	}
 	@Override
-	public boolean saveTextFile(String filename, String text, CharsetEncoder ce) throws IllegalStateException, IOException {
+	public boolean mSaveTextFile(String filename, String text, CharsetEncoder ce) throws IllegalStateException, IOException {
 		for (Host h : this) {
-			if (!h.saveTextFile(filename, text, ce))
+			if (!h.mSaveTextFile(filename, text, ce))
 				return false;
 		}
 		return true;
@@ -199,16 +200,16 @@ public class HostGroup extends Host implements List<Host> {
 	public void saveTextFile(String filename, String text, CharsetEncoder ce, BooleanCollector c) {
 		for (Host h : this) {
 			try {
-				c.collect(h, h.saveTextFile(filename, text, ce));
+				c.collect(h, h.mSaveTextFile(filename, text, ce));
 			} catch ( Throwable t ) {
 				c.collect(h, false);
 			}
 		}
 	}
 	@Override
-	public boolean delete(String file) throws IllegalStateException, IOException {
+	public boolean mDelete(String file) throws IllegalStateException, IOException {
 		for (Host h : this) {
-			if (!h.delete(file))
+			if (!h.mDelete(file))
 				return false;
 		}
 		return true;
@@ -216,16 +217,16 @@ public class HostGroup extends Host implements List<Host> {
 	public void delete(String file, BooleanCollector c) {
 		for (Host h : this) {
 			try {
-				c.collect(h, h.delete(file));
+				c.collect(h, h.mDelete(file));
 			} catch (Throwable t) {
 				c.collect(h, false);
 			}
 		}
 	}
 	@Override
-	public boolean deleteElevated(String file) throws IllegalStateException, IOException {
+	public boolean mDeleteElevated(String file) throws IllegalStateException, IOException {
 		for (Host h : this) {
-			if (!h.deleteElevated(file))
+			if (!h.mDeleteElevated(file))
 				return false;
 		}
 		return true;
@@ -233,16 +234,16 @@ public class HostGroup extends Host implements List<Host> {
 	public void deleteElevated(String file, BooleanCollector c) {
 		for (Host h : this) {
 			try {
-				c.collect(h, h.deleteElevated(file));
+				c.collect(h, h.mDeleteElevated(file));
 			} catch (Throwable t) {
 				c.collect(h, false);
 			}
 		}
 	}
 	@Override
-	public boolean copy(String src, String dst) throws IllegalStateException, Exception {
+	public boolean mCopy(String src, String dst) throws IllegalStateException, Exception {
 		for (Host h : this) {
-			if (!h.copy(src, dst))
+			if (!h.mCopy(src, dst))
 				return false;
 		}
 		return true;
@@ -250,16 +251,16 @@ public class HostGroup extends Host implements List<Host> {
 	public void copy(String src, String dst, BooleanCollector c) {
 		for (Host h : this) {
 			try {
-				c.collect(h, h.copy(src, dst));
+				c.collect(h, h.mCopy(src, dst));
 			} catch (Throwable t) {
 				c.collect(h, false);
 			}
 		}
 	}
 	@Override
-	public boolean copyElevated(String src, String dst) throws IllegalStateException, Exception {
+	public boolean mCopyElevated(String src, String dst) throws IllegalStateException, Exception {
 		for (Host h : this) {
-			if (!h.copyElevated(src, dst))
+			if (!h.mCopyElevated(src, dst))
 				return false;
 		}
 		return true;
@@ -267,16 +268,16 @@ public class HostGroup extends Host implements List<Host> {
 	public void copyElevated(String src, String dst, BooleanCollector c) {
 		for (Host h : this) {
 			try {
-				c.collect(h, h.copyElevated(src, dst));
+				c.collect(h, h.mCopyElevated(src, dst));
 			} catch (Throwable t) {
 				c.collect(h, false);
 			}
 		}
 	}
 	@Override
-	public boolean move(String src, String dst) throws IllegalStateException, Exception {
+	public boolean mMove(String src, String dst) throws IllegalStateException, Exception {
 		for (Host h : this) {
-			if (!h.move(src, dst))
+			if (!h.mMove(src, dst))
 				return false;
 		}
 		return true;
@@ -284,16 +285,16 @@ public class HostGroup extends Host implements List<Host> {
 	public void move(String src, String dst, BooleanCollector c) {
 		for (Host h : this) {
 			try {
-				c.collect(h, h.move(src, dst));
+				c.collect(h, h.mMove(src, dst));
 			} catch (Throwable t) {
 				c.collect(h, false);
 			}
 		}
 	}
 	@Override
-	public boolean moveElevated(String src, String dst) throws IllegalStateException, Exception {
+	public boolean mMoveElevated(String src, String dst) throws IllegalStateException, Exception {
 		for (Host h : this) {
-			if (!h.moveElevated(src, dst))
+			if (!h.mMoveElevated(src, dst))
 				return false;
 		}
 		return true;
@@ -301,21 +302,21 @@ public class HostGroup extends Host implements List<Host> {
 	public void moveElevated(String src, String dst, BooleanCollector c) {
 		for (Host h : this) {
 			try {
-				c.collect(h, h.moveElevated(src, dst));
+				c.collect(h, h.mMoveElevated(src, dst));
 			} catch (Throwable t) {
 				c.collect(h, false);
 			}
 		}
 	}
 	@Override
-	public String dirSeparator() {
+	public String mDirSeparator() {
 		for (Host h : this)
-			return h.dirSeparator();
+			return h.mDirSeparator();
 		return null;
 	}
 	public void dirSeperator(StringCollector c) {
 		for (Host h : this)
-			c.collect(h, h.dirSeparator());
+			c.collect(h, h.mDirSeparator());
 	}
 	@Override
 	public boolean isWindows() {
@@ -384,21 +385,21 @@ public class HostGroup extends Host implements List<Host> {
 			c.collect(h, h.getSystemDrive());
 	}
 	@Override
-	public boolean isDirectory(String dir) {
+	public boolean mIsDirectory(String dir) {
 		for (Host h : this) {
-			if (!h.isDirectory(dir))
+			if (!h.mIsDirectory(dir))
 				return false;
 		}
 		return !isEmpty();
 	}
 	public void isDirectory(String dir, BooleanCollector c) {
 		for (Host h : this)
-			c.collect(h, h.isDirectory(dir));
+			c.collect(h, h.mIsDirectory(dir));
 	}
 	public HostGroup getIsDirectory(String dir) {
 		HostGroup g = new HostGroup(size());
 		for ( Host h : this ) {
-			if (h.isDirectory(dir))
+			if (h.mIsDirectory(dir))
 				g.add(h);
 		}
 		return g;
@@ -406,7 +407,7 @@ public class HostGroup extends Host implements List<Host> {
 	public HostGroup getNotDirectory(String dir) {
 		HostGroup g = new HostGroup(size());
 		for ( Host h : this ) {
-			if (!h.isDirectory(dir))
+			if (!h.mIsDirectory(dir))
 				g.add(h);
 		}
 		return g;
@@ -418,21 +419,21 @@ public class HostGroup extends Host implements List<Host> {
 		return null;
 	}
 	@Override
-	public boolean exists(String file) {
+	public boolean mExists(String file) {
 		for (Host h : this) {
-			if (!h.exists(file))
+			if (!h.mExists(file))
 				return false;
 		}
 		return !isEmpty();
 	}
 	public void exists(String file, BooleanCollector c) {
 		for (Host h : this)
-			c.collect(h, h.exists(file));
+			c.collect(h, h.mExists(file));
 	}
 	public HostGroup getExists(String file) {
 		HostGroup g = new HostGroup(size());
 		for ( Host h : this ) {
-			if (h.exists(file))
+			if (h.mExists(file))
 				g.add(h);
 		}
 		return g;
@@ -440,15 +441,15 @@ public class HostGroup extends Host implements List<Host> {
 	public HostGroup getNotExists(String file) {
 		HostGroup g = new HostGroup(size());
 		for ( Host h : this ) {
-			if (!h.exists(file))
+			if (!h.mExists(file))
 				g.add(h);
 		}
 		return g;
 	}
 	@Override
-	public boolean mkdirs(String path) throws IllegalStateException, IOException {
+	public boolean mCreateDirs(String path) throws IllegalStateException, IOException {
 		for (Host h : this) {
-			if (!h.mkdirs(path))
+			if (!h.mCreateDirs(path))
 				return false;
 		}
 		return true;
@@ -456,21 +457,21 @@ public class HostGroup extends Host implements List<Host> {
 	public void mkdirs(String path, BooleanCollector c) {
 		for (Host h : this) {
 			try {
-				c.collect(h, h.mkdirs(path));
+				c.collect(h, h.mCreateDirs(path));
 			} catch (Throwable t) {
 				c.collect(h, false);
 			}
 		}
 	}
 	@Override
-	public String pathsSeparator() {
+	public String mPathsSeparator() {
 		for (Host h : this)
-			return h.pathsSeparator();
+			return h.mPathsSeparator();
 		return null;
 	}
 	public void pathsSeparator(StringCollector c) {
 		for (Host h : this)
-			c.collect(h, h.pathsSeparator());
+			c.collect(h, h.mPathsSeparator());
 	}
 	@Override
 	public boolean isRemote() {
@@ -556,21 +557,21 @@ public class HostGroup extends Host implements List<Host> {
 			c.collect(h, h.getSystemRoot());
 	}
 	@Override
-	public boolean dirContainsExact(String path, String name) {
+	public boolean mDirContainsExact(String path, String name) {
 		for (Host h : this) {
-			if (!h.dirContainsExact(path, name))
+			if (!h.mDirContainsExact(path, name))
 				return false;
 		}
 		return !isEmpty();
 	}
 	public void dirContainsExact(String path, String name, BooleanCollector c) {
 		for (Host h : this)
-			c.collect(h, h.dirContainsExact(path, name));
+			c.collect(h, h.mDirContainsExact(path, name));
 	}
 	public HostGroup getIsDirContainsExact(String path, String name) {
 		HostGroup g = new HostGroup(size());
 		for ( Host h : this ) {
-			if (h.dirContainsExact(path, name))
+			if (h.mDirContainsExact(path, name))
 				g.add(h);
 		}
 		return g;
@@ -578,37 +579,37 @@ public class HostGroup extends Host implements List<Host> {
 	public HostGroup getNotDirContainsExact(String path, String name) {
 		HostGroup g = new HostGroup(size());
 		for ( Host h : this ) {
-			if (!h.dirContainsExact(path, name))
+			if (!h.mDirContainsExact(path, name))
 				g.add(h);
 		}
 		return g;
 	}
 	@Override
-	public String[] list(String path) {
+	public String[] mList(String path) {
 		for (Host h : this)
-			return h.list(path);
+			return h.mList(path);
 		return null;
 	}
 	public void list(String path, StringsCollector c) {
 		for (Host h : this)
-			c.collect(h, h.list(path));
+			c.collect(h, h.mList(path));
 	}
 	@Override
-	public boolean dirContainsFragment(String path, String name) {
+	public boolean mDirContainsFragment(String path, String name) {
 		for (Host h : this) {
-			if (!h.dirContainsFragment(path, name))
+			if (!h.mDirContainsFragment(path, name))
 				return false;
 		}
 		return !isEmpty();
 	}
 	public void dirContainsFragment(String path, String name, BooleanCollector c) {
 		for (Host h : this)
-			c.collect(h, h.dirContainsFragment(path, name));
+			c.collect(h, h.mDirContainsFragment(path, name));
 	}
 	public HostGroup getIsDirContainsFragment(String path, String name) {
 		HostGroup g = new HostGroup(size());
 		for ( Host h : this ) {
-			if (h.dirContainsFragment(path, name))
+			if (h.mDirContainsFragment(path, name))
 				g.add(h);
 		}
 		return g;
@@ -616,7 +617,7 @@ public class HostGroup extends Host implements List<Host> {
 	public HostGroup getNotDirContainsFragment(String path, String name) {
 		HostGroup g = new HostGroup(size());
 		for ( Host h : this ) {
-			if (!h.dirContainsFragment(path, name))
+			if (!h.mDirContainsFragment(path, name))
 				g.add(h);
 		}
 		return g;
@@ -826,24 +827,24 @@ public class HostGroup extends Host implements List<Host> {
 			c.collect(h, h.getTotalPhysicalMemoryK());
 	}
 	@Override
-	public long getSize(String file) {
+	public long mSize(String file) {
 		for (Host h : this)
-			return h.getSize(file);
+			return h.mSize(file);
 		return 0L;
 	}
 	public void getSize(String file, LongCollector c) {
 		for (Host h : this)
-			c.collect(h, h.getSize(file));
+			c.collect(h, h.mSize(file));
 	}	
 	@Override
-	public long getMTime(String file) {
+	public long mMTime(String file) {
 		for (Host h : this)
-			return h.getMTime(file);
+			return h.mMTime(file);
 		return 0L;
 	}
 	public void getMTime(String file, LongCollector c) {
 		for (Host h : this)
-			c.collect(h, h.getMTime(file));
+			c.collect(h, h.mMTime(file));
 	}
 	@Override
 	public String joinMultiplePaths(String... paths) {
@@ -1035,6 +1036,73 @@ public class HostGroup extends Host implements List<Host> {
 	@Override
 	public boolean equals(Object o) {
 		return o==this||list.equals(o);
+	}
+	@Override
+	public boolean mDeleteIfExists(String string) {
+		for ( Host h : this ) {
+			if (h.mDeleteIfExists(string))
+				return true;
+		}
+		return false;
+	}
+	@Override
+	public boolean mDeleteIfExistsElevated(String string) {
+		for ( Host h : this ) {
+			if (h.mDeleteIfExistsElevated(string))
+				return true;
+		}
+		return false;
+	}
+	@Override
+	public String fixPath(String src_path) {
+		for ( Host h : this ) {
+			return h.fixPath(src_path);
+		}
+		return null;
+	}
+	@Override
+	public String mCreateTempName(Class<?> class1, String string) {
+		for ( Host h : this ) {
+			return h.mCreateTempName(class1, string);
+		}
+		return null;
+	}
+	@Override
+	public String mCreateTempName(Class<?> class1) {
+		for ( Host h : this ) {
+			return h.mCreateTempName(class1);
+		}
+		return null;
+	}
+	@Override
+	public String mCreateTempName(String string, String string2) {
+		for ( Host h : this ) {
+			return h.mCreateTempName(string, string2);
+		}
+		return null;
+	}
+	@Override
+	public String mCreateTempName(String temp_file_ctx) {
+		for ( Host h : this ) {
+			return h.mCreateTempName(temp_file_ctx);
+		}
+		return null;
+	}
+	@Override
+	public boolean mDeleteFileExtension(String dir, String ext) {
+		for ( Host h : this ) {
+			if (h.mDeleteFileExtension(dir, ext))
+				return true;
+		}
+		return false;
+	}
+	@Override
+	public boolean mDeleteChosenFiles(String dir, IFileChooser chr) {
+		for ( Host h : this ) {
+			if (h.mDeleteChosenFiles(dir, chr))
+				return true;
+		}
+		return false;
 	}
 	/* -- end List proxy impl -- */
 	

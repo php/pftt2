@@ -4,6 +4,7 @@ import java.util.Map;
 
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
+import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.XDebugScenario;
 
@@ -31,40 +32,147 @@ public class PhpUnitTemplate {
 	 * @param constants - constant values to define for the PhpUnitTestCase
 	 * @param env - environment variables
 	 * @param reflection_only - if true, the only reference to the test method will be made in reflection. Opcache may optimize the test method out (so test will appear to PASS - check by running test that should be a FAILURE or ERROR)
+	 * @param use_cgi - usually false ... if true, used for *CGI execution where template is uploaded only once and CGI parameters (in the HTTP GET request) are used to
+	 *                  provide information to run each test (specifically `className`, `methodName`, `abs_filename`, `dependsMethodName` and `dataProviderMethodName`)
 	 * @return
 	 */
-	public static String renderTemplate(AHost host, ScenarioSet scenario_set, PhpUnitTestCase test_case, String prebootstrap_code, String bootstrap_file, String postbootstrap_code, String cwd, String include_path, String[] included_files, Map<String, String> globals, Map<String, String> constants, HashMap<String, String> env, String my_temp_dir, boolean reflection_only) {
-		return renderTemplate(host, scenario_set, test_case, prebootstrap_code, bootstrap_file, postbootstrap_code, cwd, include_path, included_files, globals, constants, env, my_temp_dir, reflection_only, false);
+	public static String renderTemplate(AHost host, ScenarioSet scenario_set, PhpUnitTestCase test_case, String prebootstrap_code, String bootstrap_file, String postbootstrap_code, String cwd, String include_path, String[] included_files, Map<String, String> globals, Map<String, String> constants, HashMap<String, String> env, String my_temp_dir, boolean reflection_only, boolean use_cgi) {
+		return renderTemplate(host, scenario_set, test_case, prebootstrap_code, bootstrap_file, postbootstrap_code, cwd, include_path, included_files, globals, constants, env, my_temp_dir, reflection_only, use_cgi, false);
 	}
 	
-	public static String renderTemplate(AHost host, ScenarioSet scenario_set, PhpUnitTestCase test_case, String prebootstrap_code, String bootstrap_file, String postbootstrap_code, String cwd, String include_path, String[] included_files, Map<String, String> globals, Map<String, String> constants, HashMap<String, String> env, String my_temp_dir, boolean reflection_only, boolean strict) {
+	public static void main(String[] args) {
+		println renderTemplate(
+				LocalHost.getInstance(), 
+				ScenarioSet.defaultScenarioSets.get(0), 
+				new PhpUnitTestCase(
+						null,
+						"D:\\home\\site\\wwwroot\\symfony-standard\\symfony-standard\\vendor\\symfony\\symfony\\src\\Symfony\\Component\\ClassLoader\\Tests\\ClassLoaderTest.php",
+						"D:\\home\\site\\wwwroot\\symfony-standard\\symfony-standard\\vendor\\symfony\\symfony\\src\\Symfony\\Component\\ClassLoader\\Tests\\ClassLoaderTest.php",
+						"Symfony\\Component\\ClassLoader\\Tests\\ClassLoaderTest",
+						"testGetPrefixes",
+						0,
+						null, 
+						null, 
+						false
+					),
+				null,
+				"D:\\home\\site\\wwwroot\\symfony-standard\\symfony-standard\\vendor\\symfony\\symfony\\autoload.php.dist",
+				null,
+				"D:\\",
+				".;D:\\home\\site\\wwwroot\\symfony-standard\\symfony-standard\\vendor\\symfony\\symfony\\src;D:\\home\\site\\wwwroot\\symfony-standard\\symfony-standard\\vendor\\doctrine\\common\\lib;D:\\home\\site\\wwwroot\\PEAR\\pear",
+				null,
+				null,
+				null,
+				null, 
+				"D:\\local\\temp",
+				false,
+				true
+			);
+	}
+	
+	public static String renderTemplate(AHost host, ScenarioSet scenario_set, PhpUnitTestCase test_case, String prebootstrap_code, String bootstrap_file, String postbootstrap_code, String cwd, String include_path, String[] included_files, Map<String, String> globals, Map<String, String> constants, HashMap<String, String> env, String my_temp_dir, boolean reflection_only, boolean use_cgi, boolean strict) {
 		StringWriter sw = new StringWriter(16384);
 		PrintWriter pw = new PrintWriter(sw);
 		
 		my_temp_dir = StringUtil.cslashes(host.fixPath(my_temp_dir));
 		
 		def use_xdebug = scenario_set.contains(XDebugScenario.class);
-		
+				
 		// PFTT mod: need to set date.timezone=UTC... for some reason,
 		//           ini file doesn't work, date_default_timezone_set() and ini_set() must both
 		//           be used to suppress related errors symfony phpunit tests
 		//           
-		//           also set ENV vars in PHP for the temproary dir... for CLI or Apache, sometimes setting the
+		//           also set ENV vars in PHP for the temporary dir... for CLI or Apache, sometimes setting the
 		//           temporary dir ENV vars passed to AHost#exec doesn't always work
 		//           @see PHP sys_get_temp_dir() - many Symfony filesystem tests use this
 		def pftt_scenario_set = scenario_set.getName();
+		
+		//set_include_path('C:\\php-sdk\\PFTT\\current\\cache\\working\\doctrine2\\vendor\\phpunit\\php-text-template;C:\\php-sdk\\PFTT\\current\\cache\\working\\doctrine2\\vendor\\phpunit\\phpunit-mock-objects;C:\\php-sdk\\PFTT\\current\\cache\\working\\doctrine2\\vendor\\phpunit\\php-token-stream;C:\\php-sdk\\PFTT\\current\\cache\\working\\doctrine2\\vendor\\phpunit\\php-file-iterator;C:\\php-sdk\\PFTT\\current\\cache\\working\\doctrine2\\vendor\\phpunit\\php-code-coverage;C:\\php-sdk\\PFTT\\current\\cache\\working\\doctrine2\\vendor\\phpunit\\php-timer;C:\\php-sdk\\PFTT\\current\\cache\\working\\doctrine2\\vendor\\symfony\\yaml;.;C:\\php-sdk\\PFTT\\Current\\cache\\working\\doctrine2\\tests;C:\\php-sdk\\PFTT\\Current\\cache\\working\\doctrine2\\lib;C:\\php-sdk\\PFTT\\Current\\cache\\working\\doctrine2;C:\\php-sdk\\PFTT\\Current\\cache\\util\\PEAR\\pear;C:\\php-sdk\\PFTT\\Current\\cache\\working\\doctrine2\\tests');
+		//set_include_path('.;D:\\home\\site\\wwwroot\\symfony-standard\\symfony-standard\\vendor\\symfony\\symfony\\src;D:\\home\\site\\wwwroot\\symfony-standard\\symfony-standard\\vendor\\doctrine\\common\\lib;D:\\home\\site\\wwwroot\\PEAR\\pear');
+		//set_include_path('.;D:\\home\\site\\wwwroot\\joomla-platform\\joomla-platform\\tests\\suites\\unit;D:\\home\\site\\wwwroot\\PEAR\\pear');
+		//set_include_path('.;D:\\home\\site\\wwwroot\\drupal-8\\drupal-8\\core\\vendor\\phpunit\\phpunit\\Tests;D:\\home\\site\\wwwroot\\PEAR\\pear');
+		//set_include_path('.;D:\\home\\site\\wwwroot\\mediawiki\\mediawiki\\tests\\phpunit\\includes;D:\\home\\site\\wwwroot\\PEAR\\pear');
+		
+		// TODO temp azure phpunit.php should dump globals in debug output
 		pw.print(
 """<?php
 set_include_path('$include_path');
+
+//
 date_default_timezone_set('UTC');
 ini_set('date.timezone', 'UTC');
-require 'PHPUnit/Autoload.php';
+
 putenv('TMP=$my_temp_dir');
 putenv('TEMP=$my_temp_dir');
 putenv('TMPDIR=$my_temp_dir');
 putenv('PFTT_IS=true');
 putenv('PFTT_SCENARIO_SET=$pftt_scenario_set');
+
+function define_checked(\$name, \$value) {
+	if (\\define(\$name, \$value)) {
+		echo "PFTT Notice: defined \$name to \$value" . PHP_EOL;
+		if (constant(\$name)!=\$value) {
+			echo "PFTT Warning: can't get value for \$name" . PHP_EOL;
+		}
+	} else {
+		echo "PFTT Warning: couldn't define \$name to be \$value" . PHP_EOL;
+	}
+}
+
+
 """)
+		if (use_cgi) {
+			// PFTT mod: these are the only parameters that differ from test-case to test-case
+			//           other than needing to use reflection, can just set these parameters
+			//           using CGI args from HTTP request
+			//
+			//           allows uploading this script to a remote web server once for an entire
+			//           test-run
+			pw.print(
+"""\$className = \$_GET['className'];
+\$methodName = \$_GET['methodName'];
+\$abs_filename = \$_GET['abs_filename'];
+\$filename = \$abs_filename;
+\$bootstrap_file = \$_GET['bootstrap_file'];
+\$dependsMethodName = \$_GET['dependsMethodName'];
+\$dataProviderMethodName = \$_GET['dataProviderMethodName'];
+
+\$gcount = \$_GET['gcount'];
+for (\$i=0;\$i<\$gcount;\$i++) {
+	\$name = \$_GET["gn_\$i"];
+	\$value = \$_GET["gv_\$i"];
+
+	define_checked(\$name, \$value);
+}
+
+""");
+			// typically only need to define these global names,
+			//    but may have more to define
+			// DB_USER DB_PASSWORD DB_HOST DB_NAME
+		}
+		
+		// $constants
+		if (constants!=null) {
+			for (String name : constants ) {
+				String value = constants.get(name);
+				
+				pw.println("define_checked('$name', '$value');");
+			}
+		}
+		
+		if (globals!=null) {
+			for (String name : globals.keySet()) {
+				String value = globals.get(name);
+				if (value==null)
+					continue;
+					
+				value = StringUtil.cslashes(value);
+				
+				//pw.println("\$GLOBALS['$name'] = '$value';");
+				pw.println("define_checked('$name', '$value');");
+			}
+		}
+		
 		if (use_xdebug) {
 			// use both flags to get dead and unexecuted code 
 			pw.print(
@@ -73,8 +181,15 @@ putenv('PFTT_SCENARIO_SET=$pftt_scenario_set');
 		} // end if (use_xdebug)
 		pw.print(
 """
+
+require 'PHPUnit/Autoload.php';
+
+
 function dump_coverage() {
 """);
+	if (use_cgi) {
+		pw.print("""global \$filename;""");
+	}
 	if (use_xdebug) {
 		pw.print(
 """	foreach ( xdebug_get_code_coverage() as \$filename => \$coverage ) {
@@ -101,9 +216,19 @@ function dump_coverage() {
 		if (StringUtil.isNotEmpty(prebootstrap_code)) {
 			pw.print(prebootstrap_code);
 		}
-		if (StringUtil.isNotEmpty(bootstrap_file)) {
-			pw.print("""require_once '$bootstrap_file';
+		if (use_cgi) {
+			if (StringUtil.isNotEmpty(bootstrap_file)) {
+				pw.print("""
+if (strlen(\$bootstrap_file)>0) {
+				require_once "\$bootstrap_file";
+}
 """);
+			}
+		} else {
+			if (StringUtil.isNotEmpty(bootstrap_file)) {
+				pw.print("""require_once '$bootstrap_file';
+""");
+			}
 		}
 		if (StringUtil.isNotEmpty(postbootstrap_code)) {
 			pw.print(postbootstrap_code);
@@ -128,8 +253,17 @@ function dump_info() {
 	echo "Include Path:";echo PHP_EOL;
 	var_dump(get_include_path());
 	echo "File name:";echo PHP_EOL;
-	echo "$test_case.abs_filename";echo PHP_EOL;
-}
+""")
+		if (use_cgi) {
+			pw.print(
+"""global \$abs_filename;
+echo \$abs_filename; echo PHP_EOL;""")
+		} else {
+			pw.print(
+"""	echo "$test_case.abs_filename";echo PHP_EOL;""")
+		}
+		pw.print(
+"""}
 
 function tryReportFatal() {
 	if (\$GLOBALS['ignore_exit']) {
@@ -138,7 +272,18 @@ function tryReportFatal() {
 
 	\$e = new Exception();
 	echo 'ERROR'; echo PHP_EOL;
-	echo '$test_case.className'; echo PHP_EOL;
+""")
+		if (use_cgi) {
+			pw.print("""
+			global \$className;
+			echo \$className;
+""")
+		} else {
+			pw.print("""
+			echo '$test_case.className'; echo PHP_EOL;
+""");
+		}
+		pw.print("""
 	echo \$e->getTraceAsString(); echo PHP_EOL;
 	echo \$e->getMessage(); echo PHP_EOL;
 	dump_info();
@@ -147,6 +292,13 @@ function tryReportFatal() {
 
 function __phpunit_run_isolated_test()
 {
+""")
+	if (use_cgi) {
+		pw.print("""
+		global \$className, \$abs_filename, \$methodName, \$filename, \$dependsMethodName, \$dataProviderMethodName;
+""")
+	}
+	pw.print("""
 	\$result = new PHPUnit_Framework_TestResult;
 """)
 	/*if ({collectCodeCoverageInformation}) {
@@ -165,15 +317,50 @@ function __phpunit_run_isolated_test()
 	\$start_time = 0;
 	\$run_time = 0;
 	try {
+""")
+		if (use_cgi) {
+			pw.print("""
+		if (!class_exists(\$className)) {
+			require_once "\$abs_filename";
+		}
+""")
+		} else {
+		pw.print("""
 		if (!class_exists('$test_case.className')) {
 			require_once '$test_case.abs_filename';
 		}
-		
+""")
+		}
+		pw.print("""
 		ob_end_clean();
 		ob_start();
 """);
-	if (test_case.dataProviderMethodName!=null) {
+	if (use_cgi) {
 		pw.print("""
+	\$clazz = new ReflectionClass(\$className);
+	if (strlen(\$dataProviderMethodName)>0) {
+		\$test = \$clazz->newInstance(\$dataProviderMethodName, array(), '');
+		\$test->setInIsolation(TRUE);
+		\$test->pftt_step1();	
+
+		\$meth = \$clazz->getMethod(\$dataProviderMethodName);
+		\$data = \$meth->invoke(\$test);
+		\$data = array_shift(\$data);
+	} else if (strlen(\$dependsMethodName)>0) {
+		\$test = \$clazz->newInstance(\$dependsMethodName, array(), '');
+		\$test->setInIsolation(TRUE);
+		\$test->pftt_step1();
+
+		\$meth = \$clazz->getMethod(\$dependsMethodName);
+		\$data = \$meth->invoke(\$test);
+	} else {
+		\$test = \$clazz->newInstance(\$methodName, array(), '');
+		\$test->setInIsolation(TRUE);
+	}
+""")
+	} else {
+		if (test_case.dataProviderMethodName!=null) {
+			pw.print("""
 		\$test = new $test_case.className('$test_case.dataProviderMethodName', array(), '');
 		\$test->setInIsolation(TRUE);
 		\$test->pftt_step1();
@@ -181,26 +368,27 @@ function __phpunit_run_isolated_test()
 		\$data = \$test->$test_case.dataProviderMethodName();
 		\$data = array_shift(\$data);
 """)
-	} else if (test_case.dependsMethodName!=null) {
-		pw.print("""
+		} else if (test_case.dependsMethodName!=null) {
+			pw.print("""
 		\$test = new $test_case.className('$test_case.dependsMethodName', array(), '');
 		\$test->setInIsolation(TRUE);
 		\$test->pftt_step1();
 
 		\$data = \$test->$test_case.dependsMethodName();
 """)
-	} else {
-		pw.print("""
+		} else {
+			pw.print("""
 		\$data = array();
 """)
-	}
+		}
 		pw.print("""
 		\$test = new $test_case.className('$test_case.methodName', \$data, '');
 		\$test->setInIsolation(TRUE);
 		
 """);
+	}
 	//
-	if (reflection_only) {
+	if (reflection_only||use_cgi) {
 		// test method is only referenced in a string value. its not in the call-graph. opcache may optimize it out
 		//  (the purpose of requiring reflection_only is to test that behavior)
 		//
@@ -209,6 +397,8 @@ function __phpunit_run_isolated_test()
 		// PFTT, however, already parses the test case class to get a list of their test methods and count their arguments
 		// so PFTT doesn't need to use reflection for PhpUnit tests, but users may want it to.
 		//
+		// calling ::run() instead of ::$testMethod => PhpUnit will use its own reflection code
+		// (this template is based off the PhpUnit template, and uses as much of PhpUnit, without modification, as possible)
 pw.println("""
 		\$start_time = microtime(TRUE);
 		\$test->run(\$result);
@@ -218,7 +408,11 @@ pw.println("""
 	} catch ( Exception \$e ) {
 		\$output = ob_get_clean();
 		echo 'ERROR'; echo PHP_EOL;
+		if (use_cgi) {
+			
+		} else {
 		echo '$test_case.className'; echo PHP_EOL;
+		}
 		echo \$e->getTraceAsString(); echo PHP_EOL;
 		echo \$e->getMessage(); echo PHP_EOL;
 		echo \$output;
@@ -248,7 +442,10 @@ pw.println("""clearstatcache();
 			//
 			// but that uses reflection... we know the number of arguments (since we parsed this PHP file already)
 			// so generate the PHP code to read from each index of the $data array (and to call the test method)
+			if (use_cgi) {
+			} else {
 			pw.println("\$test->$test_case.methodName(")
+			}
 			for ( int i=0 ; i < test_case.getArgCount() ; i++ ) {
 				if (i>0)
 					pw.print(", ")
@@ -294,6 +491,7 @@ pw.println("""
 	switch(\$status) {
 	case PHPUnit_Runner_BaseTestRunner::STATUS_PASSED:
 		echo 'status=PASS'; echo PHP_EOL;
+trigger_error("\nstatus=PASS\n"); // TODO temp
 		echo "run_time=\$run_time"; echo PHP_EOL;
 		dump_coverage();
 		break;
@@ -404,14 +602,7 @@ pw.print("""
 
 """);
 
-		// $constants
-		if (constants!=null) {
-			for (String name : constants ) {
-				String value = constants.get(name);
-				
-				pw.println("if (!defined('$name')) define('$name', '$value');");
-			}
-		}
+		
 		
 		// $include_files
 		if (included_files!=null) {
@@ -434,11 +625,13 @@ pw.print("""
 		if (globals!=null) {
 			for (String name : globals.keySet()) {
 				String value = globals.get(name);
-				
+				if (value==null)
+					continue;
+					
 				value = StringUtil.cslashes(value);
 				
 				pw.println("\$GLOBALS['$name'] = '$value';");
-				pw.println("define('$name', '$value');");
+				//pw.println("define('$name', '$value');");
 			}
 		}
 		

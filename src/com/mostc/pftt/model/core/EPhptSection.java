@@ -171,7 +171,30 @@ public enum EPhptSection {
 			return StringUtil.normalizeLineEnding(content);
 		}
 	},
-	CLEAN;
+	EXPECT_EXTERNAL {
+		@Override
+		public boolean validate(PhptTestCase test) {
+			return !test.containsAnySection(EXPECT, EXPECTF, EXPECTF_EXTERNAL, EXPECTREGEX, EXPECTREGEX_EXTERNAL);
+		}
+	},
+	EXPECTF_EXTERNAL {
+		@Override
+		public boolean validate(PhptTestCase test) {
+			return !test.containsAnySection(EXPECT, EXPECTF, EXPECT_EXTERNAL, EXPECTREGEX, EXPECTREGEX_EXTERNAL);
+		}
+	},
+	EXPECTREGEX_EXTERNAL {
+		@Override
+		public boolean validate(PhptTestCase test) {
+			return !test.containsAnySection(EXPECT, EXPECTF, EXPECTF_EXTERNAL, EXPECTREGEX, EXPECT_EXTERNAL);
+		}
+	},
+	CLEAN,
+	PFTT_RUN_PARALLEL
+	;
+	
+	
+	;
 	
 	/** prepares a section when it is read by PhptTestCase#load
 	 * 
@@ -189,6 +212,14 @@ public enum EPhptSection {
 	
 	public boolean validate(PhptTestCase test) {
 		return true;
+	}
+	
+	public static EPhptSection valueOfEx(String str) {
+		try {
+			return valueOf(str);
+		} catch ( IllegalArgumentException ex ) {
+			return null;
+		}
 	}
 	
 } // end public static enum EPHPTSection

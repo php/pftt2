@@ -13,7 +13,7 @@ import com.mostc.pftt.util.IClosable;
 public interface IScenarioSetup extends IClosable {
 	public String getNameWithVersionInfo();
 	public String getName();
-	public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini);
+	public boolean prepareINI(ConsoleManager cm, FileSystemScenario fs, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini);
 	public void getENV(Map<String, String> env);
 	public void setGlobals(Map<String, String> globals);
 	public boolean hasENV();

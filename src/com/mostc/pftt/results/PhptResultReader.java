@@ -46,6 +46,8 @@ public class PhptResultReader extends AbstractPhptRW {
 		status_list_map.put(EPhptTestStatus.TEST_EXCEPTION, new StatusListEntry(tally.exception));
 		//
 		for ( EPhptTestStatus status : status_list_map.keySet() ) {
+			//if (status==EPhptTestStatus.FAIL)
+				//continue; // TODO temp
 			StatusListEntry e = status_list_map.get(status);
 			
 			try {

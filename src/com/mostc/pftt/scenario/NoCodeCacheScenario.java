@@ -32,7 +32,9 @@ public class NoCodeCacheScenario extends CodeCacheScenario {
 	}
 	
 	@Override
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
+	public IScenarioSetup setup(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build, PhpIni ini) {
+		// TODO temp disable zend_extension=php_opcache.dll
+		
 		// assume SO is in same directory as PHP extensions
 		try {
 			// seems that PHP will load O+ if dll is there even though its not in INI
@@ -44,22 +46,22 @@ public class NoCodeCacheScenario extends CodeCacheScenario {
 			if (host.isWindows()) {
 				String path = ext_dir + "/php_ZendOptimizerPlus.dll";
 				
-				if (host.exists(path)) {
+				if (host.mExists(path)) {
 					String dont_load_path = path.replace(".dll", ".dont_load");
 					if (cm!=null)
 						cm.println(EPrintType.CLUE, getClass(), "Moving "+path+" to "+dont_load_path);
 
-					host.moveElevated(path, dont_load_path);
+					fs.moveElevated(path, dont_load_path);
 				}
 			} else {
 				String path = ext_dir + "/php_ZendOptimizerPlus.so";
 				
-				if (host.exists(path)) {
+				if (host.mExists(path)) {
 					String dont_load_path = path.replace(".so", ".dont_load");
 					if (cm!=null)
 						cm.println(EPrintType.CLUE, getClass(), "Moving "+path+" to "+dont_load_path);
 
-					host.moveElevated(path, dont_load_path);
+					fs.moveElevated(path, dont_load_path);
 				}
 			}
 			
@@ -71,7 +73,7 @@ public class NoCodeCacheScenario extends CodeCacheScenario {
 	} // end public boolean setup
 
 	@Override
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
+	public IScenarioSetup setup(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
 		return SETUP_SUCCESS;
 	}
 

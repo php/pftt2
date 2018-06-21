@@ -3,6 +3,7 @@ package com.mostc.pftt.model.sapi;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.EPrintType;
 
 public enum EApacheVersion {
@@ -43,6 +44,8 @@ public enum EApacheVersion {
 		public boolean isSupportedEx(ConsoleManager cm, Host host, PhpBuild build) throws Exception {
 			if (!host.isWindows()) {
 				return true;
+			} else if (build.getVersionMajor(cm, host) == 7) {
+				return true;
 			} else if (build.getVersionMajor(cm, host) == 5) {
 				int minor = build.getVersionMinor(cm, host);
 
@@ -70,12 +73,18 @@ public enum EApacheVersion {
 		@Override
 		public ApacheHttpdAndVersion getHttpd(ConsoleManager cm, Host host, PhpBuild build) {
 			if (host.isWindows()) {
-				if (build.is53(cm, host)||build.is54(cm, host))
+				if (build.is70(cm, host)) {
+					if (build.isX64())
+						return new ApacheHttpdAndVersion("Apache2416-VC14-OpenSSL1.0.1e-x64", host.getSystemDrive() + "\\Apache2416-VC14-OpenSSL1.0.1e-x64\\bin\\httpd.exe");
+					else
+						return new ApacheHttpdAndVersion("Apache2416-VC14-OpenSSL1.0.1e-x86", host.getSystemDrive() + "\\Apache2416-VC14-OpenSSL1.0.1e-x86\\bin\\httpd.exe");
+				} else if (build.is53(cm, host)||build.is54(cm, host)) {
 					return new ApacheHttpdAndVersion("ApacheLounge-2.4.4-VC9-OpenSSL0.9.8y-x86", host.getSystemDrive() + "\\Apache244-VC9-OpenSSL0.9.8y-x86\\bin\\httpd.exe");
-				else if (build.isX64())
+				} else if (build.isX64()) {
 					return new ApacheHttpdAndVersion("ApacheLounge-2.4.4-VC11-OpenSSL1.0.1e-x64", host.getSystemDrive() + "\\Apache244-VC11-OpenSSL1.0.1e-x64\\bin\\httpd.exe");
-				else
+				} else {
 					return new ApacheHttpdAndVersion("ApacheLounge-2.4.4-VC11-OpenSSL1.0.1e-x86", host.getSystemDrive() + "\\Apache244-VC11-OpenSSL1.0.1e-x86\\bin\\httpd.exe");
+				}
 			} else {
 				return new ApacheHttpdAndVersion("Apache", "/usr/sbin/httpd");
 			}
@@ -83,12 +92,18 @@ public enum EApacheVersion {
 		@Override
 		public String getApacheRoot(ConsoleManager cm, Host host, PhpBuild build) {
 			if (host.isWindows()) {
-				if (build.is53(cm, host)||build.is54(cm, host))
+				if (build.is70(cm, host)) {
+					if (build.isX64())
+						return host.getSystemDrive() + "\\Apache2416-VC14-OpenSSL1.0.1e-x64";
+					else
+						return host.getSystemDrive() + "\\Apache2416-VC14-OpenSSL1.0.1e-x86";
+				} else if (build.is53(cm, host)||build.is54(cm, host)) {
 					return host.getSystemDrive() + "\\Apache244-VC9-OpenSSL0.9.8y-x86";
-				else if (build.isX64())
+				} else if (build.isX64()) {
 					return host.getSystemDrive() + "\\Apache244-VC11-OpenSSL1.0.1e-x64";
-				else
+				} else {
 					return host.getSystemDrive() + "\\Apache244-VC11-OpenSSL1.0.1e-x86";
+				}
 			} else {
 				return "/usr/local/apache2";
 			}
@@ -106,10 +121,7 @@ public enum EApacheVersion {
 				else if (APACHE_2_2.isSupportedEx(cm, host, build))
 					return APACHE_2_2;
 			} catch ( Exception ex ) {
-				if (cm==null)
-					ex.printStackTrace();
-				else
-					cm.addGlobalException(EPrintType.CLUE, getClass(), "getApacheVersion", ex, "Couldn't decide which Apache version to use.");
+				ConsoleManagerUtil.printStackTrace(EPrintType.CLUE, getClass(), cm, "getApacheVersion", ex, "Couldn't decide which Apache version to use.");
 			}
 			return FALLBACK;
 		}
@@ -134,10 +146,7 @@ public enum EApacheVersion {
 				else if (APACHE_2_4.isSupportedEx(cm, host, build))
 					return APACHE_2_4;
 			} catch ( Exception ex ) {
-				if (cm==null)
-					ex.printStackTrace();
-				else
-					cm.addGlobalException(EPrintType.CLUE, getClass(), "getApacheVersion", ex, "Couldn't decide which Apache version to use.");
+				ConsoleManagerUtil.printStackTrace(EPrintType.CLUE, getClass(), cm, "getApacheVersion", ex, "Couldn't decide which Apache version to use.");
 			}
 			return FALLBACK;
 		}
@@ -168,7 +177,7 @@ public enum EApacheVersion {
 		try {
 			a = getHttpd(cm, host, build);
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(EApacheVersion.class, ex);
 		}
 		return a == null ? null : a.httpd;
 	}

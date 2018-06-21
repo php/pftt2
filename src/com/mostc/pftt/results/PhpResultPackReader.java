@@ -100,7 +100,7 @@ public class PhpResultPackReader extends PhpResultPack {
 					try {
 						phpt_reader.open(cm, scenario_dir, scenario_set_name, reader.build_info, reader.test_pack_branch, reader.test_pack_version);
 					} catch ( Exception ex ) {
-						ex.printStackTrace();
+						ConsoleManagerUtil.printStackTrace(PhpResultPackReader.class, cm, ex);
 						continue;
 					}
 					

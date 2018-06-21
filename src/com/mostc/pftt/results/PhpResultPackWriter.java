@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.concurrent.LinkedBlockingQueue;
 
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
@@ -29,7 +28,6 @@ import com.mostc.pftt.model.ui.EUITestStatus;
 import com.mostc.pftt.model.ui.UITestPack;
 import com.mostc.pftt.scenario.ScenarioSet;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
-import com.mostc.pftt.util.ErrorUtil;
 import com.mostc.pftt.util.TimerUtil;
 
 /** Writes the result-pack from a test run.
@@ -143,7 +141,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 			PhpBuildInfo.write(build_info, fw);
 			fw.close();
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(PhpResultPackWriter.class, cm, ex);
 		}
 		
 		results = new LinkedList<ResultQueueEntry>();//new LinkedBlockingQueue<ResultQueueEntry>();
@@ -172,7 +170,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 						try {
 							q.handle();
 						} catch ( Exception ex ) {
-							// TODO temp ex.printStackTrace();
+							ConsoleManagerUtil.printStackTrace(PhpResultPackWriter.class, ex);
 						}
 						q = null; // for gc
 					}
@@ -591,17 +589,16 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 	}
 	@Override
 	public void addTestException(AHost this_host, ScenarioSetSetup this_scenario_set_setup, TestCase test_case, Throwable ex, Object a, Object b) {
-		ex.printStackTrace(); // XXX provide to ConsoleManager
+		ConsoleManagerUtil.printStackTrace(PhpResultPackWriter.class, cm, ex);
 	}
 	public void addTestException(AHost this_host, ScenarioSetSetup this_scenario_set_setup, PhptSourceTestPack src_test_pack, PhptTestCase test_case, Throwable ex, Object a, Object b) {
-		String ex_str = ErrorUtil.toString(ex);
+		String ex_str = ConsoleManagerUtil.toString(ex);
 		if (a!=null)
 			ex_str += " a="+a;
 		if (b!=null)
 			ex_str += " b="+b;
 		if (!cm.isResultsOnly()) {
-			ex.printStackTrace();
-			System.err.println(ex_str);
+			ConsoleManagerUtil.printStackTrace(PhpResultPackWriter.class, cm, ex);
 		}
 		
 		// count exceptions as a result (the worst kind of failure, a pftt failure)
@@ -768,14 +765,13 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		try {
 			global_exception_writer.close();
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(PhpResultPackWriter.class, cm, ex);
 		}
 		
-		try {
-			
+		try {			
 			PhptTestResultStylesheetWriter.writeStylesheet(this.telem_dir.getAbsolutePath() + "/phptresult.xsl");
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(PhpResultPackWriter.class, cm, ex);
 		}
 	} // end protected void doClose
 	
@@ -799,8 +795,8 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		try {
 			AbstractPhptRW phpt = getCreatePhptResultWriter(host, scenario_set, test_pack_name);
 			return phpt;
-		} catch (IOException e) {
-			e.printStackTrace();
+		} catch (IOException ex) {
+			ConsoleManagerUtil.printStackTrace(PhpResultPackWriter.class, cm, ex);
 		}
 		return null;
 	}
@@ -884,8 +880,8 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		try {
 			return getCreatePhpUnitResultWriter(host, scenario_set_setup, test_pack)
 					.getWriter(scenario_set_setup);
-		} catch (Exception e) {
-			e.printStackTrace();
+		} catch (Exception ex) {
+			ConsoleManagerUtil.printStackTrace(PhpResultPackWriter.class, cm, ex);
 		}
 		return null;
 	}
@@ -1014,7 +1010,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 				.getWriter(web_browser, scenario_set_setup)
 				.addNotes(notes);
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(PhpResultPackWriter.class, cm, ex);
 		}
 	}
 
@@ -1071,7 +1067,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 			fw.write(output);
 			fw.close();
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(PhpResultPackWriter.class, ex);
 		}
 	}
 	

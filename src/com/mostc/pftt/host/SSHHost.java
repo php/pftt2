@@ -38,8 +38,11 @@ import com.github.mattficken.io.MultiCharsetByLineReader;
 import com.github.mattficken.io.NoCharsetByLineReader;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
+import com.mostc.pftt.scenario.FileSystemScenario;
+import com.mostc.pftt.scenario.FileSystemScenario.IFileChooser;
 import com.sshtools.j2ssh.SftpClient;
 import com.sshtools.j2ssh.SshClient;
 import com.sshtools.j2ssh.authentication.AuthenticationProtocolState;
@@ -138,10 +141,16 @@ public class SSHHost extends RemoteHost {
 	public SSHHost(String hostname, int port, String username, String password, HostKeyVerification verif) {
 		this.address = hostname;
 		
-		if (hostname.contains(".")||hostname.contains(":")) {
-			// use address instead, then ask actual hostname once connected
-			// @see #ensureSshOpen
-			hostname = null;
+		if (hostname.contains(".")) {
+			String num_str = hostname.substring(0, hostname.indexOf("."));
+			try {
+				Integer.parseInt(num_str);
+			
+				// hostname is an IP Address, ask actual hostname once connected
+				// @see #ensureSshOpen
+				// @see #getHostname
+				hostname = null;
+			} catch ( Exception ex ) {}
 		}
 		
 		this.hostname = hostname;
@@ -162,12 +171,9 @@ public class SSHHost extends RemoteHost {
 	public boolean ensureConnected(ConsoleManager cm) {
 		try {
 			ensureSshOpen();
-			return isWindows() || exists("/");
+			return isWindows() || mExists("/");
 		} catch ( Exception ex ) {
-			if (cm!=null)
-				cm.addGlobalException(EPrintType.WARNING, getClass(), "ensureConnected", ex, "can't connect to remote ssh host");
-			else
-				ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(EPrintType.WARNING, getClass(), cm, "ensureConnected", ex, "can't connect to remote ssh host");
 			return false;
 		}
 	}
@@ -243,7 +249,7 @@ public class SSHHost extends RemoteHost {
 		if (is_windows!=null)
 			return is_windows.booleanValue();
 		// even if system drive != C:\, C:\ will still exist if its Windows
-		is_windows = new Boolean(exists("C:\\"));
+		is_windows = new Boolean(mExists("C:\\"));
 		return is_windows.booleanValue();
 	}
 
@@ -253,60 +259,61 @@ public class SSHHost extends RemoteHost {
 	}
 
 	@Override
-	public boolean delete(String path) {
+	public boolean mDelete(String path) {
 		return ccm.delete(this, path, false);
 	}
 	
 	@Override
-	public boolean deleteElevated(String path) {
+	public boolean mDeleteElevated(String path) {
 		return ccm.delete(this, path, true);
 	}
 
 	@Override
-	public boolean exists(String path) {
+	public boolean mExists(String path) {
 		try {
 			ensureSftpOpen();
 			FileAttributes fa = sftp.stat(normalizePath(path));
 			return fa.isFile() || fa.isDirectory();
+		} catch ( IOException ex ) {
 		} catch ( Exception ex ) {
 			// throws Exception if it doesn't exist
-			//ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(SSHHost.class, ex);
 		}
 		return false;
 	}
 	
 	@Override
-	public boolean copy(String src, String dst) throws Exception {
+	public boolean mCopy(String src, String dst) throws Exception {
 		return ccm.copy(this, src, dst, false);
 	}
 	
 	@Override
-	public boolean copyElevated(String src, String dst) throws Exception {
+	public boolean mCopyElevated(String src, String dst) throws Exception {
 		return ccm.copy(this, src, dst, true);
 	}
 	
 	@Override
-	public boolean move(String src, String dst) throws Exception {
+	public boolean mMove(String src, String dst) throws Exception {
 		return ccm.move(this, src, dst, false);
 	}
 	
 	@Override
-	public boolean moveElevated(String src, String dst) throws Exception {
+	public boolean mMoveElevated(String src, String dst) throws Exception {
 		return ccm.move(this, src, dst, true);
 	}
 	
 	@Override
-	public String pathsSeparator() {
+	public String mPathsSeparator() {
 		return isWindows() ? ";" : ":";
 	}
 
 	@Override
-	public String dirSeparator() {
+	public String mDirSeparator() {
 		return isWindows() ? "\\" : "/";
 	}
 
 	@Override
-	public String getContents(String file) throws IOException {
+	public String mGetContents(String file) throws IOException {
 		ensureSftpOpen();
 		ByteArrayIOStream local = new ByteArrayIOStream(1024);
 		sftp.get(normalizePath(file), local);
@@ -317,7 +324,7 @@ public class SSHHost extends RemoteHost {
 	}
 
 	@Override
-	public String getContentsDetectCharset(String file, CharsetDeciderDecoder cdd) throws IOException {
+	public String mGetContentsDetectCharset(String file, CharsetDeciderDecoder cdd) throws IOException {
 		ensureSftpOpen();
 		ByteArrayIOStream local = new ByteArrayIOStream(1024);
 		sftp.get(normalizePath(file), local);
@@ -328,7 +335,7 @@ public class SSHHost extends RemoteHost {
 	}
 
 	@Override
-	public ByLineReader readFile(String file) throws FileNotFoundException, IOException {
+	public ByLineReader mReadFile(String file) throws FileNotFoundException, IOException {
 		ensureSftpOpen();
 		ByteArrayIOStream local = new ByteArrayIOStream(1024);
 		sftp.get(normalizePath(file), local);
@@ -336,16 +343,16 @@ public class SSHHost extends RemoteHost {
 	}
 
 	@Override
-	public ByLineReader readFileDetectCharset(String file, CharsetDeciderDecoder cdd) throws FileNotFoundException, IOException {
+	public ByLineReader mReadFileDetectCharset(String file, CharsetDeciderDecoder cdd) throws FileNotFoundException, IOException {
 		ensureSftpOpen();
 		ByteArrayIOStream local = new ByteArrayIOStream(1024);
 		sftp.get(normalizePath(file), local);
 		return new MultiCharsetByLineReader(local.getInputStream(), cdd);
 	}
-
+	
 	@Override
-	public boolean saveTextFile(String filename, String text) throws IOException {
-		return saveTextFile(filename, text, null);
+	public boolean mSaveTextFile(String filename, String text) throws IOException {
+		return mSaveTextFile(filename, text, null);
 	}
 	
 	private String _path;
@@ -381,7 +388,7 @@ public class SSHHost extends RemoteHost {
 				String path = env.get(PATH);
 				if (StringUtil.isNotEmpty(_path) && StringUtil.isNotEmpty(path)) {
 					// merge
-					path = path + pathsSeparator() + _path;
+					path = path + mPathsSeparator() + _path;
 					
 					env.put(PATH, path);
 				}
@@ -434,7 +441,7 @@ public class SSHHost extends RemoteHost {
 			try {
 				session.close();
 			} catch ( Exception ex ) {
-				ex.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(SSHHost.class, cm, ex);
 			}
 		}
 
@@ -512,7 +519,7 @@ public class SSHHost extends RemoteHost {
 							
 							session.close();
 						} catch ( Exception ex ) {
-							ex.printStackTrace();
+							ConsoleManagerUtil.printStackTrace(SSHHost.class, ex);
 						}
 					}
 				}, timeout_sec*1000);
@@ -540,7 +547,7 @@ public class SSHHost extends RemoteHost {
 				sb.append('\n');
 			}
 		} catch ( IOException ex ) {
-			//ex.printStackTrace();
+			//ErrorUtil.printStackTrace(SSHHost.class, ex);
 		}
 		
 		out.close();*/
@@ -560,9 +567,9 @@ public class SSHHost extends RemoteHost {
 			if (isWindows())
 				return StringUtil.chomp(cmdOut("ECHO %"+name+"%", ONE_MINUTE).output);
 			else
-				return execOut("echo $"+name, ONE_MINUTE).output;
+				return StringUtil.chomp(execOut("echo $"+name, ONE_MINUTE).output);
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(SSHHost.class, ex);
 		}
 		return null;
 	}
@@ -581,11 +588,27 @@ public class SSHHost extends RemoteHost {
 
 	@Override
 	public String getHostname() {
-		return hostname;
+		if (StringUtil.isEmpty(hostname)) {
+			try {			
+				ensureSshOpen();
+				
+				if (isWindows())
+					hostname = getEnvValue("COMPUTERNAME");
+				else
+					hostname = getEnvValue("HOSTNAME");
+				if (StringUtil.isEmpty(hostname))
+					hostname = address;
+				return hostname;
+			} catch (IllegalStateException e) {
+			} catch (UnknownHostException e) {
+			} catch (IOException e) {
+			}
+		}
+		return address;
 	}
 
 	@Override
-	public boolean mkdirs(String path) throws IllegalStateException, IOException {
+	public boolean mCreateDirs(String path) throws IllegalStateException, IOException {
 		ensureSftpOpen();
 		path = normalizePath(path);
 		// dont check #isSafePath here!
@@ -597,7 +620,7 @@ public class SSHHost extends RemoteHost {
 			}
 			StringBuilder ppath_sb = new StringBuilder(path.length());
 			String ppath = "";
-			for ( String part : Host.splitPath(path) ) {
+			for ( String part : FileSystemScenario.splitPath(path) ) {
 				if (ppath_sb.length()==0 && part.length()==2 && part.charAt(1)==':' && Character.isLetter(part.charAt(0))) {
 					// drive letter support
 					ppath_sb.append(part);
@@ -644,7 +667,7 @@ public class SSHHost extends RemoteHost {
 		dst = normalizePath(dst);
 		
 		File fsrc = new File(src);
-		mkdirs(dirname(dst));
+		mCreateDirs(FileSystemScenario.dirname(dst));
 		if (fsrc.isDirectory()) {
 			do_upload(src, fsrc.listFiles(), dst);
 		} else {
@@ -669,20 +692,20 @@ public class SSHHost extends RemoteHost {
 		try {
 			v = " "+execOut("uname -a", FOUR_HOURS).output;
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(SSHHost.class, ex);
 			v = ""; // don't try again
 		}
-		if (exists("/etc/redhat-release"))
+		if (mExists("/etc/redhat-release"))
 			return os_name_long = "Redhat" + v;
-		else if (exists("/etc/fedora-release"))
+		else if (mExists("/etc/fedora-release"))
 			return os_name_long = "Fedora" + v;
-		else if (exists("/etc/centos-release"))
+		else if (mExists("/etc/centos-release"))
 			return os_name_long = "CentOS" + v;
-		else if (exists("/etc/ubuntu-release"))
+		else if (mExists("/etc/ubuntu-release"))
 			return os_name_long = "Ubuntu" + v;
-		else if (exists("/etc/debian-release"))
+		else if (mExists("/etc/debian-release"))
 			return os_name_long = "Debian" + v;
-		else if (exists("/etc/gentoo-release"))
+		else if (mExists("/etc/gentoo-release"))
 			return os_name_long = "Gentoo" + v;
 		else
 			return os_name_long = v;
@@ -704,20 +727,20 @@ public class SSHHost extends RemoteHost {
 	}
 
 	@Override
-	public boolean isDirectory(String path) {
+	public boolean mIsDirectory(String path) {
 		try {
 			ensureSftpOpen();
 			FileAttributes fa = sftp.stat(normalizePath(path));
 			return fa.isDirectory();
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(SSHHost.class, ex);
 		}
 		return false;
 	}
 
 	@Override
-	public boolean dirContainsExact(String path, String name) {
-		for ( String a : list(path) ) {
+	public boolean mDirContainsExact(String path, String name) {
+		for ( String a : mList(path) ) {
 			if (a.equalsIgnoreCase(name))
 				return true;
 		}
@@ -725,8 +748,8 @@ public class SSHHost extends RemoteHost {
 	}
 
 	@Override
-	public boolean dirContainsFragment(String path, String name_fragment) {
-		for ( String a : list(path) ) {
+	public boolean mDirContainsFragment(String path, String name_fragment) {
+		for ( String a : mList(path) ) {
 			if (a.contains(name_fragment))
 				return true;
 		}
@@ -735,7 +758,7 @@ public class SSHHost extends RemoteHost {
 
 	@SuppressWarnings({ "rawtypes"})
 	@Override
-	public String[] list(String path) {
+	public String[] mList(String path) {
 		try {
 			ensureSftpOpen();
 			List list = sftp.ls(normalizePath(path));
@@ -745,42 +768,42 @@ public class SSHHost extends RemoteHost {
 			}
 			return (String[]) names.toArray(new String[names.size()]);
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(SSHHost.class, ex);
 		}
 		return StringUtil.EMPTY_ARRAY;
 	}
 
 	@Override
-	public long getSize(String file) {
+	public long mSize(String file) {
 		try {
 			ensureSftpOpen();
 			FileAttributes fa = sftp.stat(normalizePath(file));
 			return fa.getSize().longValue();
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(SSHHost.class, ex);
 		}
 		return 0;
 	}
 	
 	@Override
-	public long getMTime(String file) {
+	public long mMTime(String file) {
 		try {
 			ensureSftpOpen();
 			FileAttributes fa = sftp.stat(normalizePath(file));
 			return fa.getModifiedTime().longValue();
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(SSHHost.class, ex);
 		}
 		return 0;
 	}
 
 	@Override
-	public ByLineReader readFile(String file, Charset cs) throws IllegalStateException, FileNotFoundException, IOException {
+	public ByLineReader mReadFile(String file, Charset cs) throws IllegalStateException, FileNotFoundException, IOException {
 		return new CharsetByLineReader(new FileInputStream(normalizePath(file)), cs);
 	}
 
 	@Override
-	public boolean saveTextFile(String filename, String text, CharsetEncoder ce) throws IllegalStateException, IOException {
+	public boolean mSaveTextFile(String filename, String text, CharsetEncoder ce) throws IllegalStateException, IOException {
 		if (!isSafePath(filename))
 			return false;
 		filename = normalizePath(filename);
@@ -799,7 +822,21 @@ public class SSHHost extends RemoteHost {
 	}
 	
 	@Override
-	public boolean deleteFileExtension(String dir, String ext) {
+	public boolean mSaveFile(String filename, byte[] stdin_post) throws IllegalStateException, IOException {
+		if (!isSafePath(filename)) {
+			return false;
+		}
+		filename = normalizePath(filename);
+		if (stdin_post==null) {
+			return false;
+		}
+		ensureSftpOpen();
+		sftp.put(new ByteArrayInputStream(stdin_post), filename);
+		return true;
+	}
+	
+	@Override
+	public boolean mDeleteFileExtension(String dir, String ext) {
 		if (!isSafePath(dir))
 			return false;
 		if (!ext.startsWith("."))
@@ -836,7 +873,7 @@ public class SSHHost extends RemoteHost {
 			sftp.rm(path);
 			return true;
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(SSHHost.class, ex);
 		}
 		return false;
 	}
@@ -864,6 +901,11 @@ public class SSHHost extends RemoteHost {
 		// hard to check so don't check for now
 		return false;
 	}
+	
+	@Override
+	public String fixPath(String path) {
+		return isWindows() ? FileSystemScenario.toWindowsPath(path) : FileSystemScenario.toUnixPath(path);
+	}
 
 	@Override
 	public ExecOutput execElevatedOut(String cmd, int timeout_sec,
@@ -873,4 +915,9 @@ public class SSHHost extends RemoteHost {
 		return execOut(cmd, timeout_sec, env, stdin_data, charset, chdir, test_thread, slow_timeout_sec, wrap_child);
 	}
 
+	@Override
+	public boolean mDeleteChosenFiles(String dir, IFileChooser chr) {
+		return false; // TODO
+	}
+	
 } // end public class SSHHost
