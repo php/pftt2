@@ -31,7 +31,7 @@ import com.mostc.pftt.results.ConsoleManager;
 public class XDebugScenario extends DebugScenario {
 	
 	@Override
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
+	public IScenarioSetup setup(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build, PhpIni ini) {
 		// TODO temp
 		//ini.putMulti("zend_extension", "C:/php-sdk/PFTT/current/cache/dep/xdebug/php_xdebug-2.2.3-5.5-ts-vc11-x86/php_xdebug-2.2.3-5.5-ts-vc11-x86.dll");
 		ini.putMulti("zend_extension", "C:/php-sdk/PFTT/current/cache/dep/xdebug/php_xdebug-2.2.3-5.4-ts-vc9-x86/php_xdebug-2.2.3-5.4-ts-vc9-x86.dll");

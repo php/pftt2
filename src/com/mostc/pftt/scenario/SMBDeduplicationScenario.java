@@ -115,7 +115,7 @@ public class SMBDeduplicationScenario extends SMBScenario {
 					try {
 						int count = 0;
 						// pick a few files/folders... doing the share itself won't find a reparsepoint
-						for ( String file : remote_host.list(remote_path) ) {
+						for ( String file : remote_host.mList(remote_path) ) {
 							ExecOutput out = remote_host.execOut("FSUTIL REPARSEPOINT QUERY "+remote_path+"\\"+file, AHost.ONE_MINUTE);
 							cm.println(EPrintType.CLUE, getClass(), "REPARSEPOINT QUERY: "+remote_path+"\\"+file+"\n"+out.output);
 							

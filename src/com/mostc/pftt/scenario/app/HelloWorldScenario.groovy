@@ -7,6 +7,7 @@ import com.mostc.pftt.scenario.ApplicationScenario;
 import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
 import com.mostc.pftt.scenario.IScenarioSetup;
 import com.mostc.pftt.scenario.ScenarioSet;
+import com.mostc.pftt.scenario.FileSystemScenario;
 
 /** Simple PHP script that just prints 'Hello World'
  * 
@@ -17,7 +18,7 @@ import com.mostc.pftt.scenario.ScenarioSet;
 public class HelloWorldScenario extends ApplicationScenario {
 
 	@Override
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
+	public IScenarioSetup setup(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
 		def php_code = """
 <?php
 

@@ -8,6 +8,7 @@ import com.mostc.pftt.host.TempFileExecOutput;
 import com.mostc.pftt.model.ActiveTestPack;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.EPrintType;
 
 /** Tests PHP with PHP build and test pack being stored remotely on a group of DFS SMB Shares.
@@ -52,7 +53,7 @@ public class SMBDFSScenario extends SMBScenario {
 		
 		if (StringUtil.isEmpty(base_remote_namespace))
 			base_remote_namespace = remote_host.isWindows() ? remote_host.getSystemDrive()+"\\PFTT-NS" : "/var/data/PFTT-NS";
-		else if (StringUtil.isEmpty(AHost.basename(base_remote_namespace)))
+		else if (StringUtil.isEmpty(FileSystemScenario.basename(base_remote_namespace)))
 			// base_remote_namespace ~= C:\
 			base_remote_namespace += "\\PFTT-NS";
 		else if (!AHost.hasDrive(base_remote_namespace) && remote_host.isWindows())
@@ -149,10 +150,7 @@ public class SMBDFSScenario extends SMBScenario {
 					return disposed = true;
 				}
 			} catch ( Exception ex ) {
-				if (cm==null)
-					ex.printStackTrace();
-				else
-					cm.addGlobalException(EPrintType.CANT_CONTINUE, getClass(), "delete", ex, "Unable to delete DFS Share");
+				ConsoleManagerUtil.printStackTrace(EPrintType.CANT_CONTINUE, getClass(), cm, "delete", ex, "Unable to delete DFS Share");
 			}
 			disconnect(this, cm, local_host);
 			
@@ -174,7 +172,7 @@ public class SMBDFSScenario extends SMBScenario {
 			dfs_dir.namespace = base_namespace + "-" + i;
 			dfs_dir.target = base_folder + "-" + i;
 			
-			if (!remote_host.exists(dir.remote_path) && !remote_host.exists(dfs_dir.remote_namespace)) {
+			if (!remote_host.mExists(dir.remote_path) && !remote_host.mExists(dfs_dir.remote_namespace)) {
 				// share may still exist, but at a different remote file path (double check to avoid `net share` failure)
 				if (!shareExists(cm, dir.share_name)) {
 					break;

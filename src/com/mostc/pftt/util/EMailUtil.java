@@ -93,18 +93,18 @@ public final class EMailUtil {
 		mime_header.setMimeType(new MimeType("multipart", "alternative"));
 		LocalMimePart root = new LocalMimePart(mime_header);
 		
-		if (html_msg_str!=null) {
-			LocalMimePart html_part = new LocalMimePart(new MimeHeader());
-			html_part.getHeader().setMimeType(new MimeType("text", "html"));
-			html_part.setBody(new CharSequenceSource(html_msg_str));
-			root.addChild(html_part);
-		}
-		
 		if (text_msg_str!=null) {
 			LocalMimePart text_part = new LocalMimePart(new MimeHeader());
 			text_part.getHeader().setMimeType(new MimeType("text", "plain"));
 			text_part.setBody(new CharSequenceSource(text_msg_str));
 			root.addChild(text_part);
+		}
+		
+		if (html_msg_str!=null) {
+			LocalMimePart html_part = new LocalMimePart(new MimeHeader());
+			html_part.getHeader().setMimeType(new MimeType("text", "html"));
+			html_part.setBody(new CharSequenceSource(html_msg_str));
+			root.addChild(html_part);
 		}
 		
 		return MimeTreeRenderer.getInstance().renderMimePart(root);

@@ -10,6 +10,7 @@ import com.mostc.pftt.host.ExecOutput;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
 import com.mostc.pftt.scenario.ScenarioSet;
@@ -88,11 +89,11 @@ public class WinDebugManager extends WindowsDebuggerToolsManager {
 		protected final AHost host;
 		protected boolean attached, wait;
 		
-		protected WinDebug(final AHost host, String win_dbg_exe, String server_name, String src_path, String debug_path, String image_path, int process_id, ExecHandle process) throws Exception {
+		protected WinDebug(AHost host, String win_dbg_exe, String server_name, String src_path, String debug_path, String image_path, int process_id, ExecHandle process) throws Exception {
 			this.host = host;
 			this.process = process;
 			
-			log_file = host.mktempname(getClass(), ".log");
+			log_file = host.mCreateTempName(getClass(), ".log");
 			
 			//
 			// generate windebug command (with lots of extra options, etc...)
@@ -123,7 +124,7 @@ public class WinDebugManager extends WindowsDebuggerToolsManager {
 			sb.append(" -n");
 			// -WF => provide default workspace file, which will automatically dock the command window within the windebug window
 			String workspace_file = host.fixPath(host.joinIntoOnePath(host.getPfttBinDir(), "\\pftt_workspace.WEW"));
-			if (host.exists(workspace_file)) {
+			if (host.mExists(workspace_file)) {
 				sb.append(" -WF \"");sb.append(workspace_file);sb.append("\"");
 			}
 			//
@@ -137,7 +138,7 @@ public class WinDebugManager extends WindowsDebuggerToolsManager {
 			wait = true;
 			for ( int i=0 ; i < 500 && wait ; i++ ) {
 				Thread.sleep(100);
-				if ( host.getSize(log_file) > 800 ) {
+				if ( host.mSize(log_file) > 800 ) {
 					attached = true;
 					wait = false;
 					break;
@@ -158,9 +159,9 @@ public class WinDebugManager extends WindowsDebuggerToolsManager {
 			wait = false;
 			
 			try {
-				host.delete(log_file);
+				host.mDelete(log_file);
 			} catch (Exception e) {
-				e.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(WinDebugManager.class, cm, e);
 			}
 		}
 

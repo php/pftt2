@@ -27,15 +27,15 @@ public class XDebugProfilingScenario extends XDebugScenario {
 	}
 	
 	@Override
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
-		if (super.setup(cm, host, build, ini)==SETUP_FAILED)
+	public IScenarioSetup setup(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build, PhpIni ini) {
+		if (super.setup(cm, fs, host, build, ini)==SETUP_FAILED)
 			return SETUP_FAILED;
 		
 		setup(ini);
 		// #setPHPTWriter and #setPhpUnitWriter get called first to store it in result-pack
 		//       @see AbstractLocalTestPackRunner$TestPackThread#exec_jobs
 		// store in $TEMP unless/until they are called though (as a backup, this shouldn't happen though)
-		ini.putSingle(OUTPUT_DIR, host.getTempDir());
+		ini.putSingle(OUTPUT_DIR, fs.getTempDir());
 		
 		return new ProfilingScenarioSetup();
 	}

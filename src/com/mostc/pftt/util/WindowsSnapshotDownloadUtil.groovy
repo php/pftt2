@@ -13,6 +13,7 @@ import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.model.core.EBuildType;
 import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.ECPUArch;
+import com.mostc.pftt.scenario.FileSystemScenario;
 
 /** Util for parsing the Snapshot download pages on windows.php.net to find
  * newest snapshot to download
@@ -28,10 +29,13 @@ import com.mostc.pftt.model.core.ECPUArch;
  */
 
 final class WindowsSnapshotDownloadUtil {
+	// TODO temp move these to EBuildBranch
 	static final URL PHP_5_3_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-5.3/")
 	static final URL PHP_5_4_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-5.4/")
 	static final URL PHP_5_5_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-5.5/")
 	static final URL PHP_5_6_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-5.6/")
+	static final URL PHP_7_0_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-7.0/")
+	static final URL PHP_7_1_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-7.1/")
 	static final URL STR_SIZE_AND_INT64_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/str_size_and_int64/")
 	static final URL PHP_MASTER_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/master/")
 
@@ -39,7 +43,7 @@ final class WindowsSnapshotDownloadUtil {
 		String local_path = null;
 		if (url.getHost().equals("windows.php.net")) {
 			if (url.getPath().contains("release")||url.getPath().contains("qa")||url.getPath().contains("/snaps/")) {
-				local_path = AHost.basename(url.getPath());
+				local_path = FileSystemScenario.basename(url.getPath());
 			} else if (url.getPath().startsWith("/downloads/")) {
 				// some special build being shared on windows.php.net (probably unstable, expiremental, etc...)
 				local_path = url.getPath().replaceAll("/downloads/", "");
@@ -57,7 +61,12 @@ final class WindowsSnapshotDownloadUtil {
 	}
 	
 	static URL getDownloadURL(EBuildBranch branch) {
+		// TODO temp call method on EBuildBranch to simplify adding new branches
 		switch(branch) {
+		case EBuildBranch.PHP_7_1:
+			return PHP_7_1_DOWNLOAD;
+		case EBuildBranch.PHP_7_0:
+			return PHP_7_0_DOWNLOAD;
 		case EBuildBranch.PHP_5_3:
 			return PHP_5_3_DOWNLOAD;
 		case EBuildBranch.PHP_5_4:

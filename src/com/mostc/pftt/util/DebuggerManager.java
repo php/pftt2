@@ -16,6 +16,7 @@ import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.runner.AbstractTestPackRunner.TestPackRunnerThread;
+import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.Scenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 
@@ -76,12 +77,12 @@ public abstract class DebuggerManager {
 			s.addToDebugPath(cm, host, build, paths);
 		}
 		for ( int i=0 ; i < paths.size() ; i++ ) {
-			paths.set(i, AHost.dirname(host.fixPath(paths.get(i))));
+			paths.set(i, FileSystemScenario.dirname(host.fixPath(paths.get(i))));
 		}
 		if (StringUtil.isEmpty(this.debug_path))
 			this.debug_path = host.joinIntoMultiplePath(paths);
 		else
-			this.debug_path = this.debug_path + host.pathsSeparator() + host.joinIntoMultiplePath(paths);
+			this.debug_path = this.debug_path + host.mPathsSeparator() + host.joinIntoMultiplePath(paths);
 	}
 	
 	/** guesses the source pack and debug pack locations based on build, unless

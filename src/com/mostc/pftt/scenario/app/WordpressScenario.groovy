@@ -61,7 +61,7 @@ $table_prefix  = 'wp_';
 define('WPLANG', '');
 define('WP_DEBUG', false);
 if ( !defined('ABSPATH') )
-	define('ABSPATH', dirname(__FILE__) . '/');
+	define('ABSPATH', dirname(__FILE__) . '/src');
 
 require_once(ABSPATH . 'wp-settings.php');
 		"""

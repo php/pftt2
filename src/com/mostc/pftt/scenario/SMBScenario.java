@@ -21,42 +21,29 @@ import com.mostc.pftt.results.EPrintType;
  * 
  */
 
-public abstract class SMBScenario extends RemoteFileSystemScenario {
-	protected final RemoteHost remote_host;
+public abstract class SMBScenario extends MountedRemoteFileSystemScenario {
 	protected final String base_file_path, base_share_name;
 	
 	public SMBScenario(RemoteHost remote_host, String base_file_path, String base_share_name) {
-		this.remote_host = remote_host;
+		super(remote_host);
 		
 		if (StringUtil.isNotEmpty(base_share_name))
 			base_share_name = base_share_name.trim();
 		if (StringUtil.isEmpty(base_file_path))
 			// fallback to a default path, @see SMBDeduplicationScenario
 			base_file_path = remote_host.isWindows() ? remote_host.getSystemDrive()+"\\" + base_share_name : "/var/data/" + base_share_name;
-		else if (StringUtil.isEmpty(AHost.basename(base_file_path)))
+		else if (StringUtil.isEmpty(FileSystemScenario.basename(base_file_path)))
 			// base_file_path ~= C:\
 			base_file_path += "\\" + base_share_name;
 		else if (!AHost.hasDrive(base_file_path) && remote_host.isWindows())
 			base_file_path = remote_host.getSystemDrive() + "\\" + base_file_path;
 		if (StringUtil.isEmpty(base_share_name)) {
-			base_share_name = AHost.basename(base_file_path);
+			base_share_name = FileSystemScenario.basename(base_file_path);
 			if (StringUtil.isEmpty(base_share_name))
 				base_share_name = "PFTT-Share";
 		}
 		this.base_file_path = base_file_path;
 		this.base_share_name = base_share_name;
-	}
-	
-	@Override
-	public AHost getRemoteHost() {
-		return remote_host;
-	}
-	
-	@Override
-	public boolean allowPhptInPlace() {
-		// always make sure test-pack is installed onto SMB Share
-		// otherwise, there wouldn't be a point in testing on SMB
-		return false;
 	}
 	
 	/** creates a File Share and connects to it.
@@ -195,7 +182,7 @@ public abstract class SMBScenario extends RemoteFileSystemScenario {
 		for ( int i=1 ; i < 65535 ; i++ ) {
 			dir.remote_path = base_file_path + "-" + i;
 			dir.share_name = base_share_name + "-" + i;
-			if (!remote_host.exists(dir.remote_path)) {
+			if (!remote_host.mExists(dir.remote_path)) {
 				// share may still exist, but at a different remote file path (double check to avoid `net share` failure)
 				if (!shareExists(cm, dir.share_name)) {
 					break;
@@ -234,7 +221,7 @@ public abstract class SMBScenario extends RemoteFileSystemScenario {
 	}
 	
 	protected boolean doCreateShareWindows(ConsoleManager cm, String remote_path, String share_name) throws Exception {
-		remote_host.mkdirs(remote_path);
+		remote_host.mCreateDirs(remote_path);
 		
 		String cmd = "NET SHARE "+share_name+"="+remote_path+" /Grant:"+remote_host.getUsername()+",Full";
 		return remote_host.execElevated(cm, getClass(), cmd, AHost.FOUR_HOURS);
@@ -268,7 +255,7 @@ public abstract class SMBScenario extends RemoteFileSystemScenario {
 	protected boolean connectFromWindows(SMBStorageDir dir, ConsoleManager cm, AHost local_host) throws Exception {
 		dir.local_path = null;
 		for ( int i=0 ; i < DRIVES.length ; i++ ) {
-			if (!local_host.exists(DRIVES[i] + ":\\")) {
+			if (!local_host.mExists(DRIVES[i] + ":\\")) {
 				dir.local_path = DRIVES[i] + ":";
 				break;
 			}
@@ -317,7 +304,7 @@ public abstract class SMBScenario extends RemoteFileSystemScenario {
 			// CRITICAL: without /Y it may ask for confirmation/block forever
 			if (remote_host.execElevated(cm, getClass(), "NET SHARE "+remote_path+" /DELETE /Y", AHost.ONE_MINUTE)) {
 				try {
-					remote_host.delete(remote_path);
+					remote_host.mDelete(remote_path);
 					
 					return true;
 				} catch ( Exception ex ) {

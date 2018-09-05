@@ -9,6 +9,7 @@ import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
+import com.mostc.pftt.scenario.FileSystemScenario;
 
 /** Utilities for setting up the test environment and convenience settings on Hosts
  * 
@@ -18,9 +19,9 @@ import com.mostc.pftt.results.EPrintType;
 
 public final class HostEnvUtil {
 	
-	public static void prepareHostEnv(AHost host, ConsoleManager cm, PhpBuild build, boolean enable_debug_prompt) throws Exception {
+	public static void prepareHostEnv(FileSystemScenario fs, AHost host, ConsoleManager cm, PhpBuild build, boolean enable_debug_prompt) throws Exception {
 		if (host.isWindows()) {
-			prepareWindows(host, cm, build, enable_debug_prompt);
+			prepareWindows(fs, host, cm, build, enable_debug_prompt);
 		} else {
 			// emerge dev-vcs/subversion
 		}
@@ -37,13 +38,14 @@ public final class HostEnvUtil {
 	 * 
 	 * If enable_debug_prompt and if WinDebug is installed, enables it for debugging PHP.
 	 * 
+	 * @param fs
 	 * @param host
 	 * @param cm
 	 * @param build
 	 * @param enable_debug_prompt
 	 * @throws Exception
 	 */
-	public static void prepareWindows(AHost host, ConsoleManager cm, PhpBuild build, boolean enable_debug_prompt) throws Exception {
+	public static void prepareWindows(FileSystemScenario fs, AHost host, ConsoleManager cm, PhpBuild build, boolean enable_debug_prompt) throws Exception {
 		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "preparing Windows host to run PHP...");
 		// have to fix Windows Error Reporting from popping up and blocking execution:
 		
@@ -119,7 +121,7 @@ public final class HostEnvUtil {
 			host.execElevated(cm, HostEnvUtil.class, "NET SHARE PHP_SDK="+host.getPhpSdkDir()+" /Grant:"+host.getUsername()+",Full", AHost.ONE_MINUTE);
 		}
 			
-		installVCRuntime(host, cm, build);
+		installVCRuntime(fs, host, cm, build);
 		cm.println(EPrintType.COMPLETED_OPERATION, HostEnvUtil.class, "Windows host prepared to run PHP.");
 	} // end public static void prepareWindows
 	
@@ -130,13 +132,14 @@ public final class HostEnvUtil {
 	 * 
 	 * Windows 8+ already has the VC9 x86 Runtime
 	 * 
+	 * @param fs
 	 * @param host
 	 * @param cm
 	 * @throws Exception 
 	 * @throws IOException 
 	 * @throws IllegalStateException 
 	 */
-	public static void installVCRuntime(AHost host, ConsoleManager cm, PhpBuild build) throws IllegalStateException, IOException, Exception {
+	public static void installVCRuntime(FileSystemScenario fs, AHost host, ConsoleManager cm, PhpBuild build) throws IllegalStateException, IOException, Exception {
 		if (!host.isWindows()) {
 			return;
 		}
@@ -144,44 +147,48 @@ public final class HostEnvUtil {
 		switch (build.getVersionBranch(cm, host)) {
 		case PHP_5_3:
 		case PHP_5_4:
-			installVCRT9(cm, host);
+			installVCRT9(cm, fs, host);
 			break;
+		case PHP_7_0:
+		case PHP_Master:
+			// TODO install VC14 CRT
+		case PHP_5_5:
+		case PHP_5_6:
 		default: 
-			// PHP 5.5+ and PHP_Master
-			installVCRT9(cm, host); // just in case
-			installVCRT(cm, host, "VC10 x86", "msvcr100.dll", "vc10_redist_x86.exe");
-			installVCRT(cm, host, "VC11 x86", "msvcr110.dll", "vc11_redist_x86.exe");
+			installVCRT9(cm, fs, host); // just in case
+			installVCRT(cm, fs, host, "VC10 x86", "msvcr100.dll", "vc10_redist_x86.exe");
+			installVCRT(cm, fs, host, "VC11 x86", "msvcr110.dll", "vc11_redist_x86.exe");
 			if (build.isX64()) {
-				installVCRT(cm, host, "VC10 x64", "msvcr100.dll", "vc10_redist_x64.exe");
-				installVCRT(cm, host, "VC11 x64", "msvcr110.dll", "vc11_redist_x64.exe");
+				installVCRT(cm, fs, host, "VC10 x64", "msvcr100.dll", "vc10_redist_x64.exe");
+				installVCRT(cm, fs, host, "VC11 x64", "msvcr110.dll", "vc11_redist_x64.exe");
 			}
 			break;
 		} // end switch
 	} // end public static void installVCRuntime
 	
-	protected static void installVCRT9(ConsoleManager cm, AHost host) throws IllegalStateException, IOException, Exception {
+	protected static void installVCRT9(ConsoleManager cm, FileSystemScenario fs, AHost host) throws IllegalStateException, IOException, Exception {
 		// with VC9 (and before), checking WinSXS directory is the only way to tell
-		if (host.dirContainsFragment(host.getSystemRoot()+"\\WinSxS", "VC9")) {
+		if (host.mDirContainsFragment(host.getSystemRoot()+"\\WinSxS", "VC9")) {
 			cm.println(EPrintType.CLUE, HostEnvUtil.class, "VC9 Runtime already installed");
 		} else {
-			doInstallVCRT(cm, host, "VC9", "vc9_redist_x86.exe");
+			doInstallVCRT(cm, fs, host, "VC9", "vc9_redist_x86.exe");
 		}
 	}
 	
-	protected static void installVCRT(ConsoleManager cm, AHost host, String name, String dll_name, String filename) throws IllegalStateException, IOException, Exception {
+	protected static void installVCRT(ConsoleManager cm, FileSystemScenario fs, AHost host, String name, String dll_name, String filename) throws IllegalStateException, IOException, Exception {
 		// starting with VCRT10, checking the registry is the only way to tell
-		if (host.exists(host.getSystemRoot()+"\\system32\\"+dll_name)) {
+		if (fs.exists(host.getSystemRoot()+"\\system32\\"+dll_name)) {
 			cm.println(EPrintType.CLUE, HostEnvUtil.class, name+" Runtime already installed");
 		} else {
-			doInstallVCRT(cm, host, name, filename);
+			doInstallVCRT(cm, fs, host, name, filename);
 		}
 	}
 	
-	protected static void doInstallVCRT(ConsoleManager cm, AHost host, String name, String filename) throws IllegalStateException, IOException, Exception {
+	protected static void doInstallVCRT(ConsoleManager cm, FileSystemScenario fs, AHost host, String name, String filename) throws IllegalStateException, IOException, Exception {
 		String local_file = LocalHost.getLocalPfttDir()+"/cache/dep/VCRedist/"+filename;
 		String remote_file = local_file;
 		if (host.isRemote()) {
-			remote_file = host.mktempname(HostEnvUtil.class, ".exe");
+			remote_file = fs.mktempname(HostEnvUtil.class, ".exe");
 			
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Uploading "+name+" Runtime");
 			host.upload(local_file, remote_file);
@@ -189,7 +196,7 @@ public final class HostEnvUtil {
 		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Installing "+name+" Runtime");
 		host.execElevated(cm, HostEnvUtil.class, remote_file+" /Q /NORESTART", AHost.FOUR_HOURS);
 		if (remote_file!=null)
-			host.delete(remote_file);
+			fs.delete(remote_file);
 	}
 	
 	public static final String REG_DWORD = "REG_DWORD";

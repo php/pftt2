@@ -1,5 +1,6 @@
 package com.mostc.pftt.scenario;
 
+import java.io.File;
 import java.util.Collection;
 
 import com.github.mattficken.Overridable;
@@ -9,6 +10,7 @@ import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.util.DllVersion;
 
@@ -22,7 +24,30 @@ import com.mostc.pftt.util.DllVersion;
 // TODO http://us.php.net/manual/en/wincache.stats.php
 // TODO mediawiki support
 public abstract class WinCacheUScenario extends UserCacheScenario {
-	protected final DllVersion set_dll;
+	protected DllVersion set_dll;
+	
+	protected static DllVersion guessDll(File dll_path) {
+		File[] files = dll_path.listFiles();
+		if (files!=null) {
+			for(File f:files) {
+				if (f.getName().equals("php_wincache.dll")) {
+					return new DllVersion(dll_path.getAbsolutePath(), "php_wincache.dll", "DEV");
+				}
+			}
+		}
+		return null;
+	}
+	
+	public WinCacheUScenario(String dll_path) {
+		if ((set_dll = guessDll(new File(dll_path)))==null) {
+			if ((set_dll = guessDll(new File(dll_path).getParentFile()))==null) {
+				// will guess for appropriate PHP build - alternative is to provide `dll_path` to PHP, which will probably fail to load
+				//
+				// @see setup()
+				set_dll = null;
+			}
+		}
+	}
 	
 	public WinCacheUScenario() {
 		this.set_dll = null;
@@ -46,12 +71,18 @@ public abstract class WinCacheUScenario extends UserCacheScenario {
 					debug_path.add( host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.4-5.4-nts-vc11-x86/php_wincache.pdb" );
 					break;
 				case PHP_5_5:
-				default:
 					debug_path.add( host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.5-5.5-nts-vc11-x86/php_wincache.pdb" );
+					break;
+				case PHP_5_6:
+				default:
+					if (build.isX64())
+						debug_path.add( host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.5-5.6-nts-vc11-x64/php_wincache.pdb" );
+					else
+						debug_path.add( host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.5-5.6-nts-vc11-x86/php_wincache.pdb" );
 					break;
 				}
 			} catch ( Exception ex ) {
-				ex.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(WinCacheUScenario.class, cm, ex);
 			}
 		}
 	}
@@ -67,7 +98,13 @@ public abstract class WinCacheUScenario extends UserCacheScenario {
 	}
 
 	@Overridable
-	protected String getDllPath55Plus(Host host) {
+	protected String getDllPath56(Host host, boolean x64) {
+		return x64 ?
+				host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.5-5.6-nts-vc11-x64/php_wincache.dll" :
+				host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.5-5.6-nts-vc11-x86/php_wincache.dll";
+	}
+	@Overridable
+	protected String getDllPath55(Host host) {
 		return host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.5-5.5-nts-vc11-x86/php_wincache.dll";
 	}
 	@Overridable
@@ -79,7 +116,8 @@ public abstract class WinCacheUScenario extends UserCacheScenario {
 		return host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.4-5.3-nts-vc9-x86/php_wincache.dll";
 	}
 
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
+	@Override
+	public IScenarioSetup setup(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
 		if (!host.isWindows() || !build.isNTS(host))
 			return SETUP_FAILED;
 		
@@ -88,7 +126,7 @@ public abstract class WinCacheUScenario extends UserCacheScenario {
 		try {
 			branch = build.getVersionBranch(cm, host);
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(WinCacheUScenario.class, cm, ex);
 			return SETUP_FAILED;
 		}
 		if (set_dll!=null) {
@@ -101,16 +139,22 @@ public abstract class WinCacheUScenario extends UserCacheScenario {
 			case PHP_5_4:
 				dll_path = getDllPath54(host);
 				break;
+			case PHP_5_5:
+				dll_path = getDllPath55(host);
+				break;
+			case PHP_5_6:
 			default:
-				dll_path = getDllPath55Plus(host);
+				dll_path = getDllPath56(host, build.isX64());
 				break;
 			}
 		}
+		
 		// install wincache
+		System.out.println("SETUP "+dll_path); // TODO temp
 		try {
-			host.copy(dll_path, build.getDefaultExtensionDir()+"/php_wincache.dll");
+			fs.copy(dll_path, build.getDefaultExtensionDir()+"/php_wincache.dll");
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(WinCacheUScenario.class, ex);
 			return SETUP_FAILED;
 		}
 		
@@ -119,11 +163,11 @@ public abstract class WinCacheUScenario extends UserCacheScenario {
 		return new WinCacheUScenarioSetup();
 	}
 	@Override
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, PhpIni ini) {
+	public IScenarioSetup setup(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build, PhpIni ini) {
 		if (!host.isWindows() || !build.isNTS(host))
 			return SETUP_FAILED;
 		
-		configure(ini);
+		configure(cm, fs, (AHost)host, build, ini);
 		
 		return new WinCacheUScenarioSetup();
 	}
@@ -149,14 +193,14 @@ public abstract class WinCacheUScenario extends UserCacheScenario {
 	
 	// @see http://us.php.net/manual/en/wincache.configuration.php
 	@Overridable
-	protected void configure(PhpIni ini) {
-		// enable wincache
-		ini.putMulti(PhpIni.EXTENSION, "php_wincache.dll");
-		
+	protected boolean configure(ConsoleManager cm, FileSystemScenario fs, AHost host, PhpBuild build, PhpIni ini) {
 		ini.putSingle("wincache.enablecli", "1");
 		
 		// DISABLE opcode caching (required to use wincacheu with opcache scenarios)
 		ini.putSingle("wincache.ocenabled", "0");
+		
+		// enable wincache
+		return ini.addExtensionAndCheck(cm, fs, host, null, build, "php_wincache.dll");
 	}
 	
 	@Override
@@ -164,11 +208,6 @@ public abstract class WinCacheUScenario extends UserCacheScenario {
 		if (!host.isWindows()) {
 			if (cm!=null) {
 				cm.println(EPrintType.CLUE, getClass(), "Scenario only supported on Windows.");
-			}
-			return false;
-		} else if (!build.isX86()) {
-			if (cm!=null) {
-				cm.println(EPrintType.CLUE, getClass(), "Must use X86 build for this scenario: "+build.getBuildPath());
 			}
 			return false;
 		} else if (!build.isNTS(host)) {

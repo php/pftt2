@@ -39,7 +39,7 @@ import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.RestartableInputStream;
 import com.github.mattficken.io.StringUtil;
 import com.github.mattficken.io.CharsetDeciderDecoder.ERecognizerGroup;
-import com.mostc.pftt.util.ErrorUtil;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 
 import se.datadosen.component.RiverLayout;
 
@@ -244,7 +244,7 @@ public class CharsetDebuggerPanel extends JPanel {
 		try {
 			in = IOUtil.ensureMarkSupported(rin.openInputStream(), IOUtil.ONE_MEGABYTE);
 		} catch ( Exception ex ) {
-			ErrorUtil.display_error(this, ex);
+			ConsoleManagerUtil.display_error(this, ex);
 			return;
 		}
 		
@@ -299,17 +299,17 @@ public class CharsetDebuggerPanel extends JPanel {
 				} while ( cr.hasMoreChunks() );
 				
 			} else {
-				ErrorUtil.display_error(this, "Unsupported CharacterReader subclass!");
+				ConsoleManagerUtil.display_error(this, "Unsupported CharacterReader subclass!");
 			}
 			//
 		} catch ( Exception ex ) {
-			ErrorUtil.display_error(this, ex);
+			ConsoleManagerUtil.display_error(this, ex);
 		}
 		
 		try {
 			reader.close();
 		} catch ( Exception ex ) {
-			ErrorUtil.display_error(this, ex);
+			ConsoleManagerUtil.display_error(this, ex);
 		}
 		
 		String str = sb.toString();

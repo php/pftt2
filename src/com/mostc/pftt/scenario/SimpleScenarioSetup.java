@@ -37,8 +37,8 @@ public abstract class SimpleScenarioSetup implements IScenarioSetup {
 	}
 	
 	@Override
-	public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
-		
+	public boolean prepareINI(ConsoleManager cm, FileSystemScenario fs, AHost host, PhpBuild build, ScenarioSet scenario_set, PhpIni ini) {
+		return true;
 	}
 	
 	@Override

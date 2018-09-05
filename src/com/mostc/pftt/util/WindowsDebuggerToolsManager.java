@@ -9,7 +9,7 @@ public abstract class WindowsDebuggerToolsManager extends DebuggerManager {
 		// use x86 windebug for x86 builds and x64 windebug edition for x64 builds!
 		// (can debug with different windebug editions, but WER popup requires that the architectures match)
 		// @see HostEnvUtil
-		if (build.isX86()) {
+		if (false) { // TODO temp host.isX86()) {
 			// 
 			return new String[] {
 					host.getSystemDrive()+"\\Program Files (x86)\\Debugging Tools for Windows\\"+exe_file,

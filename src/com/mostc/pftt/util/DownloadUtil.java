@@ -44,7 +44,7 @@ public class DownloadUtil {
 	}
 	
 	public static boolean downloadAndUnzip(ConsoleManager cm, Host host, URL remote_url, String local_dir) {
-		String local_file_zip = host.mktempname("Download", ".zip");
+		String local_file_zip = host.mCreateTempName("Download", ".zip");
 		
 		HttpParams params = new SyncBasicHttpParams();
 		HttpProtocolParams.setVersion(params, HttpVersion.HTTP_1_1);
@@ -104,7 +104,7 @@ public class DownloadUtil {
 		
 		// decompress local_file_zip
 		try {
-			host.mkdirs(local_dir);
+			host.mCreateDirs(local_dir);
 			
 			System.out.println("PFTT: release_get: decompressing "+local_file_zip+"...");
 			

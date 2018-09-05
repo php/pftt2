@@ -227,17 +227,7 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 		// CRITICAL
 		ini.putMulti(PhpIni.HTML_ERRORS, PhpIni.OFF);
 		// CRITICAL
-		/*try {
-			final int major = build.getVersionMajor(cm, host);
-			final int minor = build.getVersionMinor(cm, host);
-			if (major<7||(major==7&&minor<1)) {
-				ini.putMulti(PhpIni.TRACK_ERRORS, PhpIni.ON);
-			} else {
-				ini.putMulti(PhpIni.TRACK_ERRORS, PhpIni.OFF);
-			}
-		} catch (Exception ex) {*/
-			ini.putMulti(PhpIni.TRACK_ERRORS, PhpIni.OFF);
-		//}
+		ini.putMulti(PhpIni.TRACK_ERRORS, PhpIni.ON);
 		//
 		ini.putMulti(PhpIni.REPORT_MEMLEAKS, PhpIni.ON);
 		ini.putMulti(PhpIni.REPORT_ZEND_DEBUG, PhpIni.OFF);

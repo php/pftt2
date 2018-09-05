@@ -8,12 +8,13 @@ import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.AHost.ExecHandle;
 import com.mostc.pftt.host.AHost.IExecHandleCleanupNotify;
 import com.mostc.pftt.host.ExecOutput;
-import com.mostc.pftt.host.Host;
 import com.mostc.pftt.host.ICrashDetector;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.AbstractTestResultRW;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.EPrintType;
+import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.ScenarioSet;
 
 /** Handles integration with Time-Travel-Tracing, a debugging feature on Windows. 
@@ -56,7 +57,7 @@ public class TimeTravelTraceDebugManager extends WindowsDebuggerToolsManager {
 	public Debugger newDebugger(ConsoleManager cm, AHost host, ScenarioSet scenario_set, PhpBuild build) {
 		String ttt_exe = null;
 		for ( String path : getToolPaths(host, build, "TTT\\TTTracer.exe") ) {
-			if (host.exists(path)) {
+			if (host.mExists(path)) {
 				ttt_exe = path;
 				break;
 			}
@@ -141,14 +142,14 @@ public class TimeTravelTraceDebugManager extends WindowsDebuggerToolsManager {
 					try {
 						// move TTT file to result-pack (we want it, its a crash)
 						// and rename it to .run
-						host.move(ttt_file, rw.getPath()+"/"+Host.basename(ttt_file)+".run");
+						host.mMove(ttt_file, rw.getPath()+"/"+FileSystemScenario.basename(ttt_file)+".run");
 					} catch ( Exception ex ) {
-						ex.printStackTrace();
+						ConsoleManagerUtil.printStackTrace(TimeTravelTraceDebugManager.class, ex);
 					}
 				}
 			} else {
 				try {
-					host.delete(ttt_file);
+					host.mDelete(ttt_file);
 				} catch ( Exception ex ) {}
 			}
 		}
@@ -164,7 +165,7 @@ public class TimeTravelTraceDebugManager extends WindowsDebuggerToolsManager {
 			int i = cmd.indexOf(' ');
 			cmd = cmd.substring(1, i);
 		}
-		String name = Host.basename(cmd);
+		String name = FileSystemScenario.basename(cmd);
 		
 		
 		return host.getTempDir()+"\\"+name+i.incrementAndGet()+".run";

@@ -316,6 +316,8 @@ public final class StringUtil {
 	}
 	
 	public static String toString(int[] o) {
+		if (o==null)
+			return "null";
 		StringBuilder sb = new StringBuilder();
 		sb.append('[');
 		sb.append(o[0]);
@@ -328,6 +330,8 @@ public final class StringUtil {
 	}
 	
 	public static String toString(short[] o) {
+		if (o==null)
+			return "null";
 		StringBuilder sb = new StringBuilder();
 		sb.append('[');
 		sb.append(o[0]);
@@ -340,6 +344,8 @@ public final class StringUtil {
 	}
 	
 	public static String toString(float[] o) {
+		if (o==null)
+			return "null";
 		StringBuilder sb = new StringBuilder();
 		sb.append('[');
 		sb.append(o[0]);
@@ -352,6 +358,8 @@ public final class StringUtil {
 	}
 	
 	public static String toString(long[] o) {
+		if (o==null)
+			return "null";
 		StringBuilder sb = new StringBuilder();
 		sb.append('[');
 		sb.append(o[0]);
@@ -364,6 +372,8 @@ public final class StringUtil {
 	}
 	
 	public static String toString(double[] o) {
+		if (o==null)
+			return "null";
 		StringBuilder sb = new StringBuilder();
 		sb.append('[');
 		sb.append(o[0]);
@@ -376,6 +386,8 @@ public final class StringUtil {
 	}
 	
 	public static String toString(boolean[] o) {
+		if (o==null)
+			return "null";
 		StringBuilder sb = new StringBuilder();
 		sb.append('[');
 		sb.append(o[0]);
@@ -388,21 +400,25 @@ public final class StringUtil {
 	}
 	
 	public static String toString(char[] o) {
+		if (o==null)
+			return "null";
 		StringBuilder sb = new StringBuilder();
-		sb.append('[');
-		sb.append(o[0]);
-		for ( int i=1 ; i < o.length ; i++ ) {
-			sb.append(',');
+		for ( int i=0 ; i < o.length ; i++ ) {
 			sb.append(o[i]);
 		}
-		sb.append(']');
+		return sb.toString();
+	}
+	
+	public static String toString(byte[] o) {
+		if (o==null)
+			return "null";
+		StringBuilder sb = new StringBuilder();
+		for ( int i=0 ; i < o.length ; i++ ) {
+			sb.append((char)o[i]);
+		}
 		return sb.toString();
 	}
 
-	public static String toString(Object o) {
-		return o == null ? "null" : o.toString();
-	}
-	
 	public static String toString(Object[] o) {
 		if (isEmpty(o))
 			return "[]";
@@ -416,6 +432,10 @@ public final class StringUtil {
 		}
 		sb.append(']');
 		return sb.toString();
+	}
+	
+	public static String toString(Object o) {
+		return o == null ? "null" : o.toString();
 	}
 
 	public static boolean equalsIC(String a, String b) {
@@ -629,5 +649,40 @@ public final class StringUtil {
 	}
 	
 	private StringUtil() {}
+
+	public static boolean equalsICAny(String a, String ...b) {
+		for (int i=0;i<b.length;i++) {
+			if (equalsIC(a, b[i]))
+				return true;
+		}
+		return false;
+	}
+	
+	public static boolean equalsCSAny(String a, String ...b) {
+		for (int i=0;i<b.length;i++) {
+			if (equalsCS(a, b[i]))
+				return true;
+		}
+		return false;
+		
+	}
+
+	public static boolean startsWithIgnoreWhitespace(String str, char c) {
+		for (int i=0;i<str.length();i++) {
+			if (!Character.isWhitespace(str.charAt(i))) {
+				return str.charAt(i)==c;
+			}
+		}
+		return false;
+	}
+	
+	public static boolean endsWithIgnoreWhitespace(String str, char c) {
+		for (int i=str.length()-1;i>0;i--) {
+			if (!Character.isWhitespace(str.charAt(i))) {
+				return str.charAt(i)==c;
+			}
+		}
+		return false;
+	}
 	
 } // end public class StringUtil

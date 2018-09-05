@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 
 public final class TimerUtil {
 	 
@@ -129,7 +130,7 @@ public final class TimerUtil {
 			wr.t = t;
 			wr.block(seconds);
 		} catch ( Throwable t ) {
-			t.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(TimerUtil.class, t);
 		}
 		return wr;
 	}

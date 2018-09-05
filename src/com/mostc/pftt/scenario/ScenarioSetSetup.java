@@ -21,13 +21,14 @@ public class ScenarioSetSetup implements IClosable {
 	 * after this, you probably should call INIScenario#setupScenarios with the PhpIni you will be using with this PhpBuild.
 	 * 
 	 * @param cm
+	 * @param fs
 	 * @param host
 	 * @param build
 	 * @param scenario_set
 	 * @param layer - why are you setting up this Scenario Set?
 	 * @return
 	 */
-	public static ScenarioSetSetup setupScenarioSet(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
+	public static ScenarioSetSetup setupScenarioSet(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
 		IScenarioSetup setup = null;
 		HashMap<Scenario,IScenarioSetup> setups = new HashMap<Scenario,IScenarioSetup>(scenario_set.size());
 				
@@ -36,7 +37,7 @@ public class ScenarioSetSetup implements IClosable {
 		boolean has_env = false;
 		for ( Scenario scenario : scenario_set ) {
 			if (scenario.setupRequired(layer)) {
-				setup = scenario.setup(cm, host, build, scenario_set, layer);
+				setup = scenario.setup(cm, fs, host, build, scenario_set, layer);
 			
 				if (setup==null) {
 					if (cm!=null) {
@@ -126,12 +127,14 @@ public class ScenarioSetSetup implements IClosable {
 		return true;
 	}
 
-	public void prepareINI(ConsoleManager cm, AHost host, PhpBuild build, PhpIni ini) {
+	public boolean prepareINI(ConsoleManager cm, FileSystemScenario fs, AHost host, PhpBuild build, PhpIni ini) {
 		for ( IScenarioSetup setup : setups.values() ) {
-			setup.prepareINI(cm, host, build, scenario_set, ini);
+			if (!setup.prepareINI(cm, fs, host, build, scenario_set, ini))
+				return false;
 		}
 		
-		INIScenario.setupScenarios(cm, host, scenario_set, build, ini);
+		INIScenario.setupScenarios(cm, fs, host, scenario_set, build, ini);
+		return true;
 	}
 	
 	public boolean hasENV() {
@@ -160,6 +163,10 @@ public class ScenarioSetSetup implements IClosable {
 		for ( Scenario s : setups.keySet() ) {
 			if (clazz.isAssignableFrom(s.getClass()))
 				return setups.get(s);
+		}
+		for ( IScenarioSetup ss : setups.values() ) {
+			if (clazz.isAssignableFrom(ss.getClass()))
+				return ss;
 		}
 		return null;
 	}

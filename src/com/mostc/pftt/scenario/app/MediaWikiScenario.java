@@ -24,7 +24,7 @@ public class MediaWikiScenario extends ZipDbApplication {
 
 	@Override
 	public boolean isImplemented() {
-		return false;
+		return true;
 	}
 
 	@Override

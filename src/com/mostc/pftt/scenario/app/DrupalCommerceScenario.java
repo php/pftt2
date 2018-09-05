@@ -1,6 +1,6 @@
 package com.mostc.pftt.scenario.app;
 
-import com.mostc.pftt.scenario.app.DrupalScenario;
+import com.mostc.pftt.scenario.app.Drupal8Scenario;
 
 /** Drupal Commerce is used to build eCommerce websites and applications of all sizes. At 
  * its core it is lean and mean, enforcing strict development standards and leveraging the
@@ -11,7 +11,7 @@ import com.mostc.pftt.scenario.app.DrupalScenario;
  * 
  */
 
-public class DrupalCommerceScenario extends DrupalScenario {
+public class DrupalCommerceScenario extends Drupal8Scenario {
 
 	@Override
 	protected String getZipAppFileName() {

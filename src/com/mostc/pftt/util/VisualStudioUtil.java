@@ -5,6 +5,7 @@ import java.util.HashMap;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.results.ConsoleManager;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 
 /** functions for calling utility programs that are part of Visual Studio.
  * 
@@ -38,7 +39,7 @@ public final class VisualStudioUtil {
 			
 			return host.exec(cm, VisualStudioUtil.class, cmd, Host.ONE_MINUTE, env);
 		} catch ( Exception ex ) {
-			ex.printStackTrace();
+			ConsoleManagerUtil.printStackTrace(VisualStudioUtil.class, cm, ex);
 			return false;
 		}
 	}
@@ -49,17 +50,17 @@ public final class VisualStudioUtil {
 			return null;
 		
 		String exe = vs_dir + "\\VC\\bin\\amd64\\editbin.exe";
-		if (host.exists(exe))
+		if (host.mExists(exe))
 			return exe;
 		exe = vs_dir + "\\VC\\bin\\x86\\editbin.exe";
-		if (host.exists(exe))
+		if (host.mExists(exe))
 			return exe;
 		
 		vs_dir = visualstudiodir86(host);
 		if (StringUtil.isEmpty(vs_dir))
 			return null;
 		exe = vs_dir + "\\VC\\bin\\editbin.exe";
-		if (host.exists(exe))
+		if (host.mExists(exe))
 			return exe;
 		else
 			return null;

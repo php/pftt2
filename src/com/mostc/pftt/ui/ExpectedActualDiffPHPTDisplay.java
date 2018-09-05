@@ -30,8 +30,8 @@ import com.github.mattficken.io.RestartableInputStream;
 import com.github.mattficken.io.StringUtil;
 import com.github.mattficken.io.ui.CharsetDebuggerPanel;
 import com.mostc.pftt.model.core.PhptTestCase;
+import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.PhptTestResult;
-import com.mostc.pftt.util.ErrorUtil;
 
 import se.datadosen.component.RiverLayout;
 
@@ -231,7 +231,7 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 		try {
 			test_display.showFile(result.test_case, result.test_case.getContents(result.host));
 		} catch ( IOException ex ) {
-			ErrorUtil.display_error(this, ex);
+			ConsoleManagerUtil.display_error(this, ex);
 		}
 		
 		diff_display.showFile(result.test_case, result.diff_str==null?"":result.diff_str);
@@ -363,7 +363,7 @@ public class ExpectedActualDiffPHPTDisplay extends JScrollPane {
 				column_field.setText(Integer.toString(columnnum+1));
 				row_field.setText(Integer.toString(linenum+1));
 			} catch ( Exception ex ) {
-				ex.printStackTrace();
+				ConsoleManagerUtil.printStackTrace(ExpectedActualDiffPHPTDisplay.class, ex);
 			}
 		} // end public void caretUpdate
 	}

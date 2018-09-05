@@ -134,7 +134,7 @@ public class ArrayUtil {
 		return clazz == null ? null : (E[]) out.toArray((E[])Array.newInstance(clazz, out.size()));
 	}
 	
-	public static <E extends Object> List<E> toList(E[] e) {
+	public static <E extends Object> ArrayList<E> toList(E[] e) {
 		if (e==null)
 			return new ArrayList<E>(0); // TODO temp
 		ArrayList<E> o = new ArrayList<E>(e.length);

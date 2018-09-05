@@ -23,6 +23,7 @@ import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
 import com.mostc.pftt.main.IENVINIFilter;
 import com.mostc.pftt.model.app.PhpUnitTestCase;
+import com.mostc.pftt.model.app.SimpleTestCase;
 import com.mostc.pftt.model.core.EPhptSection;
 import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.ESAPIType;
@@ -39,10 +40,13 @@ import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhptTestResult;
 import com.mostc.pftt.runner.AbstractPhpUnitTestCaseRunner;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
+import com.mostc.pftt.runner.AbstractSimpleTestCaseRunner;
 import com.mostc.pftt.runner.HttpPhpUnitTestCaseRunner;
 import com.mostc.pftt.runner.HttpPhptTestCaseRunner;
+import com.mostc.pftt.runner.HttpSimpleTestCaseRunner;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
 import com.mostc.pftt.runner.LocalPhptTestPackRunner.PhptThread;
+import com.mostc.pftt.runner.LocalSimpleTestPackRunner.SimpleTestThread;
 import com.mostc.pftt.runner.PhptTestPreparer.PreparedPhptTestCase;
 
 /** scenarios for testing PHP while its running under a web server
@@ -69,7 +73,7 @@ public abstract class WebServerScenario extends SAPIScenario {
 		params = new SyncBasicHttpParams();
 		HttpProtocolParams.setVersion(params, HttpVersion.HTTP_1_0);
 		HttpProtocolParams.setContentCharset(params, "UTF-8");
-		HttpProtocolParams.setUserAgent(params, "Mozilla/5.0 (Windows NT 6.1; rv:12.0) Gecko/20120405 Firefox/14.0.1");
+		// TODO HttpProtocolParams.setUserAgent(params, "Mozilla/5.0 (Windows NT 6.1; rv:12.0) Gecko/20120405 Firefox/14.0.1");
 		HttpProtocolParams.setUseExpectContinue(params, true);
 		params.setBooleanParameter(CoreConnectionPNames.SO_KEEPALIVE, false);
 		params.setIntParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, 60*1000);
@@ -97,26 +101,28 @@ public abstract class WebServerScenario extends SAPIScenario {
 	}
 	
 	@Override
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
+	public IScenarioSetup setup(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
 		return smgr.setup(cm, host, build);
 	}
 	
 	@Override
-	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PreparedPhptTestCase prep, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack, boolean xdebug, boolean debugger_attached) {
-		return new HttpPhptTestCaseRunner(xdebug, this, group_key.getPhpIni(), group_key.getEnv(), params, httpproc, httpexecutor, smgr, thread.getThreadWebServerInstance(), thread, prep, cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack);
+	public AbstractPhptTestCaseRunner createPhptTestCaseRunner(PhptThread thread, TestCaseGroupKey group_key, PreparedPhptTestCase prep, ConsoleManager cm, ITestResultReceiver twriter, FileSystemScenario fs, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack, boolean xdebug, boolean debugger_attached) {
+		return new HttpPhptTestCaseRunner(xdebug, fs, this, group_key.getPhpIni(), group_key.getEnv(), params, httpproc, httpexecutor, smgr, thread.getThreadWebServerInstance(), thread, prep, cm, twriter, host, scenario_set_setup, build, src_test_pack, active_test_pack);
 	}
 	
 	@Override
-	public PhpIni createIniForTest(ConsoleManager cm, AHost host, PhpBuild build, PhptActiveTestPack active_test_pack, ScenarioSetSetup scenario_set_setup) {
+	public PhpIni createIniForTest(ConsoleManager cm, FileSystemScenario fs, AHost host, PhpBuild build, PhptActiveTestPack active_test_pack, ScenarioSetSetup scenario_set_setup) {
 		// entire PhpIni will be given to web server when its started
-		PhpIni ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, host, build);
-		scenario_set_setup.prepareINI(cm, host, build, ini);
+		PhpIni ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, fs, host, build);
+		if (!scenario_set_setup.prepareINI(cm, fs, host, build, ini)) {
+			return null;
+		}
 		ini.is_default = true;
 		return ini;
 	}
 	
 	@Override
-	public TestCaseGroupKey createTestGroupKey(ConsoleManager cm, AHost host, PhpBuild build, ScenarioSetSetup scenario_set_setup, PhptActiveTestPack active_test_pack, PhptTestCase test_case, IENVINIFilter filter, TestCaseGroupKey group_key) throws Exception {
+	public TestCaseGroupKey createTestGroupKey(ConsoleManager cm, FileSystemScenario fs, AHost host, PhpBuild build, ScenarioSetSetup scenario_set_setup, PhptActiveTestPack active_test_pack, PhptTestCase test_case, IENVINIFilter filter, TestCaseGroupKey group_key) throws Exception {
 		Map<String,String> env = null;
 		// ENV vars will be passed to web server manager to wrap the web server in when its executed
 		if (scenario_set_setup.hasENV() || test_case.containsSection(EPhptSection.ENV)) {
@@ -126,34 +132,72 @@ public abstract class WebServerScenario extends SAPIScenario {
 		}
 		
 		if (test_case.containsSection(EPhptSection.INI)) {
-			PhpIni ini = createIniForTest(cm, host, build, active_test_pack, scenario_set_setup);
-			ini.replaceAll(test_case.getINI(active_test_pack, host));
+			/*PhpIni ini = createIniForTest(cm, host, build, active_test_pack, scenario_set_setup);
+			if (ini==null)
+				return null;
+			ini.replaceAll(test_case.getINI(active_test_pack, host));*/
 			filter.prepareEnv(cm, env);
+			//filter.prepareIni(cm, ini);
+			PhpIni ini = createIniForTest(cm, fs, host, build, active_test_pack, scenario_set_setup);
+			if (ini==null)
+				return null;
+			//ini.replaceAll(
+					PhpIni ini2 = test_case.getINI(active_test_pack, host);
+					//ini.replaceAll(ini2);
+							// TODO temp );
 			filter.prepareIni(cm, ini);
+			//ini.putSingle("display_errors", "false");
+			//ini.putSingle("error_reporting", "2047");
+			for ( String dir : ini2.getDirectives() ) {
+				ini.putSingle(dir, ini2.get(dir));
+				System.out.println("153 "+dir+" "+ini2.get(dir));
+			}
 			// note: don't bother comparing test case's INI with existing group_key's INI, LocalPhptTestPackRunner
 			//       already does comparison of this new group_key and discards any duplicates
 			//  @see #groupTestCases #handleNTS and #handleTS
 			//     (which store in maps keyed by PhpIni, which implicity does the comparison)
 			//
-			return new TestCaseGroupKey(ini, env);
+			return createTestCaseGroupKey(cm, ini2, env, fs, host, build, scenario_set_setup, active_test_pack, test_case, filter);
 		} else if (env==null && group_key!=null && group_key.getPhpIni().isDefault()) {
 			return group_key;
 		} else {
-			PhpIni ini = createIniForTest(cm, host, build, active_test_pack, scenario_set_setup);
+			PhpIni ini = createIniForTest(cm, fs, host, build, active_test_pack, scenario_set_setup);
+			if (ini==null)
+				return null;
 			filter.prepareEnv(cm, env);
 			filter.prepareIni(cm, ini);
-			return new TestCaseGroupKey(ini, env);
+			return createTestCaseGroupKey(cm, ini, env, fs, host, build, scenario_set_setup, active_test_pack, test_case, filter);
 		}
 	} // end public TestCaseGroupKey createTestGroupKey
+	
+	protected TestCaseGroupKey createTestCaseGroupKey(ConsoleManager cm, PhpIni ini, Map<String,String> env, FileSystemScenario fs, AHost host, PhpBuild build, ScenarioSetSetup scenario_set_setup, PhptActiveTestPack active_test_pack, PhptTestCase test_case, IENVINIFilter filter) {
+		return new TestCaseGroupKey(ini, env);
+	}
 	
 	@Override
 	public void close(ConsoleManager cm, boolean debug) {
 		smgr.close(cm, debug);
 	}
+	
+	@Override
+	public AbstractSimpleTestCaseRunner createSimpleTestCaseRunner(SimpleTestThread thread, ITestResultReceiver tmgr, ConsoleManager cm, FileSystemScenario fs, AHost host, ScenarioSetSetup scenario_set, PhpBuild build, PhpIni ini, SimpleTestCase test_case) {
+		return new HttpSimpleTestCaseRunner(
+				fs,
+				this,
+				thread,
+				tmgr,
+				cm,
+				host,
+				scenario_set,
+				build,
+				ini,
+				test_case
+			);
+	}
 		
 	@Override
-	public AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(PhpUnitThread thread, TestCaseGroupKey group_key, ConsoleManager cm, ITestResultReceiver twriter, Map<String,String> globals, Map<String,String> env, AHost runner_host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
-		return new HttpPhpUnitTestCaseRunner(this, thread, twriter, params, httpproc, httpexecutor, smgr, thread.getThreadWebServerInstance(), globals, env, cm, runner_host, scenario_set_setup, build, test_case, my_temp_dir, constants, include_path, include_files, ini, reflection_only);
+	public AbstractPhpUnitTestCaseRunner createPhpUnitTestCaseRunner(PhpUnitThread thread, TestCaseGroupKey group_key, ConsoleManager cm, ITestResultReceiver twriter, Map<String,String> globals, Map<String,String> env, FileSystemScenario fs, AHost runner_host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhpUnitTestCase test_case, String my_temp_dir, Map<String,String> constants, String include_path, String[] include_files, PhpIni ini, boolean reflection_only) {
+		return new HttpPhpUnitTestCaseRunner(fs, this, thread, twriter, params, httpproc, httpexecutor, smgr, thread.getThreadWebServerInstance(), globals, env, cm, runner_host, scenario_set_setup, build, test_case, my_temp_dir, constants, include_path, include_files, ini, reflection_only);
 	}
 	
 	@Override

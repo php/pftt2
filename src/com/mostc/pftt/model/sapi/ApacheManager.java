@@ -384,7 +384,7 @@ public class ApacheManager extends AbstractManagedProcessesWebServerManager {
 		} else {
 			sb.append("LoadModule php7_module \""+FileSystemScenario.toUnixPath(php_dll_path)+"\"\n");	
 		}*/
-		sb.append("LoadModule php7_module \""+build.fix_later()+"\" \n");
+		sb.append("LoadModule php7_module \"C:\\php-sdk\\php-7.0.0RC4-Win32-VC14-x86\\php7apache2_4.dll\" \n");
 		 
 		sb.append("PHPIniDir \""+conf_dir+"\"\n");
 		if (apache_version==EApacheVersion.APACHE_2_4)

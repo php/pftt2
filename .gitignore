@@ -6,3 +6,4 @@ hostkeys.txt
 ssh_server.jar
 cache/working/*
 jre/*
+/build/

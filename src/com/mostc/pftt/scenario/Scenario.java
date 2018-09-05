@@ -12,6 +12,7 @@ import org.xmlpull.v1.XmlSerializer;
 import com.github.mattficken.Overridable;
 import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.Host;
+import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.core.ESAPIType;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhptSourceTestPack;
@@ -76,7 +77,7 @@ public abstract class Scenario {
 	}
 	
 	@Overridable
-	public IScenarioSetup setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
+	public IScenarioSetup setup(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
 		return SETUP_SUCCESS;
 	}
 	public static final IScenarioSetup SETUP_SUCCESS = new SimpleScenarioSetup() {
@@ -173,7 +174,7 @@ public abstract class Scenario {
 	}
 	
 	public static final CliScenario CLI_SCENARIO = new CliScenario();
-	public static final LocalFileSystemScenario LOCALFILESYSTEM_SCENARIO = new LocalFileSystemScenario();
+	public static final LocalFileSystemScenario LOCALFILESYSTEM_SCENARIO = new LocalFileSystemScenario(LocalHost.getInstance());
 	public static final SAPIScenario DEFAULT_SAPI_SCENARIO = CLI_SCENARIO;
 	public static final FileSystemScenario DEFAULT_FILESYSTEM_SCENARIO = LOCALFILESYSTEM_SCENARIO;
 	
@@ -225,7 +226,7 @@ public abstract class Scenario {
 	 */
 	public void serialize(XmlSerializer serial) throws IllegalArgumentException, IllegalStateException, IOException {
 		serial.startTag(null, "scenario");
-		serial.attribute(null, "name", Host.toContext(getClass()));
+		serial.attribute(null, "name", FileSystemScenario.toContext(getClass()));
 		serial.endTag(null, "scenario");
 	}
 	

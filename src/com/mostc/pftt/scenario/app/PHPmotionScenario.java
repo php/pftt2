@@ -18,7 +18,7 @@ import com.mostc.pftt.scenario.app.ZipDbApplication;
  *
  */
 
-public class PhpmotionScenario extends ZipDbApplication {
+public class PHPmotionScenario extends ZipDbApplication {
 
 	@Override
 	protected String getZipAppFileName() {
