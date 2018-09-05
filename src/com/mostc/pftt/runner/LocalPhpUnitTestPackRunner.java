@@ -22,7 +22,7 @@ import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.scenario.CodeCacheScenario;
 import com.mostc.pftt.scenario.FileSystemScenario.ITestPackStorageDir;
 import com.mostc.pftt.scenario.SMBScenario.SMBStorageDir;
-import com.mostc.pftt.scenario.AzureWebsitesScenario;
+// TODO import com.mostc.pftt.scenario.AzureWebsitesScenario;
 import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
 import com.mostc.pftt.scenario.IScenarioSetup;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
@@ -99,7 +99,7 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalApplicationTestPack
 			
 			ss = ScenarioSetSetup.setupScenarioSet(cm, runner_fs, runner_host, build, scenario_set, EScenarioSetPermutationLayer.FUNCTIONAL_TEST_APPLICATION);
 			
-			if (AzureWebsitesScenario.check(sapi_scenario)) {
+			if (false /* TODO AzureWebsitesScenario.check(sapi_scenario)*/) {
 				my_temp_dir = "D:\\LOCAL\\TEMP";
 			} else {
 				my_temp_dir = runner_fs.fixPath(runner_fs.mktempname(temp_base_dir, getClass()) + "/");
@@ -118,9 +118,9 @@ public class LocalPhpUnitTestPackRunner extends AbstractLocalApplicationTestPack
 			super.run();
 			
 			// be sure to cleanup
-			if (!AzureWebsitesScenario.check(sapi_scenario)) {
+			/* TODO if (!AzureWebsitesScenario.check(sapi_scenario)) {
 				runner_fs.deleteIfExists(my_temp_dir);
-			}
+			} */
 		}
 
 		@Override

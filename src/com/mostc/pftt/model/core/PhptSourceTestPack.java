@@ -22,7 +22,7 @@ import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhpResultPackWriter;
-import com.mostc.pftt.scenario.AzureKuduVFSScenario;
+// TODO import com.mostc.pftt.scenario.AzureKuduVFSScenario;
 import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.FileSystemScenario.IFileChooser;
 import com.mostc.pftt.scenario.SAPIScenario;
@@ -488,11 +488,11 @@ public class PhptSourceTestPack extends SourceTestPack<PhptActiveTestPack, PhptT
 	public PhptActiveTestPack install(ConsoleManager cm, AHost host, String local_test_pack_dir, String remote_test_pack_dir, SAPIScenario sapi_scenario) throws IllegalStateException, IOException, Exception {
 		cm.println(EPrintType.IN_PROGRESS, getClass(), "install test-pack local="+local_test_pack_dir+" remote="+remote_test_pack_dir+" "+this.host.getClass()+" "+host.getClass()+" fs="+fs.getClass());
 		
-		if (fs instanceof AzureKuduVFSScenario) {
+		if (false /* TODO fs instanceof AzureKuduVFSScenario */) {
 			System.out.println("uploading ZIP file to "+remote_test_pack_dir);
 			
 			// TODO temp
-			((AzureKuduVFSScenario)fs).putZip(remote_test_pack_dir, new File("c:\\php-sdk\\php-test-pack-5.4.38.zip")); 
+			// ((AzureKuduVFSScenario)fs).putZip(remote_test_pack_dir, new File("c:\\php-sdk\\php-test-pack-5.4.38.zip")); 
 			
 		} else if (!this.host.isRemote() || this.host.equals(host)) {
 			// installing from local host to remote host OR from remote|local host to itself

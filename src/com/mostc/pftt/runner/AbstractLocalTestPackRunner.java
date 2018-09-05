@@ -37,7 +37,7 @@ import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.PhpResultPackWriter;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
-import com.mostc.pftt.scenario.AzureWebsitesScenario;
+//import com.mostc.pftt.scenario.AzureWebsitesScenario;
 import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
 import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.IScenarioSetup;
@@ -254,7 +254,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		runner_state.set(ETestPackRunnerState.RUNNING);
 		checkHost(storage_host);
 		checkHost(runner_host);
-		AzureWebsitesScenario.first = true; // TODO temp azure
+//		AzureWebsitesScenario.first = true; // TODO temp azure
 		scenario_set_setup = ScenarioSetSetup.setupScenarioSet(cm, runner_fs, runner_host, build, scenario_set, getScenarioSetPermutationLayer());
 		if (scenario_set_setup==null)
 			return;

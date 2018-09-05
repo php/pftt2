@@ -164,6 +164,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	}
 	
 	public AbstractPhptTestCaseRunner2(boolean xdebug, SAPIScenario sapi_scenario, PhpIni ini, PhptThread thread, PreparedPhptTestCase prep, ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set, PhpBuild build, PhptSourceTestPack src_test_pack, PhptActiveTestPack active_test_pack) {
+		super(xdebug, null, sapi_scenario, ini, thread, prep, cm, twriter, host, scenario_set, build, src_test_pack, active_test_pack);
 		this.xdebug = xdebug;
 		this.sapi_scenario = sapi_scenario;
 		this.ini = ini;
@@ -220,7 +221,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 		//
 		// find 'skip ' or 'skip...' or 'skip.. ' or 'skip' but ignore '404 error, file not found abc.skip.php'
 		//    (don't need to check for multiple occurences of 'skip', just one... finding abc.skip.php would be a TEST_EXCEPTION or FAIL anyway)
-		if ((is_timeout||lc_output.contains("skip")||lc_output.contains("error")) && ( !( this instanceof HttpPhptTestCaseRunner ) || !lc_output.contains("404")) ) {
+		if ((is_timeout||lc_output.contains("skip")||lc_output.contains("error")) && ( /*!( this instanceof HttpPhptTestCaseRunner ) ||*/ !lc_output.contains("404")) ) {
 			// test is to be skipped
 						
 			// decide to mark test SKIP or XSKIP (could test be executed on this OS?)
@@ -255,7 +256,8 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 	 * @throws Exception
 	 */
 	protected void prepareTest() throws Exception {
-		prep.prepareTest(src_test_pack, host);
+		//prep.prepareTest(src_test_pack, host);
+		prep.prepareTest(src_test_pack, fs);
 		
 		// copy STDIN to pass (POST, POST_RAW, STDIN, etc...)
 		if (prep.test_case.containsSection(EPhptSection.POST_RAW)) {	
@@ -275,8 +277,8 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 
 						setContentType(content_type);
 						first_ct = false;
-						if (this instanceof HttpPhptTestCaseRunner)
-							continue; // TODO 
+						/*if (this instanceof HttpPhptTestCaseRunner)
+							continue; // TODO*/ 
 					} else if (first_ct) {
 						// content type may look like this:
 						// "multipart/form-data" or "application/x-www-urlencoded"
@@ -515,7 +517,7 @@ public abstract class AbstractPhptTestCaseRunner2 extends AbstractPhptTestCaseRu
 			output = remove_header_from_output(output);
 			String output_trim = output.trim();
 			
-			if (StringUtil.isEmpty(output_trim)||(this instanceof HttpPhptTestCaseRunner&&output.contains("<html>")&&!output.contains("404"))) {
+			if (StringUtil.isEmpty(output_trim)||(/*this instanceof HttpPhptTestCaseRunner&&*/output.contains("<html>")&&!output.contains("404"))) {
 				return notifyPassOrXFail(new PhptTestResult(host, prep.test_case.isXFail()?EPhptTestStatus.XFAIL:EPhptTestStatus.PASS, prep.test_case, output, null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual, getSAPIOutput(), getSAPIConfig(), code_coverage));
 			}
 		}

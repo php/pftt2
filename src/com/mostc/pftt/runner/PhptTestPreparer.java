@@ -9,7 +9,7 @@ import com.mostc.pftt.model.core.EPhptSection;
 import com.mostc.pftt.model.core.PhptActiveTestPack;
 import com.mostc.pftt.model.core.PhptSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
-import com.mostc.pftt.scenario.AzureWebsitesScenario;
+// TODO import com.mostc.pftt.scenario.AzureWebsitesScenario;
 import com.mostc.pftt.scenario.FileSystemScenario;
 
 public class PhptTestPreparer {
@@ -29,7 +29,7 @@ public class PhptTestPreparer {
 		prep.base_file_name = FileSystemScenario.basename(test_case.getBaseName()).replace("+", "");
 		
 		//
-		if (!AzureWebsitesScenario.check(fs)) {
+		if (false /* TODO !AzureWebsitesScenario.check(fs) */) {
 			if (test_case.containsSection(EPhptSection.SKIPIF)) {
 				prep.skipif_file = host.joinIntoOnePath(prep.test_dir, prep.base_file_name + ".skip.php");
 					
@@ -56,9 +56,9 @@ public class PhptTestPreparer {
 		if (test_case.containsSection(EPhptSection.CLEAN)) {
 			prep.test_clean = host.joinIntoOnePath(prep.test_dir, prep.base_file_name + ".clean.php");
 			
-			if (!AzureWebsitesScenario.check(fs)) {
+			/* TODO if (!AzureWebsitesScenario.check(fs)) {
 				fs.saveTextFile(prep.test_clean, test_case.get(EPhptSection.CLEAN));
-			}
+			} */
 		} // else test_clean = null;
 		
 		return prep;
@@ -85,7 +85,7 @@ public class PhptTestPreparer {
 		}
 
 		public void prepareTest(PhptSourceTestPack src_test_pack, FileSystemScenario fs_scenario) throws Exception {
-			if (!AzureWebsitesScenario.check(fs_scenario)) {
+			if (false /* TODO !AzureWebsitesScenario.check(fs_scenario) */) {
 				if (test_case.containsSection(EPhptSection.FILE_EXTERNAL)) {
 					
 					// open external file and copy to test_file (binary, no char conversion - which could break it - often this is a PHAR file - which will be broken if charset coversion is done)

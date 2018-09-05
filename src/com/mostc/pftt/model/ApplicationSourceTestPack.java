@@ -11,7 +11,7 @@ import com.mostc.pftt.host.AHost;
 import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.core.EBuildBranch;
 import com.mostc.pftt.results.ConsoleManager;
-import com.mostc.pftt.scenario.AzureWebsitesScenario;
+//TODO import com.mostc.pftt.scenario.AzureWebsitesScenario;
 import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.SAPIScenario;
 
@@ -74,7 +74,7 @@ public abstract class ApplicationSourceTestPack<A extends ActiveTestPack, T exte
 		System.out.println("71 "+local_test_pack_dir);
 		//System.exit(0);
 		
-		if (AzureWebsitesScenario.check(sapi_scenario)) {
+		if (false /* TODO AzureWebsitesScenario.check(sapi_scenario) */) {
 			setRoot("D:\\HOME\\SITE\\WWWROOT\\"+FileSystemScenario.basename(getName()).replace("-12.3", "").replace("-1.20.2", ""));//MEDIAWIKI");//local_test_pack_dir);
 		} else {
 			setRoot(src_root);// TODO temp azure ?? local_test_pack_dir);

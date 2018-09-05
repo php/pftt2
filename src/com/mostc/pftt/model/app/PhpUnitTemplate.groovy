@@ -1,6 +1,7 @@
 package com.mostc.pftt.model.app;
 
 import java.util.Map;
+import java.util.HashMap;
 
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;

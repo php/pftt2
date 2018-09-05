@@ -24,7 +24,7 @@ import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.results.TestCaseCodeCoverage;
 import com.mostc.pftt.results.PhpUnitTestResult;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
-import com.mostc.pftt.scenario.AzureWebsitesScenario;
+//import com.mostc.pftt.scenario.AzureWebsitesScenario;
 import com.mostc.pftt.scenario.DatabaseScenario;
 import com.mostc.pftt.scenario.DatabaseScenario.DatabaseScenarioSetup;
 import com.mostc.pftt.scenario.EScenarioSetPermutationLayer;
@@ -142,7 +142,7 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractApplicationU
 	
 	@Override
 	public void runTest(ConsoleManager cm, LocalPhpUnitTestPackRunner.PhpUnitThread t, LocalPhpUnitTestPackRunner r) throws Exception {
-		if (!AzureWebsitesScenario.check(sapi_scenario)) {
+		if (false /* TODO !AzureWebsitesScenario.check(sapi_scenario) */) {
 		fs.createDirs(my_temp_dir); // TODO only do this once per thread
 		}
 		
@@ -162,7 +162,7 @@ public abstract class AbstractPhpUnitTestCaseRunner extends AbstractApplicationU
 		//
 		
 		String output, template_file;
-		if (AzureWebsitesScenario.check(fs)) {
+		if (false /* TODO AzureWebsitesScenario.check(fs) */) {
 			output = execute("template_file");
 			
 			template_file = null;
@@ -203,7 +203,7 @@ System.out.println("187");
 				
 				// (will not have been able to print out the code coverage data in this case)
 				twriter.addResult(host, scenario_set, new PhpUnitTestResult(test_case, status, scenario_set, host, output, ini, run_time_micros, null, getSAPIOutput(), getSAPIConfig()));
-			} else if (!AzureWebsitesScenario.check(fs)){
+			} else if (false /* TODO !AzureWebsitesScenario.check(fs) */){
 				// CRASH may really be a syntax error (BORK), check to make sure
 				final ExecOutput syntax_eo = host.execOut(
 						build.getPhpExe()+" -l "+template_file,
@@ -318,9 +318,9 @@ System.out.println("187");
 			}
 		}
 		
-		if (!AzureWebsitesScenario.check(sapi_scenario)) {
+		/* TODO if (!AzureWebsitesScenario.check(sapi_scenario)) {
 			fs.delete(my_temp_dir);
-		}
+		}*/
 	} // end public void runTest
 	
 	protected PhpUnitTestResult notifyNotPass(PhpUnitTestResult result) {
