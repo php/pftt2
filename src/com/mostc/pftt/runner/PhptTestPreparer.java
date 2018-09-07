@@ -85,7 +85,7 @@ public class PhptTestPreparer {
 		}
 
 		public void prepareTest(PhptSourceTestPack src_test_pack, FileSystemScenario fs_scenario) throws Exception {
-			if (false /* TODO !AzureWebsitesScenario.check(fs_scenario) */) {
+			if (true /* TODO !AzureWebsitesScenario.check(fs_scenario) */) {
 				if (test_case.containsSection(EPhptSection.FILE_EXTERNAL)) {
 					
 					// open external file and copy to test_file (binary, no char conversion - which could break it - often this is a PHAR file - which will be broken if charset coversion is done)
