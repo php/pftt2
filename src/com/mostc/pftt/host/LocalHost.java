@@ -363,7 +363,7 @@ public abstract class LocalHost extends AHost {
 		protected InputStream stdout, stderr;
 		protected String image_name;
 		protected Charset charset;
-		protected final AtomicBoolean run = new AtomicBoolean(true), wait = new AtomicBoolean(true), timedout = new AtomicBoolean(false);
+		protected final AtomicBoolean wait = new AtomicBoolean(true), timedout = new AtomicBoolean(false);
 		
 		public LocalExecHandle(Process process, OutputStream stdin, InputStream stdout, InputStream stderr, String[] cmd_array) {
 			this.process = new AtomicReference<Process>(process);
@@ -388,13 +388,9 @@ public abstract class LocalHost extends AHost {
 		public synchronized void close(ConsoleManager cm, final boolean force) {
 			if (cm != null && cm.isPfttDebug())
 				new IllegalArgumentException().printStackTrace();
-			if (!run.get())
-				return; // already trying|tried to close
 			final Process p = this.process.get();
 			if (p==null)
 				return;
-			// @see WindowsLocalHost#exec_copy_lines
-			run.set(false);
 			/*synchronized(run) {
 				run.notifyAll();
 			}*/
@@ -533,7 +529,7 @@ public abstract class LocalHost extends AHost {
 			ByLineReader reader = charset == null ? new NoCharsetByLineReader(new java.io.BufferedInputStream(in)) : new MultiCharsetByLineReader(in, d);
 			String line;
 			try {
-				while (reader.hasMoreLines()&&wait.get()&&run.get()&&(max_chars<1||sb.length()<max_chars)) {
+				while (reader.hasMoreLines()&&wait.get()&&(max_chars<1||sb.length()<max_chars)) {
 					line = reader.readLine();
 					if (line==null)
 						break;

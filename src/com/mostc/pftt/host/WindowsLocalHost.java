@@ -145,7 +145,6 @@ public class WindowsLocalHost extends LocalHost {
 			}
 		}
 		
-		@SuppressWarnings("deprecation")
 		protected void exec_copy_lines(final StringBuilder sb, final int max_chars, final InputStream in, final Charset charset) throws IOException {
 			final AtomicBoolean copy_thread_lock = new AtomicBoolean(true);
 			Thread copy_thread = TimerUtil.runThread("ExecCopyLines", new Runnable() {
@@ -153,7 +152,6 @@ public class WindowsLocalHost extends LocalHost {
 						try {
 							do_exec_copy_lines(sb, max_chars, in, charset);
 							copy_thread_lock.set(false);
-							run.set(false);
 							/*synchronized(run) {
 								run.notifyAll();
 							}*/
@@ -165,6 +163,9 @@ public class WindowsLocalHost extends LocalHost {
 					}
 				});
 			copy_thread.setUncaughtExceptionHandler(IGNORE_EXCEPTION_HANDLER);
+			/* TODO do_exec_copy_lines would normally throw an IO exception on failed operation. As the run flag is removed,
+			 		it might be still to check whether no additional thread handling is required. Possibly no separate thread
+			 		is required at all with newer Java. */
 			while (wait.get()) {
 				//synchronized(run) {
 					try {
@@ -172,16 +173,7 @@ public class WindowsLocalHost extends LocalHost {
 						Thread.sleep(300);
 					} catch ( InterruptedException ex ) {}
 				//}
-				if (!run.get()) {
-					// try killing copy thread since its still running after it was supposed to stop
-					copy_thread.stop(new RuntimeException() {
-						@Override
-						public void printStackTrace() {
-							
-						}
-					});
-					break;
-				} else if (!copy_thread_lock.get()) {
+				if (!copy_thread_lock.get()) {
 					// stopped normally
 					break;
 				}
