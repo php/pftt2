@@ -37,6 +37,14 @@ import com.mostc.pftt.util.TimerUtil;
 // TODO cleanup really old build, test, debug packs
 public class PfttAuto {
 	static final BuildSpec[] BUILD_SPECS = new BuildSpec[] {
+			new BuildSpec(EBuildBranch.PHP_7_3, EBuildType.TS, ECPUArch.X64),
+			new BuildSpec(EBuildBranch.PHP_7_3, EBuildType.NTS, ECPUArch.X64),
+			new BuildSpec(EBuildBranch.PHP_7_3, EBuildType.TS, ECPUArch.X86),
+			new BuildSpec(EBuildBranch.PHP_7_3, EBuildType.NTS, ECPUArch.X86),
+			new BuildSpec(EBuildBranch.PHP_7_2, EBuildType.TS, ECPUArch.X64),
+			new BuildSpec(EBuildBranch.PHP_7_2, EBuildType.NTS, ECPUArch.X64),
+			new BuildSpec(EBuildBranch.PHP_7_2, EBuildType.TS, ECPUArch.X86),
+			new BuildSpec(EBuildBranch.PHP_7_2, EBuildType.NTS, ECPUArch.X86),
 			new BuildSpec(EBuildBranch.PHP_7_1, EBuildType.TS, ECPUArch.X64),
 			new BuildSpec(EBuildBranch.PHP_7_1, EBuildType.NTS, ECPUArch.X64),	
 			new BuildSpec(EBuildBranch.PHP_7_1, EBuildType.TS, ECPUArch.X86),

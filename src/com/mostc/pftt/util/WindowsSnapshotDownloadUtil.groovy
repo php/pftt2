@@ -36,6 +36,8 @@ final class WindowsSnapshotDownloadUtil {
 	static final URL PHP_5_6_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-5.6/")
 	static final URL PHP_7_0_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-7.0/")
 	static final URL PHP_7_1_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-7.1/")
+	static final URL PHP_7_2_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-7.2/")
+	static final URL PHP_7_3_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-7.3/")
 	static final URL STR_SIZE_AND_INT64_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/str_size_and_int64/")
 	static final URL PHP_MASTER_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/master/")
 

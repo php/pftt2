@@ -63,6 +63,12 @@ public enum EBuildBranch {
 			return null; // could be X86 or X64
 		}
 	},
+	PHP_7_3 {
+		@Override
+		public ECPUArch getCPUArch() {
+			return null; // could be X86 or X64
+		}
+	},
 	STR_SIZE_AND_INT64 {
 		@Override
 		public ECPUArch getCPUArch() {
@@ -71,7 +77,7 @@ public enum EBuildBranch {
 	};
 	
 	public static EBuildBranch getNewest() {
-		return PHP_7_1;
+		return PHP_7_3;
 	}
 	
 	/** flexibly matches different values, guessing which EBuildBranch it refers to
@@ -99,6 +105,8 @@ public enum EBuildBranch {
 			return PHP_7_1;
 		else if (str.equals("php_7_2")||str.equals("7_2")||str.equals("7.2")||str.equals("72")||str.equals("php7_2")||str.equals("php72")||str.equals("php7.2")||str.equals("php_7.2"))
 			return PHP_7_2;
+		else if (str.equals("php_7_3")||str.equals("7_3")||str.equals("7.3")||str.equals("73")||str.equals("php7_3")||str.equals("php73")||str.equals("php7.3")||str.equals("php_7.3"))
+			return PHP_7_3;
 		else if (str.equals("master")||str.equals("php_master"))
 			return PHP_Master;
 		else if (str.equals("str_size_and_int64"))
@@ -123,6 +131,8 @@ public enum EBuildBranch {
 			return PHP_7_1;
 		else if (str.contains("php_7_2")||str.contains("php7_2")||str.contains("php72")||str.contains("php7.2")||str.contains("php_7.2"))
 			return PHP_7_2;
+		else if (str.contains("php_7_3")||str.contains("php7_3")||str.contains("php73")||str.contains("php7.3")||str.contains("php_7.3"))
+			return PHP_7_3;
 		else if (str.contains("master"))
 			return PHP_Master;
 		else if (str.contains("str_size")||str.contains("int64"))

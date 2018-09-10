@@ -411,6 +411,22 @@ public class PhpBuild extends SAPIManager {
 			branch = EBuildBranch.PHP_5_6;
 			major = 5;
 			minor = 6;
+		} else if (b.contains("php-7.0")) {
+			branch = EBuildBranch.PHP_7_0;
+			major = 7;
+			minor = 0;
+		} else if (b.contains("php-7.1")) {
+			branch = EBuildBranch.PHP_7_1;
+			major = 7;
+			minor = 1;
+		} else if (b.contains("php-7.2")) {
+			branch = EBuildBranch.PHP_7_2;
+			major = 7;
+			minor = 2;
+		} else if (b.contains("php-7.3")) {
+			branch = EBuildBranch.PHP_7_3;
+			major = 7;
+			minor = 3;
 		} else if (b.contains("php-master")) {
 			branch = EBuildBranch.PHP_Master;
 			major = 5;
@@ -439,8 +455,8 @@ public class PhpBuild extends SAPIManager {
 						minor = Integer.parseInt(split[1]);
 					} catch ( NumberFormatException ex ) {
 						// guess
-						major = 5;
-						minor = 5;
+						major = 7;
+						minor = 3;
 					}
 					//
 					if (revision==null)
@@ -461,6 +477,21 @@ public class PhpBuild extends SAPIManager {
 							break;
 						case 6:
 							branch  = EBuildBranch.PHP_5_6;
+							break;
+						}
+					} else if (major == 7) {
+						switch(minor) {
+						case 0:
+							branch  = EBuildBranch.PHP_7_0;
+							break;
+						case 1:
+							branch  = EBuildBranch.PHP_7_1;
+							break;
+						case 2:
+							branch  = EBuildBranch.PHP_7_2;
+							break;
+						case 3:
+							branch  = EBuildBranch.PHP_7_3;
 							break;
 						}
 					}

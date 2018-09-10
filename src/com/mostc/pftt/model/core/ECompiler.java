@@ -7,6 +7,7 @@ public enum ECompiler {
 	VC11, // Visual Studio 2012
 	VC12,
 	VC14, // Visual Studio 2015
+	VC15,
 	GCC4, 
 	GCC3
 }
