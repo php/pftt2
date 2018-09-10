@@ -226,8 +226,16 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 		ini.putMulti(PhpIni.LOG_ERRORS, PhpIni.ON); // TODO temp
 		// CRITICAL
 		ini.putMulti(PhpIni.HTML_ERRORS, PhpIni.OFF);
-		// CRITICAL
-		ini.putMulti(PhpIni.TRACK_ERRORS, PhpIni.ON);
+		
+		try {
+			if (build.getVersionMajor(cm, host) < 7 || build.getVersionMajor(cm, host) == 7 && build.getVersionMinor(cm, host) < 2) {
+				// CRITICAL
+				// As of 7.2 deprecated, so has to be turned off.
+				ini.putMulti(PhpIni.TRACK_ERRORS, PhpIni.ON);
+			}
+		} catch (Exception e) {
+			cm.println(EPrintType.WARNING, "Tests", "Failed to get PHP version, track_errors is not enabled");
+		}
 		//
 		ini.putMulti(PhpIni.REPORT_MEMLEAKS, PhpIni.ON);
 		ini.putMulti(PhpIni.REPORT_ZEND_DEBUG, PhpIni.OFF);

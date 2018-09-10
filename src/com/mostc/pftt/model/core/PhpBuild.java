@@ -198,6 +198,18 @@ public class PhpBuild extends SAPIManager {
 		case PHP_5_6:
 			debug_path = "php-debug-pack-5.6-"+build_type+"-windows-"+compiler+"-"+cpu_arch+"-"+revision;
 			break;
+		case PHP_7_0:
+			debug_path = "php-debug-pack-7.0-"+build_type+"-windows-"+compiler+"-"+cpu_arch+"-"+revision;
+			break;
+		case PHP_7_1:
+			debug_path = "php-debug-pack-7.1-"+build_type+"-windows-"+compiler+"-"+cpu_arch+"-"+revision;
+			break;
+		case PHP_7_2:
+			debug_path = "php-debug-pack-7.2-"+build_type+"-windows-"+compiler+"-"+cpu_arch+"-"+revision;
+			break;
+		case PHP_7_3:
+			debug_path = "php-debug-pack-7.3-"+build_type+"-windows-"+compiler+"-"+cpu_arch+"-"+revision;
+			break;
 		case PHP_Master:
 			debug_path = "php-debug-pack-master-"+build_type+"-windows-"+compiler+"-"+cpu_arch+"-"+revision;
 			break;
@@ -236,6 +248,18 @@ public class PhpBuild extends SAPIManager {
 			break;
 		case PHP_5_6:
 			source_path = "php-5.6-src-"+revision;
+			break;
+		case PHP_7_0:
+			source_path = "php-7.0-src-"+revision;
+			break;
+		case PHP_7_1:
+			source_path = "php-7.1-src-"+revision;
+			break;
+		case PHP_7_2:
+			source_path = "php-7.2-src-"+revision;
+			break;
+		case PHP_7_3:
+			source_path = "php-7.3-src-"+revision;
 			break;
 		case PHP_Master:
 			source_path = "php-master-src-"+revision;
@@ -585,7 +609,7 @@ public class PhpBuild extends SAPIManager {
 	}
 	
 	public boolean is5(ConsoleManager cm, Host host) {
-		return is53(cm, host)||is54(cm, host)||is55(cm, host)||is56(cm, host)||is70(cm, host);
+		return is53(cm, host)||is54(cm, host)||is55(cm, host)||is56(cm, host);
 	}
 	
 	public boolean is70(ConsoleManager cm, Host host) {
@@ -596,8 +620,32 @@ public class PhpBuild extends SAPIManager {
 		}
 	}
 	
+	public boolean is71(ConsoleManager cm, Host host) {
+		try {
+			return getVersionBranch(cm, host) == EBuildBranch.PHP_7_1;
+		} catch ( Exception ex ) {
+			return false;
+		}
+	}
+
+	public boolean is72(ConsoleManager cm, Host host) {
+		try {
+			return getVersionBranch(cm, host) == EBuildBranch.PHP_7_2;
+		} catch ( Exception ex ) {
+			return false;
+		}
+	}
+	
+	public boolean is73(ConsoleManager cm, Host host) {
+		try {
+			return getVersionBranch(cm, host) == EBuildBranch.PHP_7_3;
+		} catch ( Exception ex ) {
+			return false;
+		}
+	}
+	
 	public boolean is7(ConsoleManager cm, Host host) {
-		return is70(cm, host);
+		return is70(cm, host) || is73(cm, host) || is73(cm, host) || is73(cm, host);
 	}
 	
 	public boolean isMaster(ConsoleManager cm, Host host) {
