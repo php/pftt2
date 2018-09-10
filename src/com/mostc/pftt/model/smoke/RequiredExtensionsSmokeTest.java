@@ -189,6 +189,17 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 	 * @return
 	 */
 	public static PhpIni createDefaultIniCopy(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build) {
+		
+		int build_major, build_minor;
+		
+		try {
+			build_major = build.getVersionMajor(cm, host);
+			build_minor = build.getVersionMinor(cm, host);
+		} catch (Exception e) {
+			cm.println(EPrintType.WARNING, "Tests", "Failed to get PHP version, some version dependent handling was disabled");
+			build_major = build_minor = -1;
+		}
+		
 		// these settings make a (big) difference in certain scenarios or for certain tests
 		// before committing changes to any of them, you MUST do a full run of all tests on
 		// all scenarios before and after the change to ensure that your change here does not
@@ -227,14 +238,10 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 		// CRITICAL
 		ini.putMulti(PhpIni.HTML_ERRORS, PhpIni.OFF);
 		
-		try {
-			if (build.getVersionMajor(cm, host) < 7 || build.getVersionMajor(cm, host) == 7 && build.getVersionMinor(cm, host) < 2) {
-				// CRITICAL
-				// As of 7.2 deprecated, so has to be turned off.
-				ini.putMulti(PhpIni.TRACK_ERRORS, PhpIni.ON);
-			}
-		} catch (Exception e) {
-			cm.println(EPrintType.WARNING, "Tests", "Failed to get PHP version, track_errors is not enabled");
+		if (build_major > 0 && build_minor >= 0 && (build_major < 7 || build_major == 7 && build_minor < 2)) {
+			// CRITICAL
+			// As of 7.2 deprecated, so has to be turned off.
+			ini.putMulti(PhpIni.TRACK_ERRORS, PhpIni.ON);
 		}
 		//
 		ini.putMulti(PhpIni.REPORT_MEMLEAKS, PhpIni.ON);
@@ -300,7 +307,12 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 					PhpIni.EXT_XMLRPC,
 					PhpIni.EXT_XSL
 				);
+			if (build_major > 0 && build_minor >= 0 && (build_major > 7 || build_major == 7 && build_minor >= 2)) {
+				ini.addExtension(host, build, PhpIni.EXT_SODIUM);
+				ini.addExtension(host, build, PhpIni.EXT_ZEND_TEST);
+			}
 		}
+
 		
 		// TIMING: do this after all calls to #putMulti, etc... b/c that sets is_default = false
 		ini.is_default = true;

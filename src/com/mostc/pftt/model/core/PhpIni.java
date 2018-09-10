@@ -107,6 +107,8 @@ public class PhpIni {
 	public static final String EXT_TIDY = dllName("tidy");
 	public static final String EXT_XMLRPC = dllName("xmlrpc");
 	public static final String EXT_XSL = dllName("xsl");
+	public static final String EXT_SODIUM = dllName("sodium");
+	public static final String EXT_ZEND_TEST = dllName("zend_test");
 	//
 	//
 	private final HashMap<String, ArrayList<String>> ini_map;
