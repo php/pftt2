@@ -40,7 +40,7 @@ import com.mostc.pftt.util.NTStatus;
  */
 
 public abstract class AHost extends Host implements IProgramRunner {
-	protected String sys_info, os_name, tmp_dir, system_drive, home_dir, php_sdk_dir;
+	protected String sys_info, os_name, tmp_dir, system_drive, home_dir, job_work_dir;
 	
 	@Override
 	public boolean isClosed() {
@@ -278,7 +278,7 @@ public abstract class AHost extends Host implements IProgramRunner {
 		// to avoid having to clean two directories
 		if (tmp_dir==null)
 			// be sure to terminate with directory sep
-			tmp_dir = joinIntoOnePath(getPhpSdkDir(), "temp") + mDirSeparator();
+			tmp_dir = joinIntoOnePath(getJobWorkDir(), "temp") + mDirSeparator();
 		return tmp_dir;
 		/*if (tmp_dir!=null)
 			return tmp_dir;
@@ -314,24 +314,23 @@ public abstract class AHost extends Host implements IProgramRunner {
 	@SuppressWarnings("unused")
 	@Override
 	public String getPfttDir() {
-		if (DEV > 0) {
-			return isWindows() ? getPhpSdkDir() + "\\PFTT\\Dev-"+DEV+"\\" : getPhpSdkDir() + "/PFTT/dev-"+DEV+"/";
-		} else {
-			return isWindows() ? getPhpSdkDir() + "\\PFTT\\Current\\" : getPhpSdkDir() + "/PFTT/current/";
-		}
+		/* XXX should this depend on external env? */
+		return System.getenv("PFTT_HOME");
 	}
 	
 	@Override
-	public String getPhpSdkDir() {
-		if (StringUtil.isNotEmpty(php_sdk_dir))
-			return php_sdk_dir;
-		php_sdk_dir = System.getenv("PHP_SDK");
-		if (StringUtil.isNotEmpty(php_sdk_dir))
-			return php_sdk_dir;
-		if(isWindows())
-			return php_sdk_dir = getSystemDrive() + "\\php-sdk\\";
+	public String getJobWorkDir() {
+		/* XXX should this depend on external env? */
+		if (StringUtil.isNotEmpty(job_work_dir))
+			return job_work_dir;
+		job_work_dir = System.getenv("PFTT_JOB_WORK");
+		//if (StringUtil.isNotEmpty(job_work_dir))
+			return job_work_dir;
+		/* XXX obsolete, handle this later. */
+		/*if(isWindows())
+			return job_work_dir = getSystemDrive() + "\\php-sdk\\";
 		else
-			return php_sdk_dir = getHomeDir() + "/php-sdk/";
+			return job_work_dir = getHomeDir() + "/php-sdk/";*/
 	}
 	@Override
 	public String getHomeDir() {

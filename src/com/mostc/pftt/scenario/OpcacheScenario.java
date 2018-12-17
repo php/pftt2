@@ -383,7 +383,7 @@ public class OpcacheScenario extends CodeCacheScenario {
 			host.mDeleteIfExistsElevated(test_pack.getStorageDirectory()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
 		}
 		host.mDeleteIfExistsElevated(build.getBuildPath()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());	
-		host.mDeleteIfExistsElevated(host.getPhpSdkDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+		host.mDeleteIfExistsElevated(host.getJobWorkDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
 		host.mDeleteIfExistsElevated(host.getPfttDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
 		host.mDeleteIfExistsElevated(host.getSystemRoot()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
 		host.mDeleteIfExistsElevated(host.getSystemDrive()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());

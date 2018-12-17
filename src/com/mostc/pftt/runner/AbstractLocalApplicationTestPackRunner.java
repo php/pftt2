@@ -33,7 +33,7 @@ public abstract class AbstractLocalApplicationTestPackRunner<A extends ActiveTes
 		nts_file_names = src_test_pack.getNonThreadSafeTestFileNames();
 		
 		if (!(storage_dir instanceof SMBStorageDir)) { // TODO generalize
-			temp_base_dir = runner_host.getPhpSdkDir()+"/temp/";
+			temp_base_dir = runner_host.getJobWorkDir()+"/temp/";
 			
 			active_test_pack = src_test_pack.installInPlace(cm, runner_host);
 			

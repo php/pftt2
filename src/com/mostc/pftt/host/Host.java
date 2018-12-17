@@ -39,7 +39,7 @@ public abstract class Host {
 	public abstract boolean equals(Object o);
 	
 	public boolean isSafePath(String path) {
-		if (path.equals(getPhpSdkDir()))
+		if (path.equals(getJobWorkDir()))
 			// can't delete /php-sdk
 			return false;
 		String pftt_dir = getPfttDir();
@@ -382,7 +382,7 @@ public abstract class Host {
 	public abstract String getUsername();
 
 	public abstract String getHomeDir();
-	public abstract String getPhpSdkDir();
+	public abstract String getJobWorkDir();
 	public abstract String getPfttDir();
 	
 	public String getPfttBinDir() {

@@ -643,14 +643,14 @@ public class HostGroup extends Host implements List<Host> {
 			c.collect(h, h.getHomeDir());
 	}
 	@Override
-	public String getPhpSdkDir() {
+	public String getJobWorkDir() {
 		for (Host h : this)
-			return h.getPhpSdkDir();
+			return h.getJobWorkDir();
 		return null;
 	}
 	public void getPhpSdkDir(StringCollector c) {
 		for (Host h : this)
-			c.collect(h, h.getPhpSdkDir());
+			c.collect(h, h.getJobWorkDir());
 	}
 	@Override
 	public String getPfttDir() {

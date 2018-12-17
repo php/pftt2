@@ -35,11 +35,11 @@ public class LocalFileSystemScenario extends FileSystemScenario {
 			}
 			@Override
 			public String getLocalPath(AHost host) {
-				return host.getPhpSdkDir();
+				return host.getJobWorkDir();
 			}
 			@Override
 			public String getRemotePath(AHost host) {
-				return host.getPhpSdkDir();
+				return host.getJobWorkDir();
 			}
 			@Override
 			public boolean closeIfEmpty(ConsoleManager cm, AHost local_host, ActiveTestPack active_test_pack) {
@@ -94,7 +94,7 @@ public class LocalFileSystemScenario extends FileSystemScenario {
 	@Override
 	public ITestPackStorageDir setup(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set) {
 		try {
-			host.mCreateDirs(host.getPhpSdkDir());
+			host.mCreateDirs(host.getJobWorkDir());
 			return LOCAL_DIR;
 		} catch ( Exception ex ) {
 			cm.addGlobalException(EPrintType.CANT_CONTINUE, LocalFileSystemScenario.class, "createStorageDir", ex, "");

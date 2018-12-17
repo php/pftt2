@@ -59,7 +59,7 @@ final class WindowsSnapshotDownloadUtil {
 		} else if (local_path.toLowerCase().endsWith(".zip")) {
 			local_path = local_path.substring(0, local_path.length()-".zip".length());
 		}
-		return new File(host.getPhpSdkDir()+"/"+local_path);
+		return new File(host.getJobWorkDir()+"/"+local_path);
 	}
 	
 	static URL getDownloadURL(EBuildBranch branch) {

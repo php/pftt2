@@ -116,9 +116,9 @@ public final class HostEnvUtil {
 			}
 			//
 			
-			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "creating File Share for "+host.getPhpSdkDir()+"...");
+			//cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "creating File Share for "+host.getJobWorkDir()+"...");
 			// share PHP-SDK over network. this also will share C$, G$, etc...
-			host.execElevated(cm, HostEnvUtil.class, "NET SHARE PHP_SDK="+host.getPhpSdkDir()+" /Grant:"+host.getUsername()+",Full", AHost.ONE_MINUTE);
+			//host.execElevated(cm, HostEnvUtil.class, "NET SHARE PHP_SDK="+host.getJobWorkDir()+" /Grant:"+host.getUsername()+",Full", AHost.ONE_MINUTE);
 		}
 			
 		installVCRuntime(fs, host, cm, build);

@@ -3,7 +3,7 @@ REM script for running PFTT on Windows
 
 REM set important env vars
 IF DEFINED PFTT_SHELL GOTO :skip_set_env
-CALL set_env
+CALL %~dp0set_env.cmd
 :skip_set_env
 SET PFTT_LIB=%PFTT_HOME%\lib
 
@@ -91,7 +91,7 @@ IF EXIST %JAVA_HOME%\lib\tools.jar (
 	)
 )
 
-IF [%JAVA_EXE%] == [] (
+IF "%JAVA_EXE%" == "" (
 	REM check PATH last. it might find java.exe in \Windows\System32\java
 	REM which elevate.exe can't find/execute for some weird reason
 	WHERE java > pftt_cmd.tmp 2> NUL
@@ -115,7 +115,7 @@ REM run with yjp if -pftt_profile console option is used
 SET pftt_args="str %*"
 SET pftt_temp=%pftt_args:pftt_profile=%
 IF NOT %pftt_args% EQU %pftt_temp% ( 
-	%ELEVATOR% %JAVA_EXE% -Xmx512M -Xms256M -agentpath:"C:\Program Files (x86)\YourKit Java Profiler 12.0.5\bin\win64\yjpagent.dll" -classpath %CLASSPATH% com.mostc.pftt.main.PfttMain %ELEVATOR_OPTS%%*
+	%ELEVATOR% "%JAVA_EXE%" -Xmx512M -Xms256M -agentpath:"C:\Program Files (x86)\YourKit Java Profiler 12.0.5\bin\win64\yjpagent.dll" -classpath %CLASSPATH% com.mostc.pftt.main.PfttMain %ELEVATOR_OPTS%%*
 ) ELSE (
- 	%ELEVATOR% %JAVA_EXE% -Xmx512M -Xms256M -classpath %CLASSPATH% com.mostc.pftt.main.PfttMain %ELEVATOR_OPTS%%*
+ 	%ELEVATOR% "%JAVA_EXE%" -Xmx512M -Xms256M -classpath %CLASSPATH% com.mostc.pftt.main.PfttMain %ELEVATOR_OPTS%%*
 )

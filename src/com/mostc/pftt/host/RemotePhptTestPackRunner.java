@@ -69,7 +69,7 @@ public class RemotePhptTestPackRunner extends AbstractRemoteTestPackRunner<PhptA
 		
 		test_pack.open(cm, config, FileSystemScenario.getFS(scenario_set, host), host);
 		
-		PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, new File(host.getPhpSdkDir()), build, test_pack, null);
+		PhpResultPackWriter tmgr = new PhpResultPackWriter(host, cm, new File(host.getJobWorkDir()), build, test_pack, null);
 		
 		
 		RemotePhptTestPackRunner runner = new RemotePhptTestPackRunner(tmgr, scenario_set, build, host, host);

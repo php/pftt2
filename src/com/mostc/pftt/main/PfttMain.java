@@ -315,9 +315,9 @@ public class PfttMain {
 	protected File telem_dir() {
 		File file;
 		if (AHost.DEV > 0) {
-			file = new File(host.getPhpSdkDir(), "Dev-"+AHost.DEV);
+			file = new File(host.getJobWorkDir(), "Dev-"+AHost.DEV);
 		} else {
-			file = new File(host.getPhpSdkDir());
+			file = new File(host.getJobWorkDir());
 		}
 		file.mkdirs();
 		return file;
@@ -1137,7 +1137,7 @@ public class PfttMain {
 			return build;
 		}
 		cm.println(EPrintType.CLUE, PfttMain.class, "Build: "+build);
-		build = new PhpBuild(host.getPhpSdkDir() + "/" + path);
+		build = new PhpBuild(host.getJobWorkDir() + "/" + path);
 		if (build.open(cm, host)) {
 			return build;
 		} else {
@@ -1157,7 +1157,7 @@ public class PfttMain {
 				builds.add(build);
 			} else {
 				cm.println(EPrintType.CLUE, PfttMain.class, "Build: "+build);
-				build = new PhpBuild(host.getPhpSdkDir() + "/" + path);
+				build = new PhpBuild(host.getJobWorkDir() + "/" + path);
 				// open all builds now to ensure they exist (rather than finding out
 				//  later when build is used (because that could be hours away if running
 				//  several scenario sets and several builds))
@@ -1182,7 +1182,7 @@ public class PfttMain {
 		PhptSourceTestPack test_pack = new PhptSourceTestPack(path);
 		if (test_pack.open(cm, config, fs, host))
 			return test_pack;
-		test_pack = new PhptSourceTestPack(host.getPhpSdkDir() + "/" + path);
+		test_pack = new PhptSourceTestPack(host.getJobWorkDir() + "/" + path);
 		if (test_pack.open(cm, config, fs, host))
 			return test_pack;
 		else

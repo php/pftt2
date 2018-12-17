@@ -889,7 +889,8 @@ public abstract class LocalHost extends AHost {
 	}
 	
 	public static String getLocalPfttDir() {
-		if (isLocalhostWindows()) {
+		return System.getenv("PFTT_HOME");
+		/*if (isLocalhostWindows()) {
 			String php_sdk_dir = System.getenv("PHP_SDK");
 			if (null == php_sdk_dir) {
 				String sd = System.getenv("SYSTEMDRIVE");
@@ -905,7 +906,7 @@ public abstract class LocalHost extends AHost {
 			return System.getenv("HOME")+"/php-sdk/PFTT/dev-"+DEV+"/";
 		} else {
 			return System.getenv("HOME")+"/php-sdk/PFTT/current/";
-		}
+		}*/
 	}
 
 	@Override

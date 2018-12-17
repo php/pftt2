@@ -146,7 +146,7 @@ public class PfttAuto {
 		exit_thread.setDaemon(true);
 		exit_thread.start();
 		
-		File most_recent_dir = getMostRecentDir(new File(host.getPhpSdkDir()+"/PFTT-Auto"));
+		File most_recent_dir = getMostRecentDir(new File(host.getJobWorkDir()+"/PFTT-Auto"));
 		
 		boolean b = false;
 		for (BuildSpec bs : BUILD_SPECS) {
@@ -222,7 +222,7 @@ public class PfttAuto {
 				//new Mail("MSSQL", true, false, new Address[]{AddressParser.parseAddress("v-mafick@microsoft.com")})
 			);
 		
-		final File auto_dir = new File(host.getPhpSdkDir()+"/PFTT-MSSQL"); // TODO for MSSQL
+		final File auto_dir = new File(host.getJobWorkDir()+"/PFTT-MSSQL"); // TODO for MSSQL
 		
 		Config sql_config = Config.loadConfigFromFiles(cm, "mssql10", "mssql11", "cli", "opcache", "no_code_cache", "builtin_web");
 		
@@ -284,7 +284,7 @@ public class PfttAuto {
 		
 		PhptSourceTestPack core_test_pack = new PhptSourceTestPack(test_pack_path);
 		core_test_pack.open(cm, config, Scenario.LOCALFILESYSTEM_SCENARIO, host);
-		final File auto_dir = new File(host.getPhpSdkDir()+"/PFTT-Auto");
+		final File auto_dir = new File(host.getJobWorkDir()+"/PFTT-Auto");
 		PhpResultPack base_pack = findBaseResultPack(core_test_pack, bs, auto_dir, cm, host);
 		if (base_pack!=null && build.getBuildInfo(cm, host).equals(base_pack.getBuildInfo())) {
 			return ET.NEWEST_ALREADY_TESTED;

@@ -37,7 +37,7 @@ public abstract class AbstractSimpleTestCaseRunner extends AbstractApplicationUn
 		}
 		//
 		*/
-		String my_temp_dir = host.getPhpSdkDir()+"/temp/"+t.getName();
+		String my_temp_dir = host.getJobWorkDir()+"/temp/"+t.getName();
 		fs.createDirs(my_temp_dir);
 		
 		final String template_file = my_temp_dir+"/test.php";

@@ -1,5 +1,4 @@
 @ECHO OFF
-CALL \php-sdk\PFTT\current\bin\set_env
-%PHP_DRIVE%
-CD %PHP_SDK%
+CALL %~dp0set_env
+CD %PFTT_JOB_WORK%
 @ECHO ON
