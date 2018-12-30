@@ -173,8 +173,8 @@ public class PhptTestCase extends TestCase {
 		test_case.parent = parent;
 		
 		DefaultCharsetDeciderDecoder cdd = newCharsetDeciderDecoder();
-		ByLineReader reader = PhptTestCase.isNon8BitCharset(test_case.name) ? host.mReadFileDetectCharset(file, cdd) : host.mReadFile(file);
-			
+		//ByLineReader reader = PhptTestCase.isNon8BitCharset(test_case.name) ? host.mReadFileDetectCharset(file, cdd) : host.mReadFile(file);
+		ByLineReader reader = host.mReadFileDetectCharset(file, cdd);
 		
 		String line = reader.readLine();
 		if (!line.startsWith("--TEST--")) {
