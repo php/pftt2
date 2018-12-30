@@ -110,7 +110,7 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 		"ldap",
 		"libxml",
 		"mbstring",
-		"mcrypt",
+		//"mcrypt",
 		//"mhash",
 		//"mysql",
 		"mysqli",
