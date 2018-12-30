@@ -287,7 +287,8 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 			// for some scenarios (Azure web sites) do the upload after the temporary files are generated
 			// so that all the files can be uploaded in one file upload (upload 1 zip file instead of lots of small files)
 			//doUploadSecond();
-			active_test_pack = src_test_pack.install(cm, storage_host, "C:\\PHP-SDK\\PHP-TEST-PACK-5.4.38", "D:\\HOME\\SITE\\WWWROOT\\PHP-TEST-PACK-5.4.38", sapi_scenario);
+			// TODO ??? this copies files to some dir with no reason and unconditionally. Check what it was supposed to be.
+			//active_test_pack = src_test_pack.install(cm, storage_host, "C:\\PHP-SDK\\PHP-TEST-PACK-5.4.38", "D:\\HOME\\SITE\\WWWROOT\\PHP-TEST-PACK-5.4.38", sapi_scenario);
 				 
 			storage_dir.notifyTestPackInstalled(cm, runner_host);
 			
