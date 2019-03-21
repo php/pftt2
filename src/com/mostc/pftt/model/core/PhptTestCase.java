@@ -767,6 +767,16 @@ public class PhptTestCase extends TestCase {
 			return ext_name;
 		
 		String[] parts = name.split("/");
+
+		try {
+			ext_name = parts[1];
+		} catch (ArrayIndexOutOfBoundsException e) {
+			System.err.println(e);
+			System.err.println("Extension name not found.");
+			System.err.println("Make sure <test fragment> argument is (folder in test-pack dir)/.../test.phpt");
+			System.exit(0);
+		}
+
 		return ext_name = parts[1];
 	}
 	
