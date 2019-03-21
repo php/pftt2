@@ -44,8 +44,9 @@ public abstract class Host {
 			return false;
 		String pftt_dir = getPfttDir();
 		if (path.startsWith(pftt_dir)) {
-			// don't delete anything in PFTT dir unless its in cache/working
-			if (!path.startsWith(pftt_dir+"/cache/working/"))
+			// don't delete anything in PFTT dir unless its in cache/working or job_work
+			if (!path.startsWith(pftt_dir+"/cache/working/") &&
+					!path.startsWith(pftt_dir+"\\job_work\\"))
 				return false;
 		}
 		if (isWindows()) {

@@ -353,7 +353,7 @@ public class PfttMain {
 		System.out.println(" == Commands ==");
 		table = new AlignedTable(2, 85)
 			.addRow("core_all <build[,build2]> <test-pack>", "runs all tests in given test pack")
-			.addRow("core_named <build> <test-pack> <test name fragment>", "runs named tests or tests matching name pattern")
+			.addRow("core_named <build> <test-pack> <test name fragment>", "runs named tests or tests matching name pattern. Test name fragment is path from test-pack root to test file")
 			.addRow("core_list <build[,build2]> <test-pack> <file>", "runs list of tests stored in file")
 			.addRow("app_all <build[,build2]>", "runs all application tests specified in a Scenario config file against build")
 			.addRow("app_named <build[,build2]> <test name fragment>", "runs named application tests (tests specified in a Scenario config file)")
