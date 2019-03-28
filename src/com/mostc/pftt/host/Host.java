@@ -39,22 +39,30 @@ public abstract class Host {
 	public abstract boolean equals(Object o);
 	
 	public boolean isSafePath(String path) {
-		if (path.equals(getJobWorkDir()))
-			// can't delete /php-sdk
-			return false;
 		String pftt_dir = getPfttDir();
-		if (path.startsWith(pftt_dir)) {
-			// don't delete anything in PFTT dir unless it is in job_work
-			if (!path.startsWith(System.getenv().get("PFTT_JOB_WORK")))
-				return false;
-		}
+		String job_work_dir = getJobWorkDir();
+
 		if (isWindows()) {
+			path = path.toLowerCase().replace("\\", "/");
+			pftt_dir = pftt_dir.toLowerCase().replace("\\", "/");
+			job_work_dir = job_work_dir.toLowerCase().replace("\\", "/");
+
 			// don't mess with windows
-			if (path.equals(getSystemDrive()+"\\Windows"))
+			if (path.equals(getSystemDrive().toLowerCase()+"/windows"))
 				return false;
 		} else {
 			// these dirs aren't safe to mess with
 			if (path.startsWith("/usr/")||path.startsWith("/var/")||path.startsWith("/lib/")||path.startsWith("/sbin/")||path.startsWith("/boot/"))
+				return false;
+		}
+
+		if (path.equals(job_work_dir))
+			// can't delete /php-sdk
+			return false;
+
+		if (path.startsWith(pftt_dir)) {
+			// don't delete anything in PFTT dir unless it is in job_work
+			if (!path.startsWith(job_work_dir))
 				return false;
 		}
 		return true;
