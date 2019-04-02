@@ -7,7 +7,7 @@ if exist build (
 	mkdir pftt-release
 
 	REM Copy contents of bin, conf and lib to respective folders
-	cd /d pftt-release
+	cd pftt-release
 	mkdir bin
 	mkdir conf
 	mkdir lib
