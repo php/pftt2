@@ -10,32 +10,28 @@ SET PFTT_BUILD=%PFTT_HOME%\build
 
 REM Check if build directory exists
 if exist %PFTT_BUILD% (
-	cd ..
-	REM Create pftt-release directory in main folder
-	md pftt-release
+	REM Create pftt_release directory in main folder
+	md %PFTT_HOME%\pftt_release
+	SET PFTT_RELEASE=%PFTT_HOME%\pftt_release
 
 	REM Copy contents of bin, conf and lib to respective folders
-	cd pftt-release
-	md bin
-	md conf
-	md lib
+	md %PFTT_RELEASE%\bin
+	md %PFTT_RELEASE%\conf
+	md %PFTT_RELEASE%\lib
 
-	xcopy /s /i "%PFTT_BIN%" "%PFTT_HOME%/pftt-release/bin"
-	xcopy /s /i "%PFTT_CONF%" "%PFTT_HOME%/pftt-release/conf"
-	xcopy /s /i "%PFTT_LIB%" "%PFTT_HOME%/pftt-release/lib"
+	xcopy /s /i "%PFTT_BIN%" "%PFTT_RELEASE%\bin"
+	xcopy /s /i "%PFTT_CONF%" "%PFTT_RELEASE%\conf"
+	xcopy /s /i "%PFTT_LIB%" "%PFTT_RELEASE%\lib"
 
 	REM Create pftt2.jar in lib of the package
-	cd %PFTT_HOME%/pftt-release/lib
-	jar cf pftt2.jar -C %PFTT_BUILD% com %PFTT_BUILD%/org/columba %PFTT_BUILD%/org/kxml2 %PFTT_BUILD%/org/incava
+	jar cf pftt2.jar -C %PFTT_BUILD% com %PFTT_BUILD%\org\columba %PFTT_BUILD%\org\kxml2 %PFTT_BUILD%\org\incava
+	MOVE pftt2.jar %PFTT_RELEASE%\lib
 
-	REM Create zip file of pftt-release folder
-	%PFTT_BIN%/7za.exe a -tzip %PFTT_HOME%/pftt-release.zip %PFTT_HOME%/pftt-release
+	REM Create zip file of pftt_release folder
+	%PFTT_BIN%\7za.exe a -tzip %PFTT_HOME%\pftt_release.zip %PFTT_HOME%\pftt_release
 
 	REM Delete temp files/folders
-	cd %PFTT_HOME%
-	rd /s /q pftt-release
-
-	cd %PFTT_BIN%
+	rd /s /q %PFTT_HOME%\pftt_release
 ) else (
 	ECHO Build folder does not exist
 )
