@@ -1,6 +1,10 @@
 package com.mostc.pftt.util;
 
+import java.io.File;
 import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.nio.file.*;
 
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.ExecOutput;
@@ -9,7 +13,17 @@ import com.mostc.pftt.host.LocalHost;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.EPrintType;
+import com.mostc.pftt.results.LocalConsoleManager;
 import com.mostc.pftt.scenario.FileSystemScenario;
+import com.mostc.pftt.scenario.LocalFileSystemScenario;
+import com.sun.corba.se.impl.orbutil.closure.Future;
+import com.sun.jna.Memory;
+import com.sun.jna.Pointer;
+import com.sun.jna.platform.win32.VerRsrc.VS_FIXEDFILEINFO;
+import com.sun.jna.ptr.IntByReference;
+import com.sun.jna.ptr.PointerByReference;
+
+import groovy.lang.Tuple;
 
 /** Utilities for setting up the test environment and convenience settings on Hosts
  * 
@@ -18,6 +32,68 @@ import com.mostc.pftt.scenario.FileSystemScenario;
  */
 
 public final class HostEnvUtil {
+
+	static final String Link_VC9_Redist_X86
+		= "https://download.microsoft.com/download/1/1/1/1116b75a-9ec3-481a-a3c8-1777b5381140/vcredist_x86.exe";
+	static final String Link_VC10_Redist_X86
+		= "https://download.microsoft.com/download/5/B/C/5BC5DBB3-652D-4DCE-B14A-475AB85EEF6E/vcredist_x86.exe";
+	static final String Link_VC10_Redist_X64
+		= "https://download.microsoft.com/download/3/2/2/3224B87F-CFA0-4E70-BDA3-3DE650EFEBA5/vcredist_x64.exe";
+	static final String Link_VC11_Redist_X86
+		= "https://download.microsoft.com/download/1/6/B/16B06F60-3B20-4FF2-B699-5E9B7962F9AE/VSU_4/vcredist_x86.exe";
+	static final String Link_VC11_Redist_X64
+		= "https://download.microsoft.com/download/1/6/B/16B06F60-3B20-4FF2-B699-5E9B7962F9AE/VSU_4/vcredist_x64.exe";		
+	static final String Link_VC14_Redist_X86
+		= "https://download.microsoft.com/download/9/3/F/93FCF1E7-E6A4-478B-96E7-D4B285925B00/vc_redist.x86.exe";
+	static final String Link_VC14_Redist_X64
+		= "https://download.microsoft.com/download/9/3/F/93FCF1E7-E6A4-478B-96E7-D4B285925B00/vc_redist.x64.exe";
+	static final String Link_VC15_Redist_X86
+		= "https://aka.ms/vs/15/release/VC_redist.x86.exe";
+	static final String Link_VC15_Redist_X64
+		= "https://aka.ms/vs/15/release/VC_redist.x64.exe";
+	static final String Link_Mysql_community_5_7_25
+		= "https://cdn.mysql.com//Downloads/MySQLInstaller/mysql-installer-community-5.7.25.0.msi";
+	//= "https://dev.mysql.com/get/Downloads/MySQLInstaller/mysql-installer-community-5.7.25.0.msi";
+	
+	static final String Dir_Cache_Dep = LocalHost.getLocalPfttDir() + "\\cache\\dep";
+	static final String Dir_Cache_Dep_VCRedist = Dir_Cache_Dep + "\\VCRedist";
+	static final String Dir_Cache_Dep_Mysql = Dir_Cache_Dep + "\\MySql";
+	static final String File_VC9_Redist_X86 = Dir_Cache_Dep_VCRedist + "\\vc9_redist_x86.exe";
+	static final String File_VC10_Redist_X86 = Dir_Cache_Dep_VCRedist + "\\vc10_redist_x86.exe";
+	static final String File_VC10_Redist_X64 = Dir_Cache_Dep_VCRedist + "\\vc10_redist_x64.exe";
+	static final String File_VC11_Redist_X86 = Dir_Cache_Dep_VCRedist + "\\vc11_redist_x86.exe";
+	static final String File_VC11_Redist_X64 = Dir_Cache_Dep_VCRedist + "\\vc11_redist_x64.exe";
+	static final String File_VC12_Redist_X86 = Dir_Cache_Dep_VCRedist + "\\vc12_redist_x86.exe";
+	static final String File_VC12_Redist_X64 = Dir_Cache_Dep_VCRedist + "\\vc12_redist_x64.exe";
+	static final String File_VC14_Redist_X86 = Dir_Cache_Dep_VCRedist + "\\vc14_redist_x86.exe";
+	static final String File_VC14_Redist_X64 = Dir_Cache_Dep_VCRedist + "\\vc14_redist_x64.exe";
+	static final String File_VC15_Redist_X86 = Dir_Cache_Dep_VCRedist + "\\vc15_redist_x86.exe";
+	static final String File_VC15_Redist_X64 = Dir_Cache_Dep_VCRedist + "\\vc15_redist_x64.exe";
+	static final String File_Mysql_installer_community_5_7_25 = Dir_Cache_Dep_Mysql + "\\mysql-installer-community-5.7.25.0.msi";
+	
+	// This is the default directory that MySQL installer X86 will be installed for Windows
+	static final String Dir_Mysql_Installer_Win = "C:\\Program Files (x86)\\MySQL\\MySQL Installer for Windows";
+	static final String Exe_Mysql_Installer_Win = Dir_Mysql_Installer_Win + "\\MySQLInstallerConsole.exe";
+	
+	static final String Dir_Mysql_5_7_x86_Win = "c:\\Program Files (x86)\\MySQL\\MySQL Server 5.7";
+	static final String Dir_Mysql_bin_5_7_x86_Win = Dir_Mysql_5_7_x86_Win + "\\bin";
+	
+	static final String Dir_WinSxS = "\\WinSxS";
+	static final String WinSxS_VC9_Fragment = "VC9";
+	
+	static final String Dir_System32 = "\\system32";
+	static final String Dir_SysWOW64 = "\\SysWOW64";
+	static final String Sys_Dll_VC10_Redist_X86 = Dir_System32 + "\\msvcr100.dll";
+	static final String Sys_Dll_VC10_Redist_X64 = Dir_SysWOW64 + "\\msvcr100.dll";
+	static final String Sys_Dll_VC11_Redist_X86 = Dir_System32 + "\\msvcr110.dll";
+	static final String Sys_Dll_VC11_Redist_X64 = Dir_SysWOW64 + "\\msvcr110.dll";
+	static final String Sys_Dll_VC12_Redist_X86 = Dir_System32 + "\\msvcr120.dll";
+	static final String Sys_Dll_VC12_Redist_X64 = Dir_SysWOW64 + "\\msvcr120.dll";
+	static final String Sys_Dll_VC14_Redist_X86 = Dir_System32 + "\\vcruntime140.dll";
+	static final String Sys_Dll_VC14_Redist_X64 = Dir_SysWOW64 + "\\vcruntime140.dll";
+	// Note: VC15 will have the same dll name with VC14, but version of 14.1 to be backward compatible
+	static final String Sys_Dll_VC15_Redist_X86 = Dir_System32 + "\\vcruntime140.dll";
+	static final String Sys_Dll_VC15_Redist_X64 = Dir_SysWOW64 + "\\vcruntime140.dll";
 	
 	public static void prepareHostEnv(FileSystemScenario fs, AHost host, ConsoleManager cm, PhpBuild build, boolean enable_debug_prompt) throws Exception {
 		if (host.isWindows()) {
@@ -120,15 +196,103 @@ public final class HostEnvUtil {
 			// share PHP-SDK over network. this also will share C$, G$, etc...
 			//host.execElevated(cm, HostEnvUtil.class, "NET SHARE PHP_SDK="+host.getJobWorkDir()+" /Grant:"+host.getUsername()+",Full", AHost.ONE_MINUTE);
 		}
-			
+		
 		installVCRuntime(fs, host, cm, build);
+		
+		installAndConfigureMySql(fs, host, cm);
+		
 		cm.println(EPrintType.COMPLETED_OPERATION, HostEnvUtil.class, "Windows host prepared to run PHP.");
 	} // end public static void prepareWindows
 	
+	private static void installMySqlInstaller(FileSystemScenario fs, AHost host, ConsoleManager cm) throws IllegalStateException, IOException, Exception {
+		String local_file = LocalHost.getLocalPfttDir() + File_Mysql_installer_community_5_7_25;
+		String remote_file = local_file;
+		if (host.isRemote()) {
+			remote_file = fs.mktempname(HostEnvUtil.class, ".msi");
+			
+			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Uploading MySql 5.7.25.0 installer file");
+			host.upload(local_file, remote_file);
+		}
+		
+		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Installing MySql installer community 5.7.25.0");
+		
+		// install mysql installer with msiexec.exe quietly
+		// msiexec /i mysql-installer-community-5.7.25.0.msi /quiet
+		host.execElevated(cm, HostEnvUtil.class, "msiexec.exe /i " + remote_file + " /quiet", AHost.TEN_MINUTES);
+		
+		if (remote_file!=null)
+			fs.delete(remote_file);
+	}
+
+	private static void installAndConfigureMySql(FileSystemScenario fs, AHost host, ConsoleManager cm) throws IllegalStateException, IOException, Exception {
+		String installer_executable = Exe_Mysql_Installer_Win;
+		if (host.isRemote()) {
+			cm.println(EPrintType.WARNING, HostEnvUtil.class, "Remotely install MySql 5.7.25.0 with installer is not supported for now, skipping...");
+			return;
+		}
+		
+		// install mysql server with installer quietly
+		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Installing MySql Server 5.7.25.0 with installer");
+		
+		// MySQLInstallerConsole.exe community install server;5.7.25;x86 -silent
+		host.execElevated(cm, HostEnvUtil.class, installer_executable + " community install server;5.7.25;x86 -silent", AHost.TEN_MINUTES);
+		
+		if(!fs.exists(Dir_Mysql_5_7_x86_Win))
+		{
+			cm.println(EPrintType.WARNING, HostEnvUtil.class, "MySql 5.7.25.0 may not installed correctly...");
+			return;
+		}
+		
+		// creating data directly for MySQL service
+		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Creating data folder for MySql Server 5.7.25.0");
+		
+		String data_dir = Dir_Mysql_5_7_x86_Win + "\\data";
+		if(!fs.exists(data_dir))
+		{
+			File data_dir_file = new File(data_dir);
+		    // attempt to create the directory here
+		    boolean successful = data_dir_file.mkdir();
+		    if (!successful)
+		    {
+				cm.println(EPrintType.WARNING, HostEnvUtil.class, "Can't create data directly for MySQL service...");
+				return;
+		    }
+		}
+		
+		String mysqld_exe = Dir_Mysql_bin_5_7_x86_Win + "\\mysqld.exe";
+		if(!fs.exists(mysqld_exe))
+		{
+			cm.println(EPrintType.WARNING, HostEnvUtil.class, "MySql 5.7.25.0 may not installed correctly: missing [" + mysqld_exe +"]"
+					+ "");
+			return;
+		}
+
+		// Install the MySQL service
+		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Installing MySQL as a windows service");
+		// mysqld.exe --install
+		host.execElevated(cm, HostEnvUtil.class,"\"" + mysqld_exe + "\" --install", AHost.TEN_MINUTES);
+
+		// initialize the MySQL service
+		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Initializing MySQL service");
+		// mysqld.exe --initialize
+		host.execElevated(cm, HostEnvUtil.class, "\"" + mysqld_exe + "\" --initialize", AHost.TEN_MINUTES);
+
+		// Start the MySQL service
+		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Starting MySQL service");
+		// start MySQL service using sc.exe
+		// sc start MySQL
+		host.execElevated(cm, HostEnvUtil.class, "sc.exe start MySQL", AHost.TEN_MINUTES);
+		
+		// TODO: Make root having empty password so that mysql extension tests can run directly
+		// or change the mysql tests to based on a particular user that created
+		// TODO: Create database "test"
+	}
+
 	/** PHP on Windows requires Microsoft's VC Runtime to be installed. This method ensures that the correct version is installed.
 	 * 
 	 * PHP 5.3 and 5.4 require the VC9 x86 Runtime
 	 * PHP 5.5+ require the VC11 x86 Runtime
+	 * PHP 7.0+ require the VC14 x86 Runtime
 	 * 
 	 * Windows 8+ already has the VC9 x86 Runtime
 	 * 
@@ -143,49 +307,121 @@ public final class HostEnvUtil {
 		if (!host.isWindows()) {
 			return;
 		}
-		
+
 		switch (build.getVersionBranch(cm, host)) {
 		case PHP_5_3:
 		case PHP_5_4:
 			installVCRT9(cm, fs, host);
 			break;
-		case PHP_7_0:
-		case PHP_Master:
-			// TODO install VC14 CRT
 		case PHP_5_5:
 		case PHP_5_6:
-		default: 
-			installVCRT9(cm, fs, host); // just in case
-			installVCRT(cm, fs, host, "VC10 x86", "msvcr100.dll", "vc10_redist_x86.exe");
-			installVCRT(cm, fs, host, "VC11 x86", "msvcr110.dll", "vc11_redist_x86.exe");
+			installVCRT(cm, fs, host, "VC10 x86", File_VC10_Redist_X86, Sys_Dll_VC10_Redist_X86);
+			installVCRT(cm, fs, host, "VC11 x86", File_VC11_Redist_X86, Sys_Dll_VC11_Redist_X86);
 			if (build.isX64()) {
-				installVCRT(cm, fs, host, "VC10 x64", "msvcr100.dll", "vc10_redist_x64.exe");
-				installVCRT(cm, fs, host, "VC11 x64", "msvcr110.dll", "vc11_redist_x64.exe");
+				installVCRT(cm, fs, host, "VC10 x64", File_VC10_Redist_X64, Sys_Dll_VC10_Redist_X64);
+				installVCRT(cm, fs, host, "VC11 x64", File_VC11_Redist_X64, Sys_Dll_VC11_Redist_X64);
+			}
+			break;
+		case PHP_7_0:
+		case PHP_7_1:
+			installVCRT(cm, fs, host, "VC14 x86", File_VC14_Redist_X86, Sys_Dll_VC14_Redist_X86);
+			if (build.isX64()) {
+				installVCRT(cm, fs, host, "VC14 x64", File_VC14_Redist_X64, Sys_Dll_VC14_Redist_X64);
+			}
+			break;
+		case PHP_7_2:
+		case PHP_7_3:
+		case PHP_Master:
+		default:
+			installVCRT15(cm, fs, host, "VC15 x86", File_VC15_Redist_X86, Sys_Dll_VC15_Redist_X86);
+			if (build.isX64()) {
+				installVCRT15(cm, fs, host, "VC15 x64", File_VC15_Redist_X64, Sys_Dll_VC15_Redist_X64);
 			}
 			break;
 		} // end switch
 	} // end public static void installVCRuntime
 	
-	protected static void installVCRT9(ConsoleManager cm, FileSystemScenario fs, AHost host) throws IllegalStateException, IOException, Exception {
+	
+	protected static boolean installedVCRT9(AHost host)
+	{
 		// with VC9 (and before), checking WinSXS directory is the only way to tell
-		if (host.mDirContainsFragment(host.getSystemRoot()+"\\WinSxS", "VC9")) {
+		return host.mDirContainsFragment(host.getSystemRoot() + Dir_WinSxS, WinSxS_VC9_Fragment);
+	}
+	
+	
+	protected static void installVCRT9(ConsoleManager cm, FileSystemScenario fs, AHost host) throws IllegalStateException, IOException, Exception {
+		
+		if (installedVCRT9(host)) {
 			cm.println(EPrintType.CLUE, HostEnvUtil.class, "VC9 Runtime already installed");
 		} else {
 			doInstallVCRT(cm, fs, host, "VC9", "vc9_redist_x86.exe");
 		}
 	}
-	
-	protected static void installVCRT(ConsoleManager cm, FileSystemScenario fs, AHost host, String name, String dll_name, String filename) throws IllegalStateException, IOException, Exception {
+		
+	protected static void installVCRT(ConsoleManager cm, FileSystemScenario fs, AHost host, String name, String installerFile, String sysDllFile)
+			throws IllegalStateException, IOException, Exception {
 		// starting with VCRT10, checking the registry is the only way to tell
-		if (fs.exists(host.getSystemRoot()+"\\system32\\"+dll_name)) {
+		if (fs.exists(host.getSystemRoot() +  sysDllFile)) {
 			cm.println(EPrintType.CLUE, HostEnvUtil.class, name+" Runtime already installed");
 		} else {
-			doInstallVCRT(cm, fs, host, name, filename);
+			doInstallVCRT(cm, fs, host, name, installerFile);
 		}
 	}
+
+	protected static void installVCRT15(ConsoleManager cm, FileSystemScenario fs, AHost host, String name, String installerFile, String sysDllFile)
+			throws IllegalStateException, IOException, Exception {
+
+		if(installedVCRT15(fs, host.getSystemRoot() + sysDllFile)) {
+			cm.println(EPrintType.CLUE, HostEnvUtil.class, name+" Runtime already installed");
+		} else {
+			doInstallVCRT(cm, fs, host, name, installerFile);
+		}
+	}
+
+	// checking if VCRT15 is installed by existing of the vcruntime140.dll and the file version
+	private static boolean installedVCRT15(FileSystemScenario fs, String vc15DllFile)
+	{
+		if(!fs.exists(vc15DllFile))
+		{
+			return false;
+		}
+		
+        IntByReference dwDummy = new IntByReference();
+        dwDummy.setValue(0);
+
+        int versionlength =
+                com.sun.jna.platform.win32.Version.INSTANCE.GetFileVersionInfoSize(
+                		vc15DllFile, dwDummy);
+
+        byte[] bufferarray = new byte[versionlength];
+        Pointer lpData = new Memory(bufferarray.length);
+        PointerByReference lplpBuffer = new PointerByReference();
+        IntByReference puLen = new IntByReference();
+
+        boolean fileInfoResult =
+                com.sun.jna.platform.win32.Version.INSTANCE.GetFileVersionInfo(
+                		vc15DllFile, 0, versionlength, lpData);
+
+        boolean verQueryVal =
+                com.sun.jna.platform.win32.Version.INSTANCE.VerQueryValue(
+                        lpData, "\\", lplpBuffer, puLen);
+
+        VS_FIXEDFILEINFO lplpBufStructure = new VS_FIXEDFILEINFO(lplpBuffer.getValue());
+        lplpBufStructure.read();
+        
+        // VC14 Runtime dll file version: 14.0.23026.0
+        // VC15 Runtime dll file version: 14.16.27027.1
+        int v1 = (lplpBufStructure.dwFileVersionMS).intValue() >> 16;
+        int v2 = (lplpBufStructure.dwFileVersionMS).intValue() & 0xffff;
+        int v3 = (lplpBufStructure.dwFileVersionLS).intValue() >> 16;
+        int v4 = (lplpBufStructure.dwFileVersionLS).intValue() & 0xffff;
+
+        return v2 > 0;
+	}	
 	
-	protected static void doInstallVCRT(ConsoleManager cm, FileSystemScenario fs, AHost host, String name, String filename) throws IllegalStateException, IOException, Exception {
-		String local_file = LocalHost.getLocalPfttDir()+"/cache/dep/VCRedist/"+filename;
+	
+	protected static void doInstallVCRT(ConsoleManager cm, FileSystemScenario fs, AHost host, String name, String installerFile) throws IllegalStateException, IOException, Exception {
+		String local_file = LocalHost.getLocalPfttDir() + installerFile;
 		String remote_file = local_file;
 		if (host.isRemote()) {
 			remote_file = fs.mktempname(HostEnvUtil.class, ".exe");
@@ -194,7 +430,7 @@ public final class HostEnvUtil {
 			host.upload(local_file, remote_file);
 		}
 		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Installing "+name+" Runtime");
-		host.execElevated(cm, HostEnvUtil.class, remote_file+" /Q /NORESTART", AHost.FOUR_HOURS);
+		host.execElevated(cm, HostEnvUtil.class, remote_file+" /Q /NORESTART", AHost.TEN_MINUTES);
 		if (remote_file!=null)
 			fs.delete(remote_file);
 	}
@@ -250,7 +486,133 @@ public final class HostEnvUtil {
 	public static boolean regDel(ConsoleManager cm, AHost host, String key, String value_name) throws Exception {
 		return host.execElevated(cm, HostEnvUtil.class, "REG DELETE \""+key+"\" /v "+value_name + " /f", AHost.ONE_MINUTE);
 	}
-			
+	
+	public static void setupHostEnv(FileSystemScenario fs, LocalHost host, LocalConsoleManager cm, PhpBuild build)
+		throws IllegalStateException, IOException, Exception {
+		if (host.isWindows()) {
+			setupWindows(fs, host, cm, build);
+		} else {
+			// TODO: setup none windows environment
+		}
+	}
+	
+	private static void setupWindows(FileSystemScenario fs, LocalHost host, LocalConsoleManager cm, PhpBuild build)
+		throws IllegalStateException, IOException, Exception {
+
+		// download VC runtime based on the build
+		downloadVCRuntimeByBuild(fs, host, cm, build);
+
+		if(!fs.exists(Exe_Mysql_Installer_Win))
+		{
+			// download MySQL installer
+			downloadFile(fs, cm, "MySql 5.7.25", Link_Mysql_community_5_7_25, LocalHost.getLocalPfttDir() + File_Mysql_installer_community_5_7_25);
+	
+			// install MySQL installer
+			// we want to install this installer during setup since the installer is NOT the actual MySQL server, but
+			// it helps to install and configure the MySQL server on windows
+			installMySqlInstaller(fs, host, cm);
+		}
+		else
+		{
+			cm.println(EPrintType.CLUE, HostEnvUtil.class, "MySQL Installer is already installed, skip downloading and installation.");
+		}
+		
+		cm.println(EPrintType.COMPLETED_OPERATION, HostEnvUtil.class, "Windows host setup to run PHP.");
+	}
+	
+	private static void downloadVCRuntimeByBuild(FileSystemScenario fs, LocalHost host, LocalConsoleManager cm,
+			PhpBuild build)
+		throws IllegalStateException, IOException, Exception {
+		if (!host.isWindows()) {
+			return;
+		}
+
+		String system_dir = host.getSystemRoot();
+		switch (build.getVersionBranch(cm, host)) {
+		case PHP_5_3:
+		case PHP_5_4:
+			downloadVCRuntime9(fs, host, cm);
+			break;
+		case PHP_5_5:
+		case PHP_5_6:
+			downloadVCRuntime(fs, cm, "VC10 x86", Link_VC10_Redist_X86, File_VC10_Redist_X86, system_dir + Sys_Dll_VC10_Redist_X86);
+			downloadVCRuntime(fs, cm, "VC11 x86", Link_VC11_Redist_X86, File_VC11_Redist_X86, system_dir + Sys_Dll_VC11_Redist_X86);
+			if (build.isX64()) {
+				downloadVCRuntime(fs, cm, "VC10 x64", Link_VC10_Redist_X64, File_VC10_Redist_X64, system_dir + Sys_Dll_VC10_Redist_X64);
+				downloadVCRuntime(fs, cm, "VC11 x64", Link_VC11_Redist_X64, File_VC11_Redist_X64, system_dir + Sys_Dll_VC11_Redist_X64);
+			}
+			break;
+		case PHP_7_0:
+		case PHP_7_1:
+			downloadVCRuntime(fs, cm, "VC14 x86", Link_VC14_Redist_X86, File_VC14_Redist_X86, system_dir + Sys_Dll_VC14_Redist_X86);
+			if (build.isX64()) {
+				downloadVCRuntime(fs, cm, "VC14 x64", Link_VC14_Redist_X64, File_VC14_Redist_X64, system_dir + Sys_Dll_VC14_Redist_X64);
+			}
+			break;
+		case PHP_7_2:
+		case PHP_7_3:
+		case PHP_Master:
+		default:
+			downloadVC15Runtime(fs, cm, "VC15 x86", Link_VC15_Redist_X86, File_VC15_Redist_X86, system_dir + Sys_Dll_VC15_Redist_X86);
+			if (build.isX64()) {
+				downloadVC15Runtime(fs, cm, "VC15 x64", Link_VC15_Redist_X64, File_VC15_Redist_X64, system_dir + Sys_Dll_VC15_Redist_X64);
+			}
+			break;
+		} // end switch
+	}
+	
+		
+	private static void downloadVCRuntime9(FileSystemScenario fs, LocalHost host, LocalConsoleManager cm)
+	{
+		if (installedVCRT9(host)) {
+			cm.println(EPrintType.CLUE, HostEnvUtil.class, "VC9 Runtime already installed, skip downloading.");
+		}
+		else
+		{
+			String pftt_dir = LocalHost.getLocalPfttDir();
+			downloadFile(fs, cm, "VC9 Runtime", Link_VC9_Redist_X86, pftt_dir + File_VC9_Redist_X86);
+		}
+	}
+	
+	
+	private static void downloadVC15Runtime(FileSystemScenario fs, LocalConsoleManager cm,
+			String name, String remote_url, String installer_file, String dll_file)
+	{
+		if(installedVCRT15(fs, dll_file))
+		{
+			cm.println(EPrintType.CLUE, HostEnvUtil.class, name + " Runtime already installed, skip downloading.");
+		}
+		else
+		{
+			downloadFile(fs, cm, name, remote_url, installer_file);
+		}
+	}
+	
+	private static void downloadVCRuntime(FileSystemScenario fs, LocalConsoleManager cm,
+			String name, String remote_url, String installer_file, String dll_file)
+	{
+		if(fs.exists(dll_file))
+		{
+			cm.println(EPrintType.CLUE, HostEnvUtil.class, name + " Runtime already installed, skip downloading.");
+		}
+		else
+		{
+			downloadFile(fs, cm, name, remote_url, installer_file);
+		}
+	}
+
+	private static void downloadFile(FileSystemScenario fs, LocalConsoleManager cm,
+			String name, String remote_url, String local_file)
+	{
+		if(fs.exists(local_file))
+		{
+			cm.println(EPrintType.CLUE, HostEnvUtil.class, name + " Installer [" + local_file + "] already downloaded.");
+		}
+		else
+		{
+			DownloadUtil.downloadFile(cm, remote_url, local_file);
+		}
+	}
 
 	private HostEnvUtil() {}
 	

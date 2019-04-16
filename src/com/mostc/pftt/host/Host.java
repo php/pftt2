@@ -25,6 +25,8 @@ public abstract class Host {
 	/** should always have a timeout... should NOT let something run forever */
 	public static final int FOUR_HOURS = ONE_HOUR * 4;
 	public static final int ONE_MINUTE = 60;
+	public static final int TEN_MINUTES = ONE_MINUTE * 10;
+	public static final int TWENTY_MINUTES = TEN_MINUTES * 2;
 	protected static final int NO_TIMEOUT = 0;
 	/** put PATH in the ENV vars you pass to #exec and it will automatically add that
 	 * value to the system's PATH (takes care of merging it for you, so it won't be completely overridden)

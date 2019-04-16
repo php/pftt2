@@ -5,5 +5,7 @@ src/com/sshtools/*
 hostkeys.txt
 ssh_server.jar
 cache/working/*
+cache/dep/*
 jre/*
-/build/
+job_work/*
+.metadata/*
