@@ -517,6 +517,15 @@ public class PhpBuild extends SAPIManager {
 						case 3:
 							branch  = EBuildBranch.PHP_7_3;
 							break;
+						case 4:
+							branch  = EBuildBranch.PHP_7_4;
+							break;
+						}
+					} else if (major == 8) {
+						switch(minor) {
+						case 0:
+							branch  = EBuildBranch.PHP_8_0;
+							break;
 						}
 					}
 					

@@ -1,14 +1,17 @@
 package com.mostc.pftt.util;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.net.Socket;
 import java.net.URL;
 
 import org.apache.http.ConnectionReuseStrategy;
+import org.apache.http.Header;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpVersion;
+import org.apache.http.StatusLine;
 import org.apache.http.impl.DefaultConnectionReuseStrategy;
 import org.apache.http.impl.DefaultHttpClientConnection;
 import org.apache.http.message.BasicHttpRequest;
@@ -45,6 +48,52 @@ public class DownloadUtil {
 	
 	public static boolean downloadAndUnzip(ConsoleManager cm, Host host, URL remote_url, String local_dir) {
 		String local_file_zip = host.mCreateTempName("Download", ".zip");
+		
+		if(!downloadFile(cm, remote_url, local_file_zip))
+		{
+			return false;
+		}
+		
+		// decompress local_file_zip
+		try {
+			host.mCreateDirs(local_dir);
+			
+			System.out.println("PFTT: release_get: decompressing "+local_file_zip+"...");
+			
+			return host.unzip(cm, local_file_zip, local_dir);
+		} catch ( Exception ex ) {
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, DownloadUtil.class, "downloadAndUnzip", ex, "");
+			return false;
+		}
+	} // end public static boolean downloadAndUnzip
+
+	public static boolean downloadFile(ConsoleManager cm, String remote_url, String local_file_name) {
+		try {
+			cm.println(EPrintType.CLUE, DownloadUtil.class, "Downloading from ["+remote_url.toString()+"] as ["+local_file_name+"]");
+			return downloadFile(cm, new URL(remote_url), local_file_name);
+		} catch ( Exception ex ) {
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, DownloadUtil.class, "downloadFile", ex, "");
+			return false;
+		}
+	}
+	
+	private static final int MAX_REDIRECT = 5;
+	/**
+	 * @param cm
+	 * @param remote_url
+	 * @param local_file_name
+	 */
+	public static boolean downloadFile(ConsoleManager cm, URL remote_url, String local_file_name)
+	{
+		return downloadFile(cm, remote_url, local_file_name, 0);
+	}
+	
+	private static boolean downloadFile(ConsoleManager cm, URL remote_url, String local_file_name, int redirect) {
+		if(redirect > MAX_REDIRECT)
+		{
+			cm.println(EPrintType.CANT_CONTINUE, DownloadUtil.class, "Exceeding maximal redirects" + MAX_REDIRECT + " for downloading [" + remote_url + "]");
+			return false;
+		}
 		
 		HttpParams params = new SyncBasicHttpParams();
 		HttpProtocolParams.setVersion(params, HttpVersion.HTTP_1_1);
@@ -84,35 +133,57 @@ public class DownloadUtil {
 			response.setParams(params);
 			httpexecutor.postProcess(response, httpproc, context);
 			
-			FileOutputStream out_file = new FileOutputStream(local_file_zip);
+			StatusLine statusLine = response.getStatusLine();
+			int statusCode = statusLine.getStatusCode();
+			if( statusCode != 200)
+			{
+				switch(statusCode)
+				{
+				// Handling redirects
+				case 301: // 301 Moved Permanently
+				case 302: // 302 Found or originally temporary redirect
+				case 303: // 303 see other 
+				case 307: // 307 temporary redirect
+				case 308: // 308 permanent redirect
+					Header[] locations = response.getHeaders("Location");
+					for(int i = 0; i < locations.length; i++)
+					{
+						String redirectedUrl = locations[i].getValue();
+						cm.println(EPrintType.CLUE, DownloadUtil.class, "Redirecting from ["+remote_url.toString()+"] to ["+redirectedUrl+"], redirect count =" + redirect++);
+						if(downloadFile(cm, new URL(redirectedUrl), local_file_name, redirect))
+						{
+							return true;
+						}
+					}
+					break;					
+				}
+				
+				throw new Exception("Error downloading file from [" + remote_url + "] with status " + statusLine.toString());
+	
+			}
+			
+			File local_file = new File(local_file_name);
+			// create parent directories if not exists
+			local_file.getParentFile().mkdirs();
+			
+			FileOutputStream out_file = new FileOutputStream(local_file_name);
 			
 			IOUtil.copy(response.getEntity().getContent(), out_file, IOUtil.UNLIMITED);
 			
 			out_file.close();
+			return true;
 		} catch ( Exception ex ) {
-			cm.addGlobalException(EPrintType.CANT_CONTINUE, DownloadUtil.class, "downloadAndUnzip", ex, "error downloading file: "+remote_url);
+			cm.addGlobalException(EPrintType.CANT_CONTINUE, DownloadUtil.class, "downloadFile", ex, "error downloading file: "+remote_url);
 			return false;
 		} finally {
 			if ( response == null || !connStrategy.keepAlive(response, context)) {
 				try {
 					conn.close();
 				} catch ( Exception ex ) {
-					cm.addGlobalException(EPrintType.CANT_CONTINUE, DownloadUtil.class, "downloadAndUnzip", ex, "");
+					cm.addGlobalException(EPrintType.CANT_CONTINUE, DownloadUtil.class, "downloadFile", ex, "");
 				}
 			}
 		}
-		
-		// decompress local_file_zip
-		try {
-			host.mCreateDirs(local_dir);
-			
-			System.out.println("PFTT: release_get: decompressing "+local_file_zip+"...");
-			
-			return host.unzip(cm, local_file_zip, local_dir);
-		} catch ( Exception ex ) {
-			cm.addGlobalException(EPrintType.CANT_CONTINUE, DownloadUtil.class, "downloadAndUnzip", ex, "");
-			return false;
-		}
-	} // end public static boolean downloadAndUnzip
+	}
 
 } // end public class DownloadUtil

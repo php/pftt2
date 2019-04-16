@@ -501,6 +501,14 @@ public class PfttMain {
 		return config==null?ScenarioSet.getDefaultScenarioSets():config.getScenarioSets(layer);
 	}
 	
+	private PhpBuild setupBuild;
+	protected void ensureLocalhostSetup(PhpBuild build) throws Exception {
+		if (setupBuild==build)
+			return;
+		HostEnvUtil.setupHostEnv(fs, host, cm, build);
+		setupBuild = build;
+	}
+	
 	private PhpBuild prepared;
 	protected void ensureLocalhostPrepared(PhpBuild build) throws Exception {
 		if (prepared==build)
@@ -1977,6 +1985,9 @@ public class PfttMain {
 					PhpBuild build = newBuild(cm, p.host, args[args_i+1]);
 					
 					checkUAC(is_uac, true, config, cm, EScenarioSetPermutationLayer.PRODUCTION_OR_ALL_UP_TEST);
+					
+					// setup host environment
+					p.ensureLocalhostSetup(build);
 					
 					// setup all scenarios
 					PhpIni ini;
