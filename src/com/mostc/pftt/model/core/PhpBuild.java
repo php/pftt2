@@ -645,7 +645,7 @@ public class PhpBuild extends SAPIManager {
 	}
 	
 	public boolean is7(ConsoleManager cm, Host host) {
-		return is70(cm, host) || is73(cm, host) || is73(cm, host) || is73(cm, host);
+		return is70(cm, host) || is71(cm, host) || is72(cm, host) || is73(cm, host);
 	}
 	
 	public boolean isMaster(ConsoleManager cm, Host host) {
