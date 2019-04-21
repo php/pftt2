@@ -54,6 +54,9 @@ public final class HostEnvUtil {
 	static final String Link_Mysql_community_5_7_25
 		= "https://cdn.mysql.com//Downloads/MySQLInstaller/mysql-installer-community-5.7.25.0.msi";
 	//= "https://dev.mysql.com/get/Downloads/MySQLInstaller/mysql-installer-community-5.7.25.0.msi";
+	static final String Link_Mysql_Win32_5_7_25
+		= "https://cdn.mysql.com//Downloads/MySQL-5.7/mysql-5.7.25-win32.zip";
+	
 	
 	static final String Dir_Cache_Dep = LocalHost.getLocalPfttDir() + "\\cache\\dep";
 	static final String Dir_Cache_Dep_VCRedist = Dir_Cache_Dep + "\\VCRedist";
@@ -71,12 +74,16 @@ public final class HostEnvUtil {
 	static final String File_VC15_Redist_X64 = Dir_Cache_Dep_VCRedist + "\\vc15_redist_x64.exe";
 	static final String File_Mysql_installer_community_5_7_25 = Dir_Cache_Dep_Mysql + "\\mysql-installer-community-5.7.25.0.msi";
 	
+	static final String Dir_Mysql = "C:\\MySQL";
+	static final String Dir_Mysql_5_7 = Dir_Mysql + "\\mysql-5.7.25-win32";
+	static final String Dir_Mysql_5_7_bin = Dir_Mysql_5_7 + "\\bin";
+	static final String Exe_Mysql_5_7_mysqld = Dir_Mysql_5_7_bin + "\\mysqld.exe";
+	static final String Exe_Mysql_5_7_mysql = Dir_Mysql_5_7_bin + "\\mysql.exe";
 	// This is the default directory that MySQL installer X86 will be installed for Windows
-	static final String Dir_Mysql_Installer_Win = "C:\\Program Files (x86)\\MySQL\\MySQL Installer for Windows";
-	static final String Exe_Mysql_Installer_Win = Dir_Mysql_Installer_Win + "\\MySQLInstallerConsole.exe";
-	
-	static final String Dir_Mysql_5_7_x86_Win = "c:\\Program Files (x86)\\MySQL\\MySQL Server 5.7";
-	static final String Dir_Mysql_bin_5_7_x86_Win = Dir_Mysql_5_7_x86_Win + "\\bin";
+	//static final String Dir_Mysql_Installer_Win = "C:\\Program Files (x86)\\MySQL\\MySQL Installer for Windows";
+	//static final String Exe_Mysql_Installer_Win = Dir_Mysql_Installer_Win + "\\MySQLInstallerConsole.exe";	
+	//static final String Dir_Mysql_5_7_x86_Win = "c:\\Program Files (x86)\\MySQL\\MySQL Server 5.7";
+	//static final String Dir_Mysql_bin_5_7_x86_Win = Dir_Mysql_5_7_x86_Win + "\\bin";
 	
 	static final String Dir_WinSxS = "\\WinSxS";
 	static final String WinSxS_VC9_Fragment = "VC9";
@@ -225,67 +232,69 @@ public final class HostEnvUtil {
 	}
 
 	private static void installAndConfigureMySql(FileSystemScenario fs, AHost host, ConsoleManager cm) throws IllegalStateException, IOException, Exception {
-		String installer_executable = Exe_Mysql_Installer_Win;
-		if (host.isRemote()) {
-			cm.println(EPrintType.WARNING, HostEnvUtil.class, "Remotely install MySql 5.7.25.0 with installer is not supported for now, skipping...");
-			return;
-		}
 		
-		// install mysql server with installer quietly
-		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Installing MySql Server 5.7.25.0 with installer");
-		
-		// MySQLInstallerConsole.exe community install server;5.7.25;x86 -silent
-		host.execElevated(cm, HostEnvUtil.class, installer_executable + " community install server;5.7.25;x86 -silent", AHost.TEN_MINUTES);
-		
-		if(!fs.exists(Dir_Mysql_5_7_x86_Win))
+		if(!fs.exists(Exe_Mysql_5_7_mysqld))
 		{
-			cm.println(EPrintType.WARNING, HostEnvUtil.class, "MySql 5.7.25.0 may not installed correctly...");
-			return;
-		}
-		
-		// creating data directly for MySQL service
-		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Creating data folder for MySql Server 5.7.25.0");
-		
-		String data_dir = Dir_Mysql_5_7_x86_Win + "\\data";
-		if(!fs.exists(data_dir))
-		{
-			File data_dir_file = new File(data_dir);
-		    // attempt to create the directory here
-		    boolean successful = data_dir_file.mkdir();
-		    if (!successful)
-		    {
-				cm.println(EPrintType.WARNING, HostEnvUtil.class, "Can't create data directly for MySQL service...");
-				return;
-		    }
-		}
-		
-		String mysqld_exe = Dir_Mysql_bin_5_7_x86_Win + "\\mysqld.exe";
-		if(!fs.exists(mysqld_exe))
-		{
-			cm.println(EPrintType.WARNING, HostEnvUtil.class, "MySql 5.7.25.0 may not installed correctly: missing [" + mysqld_exe +"]"
-					+ "");
+			cm.println(EPrintType.WARNING, HostEnvUtil.class, "MySql 5.7.25.0 is not downloaded, should run setup command first...");
 			return;
 		}
 
-		// Install the MySQL service
-		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Installing MySQL as a windows service");
-		// mysqld.exe --install
-		host.execElevated(cm, HostEnvUtil.class,"\"" + mysqld_exe + "\" --install", AHost.TEN_MINUTES);
+		ExecOutput op = host.execOut("sc.exe query MySQL", AHost.TEN_MINUTES);
+		
+		if(op.output.contains("RUNNING"))
+		{
+			cm.println(EPrintType.WARNING, HostEnvUtil.class, "MySql service is already running.");
+			return;
+		}
 
-		// initialize the MySQL service
-		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Initializing MySQL service");
-		// mysqld.exe --initialize
-		host.execElevated(cm, HostEnvUtil.class, "\"" + mysqld_exe + "\" --initialize", AHost.TEN_MINUTES);
-
+		if(op.output.contains("EnumQueryServicesStatus:OpenService FAILED"))
+		{
+			// creating data directly for MySQL service
+			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Creating data folder for MySql Server 5.7.25.0");		
+			String data_dir = Dir_Mysql_5_7 + "\\data";
+			createDirectoryIfNotExists(fs, cm, data_dir);
+			
+			// Install the MySQL service
+			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Installing MySQL as a windows service");
+			// mysqld.exe --install
+			host.execOut("\"" + Exe_Mysql_5_7_mysqld + "\" --install", AHost.TEN_MINUTES);
+			
+			// initialize the MySQL service
+			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Initializing MySQL service");
+			// mysqld.exe --initialize-insecure
+			ExecOutput output = host.execOut("\"" + Exe_Mysql_5_7_mysqld + "\" --initialize-insecure", AHost.TEN_MINUTES);
+			cm.println(EPrintType.CLUE, HostEnvUtil.class, output.output);
+		}
+		
 		// Start the MySQL service
 		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Starting MySQL service");
 		// start MySQL service using sc.exe
 		// sc start MySQL
-		host.execElevated(cm, HostEnvUtil.class, "sc.exe start MySQL", AHost.TEN_MINUTES);
+		host.execOut("sc.exe start MySQL", AHost.TEN_MINUTES);
 		
-		// TODO: Make root having empty password so that mysql extension tests can run directly
-		// or change the mysql tests to based on a particular user that created
-		// TODO: Create database "test"
+		// Create database "test" if not exist
+		// mysql -u root -e "create database if not exists test"
+		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Creating test database on MySQL server");
+		host.execOut("\"" + Exe_Mysql_5_7_mysql + "\" -u root -e \"create database if not exists test\"", AHost.TEN_MINUTES);
+	}
+
+	/**
+	 * @param fs
+	 * @param cm
+	 * @param dir_path
+	 */
+	private static void createDirectoryIfNotExists(FileSystemScenario fs, ConsoleManager cm, String dir_path) {
+		if(!fs.exists(dir_path))
+		{
+			File data_dir_file = new File(dir_path);
+		    // attempt to create the directory here
+		    boolean successful = data_dir_file.mkdirs();
+		    if (!successful)
+		    {
+				cm.println(EPrintType.WARNING, HostEnvUtil.class, "Failed create directory " + dir_path);
+				return;
+		    }
+		}
 	}
 
 	/** PHP on Windows requires Microsoft's VC Runtime to be installed. This method ensures that the correct version is installed.
@@ -499,25 +508,25 @@ public final class HostEnvUtil {
 	private static void setupWindows(FileSystemScenario fs, LocalHost host, LocalConsoleManager cm, PhpBuild build)
 		throws IllegalStateException, IOException, Exception {
 
-		// download VC runtime based on the build
 		downloadVCRuntimeByBuild(fs, host, cm, build);
-
-		if(!fs.exists(Exe_Mysql_Installer_Win))
-		{
-			// download MySQL installer
-			downloadFile(fs, cm, "MySql 5.7.25", Link_Mysql_community_5_7_25, LocalHost.getLocalPfttDir() + File_Mysql_installer_community_5_7_25);
+		
+		downloadMySQL5(fs, host, cm);
+		
+		cm.println(EPrintType.COMPLETED_OPERATION, HostEnvUtil.class, "Windows host setup to run PHP.");
+	}
 	
-			// install MySQL installer
-			// we want to install this installer during setup since the installer is NOT the actual MySQL server, but
-			// it helps to install and configure the MySQL server on windows
-			installMySqlInstaller(fs, host, cm);
+	private static void downloadMySQL5(FileSystemScenario fs, LocalHost host, LocalConsoleManager cm) {
+
+		if(!fs.exists(Exe_Mysql_5_7_mysqld))
+		{
+			// download MySQL and unzip 
+			createDirectoryIfNotExists(fs, cm, Dir_Mysql);
+			DownloadUtil.downloadAndUnzip(cm, host, Link_Mysql_Win32_5_7_25, Dir_Mysql);
 		}
 		else
 		{
-			cm.println(EPrintType.CLUE, HostEnvUtil.class, "MySQL Installer is already installed, skip downloading and installation.");
+			cm.println(EPrintType.CLUE, HostEnvUtil.class, "MySQL 5.7.25 is already downloaded.");
 		}
-		
-		cm.println(EPrintType.COMPLETED_OPERATION, HostEnvUtil.class, "Windows host setup to run PHP.");
 	}
 	
 	private static void downloadVCRuntimeByBuild(FileSystemScenario fs, LocalHost host, LocalConsoleManager cm,
@@ -560,8 +569,7 @@ public final class HostEnvUtil {
 			break;
 		} // end switch
 	}
-	
-		
+			
 	private static void downloadVCRuntime9(FileSystemScenario fs, LocalHost host, LocalConsoleManager cm)
 	{
 		if (installedVCRT9(host)) {
@@ -573,8 +581,7 @@ public final class HostEnvUtil {
 			downloadFile(fs, cm, "VC9 Runtime", Link_VC9_Redist_X86, pftt_dir + File_VC9_Redist_X86);
 		}
 	}
-	
-	
+		
 	private static void downloadVC15Runtime(FileSystemScenario fs, LocalConsoleManager cm,
 			String name, String remote_url, String installer_file, String dll_file)
 	{
