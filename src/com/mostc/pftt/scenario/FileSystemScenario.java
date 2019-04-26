@@ -39,7 +39,7 @@ public abstract class FileSystemScenario extends AbstractSerialScenario {
 		return deleteChosenFiles(dir, new IFileChooser() {
 				@Override
 				public boolean choose(String dir, String name, boolean isdir) {
-					return StringUtil.endsWithIC(dir, ext);
+					return StringUtil.endsWithIC(name, ext);
 				}	
 			});
 	}

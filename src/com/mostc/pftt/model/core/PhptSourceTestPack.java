@@ -106,8 +106,6 @@ public class PhptSourceTestPack extends SourceTestPack<PhptActiveTestPack, PhptT
 	 */
 	@Override
 	public void cleanup(ConsoleManager cm) {
-		if (true)
-			return; // TODO temp azure
 		cm.println(EPrintType.IN_PROGRESS, getClass(), "cleaning source-test-pack from previous PFTT or run-test.php run");
 		// these are symlinks(junctions) which may cause an infinite loop
 		//
@@ -144,6 +142,7 @@ public class PhptSourceTestPack extends SourceTestPack<PhptActiveTestPack, PhptT
 		fs.deleteFileExtension(test_pack, ".skip.php");
 		fs.deleteFileExtension(test_pack, ".cmd");
 		fs.deleteFileExtension(test_pack, ".sh");
+		fs.deleteFileExtension(test_pack, ".tmp");
 		// don't delete .php (specifically run-test.php) in root of test-pack (user may want it later)
 		IFileChooser PHP_CHOOSER = new IFileChooser() {
 			@Override
@@ -381,7 +380,7 @@ public class PhptSourceTestPack extends SourceTestPack<PhptActiveTestPack, PhptT
 				}
 			} else if (f.isFile()) {
 				String n = f.getName().toLowerCase();
-				if (!(n.endsWith(".sh") && n.endsWith(".php") && n.endsWith(".diff") && n.endsWith(".out") && n.endsWith(".exp") && n.endsWith(".cmd") && n.endsWith(".stdin"))) {
+				if (!(n.endsWith(".sh") || n.endsWith(".php") || n.endsWith(".diff") || n.endsWith(".out") || n.endsWith(".exp") || n.endsWith(".cmd") || n.endsWith(".stdin"))) {
 					// ignore these files. they may be left over if the user ran run-test.php or PFTT and aren't actually used for testing
 					// 
 					// test files we need are usually .inc but may also be .db... may be others (especially in future)
