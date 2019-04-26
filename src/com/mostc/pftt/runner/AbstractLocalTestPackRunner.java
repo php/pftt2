@@ -895,11 +895,6 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 										new_wsi = ((WebServerScenario)sapi_scenario).smgr.getWebServerInstance(cm, runner_fs, runner_host, scenario_set, build, 
 												group_key.getPhpIni(),
 												group_key.getEnv(),
-												// this instanceof PhpUnitThread ? //src_test_pack.getSourceDirectory()//
-														// yes definitely
-														// @see HttpPhpUnitTestCaseRunner#execute
-														// ((PhpUnitThread)this).my_temp_dir // TODO temp phpunit
-														// :
 												active_test_pack.getStorageDirectory(), thread_wsi, debugger_attached, completed_tests);
 										if (new_wsi!=thread_wsi && thread_wsi!=null) {
 											// be sure to close it or it will keep running (#getWebServerInstance doesn't close this)
