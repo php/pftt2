@@ -51,6 +51,10 @@ public final class HostEnvUtil {
 		= "https://aka.ms/vs/15/release/VC_redist.x86.exe";
 	static final String Link_VC15_Redist_X64
 		= "https://aka.ms/vs/15/release/VC_redist.x64.exe";
+	static final String Link_VC16_Redist_X86
+		= "https://aka.ms/vs/16/release/VC_redist.x86.exe";
+	static final String Link_VC16_Redist_X64
+		= "https://aka.ms/vs/16/release/VC_redist.x64.exe";
 	static final String Link_Mysql_community_5_7_25
 		= "https://cdn.mysql.com//Downloads/MySQLInstaller/mysql-installer-community-5.7.25.0.msi";
 	//= "https://dev.mysql.com/get/Downloads/MySQLInstaller/mysql-installer-community-5.7.25.0.msi";
@@ -72,6 +76,8 @@ public final class HostEnvUtil {
 	static final String File_VC14_Redist_X64 = Dir_Cache_Dep_VCRedist + "\\vc14_redist_x64.exe";
 	static final String File_VC15_Redist_X86 = Dir_Cache_Dep_VCRedist + "\\vc15_redist_x86.exe";
 	static final String File_VC15_Redist_X64 = Dir_Cache_Dep_VCRedist + "\\vc15_redist_x64.exe";
+	static final String File_VC16_Redist_X86 = Dir_Cache_Dep_VCRedist + "\\vc16_redist_x86.exe";
+	static final String File_VC16_Redist_X64 = Dir_Cache_Dep_VCRedist + "\\vc16_redist_x64.exe";
 	static final String File_Mysql_installer_community_5_7_25 = Dir_Cache_Dep_Mysql + "\\mysql-installer-community-5.7.25.0.msi";
 	
 	static final String Dir_Mysql = "C:\\MySQL";
@@ -96,11 +102,9 @@ public final class HostEnvUtil {
 	static final String Sys_Dll_VC11_Redist_X64 = Dir_SysWOW64 + "\\msvcr110.dll";
 	static final String Sys_Dll_VC12_Redist_X86 = Dir_System32 + "\\msvcr120.dll";
 	static final String Sys_Dll_VC12_Redist_X64 = Dir_SysWOW64 + "\\msvcr120.dll";
-	static final String Sys_Dll_VC14_Redist_X86 = Dir_System32 + "\\vcruntime140.dll";
-	static final String Sys_Dll_VC14_Redist_X64 = Dir_SysWOW64 + "\\vcruntime140.dll";
-	// Note: VC15 will have the same dll name with VC14, but version of 14.1 to be backward compatible
-	static final String Sys_Dll_VC15_Redist_X86 = Dir_System32 + "\\vcruntime140.dll";
-	static final String Sys_Dll_VC15_Redist_X64 = Dir_SysWOW64 + "\\vcruntime140.dll";
+	// Note: VC15 and VC16 will have the same dll name with VC14, but different version to be backward compatible
+	static final String Sys_Dll_VC14Plus_Redist_X86 = Dir_System32 + "\\vcruntime140.dll";
+	static final String Sys_Dll_VC14Plus_Redist_X64 = Dir_SysWOW64 + "\\vcruntime140.dll";
 	
 	public static void prepareHostEnv(FileSystemScenario fs, AHost host, ConsoleManager cm, PhpBuild build, boolean enable_debug_prompt) throws Exception {
 		if (host.isWindows()) {
@@ -333,18 +337,25 @@ public final class HostEnvUtil {
 			break;
 		case PHP_7_0:
 		case PHP_7_1:
-			installVCRT(cm, fs, host, "VC14 x86", File_VC14_Redist_X86, Sys_Dll_VC14_Redist_X86);
+			installVCRT14(cm, fs, host, "VC14 x86", File_VC14_Redist_X86, Sys_Dll_VC14Plus_Redist_X86);
 			if (build.isX64()) {
-				installVCRT(cm, fs, host, "VC14 x64", File_VC14_Redist_X64, Sys_Dll_VC14_Redist_X64);
+				installVCRT14(cm, fs, host, "VC14 x64", File_VC14_Redist_X64, Sys_Dll_VC14Plus_Redist_X64);
 			}
 			break;
 		case PHP_7_2:
 		case PHP_7_3:
+			installVCRT15(cm, fs, host, "VC15 x86", File_VC15_Redist_X86, Sys_Dll_VC14Plus_Redist_X86);
+			if (build.isX64()) {
+				installVCRT15(cm, fs, host, "VC15 x64", File_VC15_Redist_X64, Sys_Dll_VC14Plus_Redist_X64);
+			}
+			break;
+		case PHP_7_4:
+		case PHP_8_0:
 		case PHP_Master:
 		default:
-			installVCRT15(cm, fs, host, "VC15 x86", File_VC15_Redist_X86, Sys_Dll_VC15_Redist_X86);
+			installVCRT16(cm, fs, host, "VC16 x86", File_VC16_Redist_X86, Sys_Dll_VC14Plus_Redist_X86);
 			if (build.isX64()) {
-				installVCRT15(cm, fs, host, "VC15 x64", File_VC15_Redist_X64, Sys_Dll_VC15_Redist_X64);
+				installVCRT16(cm, fs, host, "VC16 x64", File_VC16_Redist_X64, Sys_Dll_VC14Plus_Redist_X64);
 			}
 			break;
 		} // end switch
@@ -376,11 +387,35 @@ public final class HostEnvUtil {
 			doInstallVCRT(cm, fs, host, name, installerFile);
 		}
 	}
+	
+	protected static void installVCRT14(ConsoleManager cm, FileSystemScenario fs, AHost host, String name, String installerFile, String sysDllFile)
+			throws IllegalStateException, IOException, Exception {
+
+		String dllFullName = host.getSystemRoot() + sysDllFile;
+		if(installedVCRT14(fs, dllFullName)) {
+			cm.println(EPrintType.CLUE, HostEnvUtil.class, name+" Runtime already installed");
+		}
+		else {		
+			doInstallVCRT(cm, fs, host, name, installerFile);
+		}
+	}
 
 	protected static void installVCRT15(ConsoleManager cm, FileSystemScenario fs, AHost host, String name, String installerFile, String sysDllFile)
 			throws IllegalStateException, IOException, Exception {
 
-		if(installedVCRT15(fs, host.getSystemRoot() + sysDllFile)) {
+		String dllFullName = host.getSystemRoot() + sysDllFile;
+		if(installedVCRT15(fs, dllFullName)) {
+			cm.println(EPrintType.CLUE, HostEnvUtil.class, name+" Runtime already installed");
+		}
+		else {
+			doInstallVCRT(cm, fs, host, name, installerFile);
+		}
+	}
+
+	protected static void installVCRT16(ConsoleManager cm, FileSystemScenario fs, AHost host, String name, String installerFile, String sysDllFile)
+			throws IllegalStateException, IOException, Exception {
+
+		if(installedVCRT16(fs, host.getSystemRoot() + sysDllFile)) {
 			cm.println(EPrintType.CLUE, HostEnvUtil.class, name+" Runtime already installed");
 		} else {
 			doInstallVCRT(cm, fs, host, name, installerFile);
@@ -388,11 +423,65 @@ public final class HostEnvUtil {
 	}
 
 	// checking if VCRT15 is installed by existing of the vcruntime140.dll and the file version
-	private static boolean installedVCRT15(FileSystemScenario fs, String vc15DllFile)
+	private static boolean installedVCRT14(FileSystemScenario fs, String dllFile)
 	{
-		if(!fs.exists(vc15DllFile))
+		if(!fs.exists(dllFile))
 		{
 			return false;
+		}
+		
+		int[] fileVersion = getVC14Version(fs, dllFile);
+		if(fileVersion.length != 4)
+		{
+			return false;
+		}
+
+        // VC14 Runtime dll file version: 14.0.23026.0
+		return fileVersion[0] == 14 && fileVersion[1] > 0;
+	}
+	
+	// checking if VCRT15 is installed by existing of the vcruntime140.dll and the file version
+	private static boolean installedVCRT15(FileSystemScenario fs, String dllFile)
+	{
+		if(!fs.exists(dllFile))
+		{
+			return false;
+		}
+		
+		int[] fileVersion = getVC14Version(fs, dllFile);
+		if(fileVersion.length != 4)
+		{
+			return false;
+		}
+
+        // VC15 Runtime dll file version: 14.16.27027.1
+		return fileVersion[0] == 14 && fileVersion[1] >= 16;
+	}
+	
+	// checking if VCRT15 is installed by existing of the vcruntime140.dll and the file version
+	private static boolean installedVCRT16(FileSystemScenario fs, String dllFile)
+	{
+		if(!fs.exists(dllFile))
+		{
+			return false;
+		}
+		
+		int[] fileVersion = getVC14Version(fs, dllFile);
+		if(fileVersion.length != 4)
+		{
+			return false;
+		}
+
+        // VC16 Runtime dll file version: 14.20.27508.1
+		return fileVersion[0] == 14 && fileVersion[1] >= 20;
+	}
+
+	// checking if VCRT15 is installed by existing of the vcruntime140.dll and the file version
+	private static int[] getVC14Version(FileSystemScenario fs, String dllFile)
+	{
+		if(!fs.exists(dllFile))
+		{
+			return new int[0];
 		}
 		
         IntByReference dwDummy = new IntByReference();
@@ -400,7 +489,7 @@ public final class HostEnvUtil {
 
         int versionlength =
                 com.sun.jna.platform.win32.Version.INSTANCE.GetFileVersionInfoSize(
-                		vc15DllFile, dwDummy);
+                		dllFile, dwDummy);
 
         byte[] bufferarray = new byte[versionlength];
         Pointer lpData = new Memory(bufferarray.length);
@@ -409,7 +498,7 @@ public final class HostEnvUtil {
 
         boolean fileInfoResult =
                 com.sun.jna.platform.win32.Version.INSTANCE.GetFileVersionInfo(
-                		vc15DllFile, 0, versionlength, lpData);
+                		dllFile, 0, versionlength, lpData);
 
         boolean verQueryVal =
                 com.sun.jna.platform.win32.Version.INSTANCE.VerQueryValue(
@@ -418,15 +507,13 @@ public final class HostEnvUtil {
         VS_FIXEDFILEINFO lplpBufStructure = new VS_FIXEDFILEINFO(lplpBuffer.getValue());
         lplpBufStructure.read();
         
-        // VC14 Runtime dll file version: 14.0.23026.0
-        // VC15 Runtime dll file version: 14.16.27027.1
         int v1 = (lplpBufStructure.dwFileVersionMS).intValue() >> 16;
         int v2 = (lplpBufStructure.dwFileVersionMS).intValue() & 0xffff;
         int v3 = (lplpBufStructure.dwFileVersionLS).intValue() >> 16;
         int v4 = (lplpBufStructure.dwFileVersionLS).intValue() & 0xffff;
 
-        return v2 > 0;
-	}	
+        return new int[] {v1, v2, v3, v4};
+	}
 	
 	
 	protected static void doInstallVCRT(ConsoleManager cm, FileSystemScenario fs, AHost host, String name, String installerFile) throws IllegalStateException, IOException, Exception {
@@ -553,18 +640,25 @@ public final class HostEnvUtil {
 			break;
 		case PHP_7_0:
 		case PHP_7_1:
-			downloadVCRuntime(fs, cm, "VC14 x86", Link_VC14_Redist_X86, File_VC14_Redist_X86, system_dir + Sys_Dll_VC14_Redist_X86);
+			downloadVC14Runtime(fs, cm, "VC14 x86", Link_VC14_Redist_X86, File_VC14_Redist_X86, system_dir + Sys_Dll_VC14Plus_Redist_X86);
 			if (build.isX64()) {
-				downloadVCRuntime(fs, cm, "VC14 x64", Link_VC14_Redist_X64, File_VC14_Redist_X64, system_dir + Sys_Dll_VC14_Redist_X64);
+				downloadVC14Runtime(fs, cm, "VC14 x64", Link_VC14_Redist_X64, File_VC14_Redist_X64, system_dir + Sys_Dll_VC14Plus_Redist_X64);
 			}
 			break;
 		case PHP_7_2:
 		case PHP_7_3:
+			downloadVC15Runtime(fs, cm, "VC15 x86", Link_VC15_Redist_X86, File_VC15_Redist_X86, system_dir + Sys_Dll_VC14Plus_Redist_X86);
+			if (build.isX64()) {
+				downloadVC15Runtime(fs, cm, "VC15 x64", Link_VC15_Redist_X64, File_VC15_Redist_X64, system_dir + Sys_Dll_VC14Plus_Redist_X64);
+			}
+			break;
+		case PHP_7_4:
+		case PHP_8_0:
 		case PHP_Master:
 		default:
-			downloadVC15Runtime(fs, cm, "VC15 x86", Link_VC15_Redist_X86, File_VC15_Redist_X86, system_dir + Sys_Dll_VC15_Redist_X86);
+			downloadVC16Runtime(fs, cm, "VC16 x86", Link_VC16_Redist_X86, File_VC16_Redist_X86, system_dir + Sys_Dll_VC14Plus_Redist_X86);
 			if (build.isX64()) {
-				downloadVC15Runtime(fs, cm, "VC15 x64", Link_VC15_Redist_X64, File_VC15_Redist_X64, system_dir + Sys_Dll_VC15_Redist_X64);
+				downloadVC16Runtime(fs, cm, "VC16 x64", Link_VC16_Redist_X64, File_VC16_Redist_X64, system_dir + Sys_Dll_VC14Plus_Redist_X64);
 			}
 			break;
 		} // end switch
@@ -582,10 +676,37 @@ public final class HostEnvUtil {
 		}
 	}
 		
+	private static void downloadVC14Runtime(FileSystemScenario fs, LocalConsoleManager cm,
+			String name, String remote_url, String installer_file, String dll_file)
+	{
+		if(installedVCRT14(fs, dll_file))
+		{
+			cm.println(EPrintType.CLUE, HostEnvUtil.class, name + " Runtime already installed, skip downloading.");
+		}
+		else
+		{
+			downloadFile(fs, cm, name, remote_url, installer_file);
+		}
+	}
+	
 	private static void downloadVC15Runtime(FileSystemScenario fs, LocalConsoleManager cm,
 			String name, String remote_url, String installer_file, String dll_file)
 	{
 		if(installedVCRT15(fs, dll_file))
+		{
+			cm.println(EPrintType.CLUE, HostEnvUtil.class, name + " Runtime already installed, skip downloading.");
+		}
+		else
+		{
+			downloadFile(fs, cm, name, remote_url, installer_file);
+		}
+	}
+
+	
+	private static void downloadVC16Runtime(FileSystemScenario fs, LocalConsoleManager cm,
+			String name, String remote_url, String installer_file, String dll_file)
+	{
+		if(installedVCRT16(fs, dll_file))
 		{
 			cm.println(EPrintType.CLUE, HostEnvUtil.class, name + " Runtime already installed, skip downloading.");
 		}

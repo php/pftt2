@@ -69,6 +69,18 @@ public enum EBuildBranch {
 			return null; // could be X86 or X64
 		}
 	},
+	PHP_7_4 {
+		@Override
+		public ECPUArch getCPUArch() {
+			return null; // could be X86 or X64
+		}
+	},
+	PHP_8_0 {
+		@Override
+		public ECPUArch getCPUArch() {
+			return null; // could be X86 or X64
+		}
+	},
 	STR_SIZE_AND_INT64 {
 		@Override
 		public ECPUArch getCPUArch() {

@@ -157,8 +157,9 @@ public class DownloadUtil {
 					}
 					break;					
 				}
-				cm.println(EPrintType.CANT_CONTINUE, DownloadUtil.class, "Error downloading file from [" + remote_url + "] with status " + statusLine.toString());
-				return false;
+				
+				throw new Exception("Error downloading file from [" + remote_url + "] with status " + statusLine.toString());
+	
 			}
 			
 			File local_file = new File(local_file_name);
