@@ -55,9 +55,6 @@ public final class HostEnvUtil {
 		= "https://aka.ms/vs/16/release/VC_redist.x86.exe";
 	static final String Link_VC16_Redist_X64
 		= "https://aka.ms/vs/16/release/VC_redist.x64.exe";
-	static final String Link_Mysql_community_5_7_25
-		= "https://cdn.mysql.com//Downloads/MySQLInstaller/mysql-installer-community-5.7.25.0.msi";
-	//= "https://dev.mysql.com/get/Downloads/MySQLInstaller/mysql-installer-community-5.7.25.0.msi";
 	static final String Link_Mysql_Win32_5_7_25
 		= "https://cdn.mysql.com//Downloads/MySQL-5.7/mysql-5.7.25-win32.zip";
 	
@@ -78,7 +75,6 @@ public final class HostEnvUtil {
 	static final String File_VC15_Redist_X64 = Dir_Cache_Dep_VCRedist + "\\vc15_redist_x64.exe";
 	static final String File_VC16_Redist_X86 = Dir_Cache_Dep_VCRedist + "\\vc16_redist_x86.exe";
 	static final String File_VC16_Redist_X64 = Dir_Cache_Dep_VCRedist + "\\vc16_redist_x64.exe";
-	static final String File_Mysql_installer_community_5_7_25 = Dir_Cache_Dep_Mysql + "\\mysql-installer-community-5.7.25.0.msi";
 	
 	static final String Dir_Mysql = "C:\\MySQL";
 	static final String Dir_Mysql_5_7 = Dir_Mysql + "\\mysql-5.7.25-win32";
@@ -215,26 +211,6 @@ public final class HostEnvUtil {
 		cm.println(EPrintType.COMPLETED_OPERATION, HostEnvUtil.class, "Windows host prepared to run PHP.");
 	} // end public static void prepareWindows
 	
-	private static void installMySqlInstaller(FileSystemScenario fs, AHost host, ConsoleManager cm) throws IllegalStateException, IOException, Exception {
-		String local_file = LocalHost.getLocalPfttDir() + File_Mysql_installer_community_5_7_25;
-		String remote_file = local_file;
-		if (host.isRemote()) {
-			remote_file = fs.mktempname(HostEnvUtil.class, ".msi");
-			
-			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Uploading MySql 5.7.25.0 installer file");
-			host.upload(local_file, remote_file);
-		}
-		
-		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Installing MySql installer community 5.7.25.0");
-		
-		// install mysql installer with msiexec.exe quietly
-		// msiexec /i mysql-installer-community-5.7.25.0.msi /quiet
-		host.execElevated(cm, HostEnvUtil.class, "msiexec.exe /i " + remote_file + " /quiet", AHost.TEN_MINUTES);
-		
-		if (remote_file!=null)
-			fs.delete(remote_file);
-	}
-
 	private static void installAndConfigureMySql(FileSystemScenario fs, AHost host, ConsoleManager cm) throws IllegalStateException, IOException, Exception {
 		
 		if(!fs.exists(Exe_Mysql_5_7_mysqld))
