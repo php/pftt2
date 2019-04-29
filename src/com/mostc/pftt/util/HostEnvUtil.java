@@ -51,9 +51,9 @@ public final class HostEnvUtil {
 		= "https://aka.ms/vs/15/release/VC_redist.x86.exe";
 	static final String Link_VC15_Redist_X64
 		= "https://aka.ms/vs/15/release/VC_redist.x64.exe";
-	static final String Link_VC16_Redist_X86
+	static final String Link_VS16_Redist_X86
 		= "https://aka.ms/vs/16/release/VC_redist.x86.exe";
-	static final String Link_VC16_Redist_X64
+	static final String Link_VS16_Redist_X64
 		= "https://aka.ms/vs/16/release/VC_redist.x64.exe";
 	static final String Link_Mysql_Win32_5_7_25
 		= "https://cdn.mysql.com//Downloads/MySQL-5.7/mysql-5.7.25-win32.zip";
@@ -73,19 +73,14 @@ public final class HostEnvUtil {
 	static final String File_VC14_Redist_X64 = Dir_Cache_Dep_VCRedist + "\\vc14_redist_x64.exe";
 	static final String File_VC15_Redist_X86 = Dir_Cache_Dep_VCRedist + "\\vc15_redist_x86.exe";
 	static final String File_VC15_Redist_X64 = Dir_Cache_Dep_VCRedist + "\\vc15_redist_x64.exe";
-	static final String File_VC16_Redist_X86 = Dir_Cache_Dep_VCRedist + "\\vc16_redist_x86.exe";
-	static final String File_VC16_Redist_X64 = Dir_Cache_Dep_VCRedist + "\\vc16_redist_x64.exe";
+	static final String File_VS16_Redist_X86 = Dir_Cache_Dep_VCRedist + "\\vc_vs16_redist_x86.exe";
+	static final String File_VS16_Redist_X64 = Dir_Cache_Dep_VCRedist + "\\vc_vs16_redist_x64.exe";
 	
 	static final String Dir_Mysql = "C:\\MySQL";
 	static final String Dir_Mysql_5_7 = Dir_Mysql + "\\mysql-5.7.25-win32";
 	static final String Dir_Mysql_5_7_bin = Dir_Mysql_5_7 + "\\bin";
 	static final String Exe_Mysql_5_7_mysqld = Dir_Mysql_5_7_bin + "\\mysqld.exe";
 	static final String Exe_Mysql_5_7_mysql = Dir_Mysql_5_7_bin + "\\mysql.exe";
-	// This is the default directory that MySQL installer X86 will be installed for Windows
-	//static final String Dir_Mysql_Installer_Win = "C:\\Program Files (x86)\\MySQL\\MySQL Installer for Windows";
-	//static final String Exe_Mysql_Installer_Win = Dir_Mysql_Installer_Win + "\\MySQLInstallerConsole.exe";	
-	//static final String Dir_Mysql_5_7_x86_Win = "c:\\Program Files (x86)\\MySQL\\MySQL Server 5.7";
-	//static final String Dir_Mysql_bin_5_7_x86_Win = Dir_Mysql_5_7_x86_Win + "\\bin";
 	
 	static final String Dir_WinSxS = "\\WinSxS";
 	static final String WinSxS_VC9_Fragment = "VC9";
@@ -329,9 +324,9 @@ public final class HostEnvUtil {
 		case PHP_8_0:
 		case PHP_Master:
 		default:
-			installVCRT16(cm, fs, host, "VC16 x86", File_VC16_Redist_X86, Sys_Dll_VC14Plus_Redist_X86);
+			installVCRT16(cm, fs, host, "VS16 x86", File_VS16_Redist_X86, Sys_Dll_VC14Plus_Redist_X86);
 			if (build.isX64()) {
-				installVCRT16(cm, fs, host, "VC16 x64", File_VC16_Redist_X64, Sys_Dll_VC14Plus_Redist_X64);
+				installVCRT16(cm, fs, host, "VS16 x64", File_VS16_Redist_X64, Sys_Dll_VC14Plus_Redist_X64);
 			}
 			break;
 		} // end switch
@@ -632,9 +627,9 @@ public final class HostEnvUtil {
 		case PHP_8_0:
 		case PHP_Master:
 		default:
-			downloadVC16Runtime(fs, cm, "VC16 x86", Link_VC16_Redist_X86, File_VC16_Redist_X86, system_dir + Sys_Dll_VC14Plus_Redist_X86);
+			downloadVC16Runtime(fs, cm, "VS16 x86", Link_VS16_Redist_X86, File_VS16_Redist_X86, system_dir + Sys_Dll_VC14Plus_Redist_X86);
 			if (build.isX64()) {
-				downloadVC16Runtime(fs, cm, "VC16 x64", Link_VC16_Redist_X64, File_VC16_Redist_X64, system_dir + Sys_Dll_VC14Plus_Redist_X64);
+				downloadVC16Runtime(fs, cm, "VS16 x64", Link_VS16_Redist_X64, File_VS16_Redist_X64, system_dir + Sys_Dll_VC14Plus_Redist_X64);
 			}
 			break;
 		} // end switch
