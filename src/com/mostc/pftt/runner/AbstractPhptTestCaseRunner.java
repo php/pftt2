@@ -210,21 +210,25 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner<
 			
 			// some tests create files/dirs which, which will cause the test to fail again
 			// if its run in-place from the same test-pack
-			if (!cm.isPhptNotInPlace()&&prep.test_clean!=null&&!host.isBusy()) {
+			if (!cm.isPhptNotInPlace()&&prep.test_clean!=null) {
 				current_section = EPhptSection.CLEAN; // @see #getSAPIOutput
-				executeClean(); // #executeClean != #doRunTestClean
+				executeClean(); // clean based on test file
+			}
+
+			// if test passed, remove files created to run the test
+			if(result.status.name() == EPhptTestStatus.PASS.toString()) {
+				removeTempFiles();
 			}
 		}
-		
-		if (!host.isBusy())
-			doRunTestClean(cm);
 	}
 	
 	protected void redoCrashedTest() throws Exception {
 	}
 	
-	protected void doRunTestClean(ConsoleManager cm) throws IllegalStateException, IOException {
-		
+	protected void removeTempFiles() throws IllegalStateException, IOException {
+		fs.deleteIfExists(prep.test_clean);
+		fs.deleteIfExists(prep.test_file);
+		fs.deleteIfExists(prep.test_dir + "\\" + prep.base_file_name + ".php.cmd");
 	}
 	
 	/** prepares to execute the test case up to executing the SKIPIF section

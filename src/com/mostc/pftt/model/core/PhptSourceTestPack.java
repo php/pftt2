@@ -142,6 +142,7 @@ public class PhptSourceTestPack extends SourceTestPack<PhptActiveTestPack, PhptT
 		fs.deleteFileExtension(test_pack, ".skip.php");
 		fs.deleteFileExtension(test_pack, ".cmd");
 		fs.deleteFileExtension(test_pack, ".sh");
+		fs.deleteFileExtension(test_pack, ".clean.php");
 		fs.deleteFileExtension(test_pack, ".tmp");
 		// don't delete .php (specifically run-test.php) in root of test-pack (user may want it later)
 		IFileChooser PHP_CHOOSER = new IFileChooser() {

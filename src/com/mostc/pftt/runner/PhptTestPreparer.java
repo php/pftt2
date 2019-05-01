@@ -9,6 +9,7 @@ import com.mostc.pftt.model.core.EPhptSection;
 import com.mostc.pftt.model.core.PhptActiveTestPack;
 import com.mostc.pftt.model.core.PhptSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
+import com.mostc.pftt.scenario.AzureKuduVFSScenario;
 // TODO import com.mostc.pftt.scenario.AzureWebsitesScenario;
 import com.mostc.pftt.scenario.FileSystemScenario;
 
@@ -56,9 +57,9 @@ public class PhptTestPreparer {
 		if (test_case.containsSection(EPhptSection.CLEAN)) {
 			prep.test_clean = host.joinIntoOnePath(prep.test_dir, prep.base_file_name + ".clean.php");
 			
-			/* TODO if (!AzureWebsitesScenario.check(fs)) {
+			if (!(fs instanceof AzureKuduVFSScenario)) {
 				fs.saveTextFile(prep.test_clean, test_case.get(EPhptSection.CLEAN));
-			} */
+			}
 		} // else test_clean = null;
 		
 		return prep;
