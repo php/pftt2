@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry excluding="com/mostc/pftt/scenario/AzureWebsitesScenario.java|com/mostc/pftt/scenario/AzureKuduVFSScenario.java" kind="src" path="src"/>
+	<classpathentry excluding="com/mostc/pftt/scenario/AzureWebsitesScenario.java" kind="src" path="src"/>
 	<classpathentry exported="true" kind="lib" path="lib/htmlcleaner-2.2.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/icu4j-49_1.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/icudata.jar"/>
