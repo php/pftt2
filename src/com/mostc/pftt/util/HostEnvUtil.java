@@ -163,6 +163,12 @@ public final class HostEnvUtil {
 		if ( a || b || c || enable_debug_prompt) {
 			// assume if registry had to be edited, the rest of this has to be done, otherwise assume this is all already done
 			// (avoid doing this if possible because it requires user to approve elevation)
+
+			/*
+			if (!host.isRemote()) {
+				// LATER edit firewall rules instead (what if on public network, ex: Azure)
+				host.execElevated(cm, HostEnvUtil.class, "netsh firewall set opmode disable", AHost.ONE_MINUTE);
+			}*/
 			
 			if (enable_debug_prompt) {
 				String win_dbg_exe = WinDebugManager.findWinDebugExe(host, build);
@@ -222,13 +228,13 @@ public final class HostEnvUtil {
 			
 			// Allow MySql installer through the Firewall
 			cm.println(EPrintType.IN_PROGRESS,  HostEnvUtil.class,  "Allowing MySql Server through Windows Firewall");
-			host.execElevated(cm, HostEnvUtil.class, "netsh advfirewall firewall add rule name=MySQL-Server-5.7.25.0 dir=in action=allow "
+			host.execElevated(cm, HostEnvUtil.class, "netsh advfirewall firewall add rule name=mysqld dir=in action=allow "
 					+ "program=\""+ Exe_Mysql_5_7_mysqld +"\" enable=yes", AHost.ONE_MINUTE);
 
 			// Install the MySQL service
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Installing MySQL as a windows service");
 			// mysqld.exe --install
-			host.execOut("\"" + Exe_Mysql_5_7_mysqld + "\" --install", AHost.TEN_MINUTES);
+			host.execElevated("\"" + Exe_Mysql_5_7_mysqld + "\" --install", AHost.TEN_MINUTES);
 			
 			// initialize the MySQL service
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Initializing MySQL service");
@@ -241,7 +247,7 @@ public final class HostEnvUtil {
 		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Starting MySQL service");
 		// start MySQL service using sc.exe
 		// sc start MySQL
-		host.execOut("sc.exe start MySQL", AHost.TEN_MINUTES);
+		host.execElevated("sc.exe start MySQL", AHost.TEN_MINUTES);
 		
 		// Create database "test" if not exist
 		// mysql -u root -e "create database if not exists test"
