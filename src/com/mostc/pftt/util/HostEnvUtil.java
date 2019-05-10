@@ -164,15 +164,6 @@ public final class HostEnvUtil {
 			// assume if registry had to be edited, the rest of this has to be done, otherwise assume this is all already done
 			// (avoid doing this if possible because it requires user to approve elevation)
 			
-			
-			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "disabling Windows Firewall...");
-			
-			if (!host.isRemote()) {
-				// LATER edit firewall rules instead (what if on public network, ex: Azure)
-				host.execElevated(cm, HostEnvUtil.class, "netsh firewall set opmode disable", AHost.ONE_MINUTE);
-			}
-			
-			//
 			if (enable_debug_prompt) {
 				String win_dbg_exe = WinDebugManager.findWinDebugExe(host, build);
 				//
@@ -229,6 +220,11 @@ public final class HostEnvUtil {
 			String data_dir = Dir_Mysql_5_7 + "\\data";
 			createDirectoryIfNotExists(fs, cm, data_dir);
 			
+			// Allow MySql installer through the Firewall
+			cm.println(EPrintType.IN_PROGRESS,  HostEnvUtil.class,  "Allowing MySql Server through Windows Firewall");
+			host.execElevated(cm, HostEnvUtil.class, "netsh advfirewall firewall add rule name=MySQL-Server-5.7.25.0 dir=in action=allow "
+					+ "program=\""+ Exe_Mysql_5_7_mysqld +"\" enable=yes", AHost.ONE_MINUTE);
+
 			// Install the MySQL service
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Installing MySQL as a windows service");
 			// mysqld.exe --install
@@ -490,6 +486,12 @@ public final class HostEnvUtil {
 	protected static void doInstallVCRT(ConsoleManager cm, FileSystemScenario fs, AHost host, String name, String installerFile) throws IllegalStateException, IOException, Exception {
 		String local_file = LocalHost.getLocalPfttDir() + installerFile;
 		String remote_file = local_file;
+
+		// Allow installer for VCRedist installer through firewall
+		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Allowing installer pass Windows Firewall...");
+		host.execElevated(cm, HostEnvUtil.class, "netsh advfirewall firewall add rule name=" + name + " dir=in action=allow "
+				+ "program=\""+ installerFile +"\" enable=yes", AHost.ONE_MINUTE);
+
 		if (host.isRemote()) {
 			remote_file = fs.mktempname(HostEnvUtil.class, ".exe");
 			
