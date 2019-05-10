@@ -87,15 +87,15 @@ public final class HostEnvUtil {
 	
 	static final String Dir_System32 = "\\system32";
 	static final String Dir_SysWOW64 = "\\SysWOW64";
-	static final String Sys_Dll_VC10_Redist_X86 = Dir_System32 + "\\msvcr100.dll";
-	static final String Sys_Dll_VC10_Redist_X64 = Dir_SysWOW64 + "\\msvcr100.dll";
-	static final String Sys_Dll_VC11_Redist_X86 = Dir_System32 + "\\msvcr110.dll";
-	static final String Sys_Dll_VC11_Redist_X64 = Dir_SysWOW64 + "\\msvcr110.dll";
-	static final String Sys_Dll_VC12_Redist_X86 = Dir_System32 + "\\msvcr120.dll";
-	static final String Sys_Dll_VC12_Redist_X64 = Dir_SysWOW64 + "\\msvcr120.dll";
+	static final String Sys_Dll_VC10_Redist_X86 = Dir_SysWOW64 + "\\msvcr100.dll";
+	static final String Sys_Dll_VC10_Redist_X64 = Dir_System32 + "\\msvcr100.dll";
+	static final String Sys_Dll_VC11_Redist_X86 = Dir_SysWOW64 + "\\msvcr110.dll";
+	static final String Sys_Dll_VC11_Redist_X64 = Dir_System32 + "\\msvcr110.dll";
+	static final String Sys_Dll_VC12_Redist_X86 = Dir_SysWOW64 + "\\msvcr120.dll";
+	static final String Sys_Dll_VC12_Redist_X64 = Dir_System32 + "\\msvcr120.dll";
 	// Note: VC15 and VC16 will have the same dll name with VC14, but different version to be backward compatible
-	static final String Sys_Dll_VC14Plus_Redist_X86 = Dir_System32 + "\\vcruntime140.dll";
-	static final String Sys_Dll_VC14Plus_Redist_X64 = Dir_SysWOW64 + "\\vcruntime140.dll";
+	static final String Sys_Dll_VC14Plus_Redist_X86 = Dir_SysWOW64 + "\\vcruntime140.dll";
+	static final String Sys_Dll_VC14Plus_Redist_X64 = Dir_System32 + "\\vcruntime140.dll";
 	
 	public static void prepareHostEnv(FileSystemScenario fs, AHost host, ConsoleManager cm, PhpBuild build, boolean enable_debug_prompt) throws Exception {
 		if (host.isWindows()) {
@@ -164,15 +164,6 @@ public final class HostEnvUtil {
 			// assume if registry had to be edited, the rest of this has to be done, otherwise assume this is all already done
 			// (avoid doing this if possible because it requires user to approve elevation)
 			
-			
-			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "disabling Windows Firewall...");
-			
-			if (!host.isRemote()) {
-				// LATER edit firewall rules instead (what if on public network, ex: Azure)
-				host.execElevated(cm, HostEnvUtil.class, "netsh firewall set opmode disable", AHost.ONE_MINUTE);
-			}
-			
-			//
 			if (enable_debug_prompt) {
 				String win_dbg_exe = WinDebugManager.findWinDebugExe(host, build);
 				//
@@ -198,7 +189,6 @@ public final class HostEnvUtil {
 			// share PHP-SDK over network. this also will share C$, G$, etc...
 			//host.execElevated(cm, HostEnvUtil.class, "NET SHARE PHP_SDK="+host.getJobWorkDir()+" /Grant:"+host.getUsername()+",Full", AHost.ONE_MINUTE);
 		}
-		
 		installVCRuntime(fs, host, cm, build);
 		
 		installAndConfigureMySql(fs, host, cm);
@@ -228,7 +218,12 @@ public final class HostEnvUtil {
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Creating data folder for MySql Server 5.7.25.0");		
 			String data_dir = Dir_Mysql_5_7 + "\\data";
 			createDirectoryIfNotExists(fs, cm, data_dir);
-			
+
+			String name = "MySql-Server-5.7.25";
+
+			// Allow Mysql installer through firewall
+			addRuleToFirewall(cm, host, name, Exe_Mysql_5_7_mysqld);
+
 			// Install the MySQL service
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Installing MySQL as a windows service");
 			// mysqld.exe --install
@@ -490,6 +485,10 @@ public final class HostEnvUtil {
 	protected static void doInstallVCRT(ConsoleManager cm, FileSystemScenario fs, AHost host, String name, String installerFile) throws IllegalStateException, IOException, Exception {
 		String local_file = LocalHost.getLocalPfttDir() + installerFile;
 		String remote_file = local_file;
+
+		// Allow VC installer through firewall
+		addRuleToFirewall(cm, host, name, installerFile);
+
 		if (host.isRemote()) {
 			remote_file = fs.mktempname(HostEnvUtil.class, ".exe");
 			
@@ -710,6 +709,25 @@ public final class HostEnvUtil {
 		else
 		{
 			DownloadUtil.downloadFile(cm, remote_url, local_file);
+		}
+	}
+
+	/* Adds a rule for the installerFile to bypass the firewall.
+	 * Will not create an additional rule if it already exists.
+	 */
+	private static void addRuleToFirewall(ConsoleManager cm, AHost host, String name, String installerFile) throws IOException, Exception {
+		String rule = name.replace(' ', '_');
+
+		ExecOutput op = host.execOut("cmd /c powershell -Command \"if ($(Get-NetFirewallRule -DisplayName '"+ rule + "')) {echo 'found'} else { echo 'not found' }\" 2>nul", AHost.TEN_MINUTES);
+
+		// Check if rule exists for file, if not add it
+		// TODO: Adjust to use exit status, but have to figure out why java overwrites status code.
+		if(op.output.contains("not found")) {
+			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Adding " + name + " as rule for the firewall...");
+			host.execElevated(cm, HostEnvUtil.class, "netsh advfirewall firewall add rule name=" + rule + " dir=in action=allow "
+					+ "program=\""+ installerFile +"\" enable=yes remoteip=127.0.0.1", AHost.ONE_MINUTE);
+		} else {
+			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, rule + " already exists in firewall.");
 		}
 	}
 
