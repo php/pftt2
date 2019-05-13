@@ -87,15 +87,15 @@ public final class HostEnvUtil {
 	
 	static final String Dir_System32 = "\\system32";
 	static final String Dir_SysWOW64 = "\\SysWOW64";
-	static final String Sys_Dll_VC10_Redist_X86 = Dir_System32 + "\\msvcr100.dll";
-	static final String Sys_Dll_VC10_Redist_X64 = Dir_SysWOW64 + "\\msvcr100.dll";
-	static final String Sys_Dll_VC11_Redist_X86 = Dir_System32 + "\\msvcr110.dll";
-	static final String Sys_Dll_VC11_Redist_X64 = Dir_SysWOW64 + "\\msvcr110.dll";
-	static final String Sys_Dll_VC12_Redist_X86 = Dir_System32 + "\\msvcr120.dll";
-	static final String Sys_Dll_VC12_Redist_X64 = Dir_SysWOW64 + "\\msvcr120.dll";
+	static final String Sys_Dll_VC10_Redist_X86 = Dir_SysWOW64 + "\\msvcr100.dll";
+	static final String Sys_Dll_VC10_Redist_X64 = Dir_System32 + "\\msvcr100.dll";
+	static final String Sys_Dll_VC11_Redist_X86 = Dir_SysWOW64 + "\\msvcr110.dll";
+	static final String Sys_Dll_VC11_Redist_X64 = Dir_System32 + "\\msvcr110.dll";
+	static final String Sys_Dll_VC12_Redist_X86 = Dir_SysWOW64 + "\\msvcr120.dll";
+	static final String Sys_Dll_VC12_Redist_X64 = Dir_System32 + "\\msvcr120.dll";
 	// Note: VC15 and VC16 will have the same dll name with VC14, but different version to be backward compatible
-	static final String Sys_Dll_VC14Plus_Redist_X86 = Dir_System32 + "\\vcruntime140.dll";
-	static final String Sys_Dll_VC14Plus_Redist_X64 = Dir_SysWOW64 + "\\vcruntime140.dll";
+	static final String Sys_Dll_VC14Plus_Redist_X86 = Dir_SysWOW64 + "\\vcruntime140.dll";
+	static final String Sys_Dll_VC14Plus_Redist_X64 = Dir_System32 + "\\vcruntime140.dll";
 	
 	public static void prepareHostEnv(FileSystemScenario fs, AHost host, ConsoleManager cm, PhpBuild build, boolean enable_debug_prompt) throws Exception {
 		if (host.isWindows()) {
@@ -225,11 +225,18 @@ public final class HostEnvUtil {
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Creating data folder for MySql Server 5.7.25.0");		
 			String data_dir = Dir_Mysql_5_7 + "\\data";
 			createDirectoryIfNotExists(fs, cm, data_dir);
-			
-			// Allow MySql installer through the Firewall
-			cm.println(EPrintType.IN_PROGRESS,  HostEnvUtil.class,  "Allowing MySql Server through Windows Firewall");
-			host.execElevated(cm, HostEnvUtil.class, "netsh advfirewall firewall add rule name=mysqld dir=in action=allow "
-					+ "program=\""+ Exe_Mysql_5_7_mysqld +"\" enable=yes", AHost.ONE_MINUTE);
+
+			String rule = "MySql-Server-5.7.25";
+			op = host.execOut("netsh advfirewall firewall show rule name=" + rule, AHost.ONE_MINUTE);
+
+			// Check if rule in firewall exists for mysql, if not add it
+			if(op.output.contains("No rules match the specified criteria.")) {
+				cm.println(EPrintType.IN_PROGRESS,  HostEnvUtil.class,  "Adding MySql Server as rule for the firewall");
+				host.execElevated(cm, HostEnvUtil.class, "netsh advfirewall firewall add rule name=" + rule + " dir=in action=allow "
+						+ "program=\""+ Exe_Mysql_5_7_mysqld +"\" enable=yes", AHost.ONE_MINUTE);
+			} else {
+				cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, rule + " already exists in firewall.");
+			}
 
 			// Install the MySQL service
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Installing MySQL as a windows service");
@@ -492,11 +499,18 @@ public final class HostEnvUtil {
 	protected static void doInstallVCRT(ConsoleManager cm, FileSystemScenario fs, AHost host, String name, String installerFile) throws IllegalStateException, IOException, Exception {
 		String local_file = LocalHost.getLocalPfttDir() + installerFile;
 		String remote_file = local_file;
+		String rule = name.replace(' ', '_');
 
-		// Allow installer for VCRedist installer through firewall
-		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Allowing installer pass Windows Firewall...");
-		host.execElevated(cm, HostEnvUtil.class, "netsh advfirewall firewall add rule name=" + name + " dir=in action=allow "
-				+ "program=\""+ installerFile +"\" enable=yes", AHost.ONE_MINUTE);
+		ExecOutput op = host.execOut("netsh advfirewall firewall show rule name=" + rule, AHost.ONE_MINUTE);
+
+		// Check if rule exists for specific VC in firewall, if not add it
+		if(op.output.contains("No rules match the specified criteria.")) {
+			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Adding " + name + " as rule for the firewall...");
+			host.execElevated(cm, HostEnvUtil.class, "netsh advfirewall firewall add rule name=" + rule + " dir=in action=allow "
+					+ "program=\""+ installerFile +"\" enable=yes", AHost.ONE_MINUTE);
+		} else {
+			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, rule + " already exists in firewall.");
+		}
 
 		if (host.isRemote()) {
 			remote_file = fs.mktempname(HostEnvUtil.class, ".exe");
