@@ -163,12 +163,6 @@ public final class HostEnvUtil {
 		if ( a || b || c || enable_debug_prompt) {
 			// assume if registry had to be edited, the rest of this has to be done, otherwise assume this is all already done
 			// (avoid doing this if possible because it requires user to approve elevation)
-
-			/*
-			if (!host.isRemote()) {
-				// LATER edit firewall rules instead (what if on public network, ex: Azure)
-				host.execElevated(cm, HostEnvUtil.class, "netsh firewall set opmode disable", AHost.ONE_MINUTE);
-			}*/
 			
 			if (enable_debug_prompt) {
 				String win_dbg_exe = WinDebugManager.findWinDebugExe(host, build);
@@ -227,14 +221,9 @@ public final class HostEnvUtil {
 			createDirectoryIfNotExists(fs, cm, data_dir);
 
 			String name = "MySql-Server-5.7.25";
-			op = host.execOut("netsh advfirewall firewall show rule name=" + name, AHost.ONE_MINUTE);
 
-			// Check if rule in firewall exists for mysql, if not add it
-			if(op.output.contains("No rules match the specified criteria.")) {
-				addRuletoFirewall(cm, host, name, Exe_Mysql_5_7_mysqld);
-			} else {
-				cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, name + " already exists in firewall.");
-			}
+			// Allow Mysql installer through firewall
+			addRuleToFirewall(cm, host, name, Exe_Mysql_5_7_mysqld);
 
 			// Install the MySQL service
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Installing MySQL as a windows service");
@@ -497,16 +486,9 @@ public final class HostEnvUtil {
 	protected static void doInstallVCRT(ConsoleManager cm, FileSystemScenario fs, AHost host, String name, String installerFile) throws IllegalStateException, IOException, Exception {
 		String local_file = LocalHost.getLocalPfttDir() + installerFile;
 		String remote_file = local_file;
-		String rule = name.replace(' ', '_');
 
-		ExecOutput op = host.execOut("netsh advfirewall firewall show rule name=" + rule, AHost.ONE_MINUTE);
-
-		// Check if rule exists for specific VC in firewall, if not add it
-		if(op.output.contains("No rules match the specified criteria.")) {
-			addRuletoFirewall(cm, host, name, installerFile);
-		} else {
-			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, rule + " already exists in firewall.");
-		}
+		// Allow VC installer through firewall
+		addRuleToFirewall(cm, host, name, installerFile);
 
 		if (host.isRemote()) {
 			remote_file = fs.mktempname(HostEnvUtil.class, ".exe");
@@ -731,12 +713,22 @@ public final class HostEnvUtil {
 		}
 	}
 
-	private static void addRuletoFirewall(ConsoleManager cm, AHost host, String name, String installerFile) throws IOException, Exception {
+	/* Adds a rule for the installerFile to bypass the firewall.
+	 * Will not create an additional rule if it already exists.
+	 */
+	private static void addRuleToFirewall(ConsoleManager cm, AHost host, String name, String installerFile) throws IOException, Exception {
 		String rule = name.replace(' ', '_');
 
-		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Adding " + name + " as rule for the firewall...");
-		host.execElevated(cm, HostEnvUtil.class, "netsh advfirewall firewall add rule name=" + rule + " dir=in action=allow "
-				+ "program=\""+ installerFile +"\" enable=yes", AHost.ONE_MINUTE);
+		ExecOutput op = host.execOut("netsh advfirewall firewall show rule name=" + rule, AHost.ONE_MINUTE);
+
+		// Check if rule exists for file, if not add it
+		if(op.output.contains("No rules match the specified criteria.")) {
+			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Adding " + name + " as rule for the firewall...");
+			host.execElevated(cm, HostEnvUtil.class, "netsh advfirewall firewall add rule name=" + rule + " dir=in action=allow "
+					+ "program=\""+ installerFile +"\" enable=yes", AHost.ONE_MINUTE);
+		} else {
+			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, rule + " already exists in firewall.");
+		}
 	}
 
 	private HostEnvUtil() {}
