@@ -226,16 +226,14 @@ public final class HostEnvUtil {
 			String data_dir = Dir_Mysql_5_7 + "\\data";
 			createDirectoryIfNotExists(fs, cm, data_dir);
 
-			String rule = "MySql-Server-5.7.25";
-			op = host.execOut("netsh advfirewall firewall show rule name=" + rule, AHost.ONE_MINUTE);
+			String name = "MySql-Server-5.7.25";
+			op = host.execOut("netsh advfirewall firewall show rule name=" + name, AHost.ONE_MINUTE);
 
 			// Check if rule in firewall exists for mysql, if not add it
 			if(op.output.contains("No rules match the specified criteria.")) {
-				cm.println(EPrintType.IN_PROGRESS,  HostEnvUtil.class,  "Adding MySql Server as rule for the firewall");
-				host.execElevated(cm, HostEnvUtil.class, "netsh advfirewall firewall add rule name=" + rule + " dir=in action=allow "
-						+ "program=\""+ Exe_Mysql_5_7_mysqld +"\" enable=yes", AHost.ONE_MINUTE);
+				addRuletoFirewall(cm, host, name, Exe_Mysql_5_7_mysqld);
 			} else {
-				cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, rule + " already exists in firewall.");
+				cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, name + " already exists in firewall.");
 			}
 
 			// Install the MySQL service
@@ -505,9 +503,7 @@ public final class HostEnvUtil {
 
 		// Check if rule exists for specific VC in firewall, if not add it
 		if(op.output.contains("No rules match the specified criteria.")) {
-			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Adding " + name + " as rule for the firewall...");
-			host.execElevated(cm, HostEnvUtil.class, "netsh advfirewall firewall add rule name=" + rule + " dir=in action=allow "
-					+ "program=\""+ installerFile +"\" enable=yes", AHost.ONE_MINUTE);
+			addRuletoFirewall(cm, host, name, installerFile);
 		} else {
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, rule + " already exists in firewall.");
 		}
@@ -733,6 +729,14 @@ public final class HostEnvUtil {
 		{
 			DownloadUtil.downloadFile(cm, remote_url, local_file);
 		}
+	}
+
+	private static void addRuletoFirewall(ConsoleManager cm, AHost host, String name, String installerFile) throws IOException, Exception {
+		String rule = name.replace(' ', '_');
+
+		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Adding " + name + " as rule for the firewall...");
+		host.execElevated(cm, HostEnvUtil.class, "netsh advfirewall firewall add rule name=" + rule + " dir=in action=allow "
+				+ "program=\""+ installerFile +"\" enable=yes", AHost.ONE_MINUTE);
 	}
 
 	private HostEnvUtil() {}
