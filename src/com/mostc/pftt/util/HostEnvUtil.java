@@ -189,7 +189,7 @@ public final class HostEnvUtil {
 			// share PHP-SDK over network. this also will share C$, G$, etc...
 			//host.execElevated(cm, HostEnvUtil.class, "NET SHARE PHP_SDK="+host.getJobWorkDir()+" /Grant:"+host.getUsername()+",Full", AHost.ONE_MINUTE);
 		}
-		
+		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, host.getAddress());
 		installVCRuntime(fs, host, cm, build);
 		
 		installAndConfigureMySql(fs, host, cm);
@@ -228,7 +228,7 @@ public final class HostEnvUtil {
 			// Install the MySQL service
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Installing MySQL as a windows service");
 			// mysqld.exe --install
-			host.execElevated("\"" + Exe_Mysql_5_7_mysqld + "\" --install", AHost.TEN_MINUTES);
+			host.execOut("\"" + Exe_Mysql_5_7_mysqld + "\" --install", AHost.TEN_MINUTES);
 			
 			// initialize the MySQL service
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Initializing MySQL service");
@@ -241,7 +241,7 @@ public final class HostEnvUtil {
 		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Starting MySQL service");
 		// start MySQL service using sc.exe
 		// sc start MySQL
-		host.execElevated("sc.exe start MySQL", AHost.TEN_MINUTES);
+		host.execOut("sc.exe start MySQL", AHost.TEN_MINUTES);
 		
 		// Create database "test" if not exist
 		// mysql -u root -e "create database if not exists test"
@@ -725,7 +725,7 @@ public final class HostEnvUtil {
 		if(op.output.contains("No rules match the specified criteria.")) {
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Adding " + name + " as rule for the firewall...");
 			host.execElevated(cm, HostEnvUtil.class, "netsh advfirewall firewall add rule name=" + rule + " dir=in action=allow "
-					+ "program=\""+ installerFile +"\" enable=yes", AHost.ONE_MINUTE);
+					+ "program=\""+ installerFile +"\" enable=yes remoteip=127.0.0.1", AHost.ONE_MINUTE);
 		} else {
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, rule + " already exists in firewall.");
 		}
