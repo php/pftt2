@@ -142,35 +142,15 @@ public class PhpIni {
 		return o;
 	}
 	
-	static final Pattern PAT_PWD = Pattern.compile("\\{PWD\\}");
-	static final Pattern PAT_TMP = Pattern.compile("\\{TMP\\}");
-	static final Pattern PAT_BS = Pattern.compile("\\\\");
-	static final Pattern PAT_FS = Pattern.compile("/");
+	static final String PH_PWD = "{PWD}";
+	static final String PH_TMP = "{TMP}";
 	public PhpIni(String ini_str, String pwd, String tmp) {
 		this();
-		if (pwd!=null&&ini_str.contains("{PWD}")) {
-			if(SystemUtils.IS_OS_WINDOWS)
-			{
-				// CRITICAL: ensure that correct \\s are used for paths on Windows
-				String escapedPwd = StringUtil.replaceAll(PAT_BS, "\\\\\\\\", pwd);
-				ini_str = StringUtil.replaceAll(PAT_PWD, escapedPwd, ini_str);
-			}
-			else
-			{
-				ini_str = StringUtil.replaceAll(PAT_PWD, pwd, ini_str);
-			}
+		if (pwd!=null&&ini_str.contains(PH_PWD)) {
+			ini_str = ini_str.replace(PH_PWD, pwd);
 		}
-		if (tmp!=null&&ini_str.contains("{TMP}")) {
-			if(SystemUtils.IS_OS_WINDOWS)
-			{
-				// CRITICAL: ensure that correct \\s are used for paths on Windows
-				String escapedTmp = StringUtil.replaceAll(PAT_BS, "\\\\\\\\", tmp);
-				ini_str = StringUtil.replaceAll(PAT_TMP, escapedTmp, ini_str);
-			}
-			else
-			{
-				ini_str = StringUtil.replaceAll(PAT_TMP, tmp, ini_str);
-			}
+		if (tmp!=null&&ini_str.contains(PH_TMP)) {
+			ini_str = ini_str.replace(PH_TMP, tmp);
 		}
 		// read ini string, line by line
 		for (String line : StringUtil.splitLines(ini_str)) {
