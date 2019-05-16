@@ -9,6 +9,8 @@ import java.util.regex.Pattern;
 
 import javax.annotation.Nullable;
 
+import org.apache.commons.lang.SystemUtils;
+
 import com.github.mattficken.io.ArrayUtil;
 import com.github.mattficken.io.StringUtil;
 import com.mostc.pftt.host.AHost;
@@ -121,7 +123,7 @@ public class PhpIni {
 	}
 	
 	public PhpIni(String ini_str) {
-		this(ini_str, "");
+		this(ini_str, "", "");
 		// "" => replace {PWD} with "" 
 	}
 	
@@ -140,15 +142,15 @@ public class PhpIni {
 		return o;
 	}
 	
-	static final Pattern PAT_PWD = Pattern.compile("\\{PWD\\}");
-	static final Pattern PAT_BS = Pattern.compile("\\\\");
-	static final Pattern PAT_FS = Pattern.compile("/");
-	public PhpIni(String ini_str, String pwd) {
+	static final String PH_PWD = "{PWD}";
+	static final String PH_TMP = "{TMP}";
+	public PhpIni(String ini_str, String pwd, String tmp) {
 		this();
-		if (pwd!=null&&ini_str.contains("{PWD}")) {
-			ini_str = StringUtil.replaceAll(PAT_PWD, pwd, ini_str);
-			
-			// CRITICAL: ensure that correct \\s are used for paths on Windows
+		if (pwd!=null&&ini_str.contains(PH_PWD)) {
+			ini_str = ini_str.replace(PH_PWD, pwd);
+		}
+		if (tmp!=null&&ini_str.contains(PH_TMP)) {
+			ini_str = ini_str.replace(PH_TMP, tmp);
 		}
 		// read ini string, line by line
 		for (String line : StringUtil.splitLines(ini_str)) {

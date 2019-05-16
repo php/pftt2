@@ -1,5 +1,6 @@
 package com.mostc.pftt.model.core;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -124,7 +125,7 @@ public class PhptTestCase extends TestCase {
 	private String bork_info, unsupported_info;
 	private PhptTestCase parent;
 	private WeakReference<PhpIni> ini;
-	private WeakReference<String> ini_pwd, contents;
+	private WeakReference<String> ini_pwd, ini_tmp, contents;
 	private SoftReference<RE> expected_re;
 	private PhptSourceTestPack test_pack;
 	private CharsetICU common_charset;
@@ -394,21 +395,28 @@ public class PhptTestCase extends TestCase {
 	public PhpIni getINI(PhptActiveTestPack active_test_pack, AHost host) {
 		PhpIni this_ini;
 		String this_ini_pwd;
-		String ini_pwd = active_test_pack.getStorageDirectory()+"/"+FileSystemScenario.dirname(name);
-		if (this.ini_pwd!=null) {
+		String this_ini_tmp;
+		String dirName = FileSystemScenario.osDirName(name);
+		String ini_pwd = active_test_pack.getStorageDirectory()+File.separator+dirName;
+		String ini_tmp = host.getTempDir();
+		if (this.ini_pwd!=null && this.ini_tmp != null) {
 			this_ini_pwd = this.ini_pwd.get();
-			if (this_ini_pwd != null && this_ini_pwd.equals(ini_pwd)) {
+			this_ini_tmp = this.ini_tmp.get();
+			if (this_ini_pwd != null && this_ini_pwd.equals(ini_pwd)
+				&& this_ini_tmp !=null && this_ini_tmp.equals(ini_tmp)) {
 				// cache ini (speed), but replace it in case the PWD changes
 				if (this.ini!=null) {
 					this_ini = this.ini.get();
 					if (this_ini!=null)
 						return this_ini;
 				}
-			}				
+			}
 		}
-				
+		
 		this_ini_pwd = ini_pwd;
+		this_ini_tmp = ini_tmp;
 		this.ini_pwd = new WeakReference<String>(this_ini_pwd);
+		this.ini_tmp = new WeakReference<String>(this_ini_tmp);
 		
 		String ini_str = section_text.get(EPhptSection.INI);
 		if (StringUtil.isEmpty(ini_str)) {
@@ -416,8 +424,8 @@ public class PhptTestCase extends TestCase {
 			this.ini = new WeakReference<PhpIni>(this_ini);
 			return this_ini;
 		}
-				
-		this_ini = new PhpIni(ini_str, ini_pwd);
+		
+		this_ini = new PhpIni(ini_str, ini_pwd, ini_tmp);
 		this.ini = new WeakReference<PhpIni>(this_ini);
 		return this_ini;
 	}

@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang.SystemUtils;
+
 import com.github.mattficken.io.ByLineReader;
 import com.github.mattficken.io.CharsetDeciderDecoder;
 import com.github.mattficken.io.IOUtil;
@@ -89,6 +91,17 @@ public abstract class FileSystemScenario extends AbstractSerialScenario {
 			// j>i
 			return path.substring(i, j);
 		}		
+	}
+	
+	public static String osDirName(String path)
+	{
+		if(SystemUtils.IS_OS_WINDOWS)
+		{
+			String winPath = toWindowsPath(path);
+			return dirname(winPath);
+		}
+		String unixPath = toUnixPath(path);
+		return dirname(unixPath);
 	}
 	
 	/** returns the filename from a directory path

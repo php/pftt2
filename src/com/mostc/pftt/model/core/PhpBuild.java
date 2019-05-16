@@ -367,8 +367,9 @@ public class PhpBuild extends SAPIManager {
 				return ini;
 		}
 		String path = getDefaultPhpIniPath(fs, host, type);
+		String tmp = host.getTempDir();
 		if (host.mExists(path))
-			ini = new PhpIni(host.mGetContents(path), build_path);
+			ini = new PhpIni(host.mGetContents(path), build_path, tmp);
 		else
 			ini = RequiredExtensionsSmokeTest.createDefaultIniCopy(cm, fs, host, this);
 		
