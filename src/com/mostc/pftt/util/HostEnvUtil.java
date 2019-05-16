@@ -189,7 +189,6 @@ public final class HostEnvUtil {
 			// share PHP-SDK over network. this also will share C$, G$, etc...
 			//host.execElevated(cm, HostEnvUtil.class, "NET SHARE PHP_SDK="+host.getJobWorkDir()+" /Grant:"+host.getUsername()+",Full", AHost.ONE_MINUTE);
 		}
-		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, host.getAddress());
 		installVCRuntime(fs, host, cm, build);
 		
 		installAndConfigureMySql(fs, host, cm);
@@ -722,7 +721,7 @@ public final class HostEnvUtil {
 		ExecOutput op = host.execOut("netsh advfirewall firewall show rule name=" + rule, AHost.ONE_MINUTE);
 
 		// Check if rule exists for file, if not add it
-		if(op.output.contains("No rules match the specified criteria.")) {
+		if(!op.output.contains(name)) {
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Adding " + name + " as rule for the firewall...");
 			host.execElevated(cm, HostEnvUtil.class, "netsh advfirewall firewall add rule name=" + rule + " dir=in action=allow "
 					+ "program=\""+ installerFile +"\" enable=yes remoteip=127.0.0.1", AHost.ONE_MINUTE);
