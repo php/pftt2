@@ -718,10 +718,11 @@ public final class HostEnvUtil {
 	private static void addRuleToFirewall(ConsoleManager cm, AHost host, String name, String installerFile) throws IOException, Exception {
 		String rule = name.replace(' ', '_');
 
-		ExecOutput op = host.execOut("netsh advfirewall firewall show rule name=" + rule, AHost.ONE_MINUTE);
+		ExecOutput op = host.execOut("cmd /c powershell -Command \"if ($(Get-NetFirewallRule -DisplayName '"+ rule + "')) {echo 'found'} else { echo 'not found' }\" 2>nul", AHost.TEN_MINUTES);
 
 		// Check if rule exists for file, if not add it
-		if(!op.output.contains(name)) {
+		// TODO: Adjust to use exit status, but have to figure out why java overwrites status code.
+		if(op.output.contains("not found")) {
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Adding " + name + " as rule for the firewall...");
 			host.execElevated(cm, HostEnvUtil.class, "netsh advfirewall firewall add rule name=" + rule + " dir=in action=allow "
 					+ "program=\""+ installerFile +"\" enable=yes remoteip=127.0.0.1", AHost.ONE_MINUTE);
