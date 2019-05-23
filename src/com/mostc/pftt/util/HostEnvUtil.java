@@ -207,8 +207,11 @@ public final class HostEnvUtil {
 	private static void installAndConfigureMySql(FileSystemScenario fs, AHost host, ConsoleManager cm) throws IllegalStateException, IOException, Exception {
 		
 		// install depended VC12 first
+		if(host.isX64())
+		{
+			installVCRT(cm, fs, host, "VC12 x64", File_VC12_Redist_X64, Sys_Dll_VC12_Redist_X64);
+		}
 		installVCRT(cm, fs, host, "VC12 x86", File_VC12_Redist_X86, Sys_Dll_VC12_Redist_X86);
-		installVCRT(cm, fs, host, "VC12 x64", File_VC12_Redist_X64, Sys_Dll_VC12_Redist_X64);
 		
 		if(!fs.exists(Exe_Mysql_5_7_mysqld))
 		{
@@ -306,35 +309,38 @@ public final class HostEnvUtil {
 			break;
 		case PHP_5_5:
 		case PHP_5_6:
-			installVCRT(cm, fs, host, "VC10 x86", File_VC10_Redist_X86, Sys_Dll_VC10_Redist_X86);
-			installVCRT(cm, fs, host, "VC11 x86", File_VC11_Redist_X86, Sys_Dll_VC11_Redist_X86);
-			if (build.isX64()) {
+			// Install the x64 redist first, THEN the x86.
+			// Discussion indicates some x64 redist may delete x86 redist registry entry
+			// but x86 redist always add its own
+			if (build.isX64() && host.isX64()) {
 				installVCRT(cm, fs, host, "VC10 x64", File_VC10_Redist_X64, Sys_Dll_VC10_Redist_X64);
 				installVCRT(cm, fs, host, "VC11 x64", File_VC11_Redist_X64, Sys_Dll_VC11_Redist_X64);
 			}
+			installVCRT(cm, fs, host, "VC10 x86", File_VC10_Redist_X86, Sys_Dll_VC10_Redist_X86);
+			installVCRT(cm, fs, host, "VC11 x86", File_VC11_Redist_X86, Sys_Dll_VC11_Redist_X86);
 			break;
 		case PHP_7_0:
 		case PHP_7_1:
-			installVCRT14(cm, fs, host, "VC14 x86", File_VC14_Redist_X86, Sys_Dll_VC14Plus_Redist_X86);
-			if (build.isX64()) {
+			if (build.isX64() && host.isX64()) {
 				installVCRT14(cm, fs, host, "VC14 x64", File_VC14_Redist_X64, Sys_Dll_VC14Plus_Redist_X64);
 			}
+			installVCRT14(cm, fs, host, "VC14 x86", File_VC14_Redist_X86, Sys_Dll_VC14Plus_Redist_X86);
 			break;
 		case PHP_7_2:
 		case PHP_7_3:
-			installVCRT15(cm, fs, host, "VC15 x86", File_VC15_Redist_X86, Sys_Dll_VC14Plus_Redist_X86);
-			if (build.isX64()) {
+			if (build.isX64() && host.isX64()) {
 				installVCRT15(cm, fs, host, "VC15 x64", File_VC15_Redist_X64, Sys_Dll_VC14Plus_Redist_X64);
 			}
+			installVCRT15(cm, fs, host, "VC15 x86", File_VC15_Redist_X86, Sys_Dll_VC14Plus_Redist_X86);
 			break;
 		case PHP_7_4:
 		case PHP_8_0:
 		case PHP_Master:
 		default:
-			installVCRT16(cm, fs, host, "VS16 x86", File_VS16_Redist_X86, Sys_Dll_VC14Plus_Redist_X86);
-			if (build.isX64()) {
+			if (build.isX64() && host.isX64()) {
 				installVCRT16(cm, fs, host, "VS16 x64", File_VS16_Redist_X64, Sys_Dll_VC14Plus_Redist_X64);
 			}
+			installVCRT16(cm, fs, host, "VS16 x86", File_VS16_Redist_X86, Sys_Dll_VC14Plus_Redist_X86);
 			break;
 		} // end switch
 	} // end public static void installVCRuntime
@@ -589,7 +595,10 @@ public final class HostEnvUtil {
 		// always download dependency - VC12
 		String system_dir = host.getSystemRoot();
 		downloadVCRuntime(fs, cm, "VC12 x86", Link_VC12_Redist_X86, File_VC12_Redist_X86, system_dir + Sys_Dll_VC12_Redist_X86);
-		downloadVCRuntime(fs, cm, "VC12 x64", Link_VC12_Redist_X64, File_VC12_Redist_X64, system_dir + Sys_Dll_VC12_Redist_X64);
+		if(host.isX64())
+		{
+			downloadVCRuntime(fs, cm, "VC12 x64", Link_VC12_Redist_X64, File_VC12_Redist_X64, system_dir + Sys_Dll_VC12_Redist_X64);
+		}
 		
 		if(!fs.exists(Exe_Mysql_5_7_mysqld))
 		{
@@ -609,6 +618,11 @@ public final class HostEnvUtil {
 		if (!host.isWindows()) {
 			return;
 		}
+		
+		if(build.isX64() && !host.isX64())
+		{
+			cm.println(EPrintType.WARNING, HostEnvUtil.class, "X64 PHP build can't run on X86 Host.");
+		}
 
 		String system_dir = host.getSystemRoot();
 		switch (build.getVersionBranch(cm, host)) {
@@ -620,7 +634,7 @@ public final class HostEnvUtil {
 		case PHP_5_6:
 			downloadVCRuntime(fs, cm, "VC10 x86", Link_VC10_Redist_X86, File_VC10_Redist_X86, system_dir + Sys_Dll_VC10_Redist_X86);
 			downloadVCRuntime(fs, cm, "VC11 x86", Link_VC11_Redist_X86, File_VC11_Redist_X86, system_dir + Sys_Dll_VC11_Redist_X86);
-			if (build.isX64()) {
+			if (build.isX64() && host.isX64()) {
 				downloadVCRuntime(fs, cm, "VC10 x64", Link_VC10_Redist_X64, File_VC10_Redist_X64, system_dir + Sys_Dll_VC10_Redist_X64);
 				downloadVCRuntime(fs, cm, "VC11 x64", Link_VC11_Redist_X64, File_VC11_Redist_X64, system_dir + Sys_Dll_VC11_Redist_X64);
 			}
@@ -628,14 +642,14 @@ public final class HostEnvUtil {
 		case PHP_7_0:
 		case PHP_7_1:
 			downloadVC14Runtime(fs, cm, "VC14 x86", Link_VC14_Redist_X86, File_VC14_Redist_X86, system_dir + Sys_Dll_VC14Plus_Redist_X86);
-			if (build.isX64()) {
+			if (build.isX64() && host.isX64()) {
 				downloadVC14Runtime(fs, cm, "VC14 x64", Link_VC14_Redist_X64, File_VC14_Redist_X64, system_dir + Sys_Dll_VC14Plus_Redist_X64);
 			}
 			break;
 		case PHP_7_2:
 		case PHP_7_3:
 			downloadVC15Runtime(fs, cm, "VC15 x86", Link_VC15_Redist_X86, File_VC15_Redist_X86, system_dir + Sys_Dll_VC14Plus_Redist_X86);
-			if (build.isX64()) {
+			if (build.isX64() && host.isX64()) {
 				downloadVC15Runtime(fs, cm, "VC15 x64", Link_VC15_Redist_X64, File_VC15_Redist_X64, system_dir + Sys_Dll_VC14Plus_Redist_X64);
 			}
 			break;
@@ -644,7 +658,7 @@ public final class HostEnvUtil {
 		case PHP_Master:
 		default:
 			downloadVC16Runtime(fs, cm, "VS16 x86", Link_VS16_Redist_X86, File_VS16_Redist_X86, system_dir + Sys_Dll_VC14Plus_Redist_X86);
-			if (build.isX64()) {
+			if (build.isX64() && host.isX64()) {
 				downloadVC16Runtime(fs, cm, "VS16 x64", Link_VS16_Redist_X64, File_VS16_Redist_X64, system_dir + Sys_Dll_VC14Plus_Redist_X64);
 			}
 			break;
