@@ -42,7 +42,14 @@ public final class HostEnvUtil {
 	static final String Link_VC11_Redist_X86
 		= "https://download.microsoft.com/download/1/6/B/16B06F60-3B20-4FF2-B699-5E9B7962F9AE/VSU_4/vcredist_x86.exe";
 	static final String Link_VC11_Redist_X64
-		= "https://download.microsoft.com/download/1/6/B/16B06F60-3B20-4FF2-B699-5E9B7962F9AE/VSU_4/vcredist_x64.exe";		
+		= "https://download.microsoft.com/download/1/6/B/16B06F60-3B20-4FF2-B699-5E9B7962F9AE/VSU_4/vcredist_x64.exe";
+	
+	// No PHP version is depended on VC12, but MySQL 5.7.25 depends on it
+	static final String Link_VC12_Redist_X86
+		= "https://download.microsoft.com/download/2/E/6/2E61CFA4-993B-4DD4-91DA-3737CD5CD6E3/vcredist_x86.exe";
+	static final String Link_VC12_Redist_X64
+		= "https://download.microsoft.com/download/2/E/6/2E61CFA4-993B-4DD4-91DA-3737CD5CD6E3/vcredist_x64.exe";
+	
 	static final String Link_VC14_Redist_X86
 		= "https://download.microsoft.com/download/9/3/F/93FCF1E7-E6A4-478B-96E7-D4B285925B00/vc_redist.x86.exe";
 	static final String Link_VC14_Redist_X64
@@ -55,6 +62,7 @@ public final class HostEnvUtil {
 		= "https://aka.ms/vs/16/release/VC_redist.x86.exe";
 	static final String Link_VS16_Redist_X64
 		= "https://aka.ms/vs/16/release/VC_redist.x64.exe";
+	
 	static final String Link_Mysql_Win32_5_7_25
 		= "https://cdn.mysql.com//Downloads/MySQL-5.7/mysql-5.7.25-win32.zip";
 	
@@ -198,6 +206,10 @@ public final class HostEnvUtil {
 	
 	private static void installAndConfigureMySql(FileSystemScenario fs, AHost host, ConsoleManager cm) throws IllegalStateException, IOException, Exception {
 		
+		// install depended VC12 first
+		installVCRT(cm, fs, host, "VC12 x86", File_VC12_Redist_X86, Sys_Dll_VC12_Redist_X86);
+		installVCRT(cm, fs, host, "VC12 x64", File_VC12_Redist_X64, Sys_Dll_VC12_Redist_X64);
+		
 		if(!fs.exists(Exe_Mysql_5_7_mysqld))
 		{
 			cm.println(EPrintType.WARNING, HostEnvUtil.class, "MySql 5.7.25.0 is not downloaded, should run setup command first...");
@@ -208,7 +220,7 @@ public final class HostEnvUtil {
 		
 		if(op.output.contains("RUNNING"))
 		{
-			cm.println(EPrintType.WARNING, HostEnvUtil.class, "MySql service is already running.");
+			cm.println(EPrintType.CLUE, HostEnvUtil.class, "MySql service is already running, skip installation.");
 			return;
 		}
 
@@ -483,8 +495,8 @@ public final class HostEnvUtil {
 	
 	
 	protected static void doInstallVCRT(ConsoleManager cm, FileSystemScenario fs, AHost host, String name, String installerFile) throws IllegalStateException, IOException, Exception {
-		String local_file = LocalHost.getLocalPfttDir() + installerFile;
-		String remote_file = local_file;
+		
+		String remote_file = installerFile;
 
 		// Allow VC installer through firewall
 		addRuleToFirewall(cm, host, name, installerFile);
@@ -493,7 +505,7 @@ public final class HostEnvUtil {
 			remote_file = fs.mktempname(HostEnvUtil.class, ".exe");
 			
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Uploading "+name+" Runtime");
-			host.upload(local_file, remote_file);
+			host.upload(installerFile, remote_file);
 		}
 		cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Installing "+name+" Runtime");
 		host.execElevated(cm, HostEnvUtil.class, remote_file+" /Q /NORESTART", AHost.TEN_MINUTES);
@@ -574,6 +586,11 @@ public final class HostEnvUtil {
 	
 	private static void downloadMySQL5(FileSystemScenario fs, LocalHost host, LocalConsoleManager cm) {
 
+		// always download dependency - VC12
+		String system_dir = host.getSystemRoot();
+		downloadVCRuntime(fs, cm, "VC12 x86", Link_VC12_Redist_X86, File_VC12_Redist_X86, system_dir + Sys_Dll_VC12_Redist_X86);
+		downloadVCRuntime(fs, cm, "VC12 x64", Link_VC12_Redist_X64, File_VC12_Redist_X64, system_dir + Sys_Dll_VC12_Redist_X64);
+		
 		if(!fs.exists(Exe_Mysql_5_7_mysqld))
 		{
 			// download MySQL and unzip 
@@ -641,8 +658,7 @@ public final class HostEnvUtil {
 		}
 		else
 		{
-			String pftt_dir = LocalHost.getLocalPfttDir();
-			downloadFile(fs, cm, "VC9 Runtime", Link_VC9_Redist_X86, pftt_dir + File_VC9_Redist_X86);
+			downloadFile(fs, cm, "VC9 Runtime", Link_VC9_Redist_X86, File_VC9_Redist_X86);
 		}
 	}
 		
