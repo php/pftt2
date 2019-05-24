@@ -207,10 +207,11 @@ public final class HostEnvUtil {
 	private static void installAndConfigureMySql(FileSystemScenario fs, AHost host, ConsoleManager cm) throws IllegalStateException, IOException, Exception {
 		
 		// install depended VC12 first
-		if(host.isX64())
-		{
-			installVCRT(cm, fs, host, "VC12 x64", File_VC12_Redist_X64, Sys_Dll_VC12_Redist_X64);
-		}
+		// opted out VC12 x64 since we only install x86 version of MySql
+		//if(host.isX64())
+		//{
+		//	installVCRT(cm, fs, host, "VC12 x64", File_VC12_Redist_X64, Sys_Dll_VC12_Redist_X64);
+		//}
 		installVCRT(cm, fs, host, "VC12 x86", File_VC12_Redist_X86, Sys_Dll_VC12_Redist_X86);
 		
 		if(!fs.exists(Exe_Mysql_5_7_mysqld))
@@ -595,10 +596,12 @@ public final class HostEnvUtil {
 		// always download dependency - VC12
 		String system_dir = host.getSystemRoot();
 		downloadVCRuntime(fs, cm, "VC12 x86", Link_VC12_Redist_X86, File_VC12_Redist_X86, system_dir + Sys_Dll_VC12_Redist_X86);
-		if(host.isX64())
-		{
-			downloadVCRuntime(fs, cm, "VC12 x64", Link_VC12_Redist_X64, File_VC12_Redist_X64, system_dir + Sys_Dll_VC12_Redist_X64);
-		}
+
+		// opted out VC12 x64 since we only install x86 version of MySql
+		//if(host.isX64())
+		//{
+		//	downloadVCRuntime(fs, cm, "VC12 x64", Link_VC12_Redist_X64, File_VC12_Redist_X64, system_dir + Sys_Dll_VC12_Redist_X64);
+		//}
 		
 		if(!fs.exists(Exe_Mysql_5_7_mysqld))
 		{
