@@ -7,12 +7,12 @@ CALL %~dp0set_env.cmd
 
 SET PFTT_LIB=%PFTT_HOME%\lib
 SET PFTT_BUILD=%PFTT_HOME%\build
+SET PFTT_RELEASE=%PFTT_HOME%\pftt_release
 
 REM Check if build directory exists
 if exist %PFTT_BUILD% (
 	REM Create pftt_release directory in main folder
 	md %PFTT_HOME%\pftt_release
-	SET PFTT_RELEASE=%PFTT_HOME%\pftt_release
 
 	REM Copy contents of bin, conf and lib to respective folders
 	md %PFTT_RELEASE%\bin
