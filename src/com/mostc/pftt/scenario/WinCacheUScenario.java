@@ -64,15 +64,6 @@ public abstract class WinCacheUScenario extends UserCacheScenario {
 		} else {
 			try {
 				switch(build.getVersionBranch(cm, host)) {
-				case PHP_5_3:
-					debug_path.add( host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.4-5.3-nts-vc11-x86/php_wincache.pdb" );
-					break;
-				case PHP_5_4:
-					debug_path.add( host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.4-5.4-nts-vc11-x86/php_wincache.pdb" );
-					break;
-				case PHP_5_5:
-					debug_path.add( host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.5-5.5-nts-vc11-x86/php_wincache.pdb" );
-					break;
 				case PHP_5_6:
 				default:
 					if (build.isX64())
@@ -103,19 +94,6 @@ public abstract class WinCacheUScenario extends UserCacheScenario {
 				host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.5-5.6-nts-vc11-x64/php_wincache.dll" :
 				host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.5-5.6-nts-vc11-x86/php_wincache.dll";
 	}
-	@Overridable
-	protected String getDllPath55(Host host) {
-		return host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.5-5.5-nts-vc11-x86/php_wincache.dll";
-	}
-	@Overridable
-	protected String getDllPath54(Host host) {
-		return host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.4-5.4-nts-vc9-x86/php_wincache.dll";
-	}
-	@Overridable
-	protected String getDllPath53(Host host) {
-		return host.getPfttCacheDir()+"/dep/wincache/wincache-1.3.4-5.3-nts-vc9-x86/php_wincache.dll";
-	}
-
 	@Override
 	public IScenarioSetup setup(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
 		if (!host.isWindows() || !build.isNTS(host))
@@ -133,15 +111,6 @@ public abstract class WinCacheUScenario extends UserCacheScenario {
 			dll_path = set_dll.getPath();
 		} else {
 			switch(branch) {
-			case PHP_5_3:
-				dll_path = getDllPath53(host);
-				break;
-			case PHP_5_4:
-				dll_path = getDllPath54(host);
-				break;
-			case PHP_5_5:
-				dll_path = getDllPath55(host);
-				break;
 			case PHP_5_6:
 			default:
 				dll_path = getDllPath56(host, build.isX64());

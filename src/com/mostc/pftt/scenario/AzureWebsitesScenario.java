@@ -330,10 +330,6 @@ public class AzureWebsitesScenario extends ProductionWebServerScenario {
 			// TODO
 			
 			return ibuild;
-		} else if (StringUtil.equalsICAny(build_str, "5.4", "54", "5_4")) {
-			return installBuildBranch(cm, web, EBuildBranch.PHP_5_4, "D:\\Program Files (x86)\\PHP\\v5.4\\php-cgi.exe");
-		} else if (StringUtil.equalsICAny(build_str, "5.5", "55", "5_5")) {
-			return installBuildBranch(cm, web, EBuildBranch.PHP_5_5, "D:\\Program Files (x86)\\PHP\\v5.5\\php-cgi.exe");
 		} else if (StringUtil.equalsICAny(build_str, "5.6", "56", "5_6")) {
 			return installBuildBranch(cm, web, EBuildBranch.PHP_5_6, "D:\\Program Files (x86)\\PHP\\v5.6\\php-cgi.exe");
 		} else if (StringUtil.equalsICAny(build_str, "7.0", "70", "7_0")) {

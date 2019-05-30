@@ -82,22 +82,12 @@ public class MSSQLScenario extends DatabaseScenario {
 		
 		public String getPhpPdoDllName(EBuildBranch branch, EBuildType type, String base_dir) {
 			switch(branch) {
-			case PHP_5_3:
-				return type == EBuildType.NTS ? "php_pdo_sqlsrv_53_nts.dll" : "php_pdo_sqlsrv_53_ts.dll";
-			case PHP_5_4:
-				return type == EBuildType.NTS ? "php_pdo_sqlsrv_54_nts.dll" : "php_pdo_sqlsrv_54_ts.dll";
-			case PHP_5_5:
 			default:
 				return type == EBuildType.NTS ? "php_pdo_sqlsrv_55_nts.dll" : "php_pdo_sqlsrv_55_ts.dll";
 			}
 		}
 		public String getPhpDllName(EBuildBranch branch, EBuildType type, String base_dir) {
 			switch(branch) {
-			case PHP_5_3:
-				return type == EBuildType.NTS ? "php_sqlsrv_53_nts.dll" : "php_sqlsrv_53_ts.dll";
-			case PHP_5_4:
-				return type == EBuildType.NTS ? "php_sqlsrv_54_nts.dll" : "php_sqlsrv_54_ts.dll";
-			case PHP_5_5:
 			default:
 				return type == EBuildType.NTS ? "php_sqlsrv_55_nts.dll" : "php_sqlsrv_55_ts.dll";
 			}

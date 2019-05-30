@@ -58,7 +58,7 @@ public class PhpBuild extends SAPIManager {
 	 * @return
 	 */
 	public boolean checkOpenSSLVersion(ConsoleManager cm, Host host, String str) {
-		return is53(cm, host)||is54(cm, host)?str.contains("0.9.8"):str.contains("1.0.1");
+		return str.contains("1.0.1");
 	}
 	
 	@Override
@@ -186,15 +186,6 @@ public class PhpBuild extends SAPIManager {
 		
 		String debug_path = null;
 		switch(build_branch) {
-		case PHP_5_3:
-			debug_path = "php-debug-pack-5.3-"+build_type+"-windows-"+compiler+"-"+cpu_arch+"-"+revision;
-			break;
-		case PHP_5_4:
-			debug_path = "php-debug-pack-5.4-"+build_type+"-windows-"+compiler+"-"+cpu_arch+"-"+revision;
-			break;
-		case PHP_5_5:
-			debug_path = "php-debug-pack-5.5-"+build_type+"-windows-"+compiler+"-"+cpu_arch+"-"+revision;
-			break;
 		case PHP_5_6:
 			debug_path = "php-debug-pack-5.6-"+build_type+"-windows-"+compiler+"-"+cpu_arch+"-"+revision;
 			break;
@@ -237,15 +228,6 @@ public class PhpBuild extends SAPIManager {
 		
 		String source_path = null;
 		switch(build_branch) {
-		case PHP_5_3:
-			source_path = "php-5.3-src-"+revision;
-			break;
-		case PHP_5_4:
-			source_path = "php-5.4-src-"+revision;
-			break;
-		case PHP_5_5:
-			source_path = "php-5.5-src-"+revision;
-			break;
 		case PHP_5_6:
 			source_path = "php-5.6-src-"+revision;
 			break;
@@ -420,19 +402,7 @@ public class PhpBuild extends SAPIManager {
 		String b = FileSystemScenario.basename(build_path).toLowerCase();
 		
 		// naming convention php-5.3-[optionally ts|nts]-[compiler]-[optionally rNNNNNNN]
-		if (b.contains("php-5.3")) {
-			branch = EBuildBranch.PHP_5_3;
-			major = 5;
-			minor = 3;
-		} else if (b.contains("php-5.4")) {
-			branch = EBuildBranch.PHP_5_4;
-			major = 5;
-			minor = 4;
-		} else if (b.contains("php-5.5")) {
-			branch = EBuildBranch.PHP_5_5;
-			major = 5;
-			minor = 5;
-		} else if (b.contains("php-5.6")) {
+		if (b.contains("php-5.6")) {
 			branch = EBuildBranch.PHP_5_6;
 			major = 5;
 			minor = 6;
@@ -491,15 +461,6 @@ public class PhpBuild extends SAPIManager {
 					//
 					if (major==5) {
 						switch(minor) {
-						case 3:
-							branch  = EBuildBranch.PHP_5_3;
-							break;
-						case 4:
-							branch  = EBuildBranch.PHP_5_4;
-							break;
-						case 5:
-							branch  = EBuildBranch.PHP_5_5;
-							break;
 						case 6:
 							branch  = EBuildBranch.PHP_5_6;
 							break;
@@ -610,16 +571,8 @@ public class PhpBuild extends SAPIManager {
 		return branch==null?EBuildBranch.getNewest():branch;
 	}
 	
-	public boolean is53(ConsoleManager cm, Host host) {
-		try {
-			return getVersionBranch(cm, host) == EBuildBranch.PHP_5_3;
-		} catch ( Exception ex ) {
-			return false;
-		}
-	}
-	
 	public boolean is5(ConsoleManager cm, Host host) {
-		return is53(cm, host)||is54(cm, host)||is55(cm, host)||is56(cm, host);
+		return is56(cm, host);
 	}
 	
 	public boolean is70(ConsoleManager cm, Host host) {
@@ -661,22 +614,6 @@ public class PhpBuild extends SAPIManager {
 	public boolean isMaster(ConsoleManager cm, Host host) {
 		try {
 			return getVersionBranch(cm, host) == EBuildBranch.PHP_Master;
-		} catch ( Exception ex ) {
-			return false;
-		}
-	}
-	
-	public boolean is54(ConsoleManager cm, Host host) {
-		try {
-			return getVersionBranch(cm, host) == EBuildBranch.PHP_5_4;
-		} catch ( Exception ex ) {
-			return false;
-		}
-	}
-	
-	public boolean is55(ConsoleManager cm, Host host) {
-		try {
-			return getVersionBranch(cm, host) == EBuildBranch.PHP_5_5;
 		} catch ( Exception ex ) {
 			return false;
 		}

@@ -22,7 +22,7 @@ import com.mostc.pftt.util.DllVersion;
  * eliminates the stages of reading code from the disk and compiling it on future access. In
  * addition, it applies a few bytecode optimization patterns that make code execution faster.
  * 
- * 5.5+ PHP builds include Opcache. This Scenario installs Opcache on 5.3 and 5.4 builds. 
+ * 5.5+ PHP builds include Opcache.
  * 
  * Formerly known as Optimizer+, Zend Optimizer+, often abbreviated as o+ or zo+ or Optimizer Plus.
  * 
@@ -48,22 +48,6 @@ public class OpcacheScenario extends CodeCacheScenario {
 	public void addToDebugPath(ConsoleManager cm, AHost host, PhpBuild build, Collection<String> debug_path) {
 		if (this.set_dll!=null) {
 			debug_path.add(set_dll.getDebugPath());
-		} else {
-			try {
-				switch(build.getVersionBranch(cm, host)) {
-				case PHP_5_3:
-					debug_path.add( build.isNTS(host) ? getDllPath53NTS(host).getDebugPath() : getDllPath53TS(host).getDebugPath() );
-					break;
-				case PHP_5_4:
-					debug_path.add( build.isNTS(host) ? getDllPath54NTS(host).getDebugPath() : getDllPath54TS(host).getDebugPath() );
-					break;
-				default:
-					// OpCache is included with core 5.5+, so the core debug-pack will be enough (don't need to do anything here)
-					break;
-				}
-			} catch ( Exception ex ) {
-				ConsoleManagerUtil.printStackTrace(MySQLScenario.class, cm, ex);
-			}
 		}
 	}
 	
@@ -145,26 +129,6 @@ public class OpcacheScenario extends CodeCacheScenario {
 			return null;
 	}
 	
-	@Overridable
-	protected DllVersion getDllPath53TS(Host host) {
-		return new DllVersion(host.getPfttCacheDir()+"/dep/opcache/php_opcache-7.0.2-5.3-ts-vc9-x86", "php_opcache.dll", "7.0.2");
-	}
-	
-	@Overridable
-	protected DllVersion getDllPath53NTS(Host host) {
-		return new DllVersion(host.getPfttCacheDir()+"/dep/opcache/php_opcache-7.0.2-5.3-nts-vc9-x86", "php_opcache.dll", "7.0.2");
-	}
-	
-	@Overridable
-	protected DllVersion getDllPath54TS(Host host) {
-		return new DllVersion(host.getPfttCacheDir()+"/dep/opcache/php_opcache-7.0.2-5.4-ts-vc9-x86", "php_opcache.dll", "7.0.2");
-	}
-	
-	@Overridable
-	protected DllVersion getDllPath54NTS(Host host) {
-		return new DllVersion(host.getPfttCacheDir()+"/dep/opcache/php_opcache-7.0.2-5.4-nts-vc9-x86", "php_opcache.dll", "7.0.2");
-	}
-	
 	public DllVersion getDllPath(ConsoleManager cm, FileSystemScenario fs, Host host, PhpBuild build) {
 		return getDllPath(cm, fs, host, build, false);
 	}
@@ -176,22 +140,6 @@ public class OpcacheScenario extends CodeCacheScenario {
 		DllVersion version = null;
 		try {
 			switch(build.getVersionBranch(cm, host)) {
-			case PHP_5_3:
-				if (host.isWindows()) {
-					if (build.isNTS(host))
-						version = getDllPath53NTS(host);
-					else
-						version = getDllPath53TS(host);
-				}
-				break;
-			case PHP_5_4:
-				if (host.isWindows()) {
-					if (build.isNTS(host))
-						version = getDllPath54NTS(host);
-					else
-						version = getDllPath54TS(host);
-				}
-				break;
 			default:
 				if (host.isWindows())
 					version = getDllPath55Plus(cm, fs, host, build, rename);

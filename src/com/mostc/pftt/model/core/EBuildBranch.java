@@ -1,18 +1,6 @@
 package com.mostc.pftt.model.core;
 
 public enum EBuildBranch {
-	PHP_5_3 {
-		@Override
-		public ECPUArch getCPUArch() {
-			return ECPUArch.X86;
-		}
-	},
-	PHP_5_4 {
-		@Override
-		public ECPUArch getCPUArch() {
-			return ECPUArch.X86;
-		}
-	},
 	NATIVE_TLS {
 		@Override
 		public String toString() {
@@ -28,12 +16,6 @@ public enum EBuildBranch {
 		public String toString() {
 			return "PHP_Master";
 		}
-		@Override
-		public ECPUArch getCPUArch() {
-			return null; // could be X86 or X64
-		}
-	},
-	PHP_5_5 {
 		@Override
 		public ECPUArch getCPUArch() {
 			return null; // could be X86 or X64
@@ -103,13 +85,7 @@ public enum EBuildBranch {
 	 */
 	public static EBuildBranch guessValueOf(String str) {
 		str = str.toLowerCase();
-		if (str.equals("php_5_3")||str.equals("5_3")||str.equals("5.3")||str.equals("53")||str.equals("php5_3")||str.equals("php53")||str.equals("php5.3")||str.equals("php_5.3"))
-			return PHP_5_3;
-		else if (str.equals("php_5_4")||str.equals("5_4")||str.equals("5.4")||str.equals("54")||str.equals("php5_4")||str.equals("php54")||str.equals("php5.4")||str.equals("php_5.4"))
-			return PHP_5_4;
-		else if (str.equals("php_5_5")||str.equals("5_5")||str.equals("5.5")||str.equals("55")||str.equals("php5_5")||str.equals("php55")||str.equals("php5.5")||str.equals("php_5.5"))
-			return PHP_5_5;
-		else if (str.equals("php_5_6")||str.equals("5_6")||str.equals("5.6")||str.equals("56")||str.equals("php5_6")||str.equals("php56")||str.equals("php5.6")||str.equals("php_5.6"))
+		if (str.equals("php_5_6")||str.equals("5_6")||str.equals("5.6")||str.equals("56")||str.equals("php5_6")||str.equals("php56")||str.equals("php5.6")||str.equals("php_5.6"))
 			return PHP_5_6;
 		else if (str.equals("php_7_0")||str.equals("7_0")||str.equals("7.0")||str.equals("70")||str.equals("php7_0")||str.equals("php70")||str.equals("php7.0")||str.equals("php_7.0"))
 			return PHP_7_0;
@@ -129,13 +105,7 @@ public enum EBuildBranch {
 	
 	public static EBuildBranch guessValueOfContains(String str) {
 		str = str.toLowerCase();
-		if (str.contains("php_5_3")||str.contains("php5_3")||str.contains("php53")||str.contains("php5.3")||str.contains("php_5.3"))
-			return PHP_5_3;
-		else if (str.contains("php_5_4")||str.contains("php5_4")||str.contains("php54")||str.contains("php5.4")||str.contains("php_5.4"))
-			return PHP_5_4;
-		else if (str.contains("php_5_5")||str.contains("php5_5")||str.contains("php55")||str.contains("php5.5")||str.contains("php_5.5"))
-			return PHP_5_5;
-		else if (str.contains("php_5_6")||str.contains("php5_6")||str.contains("php56")||str.contains("php5.6")||str.contains("php_5.6"))
+		if (str.contains("php_5_6")||str.contains("php5_6")||str.contains("php56")||str.contains("php5.6")||str.contains("php_5.6"))
 			return PHP_5_6;
 		else if (str.contains("php_7_0")||str.contains("php7_0")||str.contains("php70")||str.contains("php7.0")||str.contains("php_7.0"))
 			return PHP_7_0;

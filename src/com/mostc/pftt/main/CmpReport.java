@@ -528,29 +528,7 @@ public class CmpReport {
 		LocalConsoleManager cm = new LocalConsoleManager();
 		
 		// TODO check if a smoke test failed!
-		//File base_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-5.3.27-TS-X86-VC9"));
-		//File test_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-5.3.28-TS-X86-VC9"));
-		//File base_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-re2e002d-nTS-X86-VC9"));
-		//File test_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-r7c9bb87-nTS-X86-VC9"));
-		//File base_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-re2e002d-TS-X86-VC9"));
-		//File test_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_3-Result-Pack-r7c9bb87-TS-X86-VC9"));
-		//File base_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-5.4.23-NTS-X86-VC9"));
-		//File test_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-5.4.24rc1-NTS-X86-VC9"));
-		
-		//File base_dir = new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-rd487f5e-TS-X86-VC9");
-		//File test_dir = new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-r6c48c6b-TS-X86-VC9");
-		//File base_dir = new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-ra03f094-nTS-X86-VC9");
-		//File test_dir = new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-r72aacbf-nTS-X86-VC9");
 
-		//File base_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-rc8b0da6-TS-X64-VC11"));
-		//File test_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-rc8b0da6-TS-x64-VC11"));
-		//File base_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-r82dd6b9-NTS-X64-VC11"));
-		//File test_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-rc8b0da6-NTS-X64-VC11"));
-		//File base_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-rb2ee1b6-NTS-X86-VC11"));
-		//File test_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-rfc9d886-NTS-X86-VC11"));
-		//File base_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-rc8b0da6-TS-X86-VC11"));
-		//File test_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-rfc9d886-TS-X86-VC11"));
-		
 		//File base_dir = new File("C:\\php-sdk\\PFTT-Auto\\PHP_Master-Result-Pack--TS-X86-VC11");
 		//File base_dir = new File("C:\\php-sdk\\PFTT-Auto\\PHP_Master-Result-Pack-r43289d6-TS-X86-VC11");
 		//File test_dir = new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_6-Result-Pack-5.6.0-dev-TS-X86-VC11-keyword916");
@@ -562,18 +540,8 @@ public class CmpReport {
 		//File base_dir = new File("C:\\php-sdk\\PFTT-Auto\\PHP_Master-Result-Pack-rd515455-TS-X64-VC11");
 		//File test_dir = new File("C:\\php-sdk\\PFTT-Auto\\PHP_Master-Result-Pack-r04fcf6a-TS-X64-VC11");
 		
-		File base_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-5.5.10RC1-TS-X86-VC11"));
-		File test_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_5-Result-Pack-5.5.10-TS-X86-VC11"));
-		//File base_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-5.4.26RC1-TS-X86-VC9"));
-		//File test_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-5.4.26-TS-X86-VC9"));
-		
-		//File test_dir = (new File("C:\\php-sdk\\PHP_5_5-Result-Pack-5.5.8-dev-NTS-X64-VC11-SELF"));
-		//File base_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-5.4.22rc1-NTS-X86-VC9-SQLSVR"));
-		//File test_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-5.4.22-NTS-X86-VC9-SQLSVR"));
-		//File base_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-5.4.22-NTS-X86-VC9"));
-		//File test_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_4-Result-Pack-5.4.23rc1-NTS-X86-VC9"));
-		//File base_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_Master-Result-Pack-ra0244a6-NTS-X86-VC11"));
-		//File test_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_6-Result-Pack-5.6.0-50333-NTS-X86-VC11"));
+		File base_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_Master-Result-Pack-ra0244a6-NTS-X86-VC11"));
+		File test_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_6-Result-Pack-5.6.0-50333-NTS-X86-VC11"));
 	
 		
 		// clean_hosts
