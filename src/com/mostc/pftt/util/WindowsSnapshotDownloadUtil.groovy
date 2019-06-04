@@ -35,6 +35,7 @@ final class WindowsSnapshotDownloadUtil {
 	static final URL PHP_7_1_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-7.1/")
 	static final URL PHP_7_2_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-7.2/")
 	static final URL PHP_7_3_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-7.3/")
+	static final URL PHP_7_4_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-7.4/")
 	static final URL STR_SIZE_AND_INT64_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/str_size_and_int64/")
 	static final URL PHP_MASTER_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/master/")
 
@@ -62,6 +63,8 @@ final class WindowsSnapshotDownloadUtil {
 	static URL getDownloadURL(EBuildBranch branch) {
 		// TODO temp call method on EBuildBranch to simplify adding new branches
 		switch(branch) {
+		case EBuildBranch.PHP_7_4:
+			return PHP_7_4_DOWNLOAD;
 		case EBuildBranch.PHP_7_1:
 			return PHP_7_1_DOWNLOAD;
 		case EBuildBranch.PHP_7_0:
