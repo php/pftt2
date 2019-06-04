@@ -201,6 +201,9 @@ public class PhpBuild extends SAPIManager {
 		case PHP_7_3:
 			debug_path = "php-debug-pack-7.3-"+build_type+"-windows-"+compiler+"-"+cpu_arch+"-"+revision;
 			break;
+		case PHP_7_4:
+			debug_path = "php-debug-pack-7.4-"+build_type+"-windows-"+compiler+"-"+cpu_arch+"-"+revision;
+			break;
 		case PHP_Master:
 			debug_path = "php-debug-pack-master-"+build_type+"-windows-"+compiler+"-"+cpu_arch+"-"+revision;
 			break;
@@ -242,6 +245,9 @@ public class PhpBuild extends SAPIManager {
 			break;
 		case PHP_7_3:
 			source_path = "php-7.3-src-"+revision;
+			break;
+		case PHP_7_4:
+			source_path = "php-7.4-src-"+revision;
 			break;
 		case PHP_Master:
 			source_path = "php-master-src-"+revision;
@@ -422,6 +428,10 @@ public class PhpBuild extends SAPIManager {
 			branch = EBuildBranch.PHP_7_3;
 			major = 7;
 			minor = 3;
+		} else if (b.contains("php-7.4")) {
+			branch = EBuildBranch.PHP_7_4;
+			major = 7;
+			minor = 4;
 		} else if (b.contains("php-master")) {
 			branch = EBuildBranch.PHP_Master;
 			major = 5;
@@ -607,8 +617,16 @@ public class PhpBuild extends SAPIManager {
 		}
 	}
 	
+	public boolean is74(ConsoleManager cm, Host host) {
+		try {
+			return getVersionBranch(cm, host) == EBuildBranch.PHP_7_4;
+		} catch ( Exception ex ) {
+			return false;
+		}
+	}
+	
 	public boolean is7(ConsoleManager cm, Host host) {
-		return is70(cm, host) || is71(cm, host) || is72(cm, host) || is73(cm, host);
+		return is70(cm, host) || is71(cm, host) || is72(cm, host) || is73(cm, host) || is74(cm, host);
 	}
 	
 	public boolean isMaster(ConsoleManager cm, Host host) {
