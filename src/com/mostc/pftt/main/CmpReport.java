@@ -529,21 +529,9 @@ public class CmpReport {
 		
 		// TODO check if a smoke test failed!
 
-		//File base_dir = new File("C:\\php-sdk\\PFTT-Auto\\PHP_Master-Result-Pack--TS-X86-VC11");
-		//File base_dir = new File("C:\\php-sdk\\PFTT-Auto\\PHP_Master-Result-Pack-r43289d6-TS-X86-VC11");
-		//File test_dir = new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_6-Result-Pack-5.6.0-dev-TS-X86-VC11-keyword916");
-		//File base_dir = new File("C:\\php-sdk\\PFTT-Auto\\PHP_Master-Result-Pack-r89c4aba-NTS-X64-VC11");
-		//File base_dir = new File("C:\\php-sdk\\PFTT-Auto\\PHP_Master-Result-Pack-r82bb2a2-NTS-X86-VC11");
-		//File test_dir = new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_6-Result-Pack-5.6.0-dev-NTS-X86-VC11-keyword916");
-		//File base_dir = new File("C:\\php-sdk\\PFTT-Auto\\PHP_Master-Result-Pack-r5e1ac55-NTS-X86-VC11");
-		//File test_dir = new File("C:\\php-sdk\\PFTT-Auto\\PHP_Master-Result-Pack-r82bb2a2-NTS-X86-VC11");
-		//File base_dir = new File("C:\\php-sdk\\PFTT-Auto\\PHP_Master-Result-Pack-rd515455-TS-X64-VC11");
-		//File test_dir = new File("C:\\php-sdk\\PFTT-Auto\\PHP_Master-Result-Pack-r04fcf6a-TS-X64-VC11");
-		
 		File base_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_Master-Result-Pack-ra0244a6-NTS-X86-VC11"));
 		File test_dir = (new File("C:\\php-sdk\\PFTT-Auto\\PHP_5_6-Result-Pack-5.6.0-50333-NTS-X86-VC11"));
 	
-		
 		// clean_hosts
 		clean_hosts(host, base_dir);
 		clean_hosts(host, test_dir);
