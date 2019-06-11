@@ -30,7 +30,7 @@ public class PhptTestPreparer {
 		prep.base_file_name = FileSystemScenario.basename(test_case.getBaseName()).replace("+", "");
 		
 		//
-		if (false /* TODO !AzureWebsitesScenario.check(fs) */) {
+		if (true /* TODO !AzureWebsitesScenario.check(fs) */) {
 			if (test_case.containsSection(EPhptSection.SKIPIF)) {
 				prep.skipif_file = host.joinIntoOnePath(prep.test_dir, prep.base_file_name + ".skip.php");
 					
