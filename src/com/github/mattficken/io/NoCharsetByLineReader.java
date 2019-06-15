@@ -51,7 +51,7 @@ public class NoCharsetByLineReader extends AbstractNoDetectingReader implements 
 					System.arraycopy(cbuf, 0, new_cbuf, 0, cbuf_len);
 					cbuf = new_cbuf;
 				}
-				cbuf[cbuf_len] = (char) bbuf[i];
+				cbuf[cbuf_len] = (char) (bbuf[i] & 0xFF);
 				cbuf_len++;
 			}
 			bbuf_len = in.read(bbuf);
