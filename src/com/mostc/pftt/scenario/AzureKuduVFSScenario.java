@@ -618,10 +618,10 @@ public class AzureKuduVFSScenario extends VFSRemoteFileSystemScenario {
 
 	@Override
 	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
-		if (!(scenario_set.getScenario(SAPIScenario.class) instanceof AzureWebsitesScenario)) {
+		/* TODO if (!(scenario_set.getScenario(SAPIScenario.class) instanceof AzureWebsitesScenario)) {
 			cm.println(EPrintType.CLUE, AzureKuduVFSScenario.class, "This filesystem is only useable with Azure Web Apps");
 			return false;
-		}
+		}*/
 		return true;
 	}
 	
