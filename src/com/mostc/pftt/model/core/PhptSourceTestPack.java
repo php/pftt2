@@ -139,10 +139,15 @@ public class PhptSourceTestPack extends SourceTestPack<PhptActiveTestPack, PhptT
 		// clean out these files from the test-pack so they don't have to be stored or copied (to other hosts), etc...
 		// (when installing test-pack on another host, it should just copy all files so its identical, less variability.
 		//  also this improves performance for the installation process)
-		fs.deleteFileExtension(test_pack, ".skip.php");
+		fs.deleteFileExtension(test_pack, ".exp");
+		fs.deleteFileExtension(test_pack, ".out");
+		fs.deleteFileExtension(test_pack, ".log");
+		fs.deleteFileExtension(test_pack, ".zip");
+		fs.deleteFileExtension(test_pack, ".tar.gz");
 		fs.deleteFileExtension(test_pack, ".cmd");
 		fs.deleteFileExtension(test_pack, ".sh");
 		fs.deleteFileExtension(test_pack, ".clean.php");
+		fs.deleteFileExtension(test_pack, ".skip.php");
 		fs.deleteFileExtension(test_pack, ".tmp");
 		// don't delete .php (specifically run-test.php) in root of test-pack (user may want it later)
 		IFileChooser PHP_CHOOSER = new IFileChooser() {
