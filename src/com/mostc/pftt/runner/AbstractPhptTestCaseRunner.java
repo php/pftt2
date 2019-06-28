@@ -228,6 +228,7 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner<
 	protected void removeTempFiles() throws IllegalStateException, IOException {
 		fs.deleteIfExists(prep.test_clean);
 		fs.deleteIfExists(prep.test_file);
+		fs.deleteIfExists(prep.skipif_file);
 		fs.deleteIfExists(prep.test_dir + "\\" + prep.base_file_name + ".php.cmd");
 	}
 	
