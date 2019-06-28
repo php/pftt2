@@ -497,6 +497,8 @@ public class CmpReport {
 			}
 		}
 	}
+
+	// TODO: check whether this method makes any sense, and remove or convert to regular PFTT2 option
 	public static void main(String[] args) throws Exception {
 		IRecvr recvr = new Verify();
 		//
