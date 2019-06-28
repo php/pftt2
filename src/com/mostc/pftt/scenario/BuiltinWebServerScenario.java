@@ -34,7 +34,7 @@ import com.mostc.pftt.runner.PhptTestPreparer.PreparedPhptTestCase;
  * 
  * This is the web server that's run when a user runs: php -S
  * 
- * This feature is only available (this scenario can only be run against) PHP 5.4+ (not PHP 5.3)
+ * This feature is only available (this scenario can only be run against) PHP 5.4+
  * 
  * @author Matt Ficken
  *
@@ -46,20 +46,6 @@ public class BuiltinWebServerScenario extends WebServerScenario {
 		super(new BuiltinWebServerManager());
 	}
 	
-	/** don't run this scenario on PHP 5.3
-	 * 
-	 */
-	@Override
-	public boolean isSupported(ConsoleManager cm, Host host, PhpBuild build, ScenarioSet scenario_set, EScenarioSetPermutationLayer layer) {
-		if (build.is53(cm, host)) {
-			if (cm!=null) {
-				cm.println(EPrintType.CLUE, getClass(), "Builtin Web is not supported by PHP 5.3");
-			}
-			return false;
-		}
-		return super.isSupported(cm, host, build, scenario_set, layer);
-	}
-
 	@Override
 	public String getName() {
 		return "Builtin-Web";

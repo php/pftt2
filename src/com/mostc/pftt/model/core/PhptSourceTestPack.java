@@ -584,13 +584,7 @@ public class PhptSourceTestPack extends SourceTestPack<PhptActiveTestPack, PhptT
 	 */
 	public EBuildBranch getVersionBranch() {
 		String dir = FileSystemScenario.basename(test_pack);
-		if (dir.contains("5.4")||dir.contains("5-4")||dir.contains("5_4")||dir.contains("54"))
-			return EBuildBranch.PHP_5_4;
-		else if (dir.contains("5.3")||dir.contains("5-3")||dir.contains("5_3")||dir.contains("53"))
-			return EBuildBranch.PHP_5_3;
-		else if (dir.contains("5.5")||dir.contains("5-5")||dir.contains("5_5")||dir.contains("55"))
-			return EBuildBranch.PHP_5_5;
-		else if (dir.contains("5.6")||dir.contains("5-6")||dir.contains("5_6")||dir.contains("56"))
+		if (dir.contains("5.6")||dir.contains("5-6")||dir.contains("5_6")||dir.contains("56"))
 			return EBuildBranch.PHP_5_6;
 		else if (dir.toLowerCase().contains("native-tls"))
 			return EBuildBranch.NATIVE_TLS;

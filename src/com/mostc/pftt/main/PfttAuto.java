@@ -59,16 +59,8 @@ public class PfttAuto {
 			new BuildSpec(EBuildBranch.PHP_Master, EBuildType.NTS, ECPUArch.X86),
 			new BuildSpec(EBuildBranch.PHP_5_6, EBuildType.TS, ECPUArch.X86),
 			new BuildSpec(EBuildBranch.PHP_5_6, EBuildType.NTS, ECPUArch.X86),
-			new BuildSpec(EBuildBranch.PHP_5_5, EBuildType.TS, ECPUArch.X86),
-			new BuildSpec(EBuildBranch.PHP_5_5, EBuildType.NTS, ECPUArch.X86),
 			new BuildSpec(EBuildBranch.PHP_5_6, EBuildType.TS, ECPUArch.X64),
 			new BuildSpec(EBuildBranch.PHP_5_6, EBuildType.NTS, ECPUArch.X64),
-			new BuildSpec(EBuildBranch.PHP_5_5, EBuildType.TS, ECPUArch.X64),
-			new BuildSpec(EBuildBranch.PHP_5_5, EBuildType.NTS, ECPUArch.X64),
-			new BuildSpec(EBuildBranch.PHP_5_4, EBuildType.TS, ECPUArch.X86),
-			new BuildSpec(EBuildBranch.PHP_5_4, EBuildType.NTS, ECPUArch.X86),
-			//new BuildSpec(EBuildBranch.PHP_5_3, EBuildType.TS, ECPUArch.X86),
-			//new BuildSpec(EBuildBranch.PHP_5_3, EBuildType.NTS, ECPUArch.X86)
 		};
 	
 	static class BuildSpec {

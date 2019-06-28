@@ -47,20 +47,7 @@ public enum EApacheVersion {
 			} else if (build.getVersionMajor(cm, host) == 7) {
 				return true;
 			} else if (build.getVersionMajor(cm, host) == 5) {
-				int minor = build.getVersionMinor(cm, host);
-
-				if (minor==3) 
-					// Apache 2.4 support was added in: ~5.3.20
-					return build.getVersionRelease(cm, host) >= 20;
-				else if (minor==4) 
-					// Apache 2.4 support was added in: 5.4.10
-					return build.getVersionRelease(cm, host) >= 10;
-				else if (minor>4)
-					// Apache 2.4 support always in 5.5 (5.6, etc...)
-					return true;
-				else
-					// 5.0 5.1 5.2 5.3 5.4.0-5.4.9 (not supported)
-					return false;
+				return true;
 			} else {
 				// old or future php?
 				return false;
@@ -78,8 +65,6 @@ public enum EApacheVersion {
 						return new ApacheHttpdAndVersion("Apache2416-VC14-OpenSSL1.0.1e-x64", host.getSystemDrive() + "\\Apache2416-VC14-OpenSSL1.0.1e-x64\\bin\\httpd.exe");
 					else
 						return new ApacheHttpdAndVersion("Apache2416-VC14-OpenSSL1.0.1e-x86", host.getSystemDrive() + "\\Apache2416-VC14-OpenSSL1.0.1e-x86\\bin\\httpd.exe");
-				} else if (build.is53(cm, host)||build.is54(cm, host)) {
-					return new ApacheHttpdAndVersion("ApacheLounge-2.4.4-VC9-OpenSSL0.9.8y-x86", host.getSystemDrive() + "\\Apache244-VC9-OpenSSL0.9.8y-x86\\bin\\httpd.exe");
 				} else if (build.isX64()) {
 					return new ApacheHttpdAndVersion("ApacheLounge-2.4.4-VC11-OpenSSL1.0.1e-x64", host.getSystemDrive() + "\\Apache244-VC11-OpenSSL1.0.1e-x64\\bin\\httpd.exe");
 				} else {
@@ -97,8 +82,6 @@ public enum EApacheVersion {
 						return host.getSystemDrive() + "\\Apache2416-VC14-OpenSSL1.0.1e-x64";
 					else
 						return host.getSystemDrive() + "\\Apache2416-VC14-OpenSSL1.0.1e-x86";
-				} else if (build.is53(cm, host)||build.is54(cm, host)) {
-					return host.getSystemDrive() + "\\Apache244-VC9-OpenSSL0.9.8y-x86";
 				} else if (build.isX64()) {
 					return host.getSystemDrive() + "\\Apache244-VC11-OpenSSL1.0.1e-x64";
 				} else {

@@ -280,17 +280,6 @@ public class CmpReport2 {
 		LocalConsoleManager cm = new LocalConsoleManager();
 		CmpReport2 cmp = new CmpReport2();
 		LocalHost localhost = LocalHost.getInstance();
-		//
-		/*cmp.add(PhpResultPackReader.open(cm, localhost, new File("C:\\php-sdk\\WinCacheU\\PHP_5_5-Result-Pack-5.5.2RC1-NTS-X86-VC11-2")));
-		cmp.add(PhpResultPackReader.open(cm, localhost, new File("C:\\php-sdk\\WinCacheU\\PHP_5_5-Result-Pack-5.5.3-NTS-X86-VC11")));
-		cmp.add(PhpResultPackReader.open(cm, localhost, new File("C:\\php-sdk\\WinCacheU\\PHP_5_4-Result-Pack-5.4.18RC2-NTS-X86-VC9-2")));*/
-		
-		cmp.add(PhpResultPackReader.open(cm, localhost, new File("C:\\php-sdk\\PHP_5_5-Result-Pack-5.5.3-NTS-X86-VC11")));
-		cmp.add(PhpResultPackReader.open(cm, localhost, new File("C:\\php-sdk\\PHP_5_5-Result-Pack-5.5.3-TS-X86-VC11")));
-		cmp.add(PhpResultPackReader.open(cm, localhost, new File("C:\\php-sdk\\PHP_5_4-Result-Pack-5.4.19-NTS-X86-VC9")));
-		cmp.add(PhpResultPackReader.open(cm, localhost, new File("C:\\php-sdk\\PHP_5_4-Result-Pack-5.4.19-TS-X86-VC9")));
-		cmp.add(PhpResultPackReader.open(cm, localhost, new File("C:\\php-sdk\\PHP_5_3-Result-Pack-5.3.27-NTS-X86-VC9")));
-		cmp.add(PhpResultPackReader.open(cm, localhost, new File("C:\\php-sdk\\PHP_5_3-Result-Pack-5.3.27-TS-X86-VC9")));
 		
 		File html_file = new File("c:\\php-sdk\\temp.html");
 		FileWriter fw = new FileWriter(html_file);

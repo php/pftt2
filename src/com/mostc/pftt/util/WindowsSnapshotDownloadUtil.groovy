@@ -30,9 +30,6 @@ import com.mostc.pftt.scenario.FileSystemScenario;
 
 final class WindowsSnapshotDownloadUtil {
 	// TODO temp move these to EBuildBranch
-	static final URL PHP_5_3_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-5.3/")
-	static final URL PHP_5_4_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-5.4/")
-	static final URL PHP_5_5_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-5.5/")
 	static final URL PHP_5_6_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-5.6/")
 	static final URL PHP_7_0_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-7.0/")
 	static final URL PHP_7_1_DOWNLOAD = new URL("http://windows.php.net/downloads/snaps/php-7.1/")
@@ -69,12 +66,6 @@ final class WindowsSnapshotDownloadUtil {
 			return PHP_7_1_DOWNLOAD;
 		case EBuildBranch.PHP_7_0:
 			return PHP_7_0_DOWNLOAD;
-		case EBuildBranch.PHP_5_3:
-			return PHP_5_3_DOWNLOAD;
-		case EBuildBranch.PHP_5_4:
-			return PHP_5_4_DOWNLOAD;
-		case EBuildBranch.PHP_5_5:
-			return PHP_5_5_DOWNLOAD;
 		case EBuildBranch.PHP_5_6:
 			return PHP_5_6_DOWNLOAD;
 		case EBuildBranch.PHP_Master:

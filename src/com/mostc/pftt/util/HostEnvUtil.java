@@ -282,7 +282,6 @@ public final class HostEnvUtil {
 
 	/** PHP on Windows requires Microsoft's VC Runtime to be installed. This method ensures that the correct version is installed.
 	 * 
-	 * PHP 5.3 and 5.4 require the VC9 x86 Runtime
 	 * PHP 5.5+ require the VC11 x86 Runtime
 	 * PHP 7.0+ require the VC14 x86 Runtime
 	 * 
@@ -324,15 +323,6 @@ public final class HostEnvUtil {
 	}
 	
 	
-	protected static void installVCRT9(ConsoleManager cm, FileSystemScenario fs, AHost host) throws IllegalStateException, IOException, Exception {
-		
-		if (installedVCRT9(host)) {
-			cm.println(EPrintType.CLUE, HostEnvUtil.class, "VC9 Runtime already installed");
-		} else {
-			doInstallVCRT(cm, fs, host, "VC9", "vc9_redist_x86.exe");
-		}
-	}
-		
 	protected static void installVCRT(ConsoleManager cm, FileSystemScenario fs, AHost host, String name, String installerFile, String sysDllFile)
 			throws IllegalStateException, IOException, Exception {
 		// starting with VCRT10, checking the registry is the only way to tell
@@ -607,17 +597,6 @@ public final class HostEnvUtil {
 		}
 	}
 	
-	private static void downloadVCRuntime9(FileSystemScenario fs, LocalHost host, LocalConsoleManager cm)
-	{
-		if (installedVCRT9(host)) {
-			cm.println(EPrintType.CLUE, HostEnvUtil.class, "VC9 Runtime already installed, skip downloading.");
-		}
-		else
-		{
-			downloadFile(fs, cm, "VC9 Runtime", Link_VC9_Redist_X86, File_VC9_Redist_X86);
-		}
-	}
-		
 	private static void downloadVC14Runtime(FileSystemScenario fs, LocalConsoleManager cm,
 			String name, String remote_url, String installer_file, String dll_file)
 	{

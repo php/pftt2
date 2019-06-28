@@ -703,13 +703,6 @@ public abstract class SAPIScenario extends AbstractSerialScenario {
 			
 			return true;
 		}
-		if (build.is53(cm, host)) {
-			if (test_case.isNamed(TESTS53)) {
-				twriter.addResult(host, setup, src_test_pack, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null, null));
-				
-				return true;	
-			}
-		}
 		// TODO || ?
 		if ((test_case.getExtensionName()!=null&&(test_case.getExtensionName().equals("intl")||test_case.getExtensionName().equals("oci8")))||test_case.containsSection(EPhptSection.REQUEST)||test_case.isNamed(RANDOMLY_FAIL)) {
 			twriter.addResult(host, setup, src_test_pack, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "test sometimes randomly fails, ignore it", null, null, null, null, null, null, null, null, null, null, null));
