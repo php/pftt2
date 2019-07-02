@@ -134,7 +134,7 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 		"sqlite3",
 		"tidy",
 		"tokenizer",
-		"wddx",
+		//"wddx",
 		"xml",
 		"xmlreader",
 		"xmlrpc",
