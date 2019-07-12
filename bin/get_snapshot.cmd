@@ -19,7 +19,7 @@ if %revision%.==. (
 :args_error
 echo User error: must specify branch, build type, CPU arch and revision code
 echo get_release "<branch> <build> <cpu> <revision code | latest>"
-echo Branch can be any of: 5.6, 7.0, 7.1, 7.2, 7.3, 7.4
+echo Branch can be any of: 7.1, 7.2, 7.3, 7.4
 echo Build can be any of: NTS, TS
 echo CPU can be any of: X64, X86
 echo Revision code starts with r (i.e. rxxxxxx)
@@ -40,28 +40,27 @@ if not exist %PHP_BUILDS% (
 
 REM Set file_name and test_pack based on parameters
 if %branch%==5.6 (
-	set file_name=php-!branch!-%build%-windows-vc11-%cpu%
-	set test_pack=php-test-pack-!branch!-%build%-windows-vc11-%cpu%
+	set file_name=php-%branch%-%build%-windows-vc11-%cpu%
+	set test_pack=php-test-pack-%branch%-%build%-windows-vc11-%cpu%
 ) else if %branch%==7.0 (
-	set file_name=php-!branch!-%build%-windows-vc14-%cpu%
-	set test_pack=php-test-pack-!branch!-%build%-windows-vc14-%cpu%
+	set file_name=php-%branch%-%build%-windows-vc14-%cpu%
+	set test_pack=php-test-pack-%branch%-%build%-windows-vc14-%cpu%
 ) else if %branch%==7.1 (
-	set file_name=php-!branch!-%build%-windows-vc14-%cpu%
-	set test_pack=php-test-pack-!branch!-%build%-windows-vc14-%cpu%
+	set file_name=php-%branch%-%build%-windows-vc14-%cpu%
+	set test_pack=php-test-pack-%branch%-%build%-windows-vc14-%cpu%
 ) else if %branch%==7.2 (
-	set file_name=php-!branch!-%build%-windows-vc15-%cpu%
-	set test_pack=php-test-pack-!branch!-%build%-windows-vc15-%cpu%
+	set file_name=php-%branch%-%build%-windows-vc15-%cpu%
+	set test_pack=php-test-pack-%branch%-%build%-windows-vc15-%cpu%
 ) else if %branch%==7.3 (
-	set file_name=php-!branch!-%build%-windows-vc15-%cpu%
-	set test_pack=php-test-pack-!branch!-%build%-windows-vc15-%cpu%
+	set file_name=php-%branch%-%build%-windows-vc15-%cpu%
+	set test_pack=php-test-pack-%branch%-%build%-windows-vc15-%cpu%
 ) else if %branch%==7.4 (
-	set file_name=php-!branch!-%build%-windows-vs16-%cpu%
-	set test_pack=php-test-pack-!branch!-%build%-windows-vs16-%cpu%
+	set file_name=php-%branch%-%build%-windows-vs16-%cpu%
+	set test_pack=php-test-pack-%branch%-%build%-windows-vs16-%cpu%
 )
 
-if /i %revision%==latest goto get_latest_revision
+if /i %revision%==latest call get_latest_revision.cmd
 
-:get_files
 set file_name=%file_name%-%revision%
 set test_pack=%test_pack%-%revision%
 
@@ -86,16 +85,3 @@ if not exist %PHP_BUILDS%\%test_pack% (
 ) else (
 	echo Test pack already exists. Remove or move file in %PHP_BUILDS% if you want new copy.
 )
-exit /b
-
-:get_latest_revision
-set SNAP_JSON=php-%branch%.json
-set SNAP_JSON_URL=https://windows.php.net/downloads/snaps/php-%branch%/%SNAP_JSON%
-bitsadmin /transfer DownloadingRelease /download /priority high !SNAP_JSON_URL! %PFTT_CACHE%\!SNAP_JSON!
-
-set "psCmd="add-type -As System.Web.Extensions;^
-$JSON = new-object Web.Script.Serialization.JavaScriptSerializer;^
-$JSON.DeserializeObject($input).revision_last_exported""
-
-for /f %%I in ('^<"%PFTT_CACHE%\!SNAP_JSON!" powershell -noprofile %psCmd%') do set "revision=r%%I"
-goto get_files

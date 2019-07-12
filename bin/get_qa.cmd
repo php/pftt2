@@ -17,7 +17,7 @@ if %cpu%.==. (
 :args_error
 echo User error: must specify branch, build type, CPU arch and revision code
 echo get_release "<branch> <build> <cpu>"
-echo Branch can be any of: 5.6.XRCX, 7.0.XRCX, 7.1.XRCX, 7.2.XRCX, 7.3.XRCX, 7.4.XRCX
+echo Branch can be any of: 7.2.XRCX, 7.3.XRCX, 7.4.XRCX
 echo Build can be any of: NTS, TS
 echo CPU can be any of: X64, X86
 exit /b
