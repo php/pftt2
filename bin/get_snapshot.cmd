@@ -39,13 +39,7 @@ if not exist %PHP_BUILDS% (
 )
 
 REM Set file_name and test_pack based on parameters
-if %branch%==5.6 (
-	set file_name=php-%branch%-%build%-windows-vc11-%cpu%
-	set test_pack=php-test-pack-%branch%-%build%-windows-vc11-%cpu%
-) else if %branch%==7.0 (
-	set file_name=php-%branch%-%build%-windows-vc14-%cpu%
-	set test_pack=php-test-pack-%branch%-%build%-windows-vc14-%cpu%
-) else if %branch%==7.1 (
+if %branch%==7.1 (
 	set file_name=php-%branch%-%build%-windows-vc14-%cpu%
 	set test_pack=php-test-pack-%branch%-%build%-windows-vc14-%cpu%
 ) else if %branch%==7.2 (

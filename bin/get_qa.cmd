@@ -44,13 +44,7 @@ if /I %build%==nts (
 )
 
 REM Set file_name based on parameters
-if not x%branch:5.6=%==x%branch% (
-	set file_name=%file_name%-win32-vc11-%cpu%
-) else if not x%branch:7.0=%==x%branch% (
-	set file_name=%file_name%-win32-vc14-%cpu%
-) else if not x%branch:7.1=%==x%branch% (
-	set file_name=%file_name%-win32-vc14-%cpu%
-) else if not x%branch:7.2=%==x%branch% (
+if not x%branch:7.2=%==x%branch% (
 	set file_name=%file_name%-win32-vc15-%cpu%
 ) else if not x%branch:7.3=%==x%branch% (
 	set file_name=%file_name%-win32-vc15-%cpu%
