@@ -7,12 +7,12 @@ CALL %~dp0set_env.cmd
 
 SET PFTT_LIB=%PFTT_HOME%\lib
 SET PFTT_BUILD=%PFTT_HOME%\build
-SET PFTT_RELEASE=%PFTT_HOME%\pftt_release
+SET PFTT_RELEASE=%PFTT_HOME%\pftt2
 
 REM Check if build directory exists
 if exist %PFTT_BUILD% (
 	REM Create pftt_release directory in main folder
-	md %PFTT_HOME%\pftt_release
+	md %PFTT_HOME%\pftt2
 
 	REM Copy contents of bin, conf and lib to respective folders
 	md %PFTT_RELEASE%\bin
@@ -28,10 +28,10 @@ if exist %PFTT_BUILD% (
 	MOVE pftt2.jar %PFTT_RELEASE%\lib
 
 	REM Create zip file of pftt_release folder
-	%PFTT_BIN%\7za.exe a -tzip %PFTT_HOME%\pftt_release.zip %PFTT_HOME%\pftt_release
+	%PFTT_BIN%\7za.exe a -tzip %PFTT_HOME%\pftt_release.zip %PFTT_HOME%\pftt2
 
 	REM Delete temp files/folders
-	rd /s /q %PFTT_HOME%\pftt_release
+	rd /s /q %PFTT_HOME%\pftt2
 ) else (
 	ECHO Build folder does not exist
 )
