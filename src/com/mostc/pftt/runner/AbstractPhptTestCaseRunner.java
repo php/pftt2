@@ -127,50 +127,13 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner<
 		if (!prepare())
 			// test is SKIP BORK EXCEPTION etc...
 			return;
+		
 		if (prep.skipif_file!=null) {
-			String skipif_code = prep.test_case.get(EPhptSection.SKIPIF).toLowerCase(); 
-			if (!skipif_code.contains("include") && !skipif_code.contains("PHP_SAPI") && !skipif_code.contains("require")) {
-				if (host.isWindows() && skipif_code.contains("skip non-windows only test")||skipif_code.contains("skip not for windows")||skipif_code.contains("not valid for windows")) {
-					twriter.addResult(host, scenario_set, src_test_pack, new PhptTestResult(host, EPhptTestStatus.SKIP, prep.test_case, skipif_code, null, null, null, ini, null, null, null, null, null, null, null));
-					return;
-				} else if (!host.isX64() && skipif_code.contains("skip this test is for 64bit platform only")) {
-					twriter.addResult(host, scenario_set, src_test_pack, new PhptTestResult(host, EPhptTestStatus.SKIP, prep.test_case, skipif_code, null, null, null, ini, null, null, null, null, null, null, null));
-					return;
-				}
-				
-				// avoid starting PHP process just to call extension_loaded();
-				//
-				// if we got here, SAPIScenario#willSkip was already called for this test case,
-				//   which would have prevented getting here if the extension wasn't loaded
-				// 
-				// therefore, don't need to start PHP process just to check that again
-				//
-				// this has the additional effect that if the extension couldn't be loaded (corrupted DLL, etc...)
-				//  the test case will be shown as a FAIL (so it'll be noticed, otherwise it would just be an increased SKIP count)
-				if (skipif_code.contains("extension_loaded") && !skipif_code.contains("PHP_INT_SIZE")) {
-					// extension is already loaded
-					if (prep.test_case.isExtensionTest()
-							&&!ini.hasExtension(prep.test_case.getExtensionName())) {
-						// test of extension that is not loaded
-						//
-						// don't bother launching a process just to find that out
-						twriter.addResult(host, scenario_set, src_test_pack, new PhptTestResult(host, EPhptTestStatus.SKIP, prep.test_case, skipif_code, null, null, null, ini, null, null, null, null, null, null, null));
-						return;
-					}
-				} else {
-					current_section = EPhptSection.SKIPIF; // @see #getSAPIOutput
-					if ( evalSkipIf(executeSkipIf()) ) {
-						return;
-					}
-				}
-			} else {
-				current_section = EPhptSection.SKIPIF; // @see #getSAPIOutput
-				if ( evalSkipIf(executeSkipIf()) ) {
-					return;
-				}
+			current_section = EPhptSection.SKIPIF; // @see #getSAPIOutput
+			if ( evalSkipIf(executeSkipIf()) ) {
+				return;
 			}
 		}
-		
 		
 		current_section = EPhptSection.TEST; // @see #getSAPIOutput
 		// no SKIPIF section or executed SKIPIF says to execute the TEST section
@@ -295,6 +258,12 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner<
 			
 			// skip this test
 			return true;
+		}
+		
+		// Support xfail in SKIPIF sections
+		if(lc_output.contains("xfail"))
+		{
+			prep.test_case.skipifAsXfail = true;
 		}
 
 		// execute this test, don't skip it

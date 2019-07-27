@@ -132,6 +132,7 @@ public class PhptTestCase extends TestCase {
 	private CharsetEncoder ce;
 	public boolean redo = false; // TODO temp
 	public PreparedPhptTestCase prep; // TODO temp
+	public boolean skipifAsXfail = false;
 	
 	/** loads the named PHPT test from the given PhptSourceTestPack
 	 * 
@@ -435,7 +436,8 @@ public class PhptTestCase extends TestCase {
 	 * @return
 	 */
 	public boolean isXFail() {
-		return containsSection(EPhptSection.XFAIL);
+		return containsSection(EPhptSection.XFAIL)
+				|| (containsSection(EPhptSection.SKIPIF) && this.skipifAsXfail);
 	}
 		
 	/** returns the expected output as a string
