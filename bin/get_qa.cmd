@@ -16,7 +16,7 @@ if %cpu%.==. (
 
 :args_error
 echo User error: must specify branch, build type, CPU arch and revision code
-echo get_release "<branch> <build> <cpu>"
+echo get_qa "<branch> <build> <cpu>"
 echo Branch can be any of: 7.2.XRCX, 7.3.XRCX, 7.4.XRCX
 echo Build can be any of: NTS, TS
 echo CPU can be any of: X64, X86
@@ -33,6 +33,10 @@ SET PHP_BUILDS=%~d0\PHPBuilds
 REM Create cache folder if it does not exist
 if not exist %PHP_BUILDS% (
 	md %~d0\PHPBuilds
+)
+
+if not exist %PFTT_CACHE% (
+	md %PFTT_HOME%\cache
 )
 
 set file_name=php-%branch%

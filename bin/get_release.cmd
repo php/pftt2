@@ -35,6 +35,10 @@ if not exist %PHP_BUILDS% (
 	md %~d0\PHPBuilds
 )
 
+if not exist %PFTT_CACHE% (
+	md %PFTT_HOME%\cache
+)
+
 set file_name=php-%branch%
 set test_pack=php-test-pack-%branch%-latest
 

@@ -38,6 +38,10 @@ if not exist %PHP_BUILDS% (
 	md %~d0\PHPBuilds
 )
 
+if not exist %PFTT_CACHE% (
+	md %PFTT_HOME%\cache
+)
+
 REM Set file_name and test_pack based on parameters
 if %branch%==7.1 (
 	set file_name=php-%branch%-%build%-windows-vc14-%cpu%
@@ -62,7 +66,7 @@ REM Download the build if it is not available
 if not exist %PHP_BUILDS%\%file_name% (
 	set build_link=https://windows.php.net/downloads/snaps/php-%branch%/%revision%/%file_name%.zip
 
-	bitsadmin /transfer DownloadingSnapBuild /download /priority high !build_link! %PFTT_CACHE%\%file_name%.zip
+	bitsadmin /transfer DownloadingSnap-%branch%-%build%-%cpu%-Build /download /priority high !build_link! %PFTT_CACHE%\%file_name%.zip
 	7za.exe x %PFTT_CACHE%\%file_name%.zip -o%PHP_BUILDS%\*
 	del %PFTT_CACHE%\%file_name%.zip
 ) else (
@@ -73,7 +77,7 @@ REM Also download test-pack if it is not available
 if not exist %PHP_BUILDS%\%test_pack% (
 	set test_pack_link=https://windows.php.net/downloads/snaps/php-%branch%/%revision%/%test_pack%.zip
 
-	bitsadmin /transfer DownloadingSnapTestPack /download /priority high !test_pack_link! %PFTT_CACHE%\%test_pack%.zip
+	bitsadmin /transfer DownloadingSnap-%branch%-%build%-%cpu%-TestPack /download /priority high !test_pack_link! %PFTT_CACHE%\%test_pack%.zip
 	7za.exe x %PFTT_CACHE%\%test_pack%.zip -o%PHP_BUILDS%\*
 	del %PFTT_CACHE%\%test_pack%.zip
 ) else (
