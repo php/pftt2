@@ -234,6 +234,14 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner<
 	 */
 	protected boolean evalSkipIf(String output) throws IOException {
 		String lc_output = output.toLowerCase();
+		
+		// Support xfail in SKIPIF sections
+		if(lc_output.contains("xfail"))
+		{
+			prep.test_case.skipifAsXfail = true;
+			return false;
+		}
+		
 		//
 		// find 'skip ' or 'skip...' or 'skip.. ' or 'skip' but ignore '404 error, file not found abc.skip.php'
 		//    (don't need to check for multiple occurences of 'skip', just one... finding abc.skip.php would be a TEST_EXCEPTION or FAIL anyway)
@@ -258,12 +266,6 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner<
 			
 			// skip this test
 			return true;
-		}
-		
-		// Support xfail in SKIPIF sections
-		if(lc_output.contains("xfail"))
-		{
-			prep.test_case.skipifAsXfail = true;
 		}
 
 		// execute this test, don't skip it
