@@ -7,6 +7,6 @@ ssh_server.jar
 cache/working/*
 cache/dep/*
 jre/*
-job_work/*
+job_work*/*
 .metadata/*
 pftt_release.zip
