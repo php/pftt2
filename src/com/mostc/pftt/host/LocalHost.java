@@ -509,7 +509,10 @@ public abstract class LocalHost extends AHost {
 			// try to set exit code after execution
 			try {
 				exit_code = p.exitValue();
-			} catch ( IllegalThreadStateException ex ) {}
+			} catch (IllegalThreadStateException ex )
+			{
+				ConsoleManagerUtil.printStackTrace(LocalHost.class, ex);
+			}
 			
 			active_proc_counter.decrementAndGet();
 			
