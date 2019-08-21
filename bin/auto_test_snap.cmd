@@ -27,7 +27,7 @@ SET thread[3]=TS
 SET vc[0]=vc14
 SET vc[1]=vc15
 SET vc[2]=vc15
-SET vc[3]=vs16
+SET vc[3]=vc15
 
 REM Check php-7.1 for new snap builds
 for /L %%i in (0,1,3) do (
