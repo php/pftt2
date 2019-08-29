@@ -46,15 +46,9 @@ REM Set file_name and test_pack based on parameters
 if %branch%==7.1 (
 	set file_name=php-%branch%-%build%-windows-vc14-%cpu%
 	set test_pack=php-test-pack-%branch%-%build%-windows-vc14-%cpu%
-) else if %branch%==7.2 (
+) else (
 	set file_name=php-%branch%-%build%-windows-vc15-%cpu%
 	set test_pack=php-test-pack-%branch%-%build%-windows-vc15-%cpu%
-) else if %branch%==7.3 (
-	set file_name=php-%branch%-%build%-windows-vc15-%cpu%
-	set test_pack=php-test-pack-%branch%-%build%-windows-vc15-%cpu%
-) else if %branch%==7.4 (
-	set file_name=php-%branch%-%build%-windows-vs16-%cpu%
-	set test_pack=php-test-pack-%branch%-%build%-windows-vs16-%cpu%
 )
 
 if /i %revision%==latest call get_latest_revision.cmd

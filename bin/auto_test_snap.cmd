@@ -27,7 +27,7 @@ SET thread[3]=TS
 SET vc[0]=vc14
 SET vc[1]=vc15
 SET vc[2]=vc15
-SET vc[3]=vs16
+SET vc[3]=vc15
 
 REM Check php-7.1 for new snap builds
 for /L %%i in (0,1,3) do (
@@ -44,7 +44,7 @@ for /L %%i in (0,1,3) do (
 			REM If the build does not exist, fetch and test it
 			if not exist %PHP_BUILDS%\!build[%%j]! (
 				call %~dp0get_snapshot.cmd !branch! !thread[%%j]! !cpu[%%j]! !revision!
-				call %~dp0pftt.cmd core_list %PHP_BUILDS%\!build[%%j]! %PHP_BUILDS%\!test_pack[%%j]! %PFTT_HOME%\tests-to-run.txt
+				call %~dp0pftt.cmd -results_only core_list %PHP_BUILDS%\!build[%%j]! %PHP_BUILDS%\!test_pack[%%j]! %PFTT_HOME%\tests-to-run.txt
 			) else (
 				echo Build already exists: !build[%%j]!
 			)
