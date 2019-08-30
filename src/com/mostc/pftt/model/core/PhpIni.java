@@ -41,7 +41,6 @@ public class PhpIni {
 	public static final String EXTENSION_DIR = "extension_dir";
 	public static final String OUTPUT_HANDLER = "output_handler";
 	public static final String OPEN_BASEDIR = "open_basedir";
-	public static final String SAFE_MODE = "safe_mode";
 	public static final String DISABLE_DEFS = "disable_defs";
 	public static final String OUTPUT_BUFFERING = "output_buffering";
 	public static final String ERROR_REPORTING = "error_reporting";
@@ -58,13 +57,8 @@ public class PhpIni {
 	public static final String ERROR_APPEND_STRING = "error_append_string";
 	public static final String AUTO_PREPEND_FILE = "auto_prepend_file";
 	public static final String AUTO_APPEND_FILE = "auto_append_file";
-	public static final String MAGIC_QUOTES_RUNTIME = "magic_quotes_runtime";
 	public static final String IGNORE_REPEATED_ERRORS = "ignore_repeated_errors";
 	public static final String PRECISION = "precision";
-	public static final String UNICODE_RUNTIME_ENCODING = "unicode.runtime_encoding";
-	public static final String UNICODE_SCRIPT_ENCODING = "unicode.script_encoding";
-	public static final String UNICODE_OUTPUT_ENCODING = "unicode.output_encoding";
-	public static final String UNICODE_FROM_ERROR_MODE = "unicode.from_error_mode";
 	public static final String SESSION_AUTO_START = "session.auto_start";
 	public static final String SYS_TEMP_DIR = "sys_temp_dir";
 	public static final String ON = "On";
