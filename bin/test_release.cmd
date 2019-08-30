@@ -50,6 +50,6 @@ for /L %%j in (0,1,3) do (
 		set file_name=php-%branch%-win32-%build%-!cpu[%%j]!-latest
 	)
 	
-	call %~dp0pftt.cmd -results_only core_named %PHP_BUILDS%\!file_name! %PHP_BUILDS%\%test_pack% tests\basic\001.phpt
-	call %~dp0pftt.cmd -config opcache -results_only core_named %PHP_BUILDS%\!file_name! %PHP_BUILDS%\%test_pack% tests\basic\001.phpt
+	call %~dp0pftt.cmd -results_only core_list %PHP_BUILDS%\!file_name! %PHP_BUILDS%\%test_pack% %PFTT_HOME%\tests-to-run.txt
+	call %~dp0pftt.cmd -config opcache -results_only core_list %PHP_BUILDS%\!file_name! %PHP_BUILDS%\%test_pack% %PFTT_HOME%\tests-to-run.txt
 )
