@@ -44,16 +44,9 @@ set test_pack=php-test-pack-%branch%
 
 REM Add nts to file_name if needed
 if /I %build%==nts (
-	set file_name=%file_name%-nts
-)
-
-REM Set file_name based on parameters
-if not x%branch:7.2=%==x%branch% (
+	set file_name=%file_name%-nts-win32-vc15-%cpu%
+) else (
 	set file_name=%file_name%-win32-vc15-%cpu%
-) else if not x%branch:7.3=%==x%branch% (
-	set file_name=%file_name%-win32-vc15-%cpu%
-) else if not x%branch:7.4=%==x%branch% (
-	set file_name=%file_name%-win32-vs16-%cpu%
 )
 
 REM Download the build if it is not available

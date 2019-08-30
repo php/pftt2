@@ -50,12 +50,8 @@ if /I %build%==nts (
 REM Set file_name based on parameters
 if %branch%==7.1 (
 	set file_name=%file_name%-win32-vc14-%cpu%-latest
-) else if %branch%==7.2 (
+) else (
 	set file_name=%file_name%-win32-vc15-%cpu%-latest
-) else if %branch%==7.3 (
-	set file_name=%file_name%-win32-vc15-%cpu%-latest
-) else if %branch%==7.4 (
-	set file_name=%file_name%-win32-vs16-%cpu%-latest
 )
 
 REM Download the build if it is not available

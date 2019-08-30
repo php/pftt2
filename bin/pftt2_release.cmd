@@ -22,6 +22,8 @@ if exist %PFTT_BUILD% (
 	xcopy /s /i "%PFTT_BIN%" "%PFTT_RELEASE%\bin"
 	xcopy /s /i "%PFTT_CONF%" "%PFTT_RELEASE%\conf"
 	xcopy /s /i "%PFTT_LIB%" "%PFTT_RELEASE%\lib"
+	
+	copy "%PFTT_HOME%\tests-to-run.txt" "%PFTT_RELEASE%"
 
 	REM Create pftt2.jar in lib of the package
 	jar cf pftt2.jar -C %PFTT_BUILD% com %PFTT_BUILD%\org\columba %PFTT_BUILD%\org\kxml2 %PFTT_BUILD%\org\incava
