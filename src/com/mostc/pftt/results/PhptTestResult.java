@@ -11,8 +11,8 @@ import java.util.Map;
 
 import javax.annotation.Nullable;
 
-import org.incava.util.diff.Diff;
-import org.incava.util.diff.Difference;
+import org.incava.diff.Diff;
+import org.incava.diff.Difference;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlSerializer;

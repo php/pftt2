@@ -479,7 +479,7 @@ public class PfttMain {
 		
 		Groovysh shell = new Groovysh(binding, io);
 		
-		int code = shell.run();
+		int code = shell.run("");
 		
 		Console console = new Console();
 		//console.setVariable("var1", getValueOfVar1());

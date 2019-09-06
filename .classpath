@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry excluding="com/mostc/pftt/scenario/AzureWebsitesScenario.java" kind="src" path="src"/>
+	<classpathentry kind="src" path="src"/>
 	<classpathentry exported="true" kind="lib" path="lib/htmlcleaner-2.2.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/icu4j-49_1.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/icudata.jar"/>
@@ -54,5 +54,13 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="con" path="GROOVY_SUPPORT"/>
 	<classpathentry exported="true" kind="con" path="GROOVY_DSL_SUPPORT"/>
+	<classpathentry kind="lib" path="lib/groovy-2.5.8.jar"/>
+	<classpathentry kind="lib" path="lib/groovy-groovysh-2.5.8.jar"/>
+	<classpathentry kind="lib" path="lib/sshd-core-1.1.1.jar"/>
+	<classpathentry kind="lib" path="lib/windowsazure-core-0.5.0.jar"/>
+	<classpathentry kind="lib" path="lib/windowsazure-websites-0.5.0.jar"/>
+	<classpathentry kind="lib" path="lib/ristretto-1.0.jar"/>
+	<classpathentry kind="lib" path="lib/java-diff-1.1.2.jar"/>
+	<classpathentry kind="lib" path="lib/kxml2-2.3.0.jar"/>
 	<classpathentry kind="output" path="build"/>
 </classpath>

@@ -5,6 +5,9 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Map;
 
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.TransformerException;
+
 import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -12,6 +15,7 @@ import org.apache.http.impl.DefaultHttpClientConnection;
 import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.ExecutionContext;
 import org.apache.http.protocol.HttpContext;
+import org.xml.sax.SAXException;
 
 import com.github.mattficken.io.IOUtil;
 import com.github.mattficken.io.StringUtil;
@@ -52,10 +56,8 @@ import com.mostc.pftt.results.ConsoleManager;
 import com.mostc.pftt.results.ConsoleManagerUtil;
 import com.mostc.pftt.results.EPrintType;
 import com.mostc.pftt.results.ITestResultReceiver;
-import com.mostc.pftt.runner.AbstractPhpUnitTestCaseRunner;
 import com.mostc.pftt.runner.AbstractPhptTestCaseRunner;
 import com.mostc.pftt.runner.AzureWebAppsPhpUnitTestCaseRunner;
-import com.mostc.pftt.runner.HttpPhpUnitTestCaseRunner;
 import com.mostc.pftt.runner.LocalPhpUnitTestPackRunner.PhpUnitThread;
 
 // TODO if no code cache scenario specified => default INI (opcache enabled?)
@@ -237,7 +239,7 @@ public class AzureWebsitesScenario extends ProductionWebServerScenario {
 			);
 	}
 	
-	public boolean setEffectivePhpBuild(ConsoleManager cm, String fs_path) throws IOException, URISyntaxException, ServiceException {
+	public boolean setEffectivePhpBuild(ConsoleManager cm, String fs_path) throws IOException, URISyntaxException, ServiceException, ParserConfigurationException, SAXException, TransformerException {
 		Configuration config = ManagementConfiguration.configure(
 	        new java.net.URI("https://management.core.windows.net/"),
 	        	subscriptionId,
@@ -295,7 +297,7 @@ public class AzureWebsitesScenario extends ProductionWebServerScenario {
 	 	return true;
 	}
 	
-	protected BuildInstall installBuildBranch(ConsoleManager cm, WebServerInstance web, EBuildBranch branch, String remote_build_path) throws IOException, URISyntaxException, ServiceException {
+	protected BuildInstall installBuildBranch(ConsoleManager cm, WebServerInstance web, EBuildBranch branch, String remote_build_path) throws IOException, URISyntaxException, ServiceException, ParserConfigurationException, SAXException, TransformerException {
 		cm.println(EPrintType.CLUE, AzureWebsitesScenario.class, "Setting PHP Branch: "+branch);
 		if (!setEffectivePhpBuild(cm, remote_build_path))
 			return null;
