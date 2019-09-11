@@ -1,0 +1,21 @@
+org.incava.diff.Difference
+
+- private final Integer delStart;
+- private final Integer delEnd;
+- private final Integer addStart;
+- private final Integer addEnd;
++ public Integer delStart;
++ public Integer delEnd;
++ public Integer addStart;
++ public Integer addEnd;
+
+
+
+org.columba.ristretto.SMTPProtocal
+
++ public void createStreams(SSLSocket paramSSLSocket) throws IOException {
++   this.in = new SMTPInputStream(paramSSLSocket.getInputStream());
++   this.out = paramSSLSocket.getOutputStream();
++   this.socket = paramSSLSocket;
++   this.state = 1;
++ }
