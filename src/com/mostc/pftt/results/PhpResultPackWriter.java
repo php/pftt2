@@ -602,7 +602,7 @@ public class PhpResultPackWriter extends PhpResultPack implements ITestResultRec
 		}
 		
 		// count exceptions as a result (the worst kind of failure, a pftt failure)
-		addResult(this_host, this_scenario_set_setup, src_test_pack, new PhptTestResult(host, EPhptTestStatus.TEST_EXCEPTION, test_case, ex_str, null, null, null, null, null, null, null, null, null, null, null));
+		addResult(this_host, this_scenario_set_setup, src_test_pack, new PhptTestResult(host, EPhptTestStatus.TEST_EXCEPTION, test_case, ex_str));
 	}
 	
 	@Override

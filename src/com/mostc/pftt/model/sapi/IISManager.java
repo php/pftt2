@@ -38,7 +38,7 @@ public class IISManager extends AbstractManagedProcessesWebServerManager {
 	public static boolean isSupported(ConsoleManager cm, ITestResultReceiver twriter, AHost host, ScenarioSetSetup scenario_set_setup, PhpBuild build, PhptSourceTestPack src_test_pack, PhptTestCase test_case) {
 		if (build.isTS(host)) {
 			cm.println(EPrintType.SKIP_OPERATION, IISManager.class, "Error IIS requires NTS Php Build. TS Php Builds aren't supported with IIS.");
-			twriter.addResult(host, scenario_set_setup, src_test_pack, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "TS Build not supported", null, null, null, null, null, null, null, null, null, null, null));
+			twriter.addResult(host, scenario_set_setup, src_test_pack, new PhptTestResult(host, EPhptTestStatus.XSKIP, test_case, "TS Build not supported"));
 			
 			return false;
 		} else {

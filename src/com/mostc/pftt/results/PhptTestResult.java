@@ -11,8 +11,8 @@ import java.util.Map;
 
 import javax.annotation.Nullable;
 
-import org.incava.util.diff.Diff;
-import org.incava.util.diff.Difference;
+import org.incava.diff.Diff;
+import org.incava.diff.Difference;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlSerializer;
@@ -3078,17 +3078,17 @@ public class PhptTestResult implements ISerializer {
 			Difference nd = j+1<list.size()?list.get(j+1):null;
 			
 			sb.append("@@ -");
-			sb.append(d.delStart+1);
+			sb.append(d.getDeletedStart()+1);
 			sb.append(',');
-			sb.append(d.delEnd==0?expected_lines.length:(d.delEnd-d.delStart)+1);
+			sb.append(d.getDeletedEnd()==0?expected_lines.length:(d.getDeletedEnd()-d.getDeletedStart())+1);
 			sb.append(" +");
-			sb.append(d.addStart+1);
+			sb.append(d.getAddedStart()+1);
 			sb.append(',');
-			sb.append((d.addEnd-d.addStart)+1);
+			sb.append((d.getAddedEnd()-d.getAddedStart())+1);
 			sb.append(" @@\n");
-			if (d.addEnd!=-1) {
-				addPre(i, d.addStart, sb, expected_lines);
-				for (i=d.addStart;i<=d.addEnd;i++) {
+			if (d.getAddedEnd()!=-1) {
+				addPre(i, d.getAddedStart(), sb, expected_lines);
+				for (i=d.getAddedStart();i<=d.getAddedEnd();i++) {
 					if (i>=actual_lines.length) {
 						continue;
 					}
@@ -3098,11 +3098,11 @@ public class PhptTestResult implements ISerializer {
 					sb.append('\n');
 				}
 			}
-			if (d.delEnd!=-1) {
-				if (!(d.addEnd!=-1)) {
-					addPre(i, d.delStart, sb, expected_lines);
+			if (d.getDeletedEnd()!=-1) {
+				if (!(d.getAddedEnd()!=-1)) {
+					addPre(i, d.getDeletedStart(), sb, expected_lines);
 				}
-				for (i=d.delStart;i<=d.delEnd;i++) {
+				for (i=d.getDeletedStart();i<=d.getDeletedEnd();i++) {
 					if (i>=expected_lines.length) {
 						continue;
 					}

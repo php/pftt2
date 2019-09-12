@@ -1,20 +1,20 @@
 package com.mostc.pftt.main;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.LinkedList;
 import java.util.regex.Pattern;
 
 import org.apache.log4j.BasicConfigurator;
-import org.apache.sshd.SshServer;
+import org.apache.sshd.server.SshServer;
 import org.apache.sshd.common.NamedFactory;
 import org.apache.sshd.server.Command;
 import org.apache.sshd.server.CommandFactory;
-import org.apache.sshd.server.PasswordAuthenticator;
+import org.apache.sshd.server.auth.password.PasswordAuthenticator;
 import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider;
 import org.apache.sshd.server.session.ServerSession;
-import org.apache.sshd.server.sftp.SftpSubsystem;
+import org.apache.sshd.server.subsystem.sftp.SftpSubsystemFactory;
 import org.apache.sshd.server.shell.ProcessShellFactory;
 
 import com.github.mattficken.io.StringUtil;
@@ -30,7 +30,8 @@ public class SSHServer {
 		SshServer sshd = SshServer.setUpDefaultServer();
 
 		ArrayList<NamedFactory<Command>> f = new ArrayList<NamedFactory<Command>>(1);
-		f.add(new SftpSubsystem.Factory());
+		f.add(new SftpSubsystemFactory());
+		
 		sshd.setSubsystemFactories(f);
 
 		if (System.getProperty("os.name").contains("Windows"))
@@ -49,8 +50,8 @@ public class SSHServer {
 			}
 		});
 		sshd.setPort(22);
-		sshd.setReuseAddress(true);
-		sshd.setKeyPairProvider(new SimpleGeneratorHostKeyProvider("hostkeys.txt"));
+		//sshd.setReuseAddress(true);
+		sshd.setKeyPairProvider(new SimpleGeneratorHostKeyProvider(new File("hostkeys.txt")));
 		sshd.start();
 	}
 	
@@ -102,8 +103,7 @@ public class SSHServer {
 
 		if (System.getProperty("os.name").contains("Windows")) {
 			return new ProcessShellFactory(
-					commands, 
-					EnumSet.of(ProcessShellFactory.TtyOptions.Echo, ProcessShellFactory.TtyOptions.ICrNl, ProcessShellFactory.TtyOptions.ONlCr));
+					commands);
 		}
 
 		return new ProcessShellFactory(commands);
