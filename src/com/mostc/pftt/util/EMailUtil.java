@@ -36,7 +36,7 @@ import com.github.mattficken.io.ArrayUtil;
 public final class EMailUtil {
 
 	public static void main(String[] args) throws Exception {
-		SMTPProtocol smtp = connect("smtp.gmail.com", 465, Address.parse("tomattficken@gmail.com"), ESMTPSSL.EXPLICIT_SSL, ESMTPAuthMethod.PLAIN, "tomattficken@gmail.com", "plasticmouse".toCharArray());
+		SMTPProtocol smtp = connect("smtp.gmail.com", 465, Address.parse("tomattficken@gmail.com"), ESMTPSSL.EXPLICIT_SSL, ESMTPAuthMethod.PLAIN, "tomattficken@gmail.com", "".toCharArray());
 		System.err.println(smtp);
 		System.err.println(smtp.getState());
 		sendHTMLMessage(smtp, Address.parse("tomattficken@gmail.com"), ArrayUtil.toList(Address.parse("v-mafick@microsoft.com")), "subject", "<html><body><h1>html_msg_Str</h1></body></html>");
