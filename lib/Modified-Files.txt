@@ -1,4 +1,4 @@
-org.columba.ristretto.SMTPProtocal
+org.columba.ristretto.SMTPProtocol
 
 + public void createStreams(SSLSocket paramSSLSocket) throws IOException {
 +   this.in = new SMTPInputStream(paramSSLSocket.getInputStream());
