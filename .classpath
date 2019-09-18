@@ -59,7 +59,6 @@
 	<classpathentry kind="lib" path="lib/sshd-core-1.1.1.jar"/>
 	<classpathentry kind="lib" path="lib/windowsazure-core-0.5.0.jar"/>
 	<classpathentry kind="lib" path="lib/windowsazure-websites-0.5.0.jar"/>
-	<classpathentry kind="lib" path="lib/ristretto-1.0-1.jar"/>
 	<classpathentry kind="lib" path="lib/java-diff-1.1.2.jar"/>
 	<classpathentry kind="lib" path="lib/kxml2-2.3.0.jar"/>
 	<classpathentry kind="output" path="build"/>
