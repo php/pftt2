@@ -11,7 +11,7 @@ import java.util.zip.DeflaterOutputStream;
 
 import javax.annotation.Nonnull;
 
-import org.incava.diff.Diff;
+import org.incava.util.diff.Diff;
 
 import com.github.mattficken.Overridable;
 import com.github.mattficken.io.StringUtil;
