@@ -298,6 +298,11 @@ public abstract class AHost extends Host implements IProgramRunner {
 			return tmp_dir = "/tmp/";
 		}*/
 	}
+
+	public String getSystemTempDir() {
+		return getEnvValue("TEMP");
+	}
+
 	@Override
 	public String getSystemDrive() {
 		if (system_drive!=null) {

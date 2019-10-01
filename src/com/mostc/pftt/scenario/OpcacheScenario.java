@@ -318,23 +318,23 @@ public class OpcacheScenario extends CodeCacheScenario {
 	protected void cleanupBaseAddressFile(AHost host, PhpBuild build, PhptActiveTestPack test_pack) {
 		// IMPORTANT: delete the `base address` file that
 		// Opcache left behind from previous test run
-		//
-		// in temp directory. name is like: ZendOptimizer+.MemoryBase@matt
-		// @see shared_alloc_win32.c (https://github.com/zend-dev/opcache/blob/master/shared_alloc_win32.c)
+		// in temp directory. name is like: ZendOPcache.MemoryBase@*
+		// @see shared_alloc_win32.c (https://github.com/php/php-src/blob/PHP-7.4/ext/opcache/shared_alloc_win32.c)
 		//
 		// for regular users, TEMP_DIR is often
 		// for Apache (as service) TEMP_DIR is often C:\Users\NT_Authority? (different than IIS service)
 		// for IIS (service) TEMP_DIR is often C:\Windows\Temp
-		host.mDeleteIfExistsElevated(host.getTempDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+		host.mDeleteIfExistsElevated(host.getTempDir()+"\\ZendOPcache.MemoryBase@*");
 		if (test_pack!=null) {
-			host.mDeleteIfExistsElevated(test_pack.getRunningDirectory()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());	
-			host.mDeleteIfExistsElevated(test_pack.getStorageDirectory()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+			host.mDeleteIfExistsElevated(test_pack.getRunningDirectory()+"\\ZendOPcache.MemoryBase@*");	
+			host.mDeleteIfExistsElevated(test_pack.getStorageDirectory()+"\\ZendOPcache.MemoryBase@*");
 		}
-		host.mDeleteIfExistsElevated(build.getBuildPath()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());	
-		host.mDeleteIfExistsElevated(host.getJobWorkDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
-		host.mDeleteIfExistsElevated(host.getPfttDir()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
-		host.mDeleteIfExistsElevated(host.getSystemRoot()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
-		host.mDeleteIfExistsElevated(host.getSystemDrive()+"\\ZendOptimizer+.MemoryBase@"+host.getUsername());
+		host.mDeleteIfExistsElevated(build.getBuildPath()+"\\ZendOPcache.MemoryBase@*");	
+		host.mDeleteIfExistsElevated(host.getJobWorkDir()+"\\ZendOPcache.MemoryBase@*");
+		host.mDeleteIfExistsElevated(host.getPfttDir()+"\\ZendOPcache.MemoryBase@*");
+		host.mDeleteIfExistsElevated(host.getSystemTempDir()+"\\ZendOPcache.MemoryBase@*");
+		host.mDeleteIfExistsElevated(host.getSystemRoot()+"\\ZendOPcache.MemoryBase@*");
+		host.mDeleteIfExistsElevated(host.getSystemDrive()+"\\ZendOPcache.MemoryBase@*");
 	}
 	
 	@Override
