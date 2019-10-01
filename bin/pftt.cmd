@@ -63,7 +63,8 @@ SET CLASSPATH=^
 %PFTT_LIB%\windowsazure-core-0.5.0.jar;^
 %PFTT_LIB%\windowsazure-websites-0.5.0.jar;^
 %PFTT_LIB%\java-diff-1.1.2.jar;^
-%PFTT_LIB%\kxml2-2.3.0.jar
+%PFTT_LIB%\kxml2-2.3.0.jar;^
+%PFTT_LIB%\jsr305-3.0.0.jar
 
 REM this might be also controlled by environment, if needed
 IF EXIST %PFTT_LIB%\pftt2.jar (
