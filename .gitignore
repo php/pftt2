@@ -10,3 +10,4 @@ jre/*
 job_work*/*
 .metadata/*
 pftt_release.zip
+/build/
