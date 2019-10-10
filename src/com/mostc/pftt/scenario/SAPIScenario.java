@@ -142,27 +142,6 @@ public abstract class SAPIScenario extends AbstractSerialScenario {
 	
 	public abstract AbstractSimpleTestCaseRunner createSimpleTestCaseRunner(SimpleTestThread thread, ITestResultReceiver tmgr, ConsoleManager cm, FileSystemScenario fs, AHost host, ScenarioSetSetup scenario_set, PhpBuild build, PhpIni ini, SimpleTestCase test_case);
 	
-	public static Trie TESTS53 = PhptTestCase.createNamed(
-			"ext/filter/tests/bug39763.phpt", 
-			"ext/pcre/tests/bug33200.phpt",
-			"ext/session/tests/004.phpt",
-			"ext/session/tests/009.phpt", 
-			"ext/session/tests/013.phpt",
-			"ext/standard/tests/filters/php_user_filter_01.phpt", 
-			"ext/standard/tests/filters/php_user_filter_02.phpt",
-			"ext/standard/tests/filters/php_user_filter_03.phpt",
-			"tests/classes/method_override_optional_arg_002.phpt",
-			"tests/security/magic_quotes_gpc.phpt",
-			"zend/tests/objects_002.phpt",
-			"zend/tests/objects_003.phpt",
-			"zend/tests/objects_004.phpt",
-			"zend/tests/objects_005.phpt",
-			"zend/tests/objects_006.phpt",
-			"zend/tests/objects_007.phpt",
-			"zend/tests/objects_008.phpt",
-			"zend/tests/objects_009.phpt",
-			"zend/tests/objects_010.phpt"
-		);
 	public static Trie RANDOMLY_FAIL = PhptTestCase.createNamed(
 			"ext/com_dotnet/tests/bug66431_1.phpt",
 			"ext/curl/tests/curl_setopt_array_basic.phpt",
