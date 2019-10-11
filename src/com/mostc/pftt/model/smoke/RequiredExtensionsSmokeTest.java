@@ -210,8 +210,6 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 		// ini.putSingle("date.timezone", "'UTC'");
 		ini.putMulti(PhpIni.OUTPUT_HANDLER, StringUtil.EMPTY);
 		ini.putMulti(PhpIni.OPEN_BASEDIR, StringUtil.EMPTY);
-		ini.putMulti(PhpIni.SAFE_MODE, 0);
-		ini.putMulti(PhpIni.DISABLE_DEFS, PhpIni.OFF);
 		ini.putMulti(PhpIni.OUTPUT_BUFFERING, PhpIni.ON);
 		
 		// CRITICAL PhpUnit tests w/ remote fs scenarios
@@ -252,13 +250,8 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 		ini.putMulti(PhpIni.ERROR_APPEND_STRING, StringUtil.EMPTY);
 		ini.putMulti(PhpIni.AUTO_PREPEND_FILE, StringUtil.EMPTY);
 		ini.putMulti(PhpIni.AUTO_APPEND_FILE, StringUtil.EMPTY);
-		ini.putMulti(PhpIni.MAGIC_QUOTES_RUNTIME, PhpIni.OFF);
 		ini.putMulti(PhpIni.IGNORE_REPEATED_ERRORS, PhpIni.OFF);
 		ini.putMulti(PhpIni.PRECISION, 14);
-		ini.putMulti(PhpIni.UNICODE_RUNTIME_ENCODING, PhpIni.ISO_8859_1);
-		ini.putMulti(PhpIni.UNICODE_SCRIPT_ENCODING, PhpIni.UTF_8);
-		ini.putMulti(PhpIni.UNICODE_OUTPUT_ENCODING, PhpIni.UTF_8);
-		ini.putMulti(PhpIni.UNICODE_FROM_ERROR_MODE, PhpIni.U_INVALID_SUBSTITUTE);
 		ini.putMulti(PhpIni.SESSION_AUTO_START, PhpIni.OFF);
 		// added sys_temp_dir for PHAR PHPTs - otherwise they'll use CWD for their temp dir
 		// even if its on a remote file system (slow & buggy)
