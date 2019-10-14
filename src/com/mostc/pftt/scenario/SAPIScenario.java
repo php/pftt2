@@ -356,6 +356,7 @@ public abstract class SAPIScenario extends AbstractSerialScenario {
 			"ext/standard/tests/strings/htmlentities_html5.phpt",
 			"ext/tidy/tests/020.phpt",
 			"ext/xsl/tests/xsl-phpinfo.phpt",
+			// uses both POST and GET
 			"tests/basic/003.phpt",
 			"tests/output/ob_006.phpt",
 
