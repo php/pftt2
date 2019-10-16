@@ -21,7 +21,6 @@ import com.mostc.pftt.model.core.EPhptTestStatus;
 import com.mostc.pftt.model.core.PhpBuild;
 import com.mostc.pftt.model.core.PhpIni;
 import com.mostc.pftt.model.core.PhptActiveTestPack;
-import com.mostc.pftt.model.core.PhptOverrideManager;
 import com.mostc.pftt.model.core.PhptSourceTestPack;
 import com.mostc.pftt.model.core.PhptTestCase;
 import com.mostc.pftt.results.ConsoleManager;
@@ -484,7 +483,6 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner<
 				}
 			}
 			preoverride_actual = output;
-			output_trim = PhptOverrideManager.replaceWithExactOverrides(host, output_trim);
 				
 			if (output_trim==null) {
 				// no output overrides for this phpt on this OS
@@ -529,7 +527,6 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner<
 			}
 				
 			preoverride_actual = output;
-			output = PhptOverrideManager.replaceWithExactOverrides(host, output);
 				
 			if (output==null) {
 				// no output overrides for this phpt on this OS
