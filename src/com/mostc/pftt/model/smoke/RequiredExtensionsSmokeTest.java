@@ -217,22 +217,16 @@ public class RequiredExtensionsSmokeTest extends SmokeTest {
 		
 		//
 		// CRITICAL
-		// be very careful changing ERROR_REPORTING. it can cause false failures.
-		// WHENEVER changing this setting, you MUST test a ts and nts build from 5.3, 5.4, 5.5 with at least CLI and Apache scenarios
-		// before AND after to make sure this didn't break anything. PHPT tests are especially sensitive to this setting (can cause false PHPT failures).
-		// 
-		// testing 5.3 is especially important
-		//
-		// NOTE: 5.3 php builds do not include E_STRICT with E_ALL. you must explicitly include both here!
-		ini.putMulti(PhpIni.ERROR_REPORTING, "E_ALL ^ E_WARNING");//NONE");
+		// ERROR_REPORTING has to match the setting in run-tests.php, since some tests rely on that.
+		ini.putMulti(PhpIni.ERROR_REPORTING, "E_ALL | E_STRICT");
 		// CRITICAL
 		ini.putMulti(PhpIni.DISPLAY_ERRORS, PhpIni.ON);
 		// TODO temp ?
 		ini.putSingle("date.timezone", "UTC");
 		// CRITICAL
-		ini.putMulti(PhpIni.DISPLAY_STARTUP_ERRORS, PhpIni.OFF);
+		ini.putMulti(PhpIni.DISPLAY_STARTUP_ERRORS, PhpIni.ON);
 		// CRITICAL
-		ini.putMulti(PhpIni.LOG_ERRORS, PhpIni.ON); // TODO temp
+		ini.putMulti(PhpIni.LOG_ERRORS, PhpIni.OFF);
 		// CRITICAL
 		ini.putMulti(PhpIni.HTML_ERRORS, PhpIni.OFF);
 		
