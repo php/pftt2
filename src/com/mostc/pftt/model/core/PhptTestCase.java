@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -33,10 +34,6 @@ import com.mostc.pftt.results.ITestResultReceiver;
 import com.mostc.pftt.runner.PhptTestPreparer.PreparedPhptTestCase;
 import com.mostc.pftt.scenario.FileSystemScenario;
 import com.mostc.pftt.scenario.ScenarioSetSetup;
-import com.mostc.pftt.util.apache.regexp.RE;
-import com.mostc.pftt.util.apache.regexp.RECompiler;
-import com.mostc.pftt.util.apache.regexp.REDebugCompiler;
-import com.mostc.pftt.util.apache.regexp.REProgram;
 
 /** A Single PHPT Test Case.
  * 
@@ -127,7 +124,7 @@ public class PhptTestCase extends TestCase {
 	private PhptTestCase parent;
 	private WeakReference<PhpIni> ini;
 	private WeakReference<String> ini_pwd, ini_tmp, contents;
-	private SoftReference<RE> expected_re;
+	private SoftReference<Pattern> expected_pattern;
 	private PhptSourceTestPack test_pack;
 	private CharsetICU common_charset;
 	private CharsetEncoder ce;
@@ -468,7 +465,7 @@ public class PhptTestCase extends TestCase {
 	 * @param  
 	 * @return
 	 */
-	public RE getExpectedCompiled(AHost host, ScenarioSetSetup scenario_set, ITestResultReceiver twriter) {
+	public Pattern getExpectedCompiled(AHost host, ScenarioSetSetup scenario_set, ITestResultReceiver twriter) {
 		return getExpectedCompiled(host, scenario_set, twriter, false);
 	}
 	
@@ -501,12 +498,12 @@ public class PhptTestCase extends TestCase {
 		return sb.toString().trim();
 	}
 	
-	public RE getExpectedCompiled(AHost host, ScenarioSetSetup scenario_set, ITestResultReceiver twriter, boolean remove_warning_and_error) {
-		RE expected_re;
-		if (!remove_warning_and_error && this.expected_re!=null) {
-			expected_re = this.expected_re.get();
-			if (expected_re!=null)
-				return expected_re;
+	public Pattern getExpectedCompiled(AHost host, ScenarioSetSetup scenario_set, ITestResultReceiver twriter, boolean remove_warning_and_error) {
+		Pattern expected_pattern;
+		if (!remove_warning_and_error && this.expected_pattern!=null) {
+			expected_pattern = this.expected_pattern.get();
+			if (expected_pattern!=null)
+				return expected_pattern;
 		}
 		
 		String expected_str, oexpected_str;		
@@ -532,69 +529,21 @@ public class PhptTestCase extends TestCase {
 		}
 		
 		try {
-			REProgram wanted_re_prog = new RECompiler().compile(expected_str);
-			
-			expected_re = new RE(wanted_re_prog);
-			this.expected_re = new SoftReference<RE>(expected_re);
-			return expected_re;
+			expected_pattern = Pattern.compile("^" + expected_str + "$", Pattern.DOTALL);
+			this.expected_pattern = new SoftReference<Pattern>(expected_pattern);
+			return expected_pattern;
 		} catch ( Throwable ex ) {
 			// log exception
 			
 			// provide the regular expression and the original section from the PHPT test
 			
 			twriter.addTestException(host, scenario_set, this, ex, expected_str, oexpected_str);
-			expected_re = new RE(); // marker to avoid trying again
-			this.expected_re = new SoftReference<RE>(expected_re);
-			return expected_re;
+			expected_pattern = Pattern.compile(""); // marker to avoid trying again
+			this.expected_pattern = new SoftReference<Pattern>(expected_pattern);
+			return expected_pattern;
 		}
-	} // end public RE getExpectedCompiled
+	} // end public Pattern getExpectedCompiled
 
-	/** tries matching actual output String against EXPECTF or EXPECTREGEX section and
-	 * writes debugging information and output to the given PrintWriters.
-	 * 
-	 * @param host
-	 * @param scenario_set
-	 * @param twriter
-	 * @param actual_str
-	 * @param dump_pw
-	 * @param output_pw
-	 */
-	public void debugExpectedRegularExpression(AHost host, ScenarioSetSetup scenario_set, ITestResultReceiver twriter, String actual_str, PrintWriter dump_pw, PrintWriter output_pw) {
-		String expected_str;		
-		if (containsSection(EPhptSection.EXPECTREGEX)) {
-			expected_str = getTrim(EPhptSection.EXPECTREGEX);
-		} else if (containsSection(EPhptSection.EXPECTF)) {
-			//
-			// EXPECTF has special strings (ex: %s) that are replaced by builtin regular expressions
-			// after that replacement, it is treated just like EXPECTREGEX
-			//
-			expected_str = getTrim(EPhptSection.EXPECTF);
-			
-			expected_str = prepareExpectF(expected_str);
-		} else {
-			return;
-		}
-		
-		{
-			String override_expected_str = PhptOverrideManager.replaceWithRegexOverrides(host, expected_str);
-			if (override_expected_str!=null) {
-				expected_str = override_expected_str;
-			}
-		}
-		
-		REDebugCompiler re = new REDebugCompiler();
-		REProgram rp = re.compile(expected_str);
-		
-		re.dumpProgram(dump_pw);
-		
-		RE r = new RE(rp);
-		r.matchDump(actual_str, output_pw);
-		
-		for (int i = 0; i < r.getParenCount(); i++) {
-			output_pw.println("$" + i + " = " + r.getParen(i));
-		}
-	} // end public void debugExpectedRegularExpression
-	
 	/** prepares the EXPECTF section, transforming it into a regular expression
 	 * 
 	 *  turns patterns like %f into expressions like [+-]?\\.?\\\\d+\\.?\\\\d*(?:[Ee][+-]?\\\\d+)?
@@ -633,53 +582,52 @@ public class PhptTestCase extends TestCase {
 		}
 		expected_str = temp;
 
-		expected_str = StringUtil.replaceAll(PAT_bso, "string", expected_str);
-		expected_str = StringUtil.replaceAll(PAT_uso, "string", expected_str);
+		expected_str = expected_str.replace(PAT_bso, "string");
+		expected_str = expected_str.replace(PAT_uso, "string");
 		// CRITICAL: this is done AFTER preg_quote so | will have already been escaped with \ => need to add extra \\
-		expected_str = StringUtil.replaceAll(PAT_us, "string", expected_str);
-		expected_str = StringUtil.replaceAll(PAT_su, "string", expected_str);
-		expected_str = StringUtil.replaceAll(PAT_ub, "", expected_str);
-		expected_str = StringUtil.replaceAll(PAT_bu, "", expected_str);
+		expected_str = expected_str.replace(PAT_us, "string");
+		expected_str = expected_str.replace(PAT_su, "string");
+		expected_str = expected_str.replace(PAT_ub, "");
+		expected_str = expected_str.replace(PAT_bu, "");
 		try {
-			expected_str = StringUtil.replaceAll(PAT_e, "[\\\\|/]", expected_str);
+			expected_str = expected_str.replace(PAT_e, "[\\\\|/]");
 		} catch ( Exception ex ) {
 		}
-		expected_str = StringUtil.replaceAll(PAT_s, "[^\\\\r\\\\n]+", expected_str);
-		expected_str = StringUtil.replaceAll(PAT_S, "[^\\\\r\\\\n]*", expected_str);
+		expected_str = expected_str.replace(PAT_s, "[^\\r\\n]+");
+		expected_str = expected_str.replace(PAT_S, "[^\\r\\n]*");
 		// NOTE: these expressions are modified slightly from PHP"s run-test due to differences
 		//              in the java.util.regex.Pattern engine
-		expected_str = StringUtil.replaceAll(PAT_a, "(.|\\\\n|\\\\r)+", expected_str);
-		expected_str = StringUtil.replaceAll(PAT_A, "(.|\\\\n|\\\\r)*", expected_str);
-		expected_str = StringUtil.replaceAll(PAT_w, "\\\\s*", expected_str);
-		expected_str = StringUtil.replaceAll(PAT_i, "[+-]?\\\\d+", expected_str);
-		expected_str = StringUtil.replaceAll(PAT_d, "\\d+", expected_str);
-		expected_str = StringUtil.replaceAll(PAT_x, "[0-9a-fA-F]+", expected_str);
-		expected_str = StringUtil.replaceAll(PAT_f, "[+-]?\\.?\\\\d+\\.?\\\\d*(?:[Ee][+-]?\\\\d+)?", expected_str);
+		expected_str = expected_str.replace(PAT_a, "(.|\\n|\\r)+");
+		expected_str = expected_str.replace(PAT_A, "(.|\\n|\\r)*");
+		expected_str = expected_str.replace(PAT_w, "\\s*");
+		expected_str = expected_str.replace(PAT_i, "[+-]?\\d+");
+		expected_str = expected_str.replace(PAT_d, "\\d+");
+		expected_str = expected_str.replace(PAT_x, "[0-9a-fA-F]+");
+		expected_str = expected_str.replace(PAT_f, "[+-]?\\.?\\d+\\.?\\d*(?:[Ee][+-]?\\d+)?");
 		// 2 .. (produced by 2 %c) will be ignored... can only have 1 %c or 1 .
-		expected_str = StringUtil.replaceAll(PAT_double_c, "%c", expected_str);
-		expected_str = StringUtil.replaceAll(PAT_c, ".", expected_str);
+		expected_str = expected_str.replace(PAT_double_c, "%c");
+		expected_str = expected_str.replace(PAT_c, ".");
 		
-		expected_str = expected_str.replace("\r\n", ".*\r\n").replace("\r", ".*\r").replace("\n", ".*\n");
-		return ".*"+expected_str+".*";
+		return expected_str;
 	} // end public static String prepareExpectF
-	static final Pattern PAT_s = Pattern.compile("%s");
-	static final Pattern PAT_S = Pattern.compile("%S");
-	static final Pattern PAT_a = Pattern.compile("%a");
-	static final Pattern PAT_A = Pattern.compile("%A");
-	static final Pattern PAT_w = Pattern.compile("%w");
-	static final Pattern PAT_i = Pattern.compile("%i");
-	static final Pattern PAT_d = Pattern.compile("%d");
-	static final Pattern PAT_x = Pattern.compile("%x");
-	static final Pattern PAT_f = Pattern.compile("%f");
-	static final Pattern PAT_double_c = Pattern.compile("%c%c");
-	static final Pattern PAT_c = Pattern.compile("%c");
-	static final Pattern PAT_e = Pattern.compile("%e");
-	static final Pattern PAT_bu = Pattern.compile("%b\\\\\\|u%");
-	static final Pattern PAT_ub = Pattern.compile("%u\\\\\\|b%");
-	static final Pattern PAT_bso = Pattern.compile("%binary_string_optional%");
-	static final Pattern PAT_uso = Pattern.compile("%unicode_string_optional%");
-	static final Pattern PAT_us = Pattern.compile("%unicode\\\\\\|string%");
-	static final Pattern PAT_su = Pattern.compile("%string\\\\\\|unicode%");
+	static final String PAT_s = "%s";
+	static final String PAT_S = "%S";
+	static final String PAT_a = "%a";
+	static final String PAT_A = "%A";
+	static final String PAT_w = "%w";
+	static final String PAT_i = "%i";
+	static final String PAT_d = "%d";
+	static final String PAT_x = "%x";
+	static final String PAT_f = "%f";
+	static final String PAT_double_c = "%c%c";
+	static final String PAT_c = "%c";
+	static final String PAT_e = "%e";
+	static final String PAT_bu = "%b\\|u%";
+	static final String PAT_ub = "%u\\|b%";
+	static final String PAT_bso = "%binary_string_optional%";
+	static final String PAT_uso = "%unicode_string_optional%";
+	static final String PAT_us = "%unicode\\|string%";
+	static final String PAT_su = "%string\\|unicode%";
 	
 	/** checks if test contains the section
 	 * 

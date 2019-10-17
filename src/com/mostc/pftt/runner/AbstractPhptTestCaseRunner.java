@@ -463,7 +463,7 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner<
 			String output_trim = output.trim();
 			
 			try {
-				expected_re_match = prep.test_case.getExpectedCompiled(host, scenario_set, twriter, false).match(output_trim); 
+				expected_re_match = prep.test_case.getExpectedCompiled(host, scenario_set, twriter, false).matcher(output_trim).matches(); 
 			} catch (Throwable ex) {
 				twriter.addResult(host, scenario_set, src_test_pack, new PhptTestResult(host, EPhptTestStatus.BORK, prep.test_case, ConsoleManagerUtil.toString(ex), null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual, getSAPIOutput(), getSAPIConfig(), code_coverage));
 				throw ex;
@@ -474,7 +474,7 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner<
 			} 
 			if (prep.test_case.expectsWarningOrFatalError()) {
 				try {
-					expected_re_match = prep.test_case.getExpectedCompiled(host, scenario_set, twriter, true).match(output_trim); 
+					expected_re_match = prep.test_case.getExpectedCompiled(host, scenario_set, twriter, true).matcher(output_trim).matches(); 
 				} catch (Throwable ex) {
 					twriter.addResult(host, scenario_set, src_test_pack, new PhptTestResult(host, EPhptTestStatus.BORK, prep.test_case, ConsoleManagerUtil.toString(ex), null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual, getSAPIOutput(), getSAPIConfig(), code_coverage));
 					throw ex;
@@ -494,7 +494,7 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner<
 			} else {
 				// compare again
 				try {
-					expected_re_match = prep.test_case.getExpectedCompiled(host, scenario_set, twriter, false).match(output_trim); 
+					expected_re_match = prep.test_case.getExpectedCompiled(host, scenario_set, twriter, false).matcher(output_trim).matches(); 
 				} catch (Throwable ex) {
 					twriter.addResult(host, scenario_set, src_test_pack, new PhptTestResult(host, EPhptTestStatus.BORK, prep.test_case, ConsoleManagerUtil.toString(ex), null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual, getSAPIOutput(), getSAPIConfig(), code_coverage));
 					throw ex;
@@ -504,7 +504,7 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner<
 				}
 				if (prep.test_case.expectsWarningOrFatalError()) {
 					try {
-						expected_re_match = prep.test_case.getExpectedCompiled(host, scenario_set, twriter, true).match(output_trim); 
+						expected_re_match = prep.test_case.getExpectedCompiled(host, scenario_set, twriter, true).matcher(output_trim).matches(); 
 					} catch (Throwable ex) {
 						twriter.addResult(host, scenario_set, src_test_pack, new PhptTestResult(host, EPhptTestStatus.BORK, prep.test_case, ConsoleManagerUtil.toString(ex), null, null, charset, ini, env, splitCmdString(), stdin_post, getShellScript(), null, null, preoverride_actual, getSAPIOutput(), getSAPIConfig(), code_coverage));
 						throw ex;
@@ -561,7 +561,7 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner<
 		String expectf;
 		// generate the EXPECTF section to show the user the regular expression that was actually used (generated from EXPECTF section) to evaluate test output
 		if (prep.test_case.containsSection(EPhptSection.EXPECTF)) {
-			expectf = PhptTestCase.prepareExpectF(prep.test_case.getTrim(EPhptSection.EXPECTF));
+			expectf = "^" + PhptTestCase.prepareExpectF(prep.test_case.getTrim(EPhptSection.EXPECTF)) + "$";
 		} else {
 			expectf = null;
 		}
@@ -574,27 +574,6 @@ public abstract class AbstractPhptTestCaseRunner extends AbstractTestCaseRunner<
 		}
 		if (result==null)
 			return null; // redoing
-		
-		//
-		// set result#regex_compiler_dump and result#regex_output dump if test result is FAIL or XFAIL_WORKS and test has an EXPECTF or EXPECTREGEX section
-		if (!is_timeout && (prep.test_case.containsSection(EPhptSection.EXPECTF) || prep.test_case.containsSection(EPhptSection.EXPECTREGEX))) {
-			// test may be failing due to a bad regular expression in test or bug in regular expression engine
-			//
-			// get a debug dump from the regular expression engine to save with the result
-			//
-			// (this is an expensive operation so it shouldn't be done for every test. there shouldn't be
-			//  very many FAIL tests so this shouldn't be done very much)
-			LengthLimitStringWriter dump_sw = new LengthLimitStringWriter();
-			LengthLimitStringWriter output_sw = new LengthLimitStringWriter();
-			PrintWriter dump_pw = new PrintWriter(dump_sw);
-			PrintWriter output_pw = new PrintWriter(output_sw);
-			
-			prep.test_case.debugExpectedRegularExpression(host, scenario_set, twriter, result.actual, dump_pw, output_pw);
-			
-			result.regex_compiler_dump = dump_sw.toString();
-			result.regex_output = output_sw.toString();
-		}
-		//
 		
 		return result;
 	} // end protected PhptTestResult evalTest
