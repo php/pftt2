@@ -355,13 +355,13 @@ public class PhptTestCase extends TestCase {
 		section_text = new HashMap<EPhptSection,String>();
 	}
 	
-	/** makes the test case name standard (all lowercase and using / and never \\)
+	/** makes the test case name standard (using / and never \\)
 	 * 
 	 * @param name
 	 * @return
 	 */
 	public static String normalizeTestCaseName(String name) {
-		return FileSystemScenario.toUnixPath(name).toLowerCase();
+		return FileSystemScenario.toUnixPath(name);
 	}
 	
 	public PhptSourceTestPack getTestPack() {
