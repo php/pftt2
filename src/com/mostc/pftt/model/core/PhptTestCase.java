@@ -604,8 +604,6 @@ public class PhptTestCase extends TestCase {
 		expected_str = expected_str.replace(PAT_d, "\\d+");
 		expected_str = expected_str.replace(PAT_x, "[0-9a-fA-F]+");
 		expected_str = expected_str.replace(PAT_f, "[+-]?\\.?\\d+\\.?\\d*(?:[Ee][+-]?\\d+)?");
-		// 2 .. (produced by 2 %c) will be ignored... can only have 1 %c or 1 .
-		expected_str = expected_str.replace(PAT_double_c, "%c");
 		expected_str = expected_str.replace(PAT_c, ".");
 		
 		return expected_str;
@@ -619,7 +617,6 @@ public class PhptTestCase extends TestCase {
 	static final String PAT_d = "%d";
 	static final String PAT_x = "%x";
 	static final String PAT_f = "%f";
-	static final String PAT_double_c = "%c%c";
 	static final String PAT_c = "%c";
 	static final String PAT_e = "%e";
 	static final String PAT_bu = "%b\\|u%";
