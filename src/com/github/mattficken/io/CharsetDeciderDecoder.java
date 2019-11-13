@@ -77,6 +77,8 @@ public interface CharsetDeciderDecoder {
 		new CharsetRecog_sbcs.CharsetRecog_windows_1256()
 	});
 	public static final CharsetRecognizer[] ALL_RECOGNIZERS = ArrayUtil.mergeNoDuplicates(CharsetRecognizer.class, EXPRESS_RECOGNIZERS, EUROPEAN, ARABIC, HEBREW, UNICODE);
+
+	public static final CharsetRecognizer[] FIXED = new CharsetRecognizer[] {new CharsetRecog_sbcs.CharsetRecog_windows_1251()};
 	
 	public static enum ERecognizerGroup {
 		EXPRESS {
