@@ -53,7 +53,7 @@ REM Download the build if it is not available
 if not exist %PHP_BUILDS%\%file_name% (
 	set build_link=https://windows.php.net/downloads/qa/%file_name%.zip
 
-	bitsadmin /transfer DownloadingQABuild /download /priority high !build_link! %PFTT_CACHE%\%file_name%.zip
+	powershell download_files.ps1 !build_link! %PFTT_CACHE% %file_name%.zip
 	7za.exe x %PFTT_CACHE%\%file_name%.zip -o%PHP_BUILDS%\*
 	del %PFTT_CACHE%\%file_name%.zip
 ) else (
@@ -64,7 +64,7 @@ REM Also download test-pack if it is not available
 if not exist %PHP_BUILDS%\%test_pack% (
 	set test_pack_link=https://windows.php.net/downloads/qa/%test_pack%.zip
 
-	bitsadmin /transfer DownloadingQATestPack /download /priority high !test_pack_link! %PFTT_CACHE%\%test_pack%.zip
+	powershell download_files.ps1 !test_pack_link! %PFTT_CACHE% %test_pack%.zip
 	7za.exe x %PFTT_CACHE%\%test_pack%.zip -o%PHP_BUILDS%\*
 	del %PFTT_CACHE%\%test_pack%.zip
 ) else (
