@@ -33,8 +33,6 @@ SET thread[2]=TS
 SET thread[3]=TS
 set test_pack=php-test-pack-%branch%-latest
 
-SET PHP_BUILDS=%~d0\PHPBuilds
-
 if %branch%==7.1 (
 	set build=vc14
 ) else (

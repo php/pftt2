@@ -33,9 +33,6 @@ SET thread[2]=TS
 SET thread[3]=TS
 set test_pack=php-test-pack-%branch%
 
-SET PHP_BUILDS=%~d0\PHPBuilds
-
-
 for /L %%j in (0,1,3) do (
 	call %~dp0get_qa.cmd %branch% !thread[%%j]! !cpu[%%j]!
 	

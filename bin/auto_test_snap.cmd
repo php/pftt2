@@ -6,10 +6,8 @@ IF DEFINED PFTT_SHELL GOTO :skip_set_env
 CALL %~dp0set_env.cmd
 :skip_set_env
 
-SET PHP_BUILDS=%~d0\PHPBuilds
-
 if not exist %PHP_BUILDS% (
-	md %~d0\PHPBuilds
+	md %PHP_BUILDS%
 )
 
 SET branch[0]=7.1

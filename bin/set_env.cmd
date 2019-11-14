@@ -1,5 +1,7 @@
 @ECHO OFF
 
+SET PHP_BUILDS=%~d0\PHPBuilds
+
 pushd %~dp0..
 SET PFTT_ROOT_DIR=%CD%
 SET PFTT_HOME=%CD%
