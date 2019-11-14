@@ -42,7 +42,7 @@ for /L %%i in (0,1,3) do (
 			REM If the build does not exist, fetch and test it
 			if not exist %PHP_BUILDS%\!build[%%j]! (
 				call %~dp0get_snapshot.cmd !branch! !thread[%%j]! !cpu[%%j]! !revision!
-				REM call %~dp0pftt.cmd -results_only core_list %PHP_BUILDS%\!build[%%j]! %PHP_BUILDS%\!test_pack[%%j]! %PFTT_HOME%\tests-to-run.txt
+				call %~dp0pftt.cmd -results_only core_list %PHP_BUILDS%\!build[%%j]! %PHP_BUILDS%\!test_pack[%%j]! %PFTT_HOME%\tests-to-run.txt
 			) else (
 				echo Build already exists: !build[%%j]!
 			)
