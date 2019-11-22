@@ -758,8 +758,13 @@ public class PfttMain {
 					cm.showGUI(test_pack_runner);
 					
 					test_pack_runner.runTestList(test_pack, test_cases);
-				
-					tmgr.notifyPhptFinished(host, test_pack_runner.getScenarioSetSetup(), test_pack);
+					
+					ScenarioSetSetup scenarioSetSetup = test_pack_runner.getScenarioSetSetup();
+					if(scenarioSetSetup == null) {
+						return;
+					}
+					
+					tmgr.notifyPhptFinished(host, scenarioSetSetup, test_pack);
 					if (!run_flag.get())
 						return;
 				}

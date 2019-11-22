@@ -236,7 +236,6 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 	}
 	
 	protected void runTestList(ITestPackStorageDir storage_dir, S test_pack, A active_test_pack, List<T> test_cases) throws Exception {
-		scenario_set_setup = ScenarioSetSetup.setupScenarioSet(cm, runner_fs, runner_host, build, scenario_set, getScenarioSetPermutationLayer());
 		if (test_cases.isEmpty()) {
 			if (cm!=null)
 				cm.println(EPrintType.COMPLETED_OPERATION, getClass(), "no test cases to run. did nothing.");
@@ -256,6 +255,7 @@ public abstract class AbstractLocalTestPackRunner<A extends ActiveTestPack, S ex
 		checkHost(storage_host);
 		checkHost(runner_host);
 //		AzureWebsitesScenario.first = true; // TODO temp azure
+		scenario_set_setup = ScenarioSetSetup.setupScenarioSet(cm, runner_fs, runner_host, build, scenario_set, getScenarioSetPermutationLayer());
 		if (scenario_set_setup==null)
 			return;
 		
