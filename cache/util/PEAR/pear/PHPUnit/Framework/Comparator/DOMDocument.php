@@ -84,7 +84,7 @@ class PHPUnit_Framework_Comparator_DOMDocument extends PHPUnit_Framework_Compara
      *                           fails. Contains information about the
      *                           specific errors that lead to the failure.
      */
-    public function assertEquals($expected, $actual, $delta = 0, $canonicalize = FALSE, $ignoreCase = FALSE)
+    public function assertEquals($expected, $actual, $delta = 0, $canonicalize = FALSE, $ignoreCase = FALSE, &$processed = Array())
     {
         if ($expected->C14N() !== $actual->C14N()) {
             throw new PHPUnit_Framework_ComparisonFailure(

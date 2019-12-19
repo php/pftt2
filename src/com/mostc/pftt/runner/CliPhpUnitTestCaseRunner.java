@@ -33,7 +33,6 @@ public class CliPhpUnitTestCaseRunner extends AbstractPhpUnitTestCaseRunner {
 	}
 	
 	private void doExecute(String template_file, String ini_dir) throws Exception {
-		ini_dir = "C:\\php-sdk\\php-7.0.4-nts-Win32-VC14-x86\\php.ini"; // TODO temp
 		running_test_handle = host.execThread(
 				build.getPhpExe()+" -c "+ini_dir+" "+template_file,
 				env,

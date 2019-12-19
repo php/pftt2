@@ -292,7 +292,8 @@ public abstract class PhpUnitSourceTestPack extends ApplicationSourceTestPack<Ph
 				if (test_names!=null) {
 					boolean skip = true;
 					for ( String test_name : test_names ) {
-						if (lc_test_file_name.contains(test_name)) {
+						String standardized_test_name = test_name.replace('\\', '/').toLowerCase();
+						if (lc_test_file_name.contains(standardized_test_name)) {
 							skip = false;
 							break;
 						}
