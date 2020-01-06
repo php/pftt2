@@ -47,7 +47,6 @@ import com.mostc.pftt.model.sapi.WebServerInstance;
 import com.mostc.pftt.model.smoke.ESmokeTestStatus;
 import com.mostc.pftt.model.smoke.PhptTestCountsMatchSmokeTest;
 import com.mostc.pftt.model.smoke.RequiredExtensionsSmokeTest;
-import com.mostc.pftt.model.smoke.RequiredFeaturesSmokeTest;
 import com.mostc.pftt.model.smoke.TempDirWritableSmokeTest;
 import com.mostc.pftt.model.ui.EUITestExecutionStyle;
 import com.mostc.pftt.model.ui.UITestPack;
@@ -591,16 +590,6 @@ public class PfttMain {
 						cm.println(EPrintType.CANT_CONTINUE, test.getName(), "Failed smoke test");
 						
 						return false;
-					}
-				}
-				{
-					RequiredFeaturesSmokeTest test = new RequiredFeaturesSmokeTest();
-					if (test.test(build, cm, host, tmgr)==ESmokeTestStatus.FAIL) {
-						cm.println(EPrintType.CANT_CONTINUE, test.getName(), "Failed smoke test");
-						
-						return false;
-					} else {
-						cm.println(EPrintType.CLUE, test.getName(), "Smoke Test Passed");
 					}
 				}
 			}
