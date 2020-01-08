@@ -54,11 +54,6 @@ for /L %%j in (0,1,3) do (
 	SET package[%%j]=php-!branch!-!thread[%%j]!-windows-!build!-!cpu[%%j]!-!revision!
 	SET test_pack[%%j]=php-test-pack-!branch!-!thread[%%j]!-windows-!build!-!cpu[%%j]!-!revision!
 	
-	REM If the build does not exist, fetch and test it
-	if not exist %PHP_BUILDS%\!package[%%j]! (
-		call %~dp0get_snapshot.cmd !branch! !thread[%%j]! !cpu[%%j]! !revision!
-		call %~dp0pftt.cmd -results_only core_list %PHP_BUILDS%\!package[%%j]! %PHP_BUILDS%\!test_pack[%%j]! %PFTT_HOME%\tests-to-run.txt
-	) else (
-		echo Build already exists: !package[%%j]!
-	)
+	call %~dp0get_snapshot.cmd !branch! !thread[%%j]! !cpu[%%j]! !revision!
+	call %~dp0pftt.cmd -results_only core_list %PHP_BUILDS%\!package[%%j]! %PHP_BUILDS%\!test_pack[%%j]! %PFTT_HOME%\tests-to-run.txt
 )
