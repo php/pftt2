@@ -49,7 +49,9 @@ CALL %~dp0get_latest_revision.cmd
 REM Only run next part if revision is not null, otherwise skip
 if [!revision!]==[] (
 	echo No new build available.
+	exit /b
 )
+
 for /L %%j in (0,1,3) do (
 	SET package[%%j]=php-!branch!-!thread[%%j]!-windows-!build!-!cpu[%%j]!-!revision!
 	SET test_pack[%%j]=php-test-pack-!branch!-!thread[%%j]!-windows-!build!-!cpu[%%j]!-!revision!
