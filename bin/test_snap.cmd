@@ -13,7 +13,7 @@ if %branch%.==. (
 
 :args_error
 echo User error: must specify branch
-echo test_release "<branch>"
+echo test_snap "<branch>"
 echo Branch can be any of: 7.1, 7.2, 7.3, 7.4
 exit /b
 
