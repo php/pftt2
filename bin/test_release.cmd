@@ -23,6 +23,10 @@ IF DEFINED PFTT_SHELL GOTO :skip_set_env
 CALL %~dp0set_env.cmd
 :skip_set_env
 
+if not exist %PHP_BUILDS% (
+	md %PHP_BUILDS%
+)
+
 SET cpu[0]=x64
 SET cpu[1]=x86
 SET cpu[2]=x64
