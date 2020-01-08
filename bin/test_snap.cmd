@@ -14,7 +14,7 @@ if %branch%.==. (
 :args_error
 echo User error: must specify branch
 echo test_snap "<branch>"
-echo Branch can be any of: 7.1, 7.2, 7.3, 7.4
+echo Branch can be any of: 7.2, 7.3, 7.4
 exit /b
 
 :set_env
@@ -37,11 +37,7 @@ SET thread[2]=TS
 SET thread[3]=TS
 set test_pack=php-test-pack-%branch%-latest
 
-if %branch%==7.1 (
-	set build=vc14
-) else (
-	set build=vc15
-)
+set build=vc15
 
 SET revision=latest
 CALL %~dp0get_latest_revision.cmd

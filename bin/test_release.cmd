@@ -37,11 +37,7 @@ SET thread[2]=TS
 SET thread[3]=TS
 set test_pack=php-test-pack-%branch%-latest
 
-if %branch%==7.1 (
-	set build=vc14
-) else (
-	set build=vc15
-)
+set build=vc15
 
 for /L %%j in (0,1,3) do (
 	call %~dp0get_release.cmd %branch% !thread[%%j]! !cpu[%%j]!
