@@ -522,6 +522,9 @@ public class PfttMain {
 		checkDebugger(cm, host, build);
 		build.open(cm, host);
 		
+		// Make sure phpunit is available (probably in cache)
+		HostEnvUtil.downloadAndExtractPHPUnit(fs, host, cm, build);
+		
 		List<PhpUnitSourceTestPack> test_packs = config.getPhpUnitSourceTestPacks(cm);
 		if (test_packs.isEmpty()) {
 			cm.println(EPrintType.CLUE, PfttMain.class, "No test-pack provided by configuration file(s)");
@@ -602,6 +605,9 @@ public class PfttMain {
 		
 		checkDebugger(cm, host, build);
 		build.open(cm, host);
+		
+		// Make sure phpunit is available (probably in cache)
+		HostEnvUtil.downloadAndExtractPHPUnit(fs, host, cm, build);
 		
 		List<PhpUnitSourceTestPack> phpunit_test_packs = config.getPhpUnitSourceTestPacks(cm);
 		List<SimpleTestSourceTestPack> simpletest_test_packs = config.getSimpleTestSourceTestPacks(cm);

@@ -85,9 +85,9 @@ public class PhpUnitDist {
 		if (_include_path!=null)
 			return _include_path;
 		
-		String pear_path = host.joinIntoOnePath(host.getPfttCacheDir(), "/util/PEAR/pear");
+		String phpunit_path = host.joinIntoOnePath(host.getPfttCacheDir(), "/PHPUnit");
 		
-		return _include_path = host.joinMultiplePaths(host.joinMultiplePaths(src_test_pack.include_dirs, pear_path), path.getAbsolutePath());
+		return _include_path = host.joinMultiplePaths(host.joinMultiplePaths(src_test_pack.include_dirs, phpunit_path), path.getAbsolutePath());
 	}
 	
 	/** add an included file.
