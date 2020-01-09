@@ -66,6 +66,11 @@ public final class HostEnvUtil {
 	static final String Link_Mysql_Win32_5_7_25
 		= "https://cdn.mysql.com//Downloads/MySQL-5.7/mysql-5.7.25-win32.zip";
 	
+	static final String Link_PHPUnit_5
+		= "https://phar.phpunit.de/phpunit-5.7.27.phar";
+	static final String Link_PHPAB
+		= "https://github.com/theseer/Autoload/releases/download/1.25.8/phpab-1.25.8.phar";
+	
 	
 	static final String Dir_Cache_Dep = LocalHost.getLocalPfttDir() + "\\cache\\dep";
 	static final String Dir_Cache_Dep_VCRedist = Dir_Cache_Dep + "\\VCRedist";
@@ -89,6 +94,11 @@ public final class HostEnvUtil {
 	static final String Dir_Mysql_5_7_bin = Dir_Mysql_5_7 + "\\bin";
 	static final String Exe_Mysql_5_7_mysqld = Dir_Mysql_5_7_bin + "\\mysqld.exe";
 	static final String Exe_Mysql_5_7_mysql = Dir_Mysql_5_7_bin + "\\mysql.exe";
+	
+	static final String Dir_Cache_PHPUnit = LocalHost.getLocalPfttDir() + "\\cache\\PHPUnit";
+	static final String Phar_PHPUnit_5 = Dir_Cache_PHPUnit + "\\phpunit-5.7.27.phar";
+	static final String Dir_PHPUnit_5 = Dir_Cache_PHPUnit + "\\phpunit-5.7.27";
+	static final String Phar_PHPAB = Dir_Cache_PHPUnit + "\\phpab.phar";
 	
 	static final String Dir_WinSxS = "\\WinSxS";
 	static final String WinSxS_VC9_Fragment = "VC9";
@@ -678,6 +688,44 @@ public final class HostEnvUtil {
 					+ "program=\""+ installerFile +"\" enable=yes remoteip=127.0.0.1", AHost.ONE_MINUTE);
 		} else {
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, rule + " already exists in firewall.");
+		}
+	}
+	
+	/* Downloads phar file for PHPUnit 5 and extracts the contents of the file.
+	 * Also downloads PHPAB, which is used to create autoload.php files (for PHPUnit).
+	 */
+	public static void downloadAndExtractPHPUnit(FileSystemScenario fs, AHost host, LocalConsoleManager cm, PhpBuild build) throws Exception {
+		createDirectoryIfNotExists(fs, cm, Dir_Cache_PHPUnit);
+		
+		if(!fs.exists(Dir_PHPUnit_5)) {
+			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Downloading and extracting phpunit-5.7.27.phar...");
+			
+			// Download the phpunit.phar file
+			// Note: Currently using download_files.ps1 script since downloadFile() had HTTP response status 301
+			String downloadCmd = "powershell " + host.getPfttBinDir() + "\\download_files.ps1 " + Link_PHPUnit_5 + " " + Dir_Cache_PHPUnit + " phpunit-5.7.27.phar";			
+			host.execOut(downloadCmd, AHost.TEN_MINUTES);
+			
+			// Extract the contents of the phar file into a directory with name of phar file
+			String cmd = build + "\\php.exe " + host.getPfttBinDir() + "\\extractPhpUnit.php " + Phar_PHPUnit_5;
+			host.execOut(cmd, AHost.TEN_MINUTES);
+			
+			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Completed download and extraction of phpunit-5.7.27.phar.");
+		} else {
+			cm.println(EPrintType.SKIP_OPERATION, HostEnvUtil.class, "PHPUnit 5 already exists. ");
+		}
+		
+		if(!fs.exists(Phar_PHPAB)) {
+			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Downloading phpab.phar...");
+			
+			// Download phpab.phar file (used to create autoload file)
+			String downloadCmd = "powershell " + host.getPfttBinDir() + "\\download_files.ps1 " + Link_PHPAB + " " + Dir_Cache_PHPUnit + " phpab.phar";
+			host.execOut(downloadCmd, AHost.TEN_MINUTES);
+			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Completed download of phpab.phar.");
+			
+			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Creating autoload.php for PHPUnit.");
+			String cmd = build + "\\php.exe " + Phar_PHPAB + " -o " + Dir_PHPUnit_5 +"\\autoload.php -b " + Dir_PHPUnit_5 + " " + Dir_PHPUnit_5;
+			host.execOut(cmd, AHost.TEN_MINUTES);
+			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Created autoload.php.");
 		}
 	}
 

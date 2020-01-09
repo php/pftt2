@@ -183,7 +183,7 @@ for (\$i=0;\$i<\$gcount;\$i++) {
 		pw.print(
 """
 
-require 'PHPUnit/Autoload.php';
+require 'PHPUnit-5.7.27/Autoload.php';
 
 
 function dump_coverage() {
@@ -306,8 +306,6 @@ function __phpunit_run_isolated_test()
 		\$result->setCodeCoverage(new PHP_CodeCoverage);
 	}*/
 		pw.print("""
-
-	\$result->strictMode($strict);
 
 	register_shutdown_function('tryReportFatal');
 

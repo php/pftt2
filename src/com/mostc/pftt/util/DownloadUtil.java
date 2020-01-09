@@ -91,7 +91,7 @@ public class DownloadUtil {
 	private static boolean downloadFile(ConsoleManager cm, URL remote_url, String local_file_name, int redirect) {
 		if(redirect > MAX_REDIRECT)
 		{
-			cm.println(EPrintType.CANT_CONTINUE, DownloadUtil.class, "Exceeding maximal redirects" + MAX_REDIRECT + " for downloading [" + remote_url + "]");
+			cm.println(EPrintType.CANT_CONTINUE, DownloadUtil.class, "Exceeding maximal redirects (" + MAX_REDIRECT + ") for downloading [" + remote_url + "]");
 			return false;
 		}
 		
@@ -149,7 +149,7 @@ public class DownloadUtil {
 					for(int i = 0; i < locations.length; i++)
 					{
 						String redirectedUrl = locations[i].getValue();
-						cm.println(EPrintType.CLUE, DownloadUtil.class, "Redirecting from ["+remote_url.toString()+"] to ["+redirectedUrl+"], redirect count =" + redirect++);
+						cm.println(EPrintType.CLUE, DownloadUtil.class, "Redirecting from ["+remote_url.toString()+"] to ["+redirectedUrl+"], redirect count = " + redirect++);
 						if(downloadFile(cm, new URL(redirectedUrl), local_file_name, redirect))
 						{
 							return true;
