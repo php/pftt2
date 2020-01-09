@@ -23,6 +23,10 @@ IF DEFINED PFTT_SHELL GOTO :skip_set_env
 CALL %~dp0set_env.cmd
 :skip_set_env
 
+if not exist %PHP_BUILDS% (
+	md %PHP_BUILDS%
+)
+
 SET cpu[0]=x64
 SET cpu[1]=x86
 SET cpu[2]=x64
@@ -33,11 +37,7 @@ SET thread[2]=TS
 SET thread[3]=TS
 set test_pack=php-test-pack-%branch%-latest
 
-if %branch%==7.1 (
-	set build=vc14
-) else (
-	set build=vc15
-)
+set build=vc15
 
 for /L %%j in (0,1,3) do (
 	call %~dp0get_release.cmd %branch% !thread[%%j]! !cpu[%%j]!
