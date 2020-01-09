@@ -1,11 +1,5 @@
-@ECHO OFF 
-setlocal enabledelayedexpansion
+SET branches=7.2 7.3 7.4
 
-SET branch[0]=7.2
-SET branch[1]=7.3
-SET branch[2]=7.4
-
-for /L %%i in (0,1,2) do (
-	SET branch=!branch[%%i]!
-	call %~dp0test_snap.cmd !branch!
+for %%i in (%branches%) do (
+	call %~dp0test_snap.cmd %%i
 )
