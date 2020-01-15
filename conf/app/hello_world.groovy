@@ -16,7 +16,7 @@ class HelloWorldPhpUnitTestPack extends PhpUnitSourceTestPack {
 	
 	@Override
 	protected String getSourceRoot(ConsoleManager cm, AHost host) {
-		return host.getPfttDir()+"/cache/working/helloworld";
+		return host.getPfttDir()+"/cache/helloworld";
 	}
 	
 	@Override
@@ -26,7 +26,7 @@ class HelloWorldPhpUnitTestPack extends PhpUnitSourceTestPack {
 	
 	@Override
 	public boolean isFileNameATest(String file_name) {
-		return file_name.endsWith(".php");
+		return file_name.endsWith("Test.php");
 	}
 	
 	protected void readTestFile(final int max_read_count, String rel_test_file_name, String abs_test_file_name, PhpUnitDist php_unit_dist, List<PhpUnitTestCase> test_cases, File file) throws IOException {
