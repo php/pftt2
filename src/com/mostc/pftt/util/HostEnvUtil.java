@@ -99,6 +99,7 @@ public final class HostEnvUtil {
 	static final String Phar_PHPUnit_5 = Dir_Cache_PHPUnit + "\\phpunit-5.7.27.phar";
 	static final String Dir_PHPUnit_5 = Dir_Cache_PHPUnit + "\\phpunit-5.7.27";
 	static final String Phar_PHPAB = Dir_Cache_PHPUnit + "\\phpab.phar";
+	static final String Autoload_File = Dir_PHPUnit_5 + "\\autoload.php";
 	
 	static final String Dir_WinSxS = "\\WinSxS";
 	static final String WinSxS_VC9_Fragment = "VC9";
@@ -714,18 +715,32 @@ public final class HostEnvUtil {
 			cm.println(EPrintType.SKIP_OPERATION, HostEnvUtil.class, "PHPUnit 5 already exists. ");
 		}
 		
-		if(!fs.exists(Phar_PHPAB)) {
-			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Downloading phpab.phar...");
-			
-			// Download phpab.phar file (used to create autoload file)
-			String downloadCmd = "powershell " + host.getPfttBinDir() + "\\download_files.ps1 " + Link_PHPAB + " " + Dir_Cache_PHPUnit + " phpab.phar";
-			host.execOut(downloadCmd, AHost.TEN_MINUTES);
-			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Completed download of phpab.phar.");
+		// Check if an autoload file already exists, if not create it
+		if(!fs.exists(Autoload_File)) {
+			// Check if phpab.phar exists (needed to create autoload.php)
+			if(!fs.exists(Phar_PHPAB)) {
+				cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Downloading phpab.phar...");
+				
+				String downloadCmd = "powershell " + host.getPfttBinDir() + "\\download_files.ps1 " + Link_PHPAB + " " + Dir_Cache_PHPUnit + " phpab.phar";
+				host.execOut(downloadCmd, AHost.TEN_MINUTES);
+				cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Completed download of phpab.phar.");
+			} else {
+				cm.println(EPrintType.SKIP_OPERATION, HostEnvUtil.class, "phpab.phar already exists.");
+			}
 			
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Creating autoload.php for PHPUnit.");
 			String cmd = build + "\\php.exe " + Phar_PHPAB + " -o " + Dir_PHPUnit_5 +"\\autoload.php -b " + Dir_PHPUnit_5 + " " + Dir_PHPUnit_5;
-			host.execOut(cmd, AHost.TEN_MINUTES);
+			ExecOutput op = host.execOut(cmd, AHost.TEN_MINUTES);
+			
+			// phpab.phar needs fileinfo extension, if not autoload file will not be created
+			// and tests will not be ran.
+			if(op.output.contains("fileinfo not installed")) {
+				cm.println(EPrintType.CANT_CONTINUE, HostEnvUtil.class, "ext/fileinfo not installed/enabled. Please adjust your PHP configuration then try again.");
+				System.exit(-1);
+			}
 			cm.println(EPrintType.IN_PROGRESS, HostEnvUtil.class, "Created autoload.php.");
+		} else {
+			cm.println(EPrintType.SKIP_OPERATION, HostEnvUtil.class, "autoload.php already exists.");
 		}
 	}
 
