@@ -26,7 +26,7 @@ public abstract class AbstractDetectingCharsetReader extends AbstractReader {
 	WeakHashMap<Charset,CharsetEncoder> ce_map = new WeakHashMap<Charset,CharsetEncoder>();
 	public CharsetEncoder ce;
 	CharsetDecoderICU cd;
-	public CharsetRecognizer[] recogs = CharsetDeciderDecoder.EXPRESS_RECOGNIZERS;//.ALL_RECOGNIZERS; // TODO
+	public CharsetRecognizer[] recogs = CharsetDeciderDecoder.FIXED;//.ALL_RECOGNIZERS; // TODO
 	CharsetRec hc_cm = null; // TODO usually start over for each #detectCharset call
 	protected void detectCharset(byte[] bytes, int off, int len) {
 		bytes = IOUtil.ensureLeftShifted(bytes, off, len);
