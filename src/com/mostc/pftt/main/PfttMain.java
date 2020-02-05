@@ -516,14 +516,16 @@ public class PfttMain {
 		prepared = build;
 	}
 	
-	public void appList(PhpBuild build, Config config, PhpResultPackWriter tmgr, List<String> test_names) throws Exception {
+	public void appList(PhpBuild build, Config config, PhpResultPackWriter tmgr, List<String> test_names, List<String> config_files) throws Exception {
 		ensureLocalhostPrepared(build);
 		
 		checkDebugger(cm, host, build);
 		build.open(cm, host);
 		
 		// Make sure phpunit is available (probably in cache)
-		HostEnvUtil.downloadAndExtractPHPUnit(fs, host, cm, build);
+		// Check test_names to see if it contains "Joomla", if it does, get PHPUnit 5
+		// Otherwise, get PHPUnit 6
+		HostEnvUtil.downloadAndExtractPHPUnit(fs, host, cm, build, config_files);
 		
 		List<PhpUnitSourceTestPack> test_packs = config.getPhpUnitSourceTestPacks(cm);
 		if (test_packs.isEmpty()) {
@@ -600,14 +602,14 @@ public class PfttMain {
 		return true;
 	}
 	
-	public void appAll(PhpBuild build, Config config, PhpResultPackWriter tmgr) throws IOException, Exception {
+	public void appAll(PhpBuild build, Config config, PhpResultPackWriter tmgr, List<String> config_files) throws IOException, Exception {
 		ensureLocalhostPrepared(build);
 		
 		checkDebugger(cm, host, build);
 		build.open(cm, host);
 		
 		// Make sure phpunit is available (probably in cache)
-		HostEnvUtil.downloadAndExtractPHPUnit(fs, host, cm, build);
+		HostEnvUtil.downloadAndExtractPHPUnit(fs, host, cm, build, config_files);
 		
 		List<PhpUnitSourceTestPack> phpunit_test_packs = config.getPhpUnitSourceTestPacks(cm);
 		List<SimpleTestSourceTestPack> simpletest_test_packs = config.getSimpleTestSourceTestPacks(cm);
@@ -1713,7 +1715,7 @@ public class PfttMain {
 					}
 					
 					for ( PhpBuild build : builds )
-						p.appList(build, config, p.getWriter(build), names);
+						p.appList(build, config, p.getWriter(build), names, config_files);
 				} else if (command.equals("app_list")||command.equals("applist")||command.equals("al")) {
 					if (!(args.length > args_i+2)) {
 						System.err.println("User Error: must specify build and file with test names");
@@ -1735,7 +1737,7 @@ public class PfttMain {
 					PfttMain.readStringListFromFile(names, test_list_file);
 					
 					for ( PhpBuild build : builds )
-						p.appList(build, config, p.getWriter(build), names);
+						p.appList(build, config, p.getWriter(build), names, config_files);
 				} else if (command.equals("app_all")||command.equals("appall")||command.equals("aa")) {
 					if (!(args.length > args_i+1)) {
 						System.err.println("User Error: must specify build");
@@ -1750,7 +1752,7 @@ public class PfttMain {
 					PhpBuild[] builds = newBuilds(cm, p.host, args[args_i+1]);
 					
 					for ( PhpBuild build : builds )
-						p.appAll(build, config, p.getWriter(build)); 
+						p.appAll(build, config, p.getWriter(build), config_files); 
 				} else if (command.equals("core_named")||command.equals("corenamed")||command.equals("cornamed")||command.equals("coren")||command.equals("cn")) {
 					if (!(args.length > args_i+3)) {
 						System.err.println("User Error: must specify build, test-pack and name(s) and/or name fragment(s)");

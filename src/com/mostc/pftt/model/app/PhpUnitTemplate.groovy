@@ -74,6 +74,7 @@ public class PhpUnitTemplate {
 	public static String renderTemplate(AHost host, ScenarioSet scenario_set, PhpUnitTestCase test_case, String prebootstrap_code, String bootstrap_file, String postbootstrap_code, String cwd, String include_path, String[] included_files, Map<String, String> globals, Map<String, String> constants, HashMap<String, String> env, String my_temp_dir, boolean reflection_only, boolean use_cgi, boolean strict) {
 		StringWriter sw = new StringWriter(16384);
 		PrintWriter pw = new PrintWriter(sw);
+		boolean isJoomla = cwd.toLowerCase().contains("joomla");
 		
 		my_temp_dir = StringUtil.cslashes(host.fixPath(my_temp_dir));
 		
@@ -180,11 +181,24 @@ for (\$i=0;\$i<\$gcount;\$i++) {
 """xdebug_start_code_coverage( XDEBUG_CC_UNUSED | XDEBUG_CC_DEAD_CODE );
 """);
 		} // end if (use_xdebug)
-		pw.print(
+		
+		if(isJoomla) {
+			pw.print(
 """
 
 require 'PHPUnit-5.7.27/Autoload.php';
+"""
+			)
+		} else {
+			pw.print(
+"""
 
+require 'PHPUnit-6.5.14/Autoload.php';
+"""
+			)
+		}
+		pw.print(
+"""
 
 function dump_coverage() {
 """);
@@ -299,9 +313,15 @@ function __phpunit_run_isolated_test()
 		global \$className, \$abs_filename, \$methodName, \$filename, \$dependsMethodName, \$dataProviderMethodName;
 """)
 	}
-	pw.print("""
-	\$result = new PHPUnit_Framework_TestResult;
+	if (isJoomla) {
+		pw.print("""
+		\$result = new PHPUnit_Framework_TestResult;
 """)
+	} else {
+		pw.print("""
+		\$result = new PHPUnit\\Framework\\TestResult;
+""")
+	}
 	/*if ({collectCodeCoverageInformation}) {
 		\$result->setCodeCoverage(new PHP_CodeCoverage);
 	}*/
@@ -310,7 +330,17 @@ function __phpunit_run_isolated_test()
 	register_shutdown_function('tryReportFatal');
 
 	\$test = NULL;
-	\$status = PHPUnit_Runner_BaseTestRunner::STATUS_SKIPPED;
+""")
+	if (isJoomla) {
+		pw.print("""
+		\$status = PHPUnit_Runner_BaseTestRunner::STATUS_SKIPPED;
+""")
+	} else {
+		pw.print("""
+		\$status = PHPUnit\\Runner\\BaseTestRunner::STATUS_SKIPPED;
+""")
+	}
+	pw.print("""
 	\$status_msg = NULL;
 	\$output = NULL;
 	\$start_time = 0;
@@ -428,7 +458,6 @@ pw.println("""
 		//
 		// if no exception is thrown => it passed
 pw.println("""clearstatcache();
-		\$test->pftt_step1();
 		\$start_time = microtime(TRUE);
 """)
 
@@ -460,93 +489,176 @@ pw.println("""clearstatcache();
 		
 		pw.println("""
 		\$run_time = microtime(TRUE) - \$start_time;
-        \$test->pftt_step2();
-		try {
-			\$test->pftt_step3();
-		} catch ( Exception \$e2 ) {}
 		\$output = ob_get_clean();
-		\$status = PHPUnit_Runner_BaseTestRunner::STATUS_PASSED;
-	} catch (Exception \$e) {
-		\$run_time = microtime(TRUE) - \$start_time;
-		if (\$e instanceof PHPUnit_Framework_SkippedTest) { 
-			\$status = PHPUnit_Runner_BaseTestRunner::STATUS_SKIPPED;
-		} else if (\$e instanceof PHPUnit_Framework_IncompleteTest) {
-			\$status = PHPUnit_Runner_BaseTestRunner::STATUS_INCOMPLETE;
-		} else if (\$e instanceof PHPUnit_Framework_AssertionFailedError) {
-			\$status = PHPUnit_Runner_BaseTestRunner::STATUS_FAILURE;
-		} else {
-			\$status = PHPUnit_Runner_BaseTestRunner::STATUS_ERROR;
+""")
+		if (isJoomla) {
+			pw.println("""
+			\$status = PHPUnit_Runner_BaseTestRunner::STATUS_PASSED;
+		} catch (Exception \$e) {
+			\$run_time = microtime(TRUE) - \$start_time;
+			if (\$e instanceof PHPUnit_Framework_SkippedTest) { 
+				\$status = PHPUnit_Runner_BaseTestRunner::STATUS_SKIPPED;
+			} else if (\$e instanceof PHPUnit_Framework_IncompleteTest) {
+				\$status = PHPUnit_Runner_BaseTestRunner::STATUS_INCOMPLETE;
+			} else if (\$e instanceof PHPUnit_Framework_AssertionFailedError) {
+				\$status = PHPUnit_Runner_BaseTestRunner::STATUS_FAILURE;
+			} else {
+				\$status = PHPUnit_Runner_BaseTestRunner::STATUS_ERROR;
+			}
+			\$status_msg = \$e->getTraceAsString() . \$e->getMessage();
 		}
-		\$status_msg = \$e->getTraceAsString() . \$e->getMessage();
-	}
 """);
+		} else {
+			pw.println("""
+			\$status = PHPUnit\\Runner\\BaseTestRunner::STATUS_PASSED;
+		} catch (Exception \$e) {
+			\$run_time = microtime(TRUE) - \$start_time;
+			if (\$e instanceof PHPUnit\\Framework\\SkippedTest) { 
+				\$status = PHPUnit\\Runner\\BaseTestRunner::STATUS_SKIPPED;
+			} else if (\$e instanceof PHPUnit\\Framework\\IncompleteTest) {
+				\$status = PHPUnit_Runner_BaseTestRunner::STATUS_INCOMPLETE;
+			} else if (\$e instanceof PHPUnit\\Framework\\AssertionFailedError) {
+				\$status = PHPUnit\\Runner\\BaseTestRunner::STATUS_FAILURE;
+			} else {
+				\$status = PHPUnit\\Runner\\BaseTestRunner::STATUS_ERROR;
+			}
+			\$status_msg = \$e->getTraceAsString() . \$e->getMessage();
+		}
+""");
+		}
 	} // end if (reflection_only)
 	// PFTT Extension: use Exception#getTraceAsString to get the message instead of
 	//                 Exception#getMessage. this provides a stack trace to
 	//                 the exact part of the test that throws the exception
 	//
-pw.println("""	
-	// PFTT
-	switch(\$status) {
-	case PHPUnit_Runner_BaseTestRunner::STATUS_PASSED:
-		echo 'status=PASS'; echo PHP_EOL;
-trigger_error("\nstatus=PASS\n"); // TODO temp
-		echo "run_time=\$run_time"; echo PHP_EOL;
-		dump_coverage();
-		break;
-	case PHPUnit_Runner_BaseTestRunner::STATUS_SKIPPED:
-		echo 'status=SKIP'; echo PHP_EOL;
-		echo "run_time=\$run_time"; echo PHP_EOL;
-		dump_coverage();
-		echo \$status_msg;
-		echo PHP_EOL;
-		echo \$output;
-		dump_info();
-		break;
-	case PHPUnit_Runner_BaseTestRunner::STATUS_INCOMPLETE:
-		echo 'status=NOT_IMPLEMENTED'; echo PHP_EOL;
-		echo "run_time=\$run_time"; echo PHP_EOL;
-		dump_coverage();
-		echo \$status_msg;
-		echo PHP_EOL;
-		echo \$output;
-		break;
-	case PHPUnit_Runner_BaseTestRunner::STATUS_FAILURE:
-		echo 'status=FAILURE'; echo PHP_EOL;
-		echo "run_time=\$run_time"; echo PHP_EOL;
-		dump_coverage();
-		echo \$status_msg;
-		echo PHP_EOL;
-		echo \$output;
-		dump_info();
-		break;
-	case PHPUnit_Runner_BaseTestRunner::STATUS_ERROR:
-		\$status = 'ERROR';
-		foreach ( \$result->errors() as \$e ) {
-			if (\$e instanceof PHPUnit_Framework_Error_Warning) {
-				\$status = 'WARNING';
-				break;
-			} else if (\$e instanceof PHPUnit_Framework_Error_Notice) {
-				\$status = 'NOTICE';
-				break;
-			} else if (\$e instanceof PHPUnit_Framework_Error_Deprecated) {
-				\$status = 'DEPRECATED';
-				break;
+	if (isJoomla) {
+		pw.println("""
+		// PFTT
+		switch(\$status) {
+		case PHPUnit_Runner_BaseTestRunner::STATUS_PASSED:
+			echo 'status=PASS'; echo PHP_EOL;
+	trigger_error("\nstatus=PASS\n"); // TODO temp
+			echo "run_time=\$run_time"; echo PHP_EOL;
+			dump_coverage();
+			break;
+		case PHPUnit_Runner_BaseTestRunner::STATUS_SKIPPED:
+			echo 'status=SKIP'; echo PHP_EOL;
+			echo "run_time=\$run_time"; echo PHP_EOL;
+			dump_coverage();
+			echo \$status_msg;
+			echo PHP_EOL;
+			echo \$output;
+			dump_info();
+			break;
+		case PHPUnit_Runner_BaseTestRunner::STATUS_INCOMPLETE:
+			echo 'status=NOT_IMPLEMENTED'; echo PHP_EOL;
+			echo "run_time=\$run_time"; echo PHP_EOL;
+			dump_coverage();
+			echo \$status_msg;
+			echo PHP_EOL;
+			echo \$output;
+			break;
+		case PHPUnit_Runner_BaseTestRunner::STATUS_FAILURE:
+			echo 'status=FAILURE'; echo PHP_EOL;
+			echo "run_time=\$run_time"; echo PHP_EOL;
+			dump_coverage();
+			echo \$status_msg;
+			echo PHP_EOL;
+			echo \$output;
+			dump_info();
+			break;
+		case PHPUnit_Runner_BaseTestRunner::STATUS_ERROR:
+			\$status = 'ERROR';
+			foreach ( \$result->errors() as \$e ) {
+				if (\$e instanceof PHPUnit_Framework_Error_Warning) {
+					\$status = 'WARNING';
+					break;
+				} else if (\$e instanceof PHPUnit_Framework_Error_Notice) {
+					\$status = 'NOTICE';
+					break;
+				} else if (\$e instanceof PHPUnit_Framework_Error_Deprecated) {
+					\$status = 'DEPRECATED';
+					break;
+				}
 			}
+			echo "status=\$status"; echo PHP_EOL;
+			echo "run_time=\$run_time"; echo PHP_EOL;
+			dump_coverage();
+			echo \$status_msg;
+			echo PHP_EOL;
+			echo \$output;
+			dump_info();
+			break;
 		}
-		echo "status=\$status"; echo PHP_EOL;
-		echo "run_time=\$run_time"; echo PHP_EOL;
-		dump_coverage();
-		echo \$status_msg;
-		echo PHP_EOL;
-		echo \$output;
-		dump_info();
-		break;
+	
+		\$GLOBALS['ignore_exit'] = TRUE;
+	
+""");
+	} else {
+		pw.println("""
+		// PFTT
+		switch(\$status) {
+		case PHPUnit\\Runner\\BaseTestRunner::STATUS_PASSED:
+			echo 'status=PASS'; echo PHP_EOL;
+	trigger_error("\nstatus=PASS\n"); // TODO temp
+			echo "run_time=\$run_time"; echo PHP_EOL;
+			dump_coverage();
+			break;
+		case PHPUnit\\Runner\\BaseTestRunner::STATUS_SKIPPED:
+			echo 'status=SKIP'; echo PHP_EOL;
+			echo "run_time=\$run_time"; echo PHP_EOL;
+			dump_coverage();
+			echo \$status_msg;
+			echo PHP_EOL;
+			echo \$output;
+			dump_info();
+			break;
+		case PHPUnit\\Runner\\BaseTestRunner::STATUS_INCOMPLETE:
+			echo 'status=NOT_IMPLEMENTED'; echo PHP_EOL;
+			echo "run_time=\$run_time"; echo PHP_EOL;
+			dump_coverage();
+			echo \$status_msg;
+			echo PHP_EOL;
+			echo \$output;
+			break;
+		case PHPUnit\\Runner\\BaseTestRunner::STATUS_FAILURE:
+			echo 'status=FAILURE'; echo PHP_EOL;
+			echo "run_time=\$run_time"; echo PHP_EOL;
+			dump_coverage();
+			echo \$status_msg;
+			echo PHP_EOL;
+			echo \$output;
+			dump_info();
+			break;
+		case PHPUnit\\Runner\\BaseTestRunner::STATUS_ERROR:
+			\$status = 'ERROR';
+			foreach ( \$result->errors() as \$e ) {
+				if (\$e instanceof PHPUnit\\Framework\\Error\\Warning) {
+					\$status = 'WARNING';
+					break;
+				} else if (\$e instanceof PHPUnit\\Framework\\Error_Notice) {
+					\$status = 'NOTICE';
+					break;
+				} else if (\$e instanceof PHPUnit\\Framework\\Error\\Deprecated) {
+					\$status = 'DEPRECATED';
+					break;
+				}
+			}
+			echo "status=\$status"; echo PHP_EOL;
+			echo "run_time=\$run_time"; echo PHP_EOL;
+			dump_coverage();
+			echo \$status_msg;
+			echo PHP_EOL;
+			echo \$output;
+			dump_info();
+			break;
+		}
+	
+		\$GLOBALS['ignore_exit'] = TRUE;
+	
+""");
 	}
 
-	\$GLOBALS['ignore_exit'] = TRUE;
-
-""");
 	// NOTE: when skipping, outputs get_loaded_extensions() to show what extensions were actually loaded
 	//       may be skipped because an extension wasn't loaded (checked with extension_loaded('ext_name'))
 	//       but some extensions (intl) aren't loaded even though other extensions from the INI are loaded
