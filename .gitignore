@@ -11,4 +11,4 @@ job_work*/*
 .metadata/*
 pftt_release.zip
 /build/
-cache/PHPUnit/*
+cache/PHPUnit*

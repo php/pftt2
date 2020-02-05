@@ -288,7 +288,7 @@ public class PfttAuto {
 		PhpResultPackWriter result_pack = new PhpResultPackWriter(host, cm, auto_dir, build, core_test_pack, config);
 		
 		pftt.coreAll(build, core_test_pack, config, result_pack);
-		pftt.appAll(build, config, result_pack);
+		pftt.appAll(build, config, result_pack, cfiles);
 		
 		result_pack.close();
 	

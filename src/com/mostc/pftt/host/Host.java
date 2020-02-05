@@ -43,11 +43,13 @@ public abstract class Host {
 	public boolean isSafePath(String path) {
 		String pftt_dir = getPfttDir();
 		String job_work_dir = getJobWorkDir();
+		String cache_dir = getPfttCacheDir();
 
 		if (isWindows()) {
 			path = path.toLowerCase().replace("\\", "/");
 			pftt_dir = pftt_dir.toLowerCase().replace("\\", "/");
 			job_work_dir = job_work_dir.toLowerCase().replace("\\", "/");
+			cache_dir = cache_dir.toLowerCase().replace("\\", "/");
 
 			// don't mess with windows
 			if (path.equals(getSystemDrive().toLowerCase()+"/windows"))
@@ -63,8 +65,8 @@ public abstract class Host {
 			return false;
 
 		if (path.startsWith(pftt_dir)) {
-			// don't delete anything in PFTT dir unless it is in job_work
-			if (!path.startsWith(job_work_dir))
+			// don't delete anything in PFTT dir unless it is in job_work and cache
+			if (!path.startsWith(job_work_dir) && !path.startsWith(cache_dir))
 				return false;
 		}
 		return true;

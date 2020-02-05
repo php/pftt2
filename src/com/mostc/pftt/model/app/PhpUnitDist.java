@@ -85,9 +85,8 @@ public class PhpUnitDist {
 		if (_include_path!=null)
 			return _include_path;
 		
-		String phpunit_path = host.joinIntoOnePath(host.getPfttCacheDir(), "/PHPUnit");
-		
-		return _include_path = host.joinMultiplePaths(host.joinMultiplePaths(src_test_pack.include_dirs, phpunit_path), path.getAbsolutePath());
+		// Add cache folder as well since PHPUnit will be in there. 
+		return _include_path = host.joinMultiplePaths(host.joinMultiplePaths(src_test_pack.include_dirs, host.getPfttCacheDir()), path.getAbsolutePath());
 	}
 	
 	/** add an included file.
