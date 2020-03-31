@@ -9,10 +9,6 @@ import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.mostc.pftt.util.apache.regexp.RE;
-import com.mostc.pftt.util.apache.regexp.RECompiler;
-import com.mostc.pftt.util.apache.regexp.REProgram;
-
 /** String utility functions
  * 
  * @author Matt Ficken
@@ -291,12 +287,10 @@ public final class StringUtil {
 		return sb.toString();
 	}
 
-	static final RECompiler compiler = new RECompiler();
-	public static RE compile(String needle) {
-		REProgram prog = compiler.compile(needle);
-		return new RE(prog);
+	public static Pattern compile(String needle) {
+		return Pattern.compile(needle);
 	}
-	public static RE compileQuote(String needle) {
+	public static Pattern compileQuote(String needle) {
 		return compile(makeRegularExpressionSafe(needle));
 	}
 	public static boolean isNotEmpty(CharSequence cs) {
