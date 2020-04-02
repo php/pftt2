@@ -523,14 +523,7 @@ public class PhptTestCase extends TestCase {
 		} else {
 			return null;
 		}
-				
-		{
-			String override_expected_str = PhptOverrideManager.replaceWithRegexOverrides(host, expected_str);
-			if (override_expected_str!=null) {
-				expected_str = override_expected_str;
-			}
-		}
-		
+
 		try {
 			REProgram wanted_re_prog = new RECompiler().compile(expected_str);
 			
@@ -574,14 +567,7 @@ public class PhptTestCase extends TestCase {
 		} else {
 			return;
 		}
-		
-		{
-			String override_expected_str = PhptOverrideManager.replaceWithRegexOverrides(host, expected_str);
-			if (override_expected_str!=null) {
-				expected_str = override_expected_str;
-			}
-		}
-		
+
 		REDebugCompiler re = new REDebugCompiler();
 		REProgram rp = re.compile(expected_str);
 		
